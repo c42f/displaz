@@ -176,9 +176,7 @@ PointView::PointView(QWidget *parent)
     m_probeRes(10),
     m_probeMaxSolidAngle(0),
     m_backgroundColor(60, 50, 50),
-    m_visMode(Vis_Points),
     m_drawAxes(false),
-    m_lighting(false),
     m_points(),
     m_cloudCenter(0)
 {
@@ -216,22 +214,9 @@ void PointView::setProbeParams(int cubeFaceRes, float maxSolidAngle)
 }
 
 
-PointView::VisMode PointView::visMode() const
-{
-    return m_visMode;
-}
-
-
 void PointView::setBackground(QColor col)
 {
     m_backgroundColor = col;
-    updateGL();
-}
-
-
-void PointView::setVisMode(VisMode mode)
-{
-    m_visMode = mode;
     updateGL();
 }
 
@@ -291,11 +276,10 @@ void PointView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw geometry
-
     if(m_drawAxes)
         drawAxes();
     for(size_t i = 0; i < m_points.size(); ++i)
-        drawPoints(*m_points[i], m_visMode, m_lighting);
+        drawPoints(*m_points[i]);
 
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos);
@@ -334,12 +318,7 @@ void PointView::wheelEvent(QWheelEvent* event)
 
 void PointView::keyPressEvent(QKeyEvent *event)
 {
-    if(event->key() == Qt::Key_L)
-    {
-        m_lighting = !m_lighting;
-        updateGL();
-    }
-    else if(event->key() == Qt::Key_C)
+    if(event->key() == Qt::Key_C)
     {
         m_camera.setCenter(exr2qt(m_cursorPos));
     }
@@ -469,8 +448,7 @@ void PointView::drawCursor(const V3f& p) const
 
 
 /// Draw point cloud using OpenGL
-void PointView::drawPoints(const PointArrayModel& points, VisMode /*visMode*/,
-                           bool useLighting)
+void PointView::drawPoints(const PointArrayModel& points)
 {
     if(points.empty())
         return;
@@ -528,10 +506,6 @@ PointViewerMainWindow::PointViewerMainWindow(
 
     // View menu
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
-    QAction* viewAsDisks = viewMenu->addAction(tr("Draw As &Disks"));
-    viewAsDisks->setShortcut(tr("v"));
-    viewAsDisks->setCheckable(true);
-    connect(viewAsDisks, SIGNAL(triggered()), this, SLOT(toggleVisMode()));
     QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
     drawAxes->setCheckable(true);
     // Background sub-menu
@@ -634,13 +608,6 @@ void PointViewerMainWindow::chooseBackground()
 {
     m_pointView->setBackground(
         QColorDialog::getColor(QColor(255,255,255), this, "background color"));
-}
-
-
-void PointViewerMainWindow::toggleVisMode()
-{
-    m_pointView->setVisMode(m_pointView->visMode() == PointView::Vis_Points ?
-                            PointView::Vis_Disks : PointView::Vis_Points);
 }
 
 

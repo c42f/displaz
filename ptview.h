@@ -101,13 +101,6 @@ class PointView : public QGLWidget
     Q_OBJECT
 
     public:
-        /// Point (surface element) visualization mode
-        enum VisMode
-        {
-            Vis_Points,  ///< Draw surfels using GL_POINTS
-            Vis_Disks    ///< Draw surfels as disks
-        }; // FIXME: Remove!
-
         PointView(QWidget *parent = NULL);
 
         /// Load a point cloud from a file
@@ -115,16 +108,12 @@ class PointView : public QGLWidget
         /// Set properties for rendering probe environment map
         void setProbeParams(int cubeFaceRes, float maxSolidAngle);
 
-        /// Get the visualization mode
-        VisMode visMode() const;
-
         /// Hint at an appropriate size
         QSize sizeHint() const;
 
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
-        void setVisMode(VisMode mode);
         void setColorChannel(QString channel);
         void toggleDrawAxes();
 
@@ -146,8 +135,7 @@ class PointView : public QGLWidget
     private:
         static void drawAxes();
         void drawCursor(const V3f& P) const;
-        static void drawPoints(const PointArrayModel& points, VisMode visMode,
-                               bool useLighting);
+        static void drawPoints(const PointArrayModel& points);
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -160,11 +148,7 @@ class PointView : public QGLWidget
         float m_probeMaxSolidAngle;
         /// Background color for drawing
         QColor m_backgroundColor;
-        /// Type of visualization
-        VisMode m_visMode;
         bool m_drawAxes;
-        /// Flag for whether to use OpenGL lighting or not
-        bool m_lighting;
         /// Point cloud data
         std::vector<boost::shared_ptr<PointArrayModel> > m_points;
         V3f m_cloudCenter;
@@ -192,7 +176,6 @@ class PointViewerMainWindow : public QMainWindow
         void aboutDialog();
         void setBackground(const QString& name);
         void chooseBackground();
-        void toggleVisMode();
         void setColorChannels(QStringList channels);
 
     private:
