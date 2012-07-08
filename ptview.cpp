@@ -175,7 +175,7 @@ PointView::PointView(QWidget *parent)
     m_cursorPos(0),
     m_probeRes(10),
     m_probeMaxSolidAngle(0),
-    m_backgroundColor(0, 0, 0),
+    m_backgroundColor(60, 50, 50),
     m_visMode(Vis_Points),
     m_drawAxes(false),
     m_lighting(false),
@@ -477,7 +477,7 @@ void PointView::drawPoints(const PointArrayModel& points, VisMode /*visMode*/,
     glDisable(GL_COLOR_MATERIAL);
     glDisable(GL_LIGHTING);
     // Draw points
-    glPointSize(1);
+    glPointSize(5);
     glColor3f(1,1,1);
     // Set distance attenuation for points, following the usual 1/z
     // law.
