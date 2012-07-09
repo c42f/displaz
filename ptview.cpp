@@ -193,9 +193,9 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     m_points.clear();
     for(int i = 0; i < fileNames.size(); ++i)
     {
-        boost::shared_ptr<PointArrayModel> points(new PointArrayModel());
+        std::unique_ptr<PointArrayModel> points(new PointArrayModel());
         if(points->loadPointFile(fileNames[i]) && !points->empty())
-            m_points.push_back(points);
+            m_points.push_back(std::move(points));
     }
     if(m_points.empty())
         return;
@@ -672,7 +672,7 @@ int main(int argc, char *argv[])
     // Turn on multisampled antialiasing - this makes rendered point clouds
     // look much nicer.
     QGLFormat f = QGLFormat::defaultFormat();
-    f.setSampleBuffers(true);
+    //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
     // Convert std::vector<std::string> into QStringList...

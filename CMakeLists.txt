@@ -32,6 +32,8 @@ link_directories(
 )
 add_executable(qtlasview ${srcs})
 
+set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
+
 target_link_libraries(qtlasview
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
 	${Boost_PROGRAM_OPTIONS_LIBRARY}

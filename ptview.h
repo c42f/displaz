@@ -32,9 +32,7 @@
 
 #include <cmath>
 #include <vector>
-
-#include <boost/shared_ptr.hpp>
-#include <boost/shared_array.hpp>
+#include <memory>
 
 #include <QtGui/QMainWindow>
 #include <QtOpenGL/QGLWidget>
@@ -88,8 +86,8 @@ class PointArrayModel : public QObject
         QString m_fileName;
         QStringList m_colorChannelNames;
         size_t m_npoints;
-        boost::shared_array<V3f> m_P;
-        boost::shared_array<C3f> m_color;
+        std::unique_ptr<V3f[]> m_P;
+        std::unique_ptr<C3f[]> m_color;
 };
 
 
@@ -150,7 +148,7 @@ class PointView : public QGLWidget
         QColor m_backgroundColor;
         bool m_drawAxes;
         /// Point cloud data
-        std::vector<boost::shared_ptr<PointArrayModel> > m_points;
+        std::vector<std::unique_ptr<PointArrayModel> > m_points;
         V3f m_cloudCenter;
 };
 
