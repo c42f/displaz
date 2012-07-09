@@ -173,8 +173,6 @@ PointView::PointView(QWidget *parent)
     m_lastPos(0,0),
     m_zooming(false),
     m_cursorPos(0),
-    m_probeRes(10),
-    m_probeMaxSolidAngle(0),
     m_backgroundColor(60, 50, 50),
     m_drawAxes(false),
     m_points(),
@@ -204,13 +202,6 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     m_cursorPos = m_cloudCenter;
     m_camera.setCenter(exr2qt(m_cloudCenter));
     updateGL();
-}
-
-
-void PointView::setProbeParams(int cubeFaceRes, float maxSolidAngle)
-{
-    m_probeRes = cubeFaceRes;
-    m_probeMaxSolidAngle = maxSolidAngle;
 }
 
 
@@ -637,55 +628,17 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    typedef std::vector<std::string> StringVec;
-    namespace po = boost::program_options;
-    // optional options
-    po::options_description optionsDesc("options");
-    optionsDesc.add_options()
-        ("help,h", "help message")
-        ("maxsolidangle,a", po::value<float>()->default_value(0.02),
-         "max solid angle used for aggreates in point hierarchy during rendering")
-        ("proberes,p", po::value<int>()->default_value(10),
-         "resolution of micro environment raster for viewing")
-        ("cloudres,c", po::value<float>()->default_value(20),
-         "resolution of point cloud")
-        ("radiusmult,r", po::value<float>()->default_value(1),
-         "multiplying factor for surfel radius")
-        ("point_files", po::value<std::vector<std::string> >()->default_value(std::vector<std::string>(), "[]"),
-         "file to display")
-    ;
-    // Parse options
-    po::variables_map opts;
-    po::positional_options_description positionalOpts;
-    positionalOpts.add("point_files", -1);
-    po::store(po::command_line_parser(app.argc(), app.argv())
-              .options(optionsDesc).positional(positionalOpts).run(), opts);
-    po::notify(opts);
-
-    if(opts.count("help"))
-    {
-        std::cout << "Usage: " << argv[0] << " [options] file.ptc\n\n"
-                  << optionsDesc;
-        return 0;
-    }
-
     // Turn on multisampled antialiasing - this makes rendered point clouds
     // look much nicer.
     QGLFormat f = QGLFormat::defaultFormat();
     //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
-    // Convert std::vector<std::string> into QStringList...
-    const std::vector<std::string>& pointFileNamesStd =
-                        opts["point_files"].as<std::vector<std::string> >();
     QStringList pointFileNames;
-    for(int i = 0, iend = pointFileNamesStd.size(); i < iend; ++i)
-        pointFileNames.push_back(QString::fromStdString(pointFileNamesStd[i]));
+    for(int i = 1; i < argc; ++i)
+        pointFileNames.push_back(argv[i]);
 
     PointViewerMainWindow window(pointFileNames);
-    float maxSolidAngle = opts["maxsolidangle"].as<float>();
-    int probeRes = opts["proberes"].as<int>();
-    window.pointView().setProbeParams(probeRes, maxSolidAngle);
     window.show();
 
     return app.exec();

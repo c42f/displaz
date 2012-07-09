@@ -103,8 +103,6 @@ class PointView : public QGLWidget
 
         /// Load a point cloud from a file
         void loadPointFiles(const QStringList& fileNames);
-        /// Set properties for rendering probe environment map
-        void setProbeParams(int cubeFaceRes, float maxSolidAngle);
 
         /// Hint at an appropriate size
         QSize sizeHint() const;
@@ -141,9 +139,6 @@ class PointView : public QGLWidget
         bool m_zooming;
         /// Position of 3D cursor
         V3f m_cursorPos;
-        /// Light probe resolution
-        int m_probeRes;
-        float m_probeMaxSolidAngle;
         /// Background color for drawing
         QColor m_backgroundColor;
         bool m_drawAxes;
