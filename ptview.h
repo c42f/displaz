@@ -61,7 +61,7 @@ class PointArrayModel : public QObject
         PointArrayModel();
 
         /// Load points from a file
-        bool loadPointFile(const QString& fileName);
+        bool loadPointFile(const QString& fileName, size_t maxPointCount);
 
         /// Return the number of points
         size_t size() const { return m_npoints; }
@@ -81,6 +81,10 @@ class PointArrayModel : public QObject
 
         /// Compute the centroid of the P data
         V3f centroid() const;
+
+    signals:
+        /// Emitted progress is made loading points
+        void loadedPoints(double fractionOfTotal);
 
     private:
         QString m_fileName;
@@ -111,6 +115,7 @@ class PointView : public QGLWidget
         /// Set the backgroud color
         void setBackground(QColor col);
         void setColorChannel(QString channel);
+        void setMaxPointCount(size_t maxPointCount);
         void toggleDrawAxes();
 
     signals:
@@ -145,6 +150,7 @@ class PointView : public QGLWidget
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         V3f m_cloudCenter;
+        size_t m_maxPointCount; ///< Maximum desired number of points to load
 };
 
 

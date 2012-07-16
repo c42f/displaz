@@ -23,6 +23,7 @@ qt4_wrap_cpp(moc_srcs
 set(srcs
 	${moc_srcs}
 	ptview.cpp
+	argparse.cpp
 )
 
 link_directories(
@@ -31,6 +32,10 @@ link_directories(
 add_executable(qtlasview ${srcs})
 
 set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+	"Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+)
+
 
 target_link_libraries(qtlasview
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}

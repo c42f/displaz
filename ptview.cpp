@@ -45,6 +45,7 @@
 #include <OpenEXR/ImathMatrix.h>
 
 #include "ptview.h"
+#include "argparse.h"
 
 #include <lasreader.hpp>
 
@@ -115,11 +116,11 @@ PointArrayModel::PointArrayModel()
 { }
 
 
-bool PointArrayModel::loadPointFile(const QString& fileName)
+bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCount)
 {
     LASreadOpener lasReadOpener;
     lasReadOpener.set_file_name(fileName.toAscii().constData());
-    LASreader* lasReader = lasReadOpener.open();
+    std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
 
     if(!lasReader)
     {
@@ -128,8 +129,14 @@ bool PointArrayModel::loadPointFile(const QString& fileName)
         return false;
     }
 
-    // Allocate required attributes
-    m_npoints = lasReader->header.number_of_point_records;
+    // Figure out how much to decimate the point cloud.
+    size_t totPoints = lasReader->header.number_of_point_records;
+    size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
+    if(decimate > 1)
+    {
+        std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << "\n";
+    }
+    m_npoints = (totPoints + decimate - 1) / decimate;
     Imath::V3d offset = Imath::V3d(lasReader->header.min_x,
                                    lasReader->header.min_y,
                                    lasReader->header.min_z);
@@ -139,19 +146,36 @@ bool PointArrayModel::loadPointFile(const QString& fileName)
     // Iterate over all particles & pull in the data.
     V3f* outP = m_P.get();
     V3f* outCol = m_color.get();
-    size_t pointCount = 0;
+    size_t readCount = 0;
+    size_t nextBlock = 1;
+    size_t nextStore = 1;
     while(lasReader->read_point())
     {
+        // Read a point from the las file
         const LASpoint& point = lasReader->point;
+        ++readCount;
+        if(readCount % 10000 == 0)
+            emit loadedPoints(double(readCount)/totPoints);
+        if(readCount < nextStore)
+            continue;
+        // Store the point
         *outP++ = Imath::V3d(point.get_x(), point.get_y(), point.get_z()) - offset;
         float intens = float(point.intensity) / 300;
         intens = intens / (1 + intens);
         *outCol++ = C3f(intens);
-        ++pointCount;
+        // Figure out which point will be the next stored point.
+        nextBlock += decimate;
+        nextStore = nextBlock;
+        if(decimate > 1)
+        {
+            // Randomize selected point within block to avoid repeated patterns
+            nextStore += (qrand() % decimate);
+            if(nextBlock <= totPoints && nextStore > totPoints)
+                nextStore = totPoints;
+        }
     }
     lasReader->close();
-    delete lasReader;
-    std::cout << "loaded " << m_npoints << " points\n";
+    std::cout << "Read " << totPoints << " points.  Displaying " << m_npoints <<  "\n";
     return true;
 }
 
@@ -176,7 +200,8 @@ PointView::PointView(QWidget *parent)
     m_backgroundColor(60, 50, 50),
     m_drawAxes(false),
     m_points(),
-    m_cloudCenter(0)
+    m_cloudCenter(0),
+    m_maxPointCount(10000000)
 {
     setFocusPolicy(Qt::StrongFocus);
 
@@ -188,11 +213,12 @@ PointView::PointView(QWidget *parent)
 
 void PointView::loadPointFiles(const QStringList& fileNames)
 {
+    size_t maxCount = m_maxPointCount / fileNames.size();
     m_points.clear();
     for(int i = 0; i < fileNames.size(); ++i)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
-        if(points->loadPointFile(fileNames[i]) && !points->empty())
+        if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
             m_points.push_back(std::move(points));
     }
     if(m_points.empty())
@@ -223,6 +249,12 @@ void PointView::setColorChannel(QString channel)
     for(size_t i = 0; i < m_points.size(); ++i)
         m_points[i]->setColorChannel(channel);
     updateGL();
+}
+
+
+void PointView::setMaxPointCount(size_t maxPointCount)
+{
+    m_maxPointCount = maxPointCount;
 }
 
 
@@ -624,9 +656,37 @@ void PointViewerMainWindow::setColorChannels(QStringList channels)
 
 
 //------------------------------------------------------------------------------
+
+
+QStringList g_pointFileNames;
+static int storeFileName (int argc, const char *argv[])
+{
+    for(int i = 0; i < argc; ++i)
+        g_pointFileNames.push_back (argv[i]);
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+
+    ArgParse::ArgParse ap;
+    int maxPointCount = 10000000;
+
+    ap.options(
+        "qtlasview - view a LAS point cloud\n"
+        "Usage: qtlasview [opts] file1.las [file2.las ...]",
+        "%*", storeFileName, "",
+        "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
+        NULL
+    );
+
+    if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
+    {
+        std::cerr << ap.geterror() << std::endl;
+        ap.usage();
+        return EXIT_FAILURE;
+    }
 
     // Turn on multisampled antialiasing - this makes rendered point clouds
     // look much nicer.
@@ -634,11 +694,10 @@ int main(int argc, char *argv[])
     //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
-    QStringList pointFileNames;
-    for(int i = 1; i < argc; ++i)
-        pointFileNames.push_back(argv[i]);
-
-    PointViewerMainWindow window(pointFileNames);
+    PointViewerMainWindow window;
+    window.pointView().setMaxPointCount(maxPointCount);
+    if(!g_pointFileNames.empty())
+        window.pointView().loadPointFiles(g_pointFileNames);
     window.show();
 
     return app.exec();
