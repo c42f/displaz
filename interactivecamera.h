@@ -32,6 +32,9 @@
 #ifndef AQSIS_INTERACTIVE_CAMERA_H_INCLUDED
 #define AQSIS_INTERACTIVE_CAMERA_H_INCLUDED
 
+#ifdef _MSC_VER
+#   define _USE_MATH_DEFINES
+#endif
 #include <cmath>
 
 #include <QtGui/QQuaternion>

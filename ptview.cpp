@@ -27,6 +27,9 @@
 //
 // (This is the New BSD license)
 
+#include <GL/glew.h>
+
+#include "ptview.h"
 
 #define GL_GLEXT_PROTOTYPES
 
@@ -40,9 +43,14 @@
 
 #include <boost/program_options.hpp>
 
-#define NOMINMAX
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathMatrix.h>
+#ifdef _WIN32
+#   define NOMINMAX
+#   include <ImathVec.h>
+#   include <ImathMatrix.h>
+#else
+#   include <OpenEXR/ImathVec.h>
+#   include <OpenEXR/ImathMatrix.h>
+#endif
 
 #include "ptview.h"
 #include "argparse.h"
@@ -270,6 +278,8 @@ QSize PointView::sizeHint() const
 void PointView::initializeGL()
 {
     //glEnable(GL_MULTISAMPLE);
+    if(glewInit() != GLEW_OK)
+        close();
 }
 
 
