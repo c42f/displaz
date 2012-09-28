@@ -41,8 +41,6 @@
 #include <QtGui/QFileDialog>
 #include <QtGui/QColorDialog>
 
-#include <boost/program_options.hpp>
-
 #ifdef _WIN32
 #   define NOMINMAX
 #   include <ImathVec.h>
@@ -124,7 +122,8 @@ PointArrayModel::PointArrayModel()
 { }
 
 
-bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCount)
+bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCount,
+                                    const C3f& color)
 {
     LASreadOpener lasReadOpener;
     lasReadOpener.set_file_name(fileName.toAscii().constData());
@@ -142,7 +141,7 @@ bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCoun
     size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
     if(decimate > 1)
     {
-        std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << "\n";
+        std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << std::endl;
     }
     m_npoints = (totPoints + decimate - 1) / decimate;
     Imath::V3d offset = Imath::V3d(lasReader->header.min_x,
@@ -168,9 +167,11 @@ bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCoun
             continue;
         // Store the point
         *outP++ = Imath::V3d(point.get_x(), point.get_y(), point.get_z()) - offset;
-        float intens = float(point.intensity) / 300;
+        // float intens = float(point.scan_angle_rank) / 40;
+        float intens = float(point.intensity) / 400;
         intens = intens / (1 + intens);
-        *outCol++ = C3f(intens);
+        //float intens = 0.5*point.point_source_ID;
+        *outCol++ = color*intens;
         // Figure out which point will be the next stored point.
         nextBlock += decimate;
         nextStore = nextBlock;
@@ -183,7 +184,7 @@ bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCoun
         }
     }
     lasReader->close();
-    std::cout << "Read " << totPoints << " points.  Displaying " << m_npoints <<  "\n";
+    std::cout << "Read " << totPoints << " points.  Displaying " << m_npoints <<  std::endl;
     return true;
 }
 
@@ -223,10 +224,13 @@ void PointView::loadPointFiles(const QStringList& fileNames)
 {
     size_t maxCount = m_maxPointCount / fileNames.size();
     m_points.clear();
+    C3f colors[] = {C3f(1,1,1), C3f(1,0.5,0.5), C3f(0.5,1,0.5), C3f(0.5,0.5,1)};
     for(int i = 0; i < fileNames.size(); ++i)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
-        if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
+        if(points->loadPointFile(fileNames[i], maxCount,
+                                 colors[i%(sizeof(colors)/sizeof(C3f))]) &&
+           !points->empty())
             m_points.push_back(std::move(points));
     }
     if(m_points.empty())
@@ -359,6 +363,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
     {
         // Snap probe to position of closest point and center on it
         V3f newPos(0);
+        size_t nearestIdx = 0;
         float nearestDist = FLT_MAX;
         for(size_t j = 0; j < m_points.size(); ++j)
         {
@@ -372,9 +377,11 @@ void PointView::keyPressEvent(QKeyEvent *event)
                 {
                     nearestDist = dist;
                     newPos = *P;
+                    nearestIdx = i;
                 }
             }
         }
+        std::cout << "Selected index " << nearestIdx << "\n";
         m_cursorPos = newPos;
         m_camera.setCenter(exr2qt(newPos));
         updateGL();
@@ -492,7 +499,7 @@ void PointView::drawPoints(const PointArrayModel& points)
     glColor3f(1,1,1);
     // Set distance attenuation for points, following the usual 1/z
     // law.
-    GLfloat attenParams[3] = {0, 0, 0.001};
+    GLfloat attenParams[3] = {0, 0, 0.001f};
     glPointParameterfv(GL_POINT_DISTANCE_ATTENUATION, attenParams);
     glPointParameterf(GL_POINT_SIZE_MIN, 0);
     glPointParameterf(GL_POINT_SIZE_MAX, 100);
@@ -506,7 +513,7 @@ void PointView::drawPoints(const PointArrayModel& points)
         const float* col = reinterpret_cast<const float*>(points.color() + i);
         glVertexPointer(3, GL_FLOAT, 3*sizeof(float), P);
         glColorPointer(3, GL_FLOAT, 3*sizeof(float), col);
-        size_t ndraw = std::min(points.size() - i, chunkSize);
+        int ndraw = (int)std::min(points.size() - i, chunkSize);
         glDrawArrays(GL_POINTS, 0, ndraw);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -599,7 +606,7 @@ void PointViewerMainWindow::openFiles()
 {
     QStringList fileNames = QFileDialog::getOpenFileNames(this,
             tr("Select one or more point clouds to open"), "",
-            tr("Point cloud files (*.las,*.laz)"));
+            tr("Point cloud files (*.las *.laz)"));
     if(!fileNames.empty())
         m_pointView->loadPointFiles(fileNames);
 }
