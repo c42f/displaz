@@ -91,6 +91,9 @@ class PointArrayModel : public QObject
         /// Compute the centroid of the P data
         V3f centroid() const;
 
+        /// Get the offset which should be added to P to get absolute position
+        Imath::V3d offset() const { return m_offset; }
+
     signals:
         /// Emitted progress is made loading points
         void loadedPoints(double fractionOfTotal);
@@ -99,6 +102,7 @@ class PointArrayModel : public QObject
         QString m_fileName;
         QStringList m_colorChannelNames;
         size_t m_npoints;
+        Imath::V3d m_offset;
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<C3f[]> m_color;
 };
@@ -145,7 +149,8 @@ class PointView : public QGLWidget
     private:
         static void drawAxes();
         void drawCursor(const V3f& P) const;
-        static void drawPoints(const PointArrayModel& points);
+        static void drawPoints(const PointArrayModel& points,
+                               const Imath::V3d& drawOffset);
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;

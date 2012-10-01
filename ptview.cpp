@@ -144,9 +144,8 @@ bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCoun
         std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << std::endl;
     }
     m_npoints = (totPoints + decimate - 1) / decimate;
-    Imath::V3d offset = Imath::V3d(lasReader->header.min_x,
-                                   lasReader->header.min_y,
-                                   lasReader->header.min_z);
+    m_offset = Imath::V3d(lasReader->header.min_x, lasReader->header.min_y,
+                          lasReader->header.min_z);
     m_P.reset(new V3f[m_npoints]);
     // TODO: Look for color channel?
     m_color.reset(new C3f[m_npoints]);
@@ -166,7 +165,7 @@ bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCoun
         if(readCount < nextStore)
             continue;
         // Store the point
-        *outP++ = Imath::V3d(point.get_x(), point.get_y(), point.get_z()) - offset;
+        *outP++ = Imath::V3d(point.get_x(), point.get_y(), point.get_z()) - m_offset;
         // float intens = float(point.scan_angle_rank) / 40;
         float intens = float(point.intensity) / 400;
         intens = intens / (1 + intens);
@@ -315,8 +314,12 @@ void PointView::paintGL()
     // Draw geometry
     if(m_drawAxes)
         drawAxes();
-    for(size_t i = 0; i < m_points.size(); ++i)
-        drawPoints(*m_points[i]);
+    if (!m_points.empty())
+    {
+        Imath::V3d offset0 = m_points[0]->offset();
+        for(size_t i = 0; i < m_points.size(); ++i)
+            drawPoints(*m_points[i], offset0);
+    }
 
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos);
@@ -488,8 +491,12 @@ void PointView::drawCursor(const V3f& p) const
 
 
 /// Draw point cloud using OpenGL
-void PointView::drawPoints(const PointArrayModel& points)
+void PointView::drawPoints(const PointArrayModel& points,
+                           const Imath::V3d& drawOffset)
 {
+    glPushMatrix();
+    Imath::V3d offset = points.offset() - drawOffset;
+    glTranslatef(offset.x, offset.y, offset.z);
     if(points.empty())
         return;
     glDisable(GL_COLOR_MATERIAL);
@@ -518,6 +525,7 @@ void PointView::drawPoints(const PointArrayModel& points)
     }
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
+    glPopMatrix();
 }
 
 
