@@ -214,8 +214,10 @@ PointView::PointView(QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
 
     m_camera.setClipFar(FLT_MAX);
-    connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(updateGL()));
-    connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(updateGL()));
+    // Don't use signals/slots for handling view changes... this seems to
+    // introduce a bit of extra lag for slowly drawing scenes (?)
+    //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(updateGL()));
+    //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(updateGL()));
 }
 
 
@@ -344,7 +346,10 @@ void PointView::mouseMoveEvent(QMouseEvent* event)
         updateGL();
     }
     else
+    {
         m_camera.mouseDrag(m_lastPos, event->pos(), m_zooming);
+        updateGL();
+    }
     m_lastPos = event->pos();
 }
 
@@ -353,6 +358,7 @@ void PointView::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
     m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
+    updateGL();
 }
 
 
@@ -361,6 +367,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_C)
     {
         m_camera.setCenter(exr2qt(m_cursorPos));
+        updateGL();
     }
     else if(event->key() == Qt::Key_S)
     {
