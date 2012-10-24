@@ -41,6 +41,7 @@ set(srcs
 	${moc_srcs}
 	ptview.cpp
 	argparse.cpp
+	qtlasview.rc
 )
 
 link_directories(
