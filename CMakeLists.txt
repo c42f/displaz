@@ -47,7 +47,7 @@ set(srcs
 link_directories(
 	D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/lib/Release
 )
-add_executable(qtlasview ${srcs})
+add_executable(qtlasview WIN32 ${srcs})
 
 #set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
@@ -57,6 +57,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
 
 target_link_libraries(qtlasview
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
+	${QT_QTMAIN_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	${GLEW_LIBRARIES}
 	laslib
