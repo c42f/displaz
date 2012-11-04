@@ -21,13 +21,23 @@ endif ()
 find_package(OpenGL)
 find_package(Qt4 4.6.2 COMPONENTS QtCore QtGui QtOpenGL)
 
-if(NOT QT_FOUND OR NOT OPENGL_FOUND)
-	message(SEND_ERROR "Qt or opengl not found")
+if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT GLEW_FOUND)
+	message(SEND_ERROR "Qt, opengl and glew are required.")
+endif()
+
+if(WIN32)
+	include_directories(BEFORE
+		D:/ROAMES_git/Components/ThirdParty/ilmbase-1.0.2/src/include
+		D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/include
+	)
+else()
+	include_directories(BEFORE
+		/home/chris/work/roames/svn/Components/ThirdParty/ilmbase-1.0.2/src/include
+		/home/chris/work/roames/svn/Components/ThirdParty/laslib-2.1.0/src/include
+	)
 endif()
 
 include_directories(BEFORE
-	D:/ROAMES_git/Components/ThirdParty/ilmbase-1.0.2/src/include
-	D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/include
 	${QT_INCLUDES}
 	${OPENGL_INCLUDE_DIR}
 	${GLEW_INCLUDES}
@@ -41,25 +51,40 @@ set(srcs
 	${moc_srcs}
 	ptview.cpp
 	argparse.cpp
-	qtlasview.rc
 )
+if(WIN32)
+	list(APPEND srcs qtlasview.rc)
+endif()
 
-link_directories(
-	D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/lib/Release
-)
-add_executable(qtlasview WIN32 ${srcs})
+if(NOT WIN32)
+	set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
+endif()
 
-#set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
 	"Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
+if(WIN32)
+	link_directories(
+		D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/lib/Release
+	)
+else()
+	link_directories(
+		/home/chris/work/roames/svn/Components/ThirdParty/laslib-2.1.0/src/build
+	)
+endif()
+
+add_executable(qtlasview WIN32 ${srcs})
 
 target_link_libraries(qtlasview
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-	${QT_QTMAIN_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	${GLEW_LIBRARIES}
 	laslib
 )
 
+if(WIN32)
+	target_link_libraries(qtlasview
+		${QT_QTMAIN_LIBRARY}
+	)
+endif()
