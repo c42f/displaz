@@ -1,4 +1,4 @@
-project(qtlasview)
+project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
@@ -53,7 +53,7 @@ set(srcs
 	argparse.cpp
 )
 if(WIN32)
-	list(APPEND srcs qtlasview.rc)
+	list(APPEND srcs windows_resources.rc)
 endif()
 
 if(NOT WIN32)
@@ -74,9 +74,9 @@ else()
 	)
 endif()
 
-add_executable(qtlasview WIN32 ${srcs})
+add_executable(displaz WIN32 ${srcs})
 
-target_link_libraries(qtlasview
+target_link_libraries(displaz
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	${GLEW_LIBRARIES}
@@ -84,7 +84,7 @@ target_link_libraries(qtlasview
 )
 
 if(WIN32)
-	target_link_libraries(qtlasview
+	target_link_libraries(displaz
 		${QT_QTMAIN_LIBRARY}
 	)
 endif()

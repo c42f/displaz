@@ -546,7 +546,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_colorMenuGroup(0),
     m_colorMenuMapper(0)
 {
-    setWindowTitle("qtlasview");
+    setWindowTitle("Displaz");
 
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
@@ -630,26 +630,25 @@ void PointViewerMainWindow::openFiles()
 void PointViewerMainWindow::helpDialog()
 {
     QString message = tr(
-        "ptview controls:\n"
-        "\n"
-        "LMB+drag = rotate camera\n"
-        "RMB+drag = zoom camera\n"
-        "Ctrl+LMB+drag = move 3D cursor\n"
-        "Ctrl+RMB+drag = zoom 3D cursor along view direction\n"
-        "'c' = center camera on 3D cursor\n"
-        "'v' = toggle view mode between points and disks\n"
-        "'s' = snap 3D cursor to nearest point\n"
-        "\n"
-        "(LMB, RMB = left & right mouse buttons)\n"
+        "<p><h2>Displaz 3D window controls</h2></p>"
+        "<list>"
+        "  <li>LMB+drag = rotate camera</li>"
+        "  <li>RMB+drag = zoom camera</li>"
+        "  <li>Ctrl+LMB+drag = move 3D cursor</li>"
+        "  <li>Ctrl+RMB+drag = zoom 3D cursor along view direction</li>"
+        "  <li>'c' = center camera on 3D cursor</li>"
+        "  <li>'s' = snap 3D cursor to nearest point</li>"
+        "</list>"
+        "<p>(LMB, RMB = left & right mouse buttons)</p>"
     );
-    QMessageBox::information(this, tr("ptview control summary"), message);
+    QMessageBox::information(this, tr("Displaz control summary"), message);
 }
 
 
 void PointViewerMainWindow::aboutDialog()
 {
-    QString message = tr("Qt las viewer\nversion 0.0.1");
-    QMessageBox::information(this, tr("About ptview"), message);
+    QString message = tr("Displaz - a qt-based las viewer\nversion 0.0.1");
+    QMessageBox::information(this, tr("About displaz"), message);
 }
 
 
