@@ -1,4 +1,4 @@
-// Copyright (C) 2001, Paul C. Gregory and the other authors and contributors
+// Copyright (C) 2012, Chris J. Foster and the other authors and contributors
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// (This is the New BSD license)
+// (This is the BSD 3-clause license)
 
 /// \author Chris Foster [chris42f [at] gmail (dot) com]
 
