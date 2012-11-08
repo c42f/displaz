@@ -619,11 +619,13 @@ void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 
 void PointViewerMainWindow::openFiles()
 {
-    QStringList fileNames = QFileDialog::getOpenFileNames(this,
-            tr("Select one or more point clouds to open"), "",
-            tr("Point cloud files (*.las *.laz)"));
-    if(!fileNames.empty())
-        m_pointView->loadPointFiles(fileNames);
+    QFileDialog dialog(this, tr("Select one or more point clouds to open"));
+    dialog.setNameFilter(tr("Point cloud files (*.las *.laz)"));
+    dialog.setFileMode(QFileDialog::ExistingFiles);
+    dialog.setDirectory(m_currFileDir);
+    if(dialog.exec())
+        m_pointView->loadPointFiles(dialog.selectedFiles());
+    m_currFileDir = dialog.directory();
 }
 
 

@@ -37,6 +37,7 @@
 #include <vector>
 #include <memory>
 
+#include <QtCore/QDir>
 #include <QtGui/QMainWindow>
 #include <QtOpenGL/QGLWidget>
 
@@ -196,6 +197,7 @@ class PointViewerMainWindow : public QMainWindow
         QMenu* m_colorMenu;
         QActionGroup* m_colorMenuGroup;
         QSignalMapper* m_colorMenuMapper;
+        QDir m_currFileDir;
 };
 
 
