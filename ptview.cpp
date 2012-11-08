@@ -125,6 +125,7 @@ PointArrayModel::PointArrayModel()
 bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCount,
                                     const C3f& color)
 {
+    m_fileName = fileName;
     LASreadOpener lasReadOpener;
     lasReadOpener.set_file_name(fileName.toAscii().constData());
     std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
@@ -230,9 +231,10 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
         if(points->loadPointFile(fileNames[i], maxCount,
-                                 colors[i%(sizeof(colors)/sizeof(C3f))]) &&
-           !points->empty())
+            colors[i%(sizeof(colors)/sizeof(C3f))]) && !points->empty())
+        {
             m_points.push_back(std::move(points));
+        }
     }
     if(m_points.empty())
         return;
@@ -241,6 +243,15 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     m_cursorPos = m_cloudCenter;
     m_camera.setCenter(exr2qt(m_cloudCenter));
     updateGL();
+}
+
+
+void PointView::reloadPointFiles()
+{
+    QStringList fileNames;
+    for(size_t i = 0; i < m_points.size(); ++i)
+        fileNames << m_points[i]->fileName();
+    loadPointFiles(fileNames);
 }
 
 
@@ -554,6 +565,10 @@ PointViewerMainWindow::PointViewerMainWindow(
     openAct->setStatusTip(tr("Open a point cloud file"));
     openAct->setShortcuts(QKeySequence::Open);
     connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
+    QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
+    reloadAct->setStatusTip(tr("Reload point files from disk"));
+    reloadAct->setShortcut(Qt::Key_F5);
+    connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
     QAction* quitAct = fileMenu->addAction(tr("&Quit"));
     quitAct->setStatusTip(tr("Exit the application"));
     quitAct->setShortcuts(QKeySequence::Quit);
@@ -626,6 +641,12 @@ void PointViewerMainWindow::openFiles()
     if(dialog.exec())
         m_pointView->loadPointFiles(dialog.selectedFiles());
     m_currFileDir = dialog.directory();
+}
+
+
+void PointViewerMainWindow::reloadFiles()
+{
+    m_pointView->reloadPointFiles();
 }
 
 

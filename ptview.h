@@ -73,6 +73,8 @@ class PointArrayModel : public QObject
         bool loadPointFile(const QString& fileName, size_t maxPointCount,
                            const C3f& color);
 
+        QString fileName() const { return m_fileName; }
+
         /// Return the number of points
         size_t size() const { return m_npoints; }
         /// Return true when there are zero points
@@ -121,6 +123,7 @@ class PointView : public QGLWidget
 
         /// Load a point cloud from a file
         void loadPointFiles(const QStringList& fileNames);
+        void reloadPointFiles();
 
         /// Hint at an appropriate size
         QSize sizeHint() const;
@@ -186,6 +189,7 @@ class PointViewerMainWindow : public QMainWindow
 
     private slots:
         void openFiles();
+        void reloadFiles();
         void helpDialog();
         void aboutDialog();
         void setBackground(const QString& name);
