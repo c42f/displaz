@@ -16,31 +16,38 @@ if (GLEW_INCLUDES AND GLEW_LIBRARIES)
 else ()
     message (STATUS "GLEW not found")
 endif ()
+
+#-----------------------------------------------------------
+# Find laslib
+find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
+find_library (LASLIB_LIBRARIES NAMES laslib)
+if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
+	set (LASLIB_FOUND TRUE)
+endif()
+
+#-----------------------------------------------------------
+# Find IlmBase - probably temporary dependency
+
+find_path (ILMBASE_INCLUDES NAMES ImathVec.h)
+if (ILMBASE_INCLUDES)
+	set (ILMBASE_FOUND TRUE)
+endif()
+
 #-----------------------------------------------------------
 
 find_package(OpenGL)
 find_package(Qt4 4.6.2 COMPONENTS QtCore QtGui QtOpenGL)
 
-if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT GLEW_FOUND)
-	message(SEND_ERROR "Qt, opengl and glew are required.")
-endif()
-
-if(WIN32)
-	include_directories(BEFORE
-		D:/ROAMES_git/Components/ThirdParty/ilmbase-1.0.2/src/include
-		D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/include
-	)
-else()
-	include_directories(BEFORE
-		/home/chris/work/roames/svn/Components/ThirdParty/ilmbase-1.0.2/src/include
-		/home/chris/work/roames/svn/Components/ThirdParty/laslib-2.1.0/src/include
-	)
+if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT GLEW_FOUND OR NOT LASLIB_FOUND OR NOT ILMBASE_FOUND)
+	message(SEND_ERROR "Qt, opengl, glew, laslib and ilmbase are required.")
 endif()
 
 include_directories(BEFORE
 	${QT_INCLUDES}
 	${OPENGL_INCLUDE_DIR}
 	${GLEW_INCLUDES}
+	${LASLIB_INCLUDES}
+	${ILMBASE_INCLUDES}
 )
 
 qt4_wrap_cpp(moc_srcs
@@ -64,23 +71,13 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
 	"Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
-if(WIN32)
-	link_directories(
-		D:/ROAMES_git/Components/ThirdParty/laslib-2.1.0/src/lib/Release
-	)
-else()
-	link_directories(
-		/home/chris/work/roames/svn/Components/ThirdParty/laslib-2.1.0/src/build
-	)
-endif()
-
 add_executable(displaz WIN32 ${srcs})
 
 target_link_libraries(displaz
 	${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
 	${OPENGL_gl_LIBRARY}
 	${GLEW_LIBRARIES}
-	laslib
+	${LASLIB_LIBRARIES}
 )
 
 if(WIN32)
