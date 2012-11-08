@@ -224,8 +224,13 @@ PointView::PointView(QWidget *parent)
 
 void PointView::loadPointFiles(const QStringList& fileNames)
 {
-    size_t maxCount = m_maxPointCount / fileNames.size();
     m_points.clear();
+    if(fileNames.empty())
+    {
+        updateGL();
+        return;
+    }
+    size_t maxCount = m_maxPointCount / fileNames.size();
     C3f colors[] = {C3f(1,1,1), C3f(1,0.5,0.5), C3f(0.5,1,0.5), C3f(0.5,0.5,1)};
     for(int i = 0; i < fileNames.size(); ++i)
     {
