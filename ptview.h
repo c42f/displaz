@@ -70,7 +70,7 @@ class PointArrayModel : public QObject
         PointArrayModel();
 
         /// Load points from a file
-        bool loadPointFile(const QString& fileName, size_t maxPointCount,
+        bool loadPointFile(QString fileName, size_t maxPointCount,
                            const C3f& color);
 
         QString fileName() const { return m_fileName; }

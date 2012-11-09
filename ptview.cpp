@@ -122,11 +122,15 @@ PointArrayModel::PointArrayModel()
 { }
 
 
-bool PointArrayModel::loadPointFile(const QString& fileName, size_t maxPointCount,
+bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
                                     const C3f& color)
 {
     m_fileName = fileName;
     LASreadOpener lasReadOpener;
+#ifdef _WIN32
+    // Hack: liblas doesn't like forward slashes as path separators on windows
+    fileName = fileName.replace('/', '\\');
+#endif
     lasReadOpener.set_file_name(fileName.toAscii().constData());
     std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
 
