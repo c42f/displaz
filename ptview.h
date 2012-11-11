@@ -43,9 +43,11 @@
 
 #ifdef _WIN32
 #include <ImathVec.h>
+#include <ImathBox.h>
 #include <ImathColor.h>
 #else
 #include <OpenEXR/ImathVec.h>
+#include <OpenEXR/ImathBox.h>
 #include <OpenEXR/ImathColor.h>
 #endif
 
@@ -55,6 +57,7 @@ class QActionGroup;
 class QSignalMapper;
 
 
+using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
 using Imath::C3f;
@@ -81,9 +84,20 @@ class PointArrayModel : public QObject
         bool empty() const { return m_npoints == 0; }
 
         /// Return point position
+        ///
+        /// Note that this is stored relative to the offset() of the point
+        /// cloud to avoid loss of precision.
         const V3f* P() const { return m_P.get(); }
+
+        V3d absoluteP(size_t idx) const { return m_P[idx] + m_offset; }
         /// Return point color, or NULL if no color channel is present
         const C3f* color() const { return m_color.get(); }
+
+        /// Return index of closest point to the given position
+        ///
+        /// Also return the euclidian distance to the nearest point if the
+        /// input distance parameter is non-null.
+        size_t closestPoint(V3d pos, double* distance = 0) const;
 
         /// Get a list of channel names which look like color channels
         QStringList colorChannels() { return m_colorChannelNames; }
@@ -91,11 +105,14 @@ class PointArrayModel : public QObject
         /// Set the channel name which the color() function returns data for
         void setColorChannel(const QString& name) {};
 
-        /// Compute the centroid of the P data
-        V3f centroid() const;
+        /// Return the centroid of the position data
+        const V3d& centroid() const { return m_centroid; }
+
+        /// Get bounding box
+        const Imath::Box3d& boundingBox() const { return m_bbox; }
 
         /// Get the offset which should be added to P to get absolute position
-        Imath::V3d offset() const { return m_offset; }
+        V3d offset() const { return m_offset; }
 
     signals:
         /// Emitted progress is made loading points
@@ -105,7 +122,9 @@ class PointArrayModel : public QObject
         QString m_fileName;
         QStringList m_colorChannelNames;
         size_t m_npoints;
-        Imath::V3d m_offset;
+        V3d m_offset;
+        Imath::Box3d m_bbox;
+        V3d m_centroid;
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<C3f[]> m_color;
 };
@@ -133,7 +152,7 @@ class PointView : public QGLWidget
         void setBackground(QColor col);
         void setColorChannel(QString channel);
         void setMaxPointCount(size_t maxPointCount);
-        void toggleDrawAxes();
+        void toggleDrawBoundingBoxes();
 
     signals:
         void colorChannelsChanged(QStringList channels);
@@ -151,23 +170,23 @@ class PointView : public QGLWidget
         void keyPressEvent(QKeyEvent* event);
 
     private:
-        static void drawAxes();
         void drawCursor(const V3f& P) const;
         static void drawPoints(const PointArrayModel& points,
-                               const Imath::V3d& drawOffset);
+                               const V3d& drawOffset, bool boundingBoxOn);
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
         QPoint m_lastPos;
         bool m_zooming;
         /// Position of 3D cursor
-        V3f m_cursorPos;
+        V3d m_cursorPos;
+        /// Offset used when drawing
+        V3d m_drawOffset;
         /// Background color for drawing
         QColor m_backgroundColor;
-        bool m_drawAxes;
+        bool m_drawBoundingBoxes;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
-        V3f m_cloudCenter;
         size_t m_maxPointCount; ///< Maximum desired number of points to load
 };
 

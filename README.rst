@@ -28,6 +28,8 @@ Todo
 * Shader pipeline
 * Shader editing
 * Persistent settings
-* Use open source liblas / laslib
+* Use liblas (?)
 * Measurement tool
 * Select point subset
+* Investigate approximate ambient occlusion to render points
+* Socket mode for updating point sets

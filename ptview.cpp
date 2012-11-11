@@ -47,13 +47,23 @@
 #   include <ImathMatrix.h>
 #else
 #   include <OpenEXR/ImathVec.h>
+#   include <OpenEXR/ImathBox.h>
 #   include <OpenEXR/ImathMatrix.h>
 #endif
 
 #include "ptview.h"
 #include "argparse.h"
 
+#ifdef __GNUC__
+// Shut up a small horde of warnings in laslib
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#   pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #include <lasreader.hpp>
+#ifdef __GNUC__
+#   pragma GCC diagnostic pop
+#endif
 
 //----------------------------------------------------------------------
 //#include <OpenEXR/ImathGL.h>
@@ -94,14 +104,15 @@ inline float rad2deg(float r)
     return r*180/M_PI;
 }
 
-inline QVector3D exr2qt(const Imath::V3f& v)
+template<typename T>
+inline QVector3D exr2qt(const Imath::Vec3<T>& v)
 {
     return QVector3D(v.x, v.y, v.z);
 }
 
-inline Imath::V3f qt2exr(const QVector3D& v)
+inline Imath::V3d qt2exr(const QVector3D& v)
 {
-    return Imath::V3f(v.x(), v.y(), v.z());
+    return Imath::V3d(v.x(), v.y(), v.z());
 }
 
 inline Imath::M44f qt2exr(const QMatrix4x4& m)
@@ -149,17 +160,19 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
         std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << std::endl;
     }
     m_npoints = (totPoints + decimate - 1) / decimate;
-    m_offset = Imath::V3d(lasReader->header.min_x, lasReader->header.min_y,
+    m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y,
                           lasReader->header.min_z);
     m_P.reset(new V3f[m_npoints]);
     // TODO: Look for color channel?
     m_color.reset(new C3f[m_npoints]);
+    m_bbox.makeEmpty();
     // Iterate over all particles & pull in the data.
     V3f* outP = m_P.get();
     V3f* outCol = m_color.get();
     size_t readCount = 0;
     size_t nextBlock = 1;
     size_t nextStore = 1;
+    V3d Psum(0);
     while(lasReader->read_point())
     {
         // Read a point from the las file
@@ -167,15 +180,19 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
         ++readCount;
         if(readCount % 10000 == 0)
             emit loadedPoints(double(readCount)/totPoints);
+        V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
+        m_bbox.extendBy(P);
+        Psum += P;
         if(readCount < nextStore)
             continue;
         // Store the point
-        *outP++ = Imath::V3d(point.get_x(), point.get_y(), point.get_z()) - m_offset;
+        *outP++ = P - m_offset;
         // float intens = float(point.scan_angle_rank) / 40;
         float intens = float(point.intensity) / 400;
         intens = intens / (1 + intens);
         //float intens = 0.5*point.point_source_ID;
         *outCol++ = color*intens;
+        //*outCol++ = (1.0f/256) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
         // Figure out which point will be the next stored point.
         nextBlock += decimate;
         nextStore = nextBlock;
@@ -187,19 +204,31 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
                 nextStore = totPoints;
         }
     }
+    m_centroid = (1.0/totPoints) * Psum;
     lasReader->close();
     std::cout << "Read " << totPoints << " points.  Displaying " << m_npoints <<  std::endl;
     return true;
 }
 
 
-V3f PointArrayModel::centroid() const
+size_t PointArrayModel::closestPoint(V3d pos, double* distance) const
 {
-    V3f sum(0);
+    pos -= m_offset;
     const V3f* P = m_P.get();
+    size_t nearestIdx = -1;
+    double nearestDist = DBL_MAX;
     for(size_t i = 0; i < m_npoints; ++i, ++P)
-        sum += *P;
-    return (1.0f/m_npoints) * sum;
+    {
+        float dist = (pos - *P).length2();
+        if(dist < nearestDist)
+        {
+            nearestDist = dist;
+            nearestIdx = i;
+        }
+    }
+    if(distance)
+        *distance = nearestDist;
+    return nearestIdx;
 }
 
 
@@ -210,10 +239,10 @@ PointView::PointView(QWidget *parent)
     m_lastPos(0,0),
     m_zooming(false),
     m_cursorPos(0),
+    m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
-    m_drawAxes(false),
+    m_drawBoundingBoxes(true),
     m_points(),
-    m_cloudCenter(0),
     m_maxPointCount(10000000)
 {
     setFocusPolicy(Qt::StrongFocus);
@@ -248,9 +277,9 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     if(m_points.empty())
         return;
     emit colorChannelsChanged(m_points[0]->colorChannels());
-    m_cloudCenter = m_points[0]->centroid();
-    m_cursorPos = m_cloudCenter;
-    m_camera.setCenter(exr2qt(m_cloudCenter));
+    m_cursorPos = m_points[0]->centroid();
+    m_drawOffset = m_points[0]->offset();
+    m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
     updateGL();
 }
 
@@ -271,9 +300,9 @@ void PointView::setBackground(QColor col)
 }
 
 
-void PointView::toggleDrawAxes()
+void PointView::toggleDrawBoundingBoxes()
 {
-    m_drawAxes = !m_drawAxes;
+    m_drawBoundingBoxes = !m_drawBoundingBoxes;
 }
 
 
@@ -334,17 +363,14 @@ void PointView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw geometry
-    if(m_drawAxes)
-        drawAxes();
     if (!m_points.empty())
     {
-        Imath::V3d offset0 = m_points[0]->offset();
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], offset0);
+            drawPoints(*m_points[i], m_drawOffset, m_drawBoundingBoxes);
     }
 
     // Draw overlay stuff, including cursor position.
-    drawCursor(m_cursorPos);
+    drawCursor(m_cursorPos - m_drawOffset);
 }
 
 
@@ -360,9 +386,9 @@ void PointView::mouseMoveEvent(QMouseEvent* event)
     if(event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = qt2exr(
-            m_camera.mouseMovePoint(exr2qt(m_cursorPos),
+            m_camera.mouseMovePoint(exr2qt(m_cursorPos - m_drawOffset),
                                     event->pos() - m_lastPos,
-                                    m_zooming) );
+                                    m_zooming) ) + m_drawOffset;
         updateGL();
     }
     else
@@ -386,34 +412,37 @@ void PointView::keyPressEvent(QKeyEvent *event)
 {
     if(event->key() == Qt::Key_C)
     {
-        m_camera.setCenter(exr2qt(m_cursorPos));
+        // Centre camera on current cursor location
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
         updateGL();
     }
     else if(event->key() == Qt::Key_S)
     {
-        // Snap probe to position of closest point and center on it
-        V3f newPos(0);
+        if(m_points.empty())
+            return;
+        // Snap cursor to position of closest point and center on it
+        V3d newPos(0);
         size_t nearestIdx = 0;
-        float nearestDist = FLT_MAX;
-        for(size_t j = 0; j < m_points.size(); ++j)
+        size_t nearestCloudIdx = 0;
+        double nearestDist = DBL_MAX;
+        for(size_t i = 0; i < m_points.size(); ++i)
         {
-            if(m_points[j]->empty())
+            if(m_points[i]->empty())
                 continue;
-            const V3f* P = m_points[j]->P();
-            for(size_t i = 0, iend = m_points[j]->size(); i < iend; ++i, ++P)
+            double dist = 0;
+            size_t idx = m_points[i]->closestPoint(m_cursorPos, &dist);
+            if(dist < nearestDist)
             {
-                float dist = (m_cursorPos - *P).length2();
-                if(dist < nearestDist)
-                {
-                    nearestDist = dist;
-                    newPos = *P;
-                    nearestIdx = i;
-                }
+                nearestDist = dist;
+                nearestIdx = idx;
+                nearestCloudIdx = i;
             }
         }
-        std::cout << "Selected index " << nearestIdx << "\n";
+        newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
+        tfm::printf("Selected point %d in file %s\n", nearestIdx,
+                    m_points[nearestCloudIdx]->fileName().toStdString());
         m_cursorPos = newPos;
-        m_camera.setCenter(exr2qt(newPos));
+        m_camera.setCenter(exr2qt(newPos - m_drawOffset));
         updateGL();
     }
     else
@@ -421,42 +450,19 @@ void PointView::keyPressEvent(QKeyEvent *event)
 }
 
 
-/// Draw a set of axes
-void PointView::drawAxes()
-{
-    glEnable(GL_LINE_SMOOTH);
-    glLineWidth(1);
-    glColor3f(1.0, 0.0, 0.0);
-    glBegin(GL_LINES);
-        glVertex3f(0, 0, 0);
-        glVertex3f(1, 0, 0);
-    glEnd();
-    glColor3f(0.0, 1.0, 0.0);
-    glBegin(GL_LINES);
-        glVertex3f(0, 0, 0);
-        glVertex3f(0, 1, 0);
-    glEnd();
-    glColor3f(0.0, 0.0, 1.0);
-    glBegin(GL_LINES);
-        glVertex3f(0, 0, 0);
-        glVertex3f(0, 0, 1);
-    glEnd();
-}
-
-
 /// Draw the 3D cursor
-void PointView::drawCursor(const V3f& p) const
+void PointView::drawCursor(const V3f& cursorPos) const
 {
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
     glPointSize(10);
     glBegin(GL_POINTS);
-        glVertex(m_cursorPos);
+        glVertex(cursorPos);
     glEnd();
 
     // Find position of cursor in screen space
     V3f screenP3 = qt2exr(m_camera.projectionMatrix()*m_camera.viewMatrix() *
-                          exr2qt(m_cursorPos));
+                          exr2qt(cursorPos));
     if(screenP3.z < 0)
         return; // Cull if behind the camera.  TODO: doesn't work quite right
 
@@ -517,17 +523,58 @@ void PointView::drawCursor(const V3f& p) const
 }
 
 
-/// Draw point cloud using OpenGL
-void PointView::drawPoints(const PointArrayModel& points,
-                           const Imath::V3d& drawOffset)
+static void drawBoundingBox(const Imath::Box3d& bbox)
 {
-    glPushMatrix();
-    Imath::V3d offset = points.offset() - drawOffset;
-    glTranslatef(offset.x, offset.y, offset.z);
+    double xbnd[2] = {bbox.min.x, bbox.max.x};
+    double ybnd[2] = {bbox.min.y, bbox.max.y};
+    double zbnd[2] = {bbox.min.z, bbox.max.z};
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor3f(1,1,1);
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 2; ++j)
+    {
+        glVertex3f(xbnd[i], ybnd[j], zbnd[0]);
+        glVertex3f(xbnd[i], ybnd[j], zbnd[1]);
+    }
+    for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 2; ++j)
+    {
+        glVertex3f(xbnd[i], ybnd[0], zbnd[j]);
+        glVertex3f(xbnd[i], ybnd[1], zbnd[j]);
+    }
+    for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 2; ++j)
+    {
+        glVertex3f(xbnd[0], ybnd[i], zbnd[j]);
+        glVertex3f(xbnd[1], ybnd[i], zbnd[j]);
+    }
+    glEnd();
+    glDisable(GL_BLEND);
+}
+
+
+/// Draw point cloud
+void PointView::drawPoints(const PointArrayModel& points,
+                           const V3d& drawOffset, bool boundingBoxOn)
+{
     if(points.empty())
         return;
-    glDisable(GL_COLOR_MATERIAL);
-    glDisable(GL_LIGHTING);
+    if(boundingBoxOn)
+    {
+        // Draw bounding box
+        Imath::Box3d bbox = points.boundingBox();
+        bbox.min -= drawOffset;
+        bbox.max -= drawOffset;
+        drawBoundingBox(bbox);
+    }
+    glPushMatrix();
+    V3d offset = points.offset() - drawOffset;
+    glTranslatef(offset.x, offset.y, offset.z);
+
     // Draw points
     glPointSize(5);
     glColor3f(1,1,1);
@@ -585,8 +632,8 @@ PointViewerMainWindow::PointViewerMainWindow(
 
     // View menu
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
-    QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
-    drawAxes->setCheckable(true);
+    QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw &Bounding boxes"));
+    drawBoundingBoxes->setCheckable(true);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -625,8 +672,8 @@ PointViewerMainWindow::PointViewerMainWindow(
             this, SLOT(setColorChannels(QStringList)));
     connect(m_colorMenuMapper, SIGNAL(mapped(QString)),
             m_pointView, SLOT(setColorChannel(QString)));
-    connect(drawAxes, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawAxes()));
+    connect(drawBoundingBoxes, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawBoundingBoxes()));
 
     setCentralWidget(m_pointView);
     if(!initialPointFileNames.empty())
