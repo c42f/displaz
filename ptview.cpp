@@ -636,6 +636,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
     QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw &Bounding boxes"));
     drawBoundingBoxes->setCheckable(true);
+    drawBoundingBoxes->setChecked(true);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
