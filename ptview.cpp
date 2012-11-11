@@ -280,6 +280,8 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     m_cursorPos = m_points[0]->centroid();
     m_drawOffset = m_points[0]->offset();
     m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    double diag = (m_points[0]->boundingBox().max - m_points[0]->boundingBox().min).length();
+    m_camera.setEyeToCenterDistance(diag*0.7);
     updateGL();
 }
 
