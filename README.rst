@@ -16,7 +16,7 @@ system.  It has quite a few dependencies at the moment:
 * Qt4
 * OpenGL and GLEW
 * LASlib (note: not the same as liblas!)
-* IlmBase (will probably remove this dependency)
+* IlmBase (will possibly remove this dependency)
 
 
 Todo
@@ -33,3 +33,4 @@ Todo
 * Select point subset
 * Investigate approximate ambient occlusion to render points
 * Socket mode for updating point sets
+* Multithreaded point cloud loading

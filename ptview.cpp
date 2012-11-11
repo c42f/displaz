@@ -235,7 +235,7 @@ size_t PointArrayModel::closestPoint(V3d pos, double* distance) const
 //------------------------------------------------------------------------------
 PointView::PointView(QWidget *parent)
     : QGLWidget(parent),
-    m_camera(false),
+    m_camera(false, false),
     m_lastPos(0,0),
     m_zooming(false),
     m_cursorPos(0),
@@ -307,6 +307,10 @@ void PointView::toggleDrawBoundingBoxes()
     m_drawBoundingBoxes = !m_drawBoundingBoxes;
 }
 
+void PointView::toggleCameraMode()
+{
+    m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
+}
 
 void PointView::setColorChannel(QString channel)
 {
@@ -637,6 +641,9 @@ PointViewerMainWindow::PointViewerMainWindow(
     QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw &Bounding boxes"));
     drawBoundingBoxes->setCheckable(true);
     drawBoundingBoxes->setChecked(true);
+    QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
+    trackballMode->setCheckable(true);
+    trackballMode->setChecked(false);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -677,6 +684,8 @@ PointViewerMainWindow::PointViewerMainWindow(
             m_pointView, SLOT(setColorChannel(QString)));
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
+    connect(trackballMode, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleCameraMode()));
 
     setCentralWidget(m_pointView);
     if(!initialPointFileNames.empty())

@@ -47,9 +47,14 @@
 ///
 /// The camera model used here is for inspecting objects, so we have a location
 /// of interest - the camera "center" - which the eye always looks at and
-/// around which the eye can be rotated with the mouse.  The rotation model
-/// used is a virtual trackball so as not to impose any particular up vector on
-/// the user.
+/// around which the eye can be rotated with the mouse.  There are two possible
+/// rotation models supported here:
+///
+/// 1) The virtual trackball model  - this does not impose any particular "up
+///    vector" on the user.
+/// 2) The turntable model, which is potentially more intuitive when the data
+///    has a natural vertical direction.
+///
 class InteractiveCamera : public QObject
 {
     Q_OBJECT
@@ -59,8 +64,10 @@ class InteractiveCamera : public QObject
         /// transformation will invert the z-axis.  If used with OpenGL (which
         /// is right handed by default) this gives us a left handed coordinate
         /// system.
-        explicit InteractiveCamera(bool reverseHandedness = false)
+        explicit InteractiveCamera(bool reverseHandedness = false,
+                                   bool trackballInteraction = true)
             : m_reverseHandedness(reverseHandedness),
+            m_trackballInteraction(trackballInteraction),
             m_rot(),
             m_center(0,0,0),
             m_dist(5),
@@ -102,6 +109,10 @@ class InteractiveCamera : public QObject
         QVector3D center() const   { return m_center; }
         /// Get distance from eye to center
         qreal eyeToCenterDistance() const { return m_dist; }
+        /// Get the rotation about the center
+        QQuaternion rotation() const { return m_rot; }
+        /// Get the interaction mode
+        bool trackballInteraction() const { return m_trackballInteraction; }
 
         /// Grab and move a point in the 3D space with the mouse.
         ///
@@ -157,6 +168,15 @@ class InteractiveCamera : public QObject
             m_dist = dist;
             emit viewChanged();
         }
+        void setRotation(QQuaternion rotation)
+        {
+            m_rot = rotation;
+            emit viewChanged();
+        }
+        void setTrackballInteraction(bool trackballInteraction)
+        {
+            m_trackballInteraction = trackballInteraction;
+        }
 
         /// Move the camera using a drag of the mouse.
         ///
@@ -175,8 +195,14 @@ class InteractiveCamera : public QObject
             }
             else
             {
-                // Concatenate rotation, trackball-style.
-                m_rot = trackballRotation(prevPos, currPos) * m_rot;
+                if(m_trackballInteraction)
+                    m_rot = trackballRotation(prevPos, currPos) * m_rot;
+                else
+                {
+                    // TODO: Not sure this is entirely consistent if the user
+                    // switches between trackball and turntable modes...
+                    m_rot = turntableRotation(prevPos, currPos, m_rot);
+                }
                 m_rot.normalize();
             }
             emit viewChanged();
@@ -189,6 +215,21 @@ class InteractiveCamera : public QObject
         void viewChanged();
 
     private:
+        /// Perform "turntable" style rotation on current orientation
+        ///
+        /// currPos is the new position of the mouse pointer; prevPos is the
+        /// previous position.  initialRot is the current camera orientation,
+        /// which will be modified by the mouse movement and returned.
+        QQuaternion turntableRotation(QPoint prevPos, QPoint currPos,
+                                      QQuaternion initialRot) const
+        {
+            qreal dx = 4*qreal(currPos.x() - prevPos.x())/m_viewport.width();
+            qreal dy = 4*qreal(currPos.y() - prevPos.y())/m_viewport.height();
+            QQuaternion r1 = QQuaternion::fromAxisAndAngle(QVector3D(1,0,0), 180/M_PI*dy);
+            QQuaternion r2 = QQuaternion::fromAxisAndAngle(QVector3D(0,0,1), 180/M_PI*dx);
+            return r1 * initialRot * r2;
+        }
+
         /// Get rotation of trackball.
         ///
         /// currPos is the new position of the mouse pointer; prevPos is the
@@ -247,6 +288,7 @@ class InteractiveCamera : public QObject
         }
 
         bool m_reverseHandedness; ///< Reverse the handedness of the coordinate system
+        bool m_trackballInteraction; ///< True for trackball style, false for turntable
 
         // World coordinates
         QQuaternion m_rot;    ///< camera rotation about center

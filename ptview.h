@@ -153,6 +153,7 @@ class PointView : public QGLWidget
         void setColorChannel(QString channel);
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
+        void toggleCameraMode();
 
     signals:
         void colorChannelsChanged(QStringList channels);
