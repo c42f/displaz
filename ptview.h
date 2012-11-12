@@ -89,7 +89,7 @@ class PointArrayModel : public QObject
         /// cloud to avoid loss of precision.
         const V3f* P() const { return m_P.get(); }
 
-        V3d absoluteP(size_t idx) const { return m_P[idx] + m_offset; }
+        V3d absoluteP(size_t idx) const { return V3d(m_P[idx]) + m_offset; }
         /// Return point color, or NULL if no color channel is present
         const C3f* color() const { return m_color.get(); }
 
