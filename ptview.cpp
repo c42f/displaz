@@ -61,6 +61,8 @@
 #   pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 #include <lasreader.hpp>
+// Hack: kill gcc unused variable warning
+class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 #ifdef __GNUC__
 #   pragma GCC diagnostic pop
 #endif
