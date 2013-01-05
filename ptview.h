@@ -55,7 +55,9 @@
 
 class QActionGroup;
 class QSignalMapper;
+class QPlainTextEdit;
 
+class StreamBufTextEditSink;
 
 using Imath::V3d;
 using Imath::V3f;
@@ -202,7 +204,11 @@ class PointViewerMainWindow : public QMainWindow
         PointViewerMainWindow(const QStringList& initialPointFileNames =
                               QStringList());
 
+        ~PointViewerMainWindow();
+
         PointView& pointView() { return *m_pointView; }
+
+        void captureStdout();
 
     protected:
         void keyReleaseEvent(QKeyEvent* event);
@@ -222,6 +228,9 @@ class PointViewerMainWindow : public QMainWindow
         QActionGroup* m_colorMenuGroup;
         QSignalMapper* m_colorMenuMapper;
         QDir m_currFileDir;
+        QPlainTextEdit* m_logTextView;
+        std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
+        std::streambuf* m_oldBuf;
 };
 
 

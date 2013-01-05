@@ -40,6 +40,9 @@
 #include <QtGui/QMessageBox>
 #include <QtGui/QFileDialog>
 #include <QtGui/QColorDialog>
+#include <QtGui/QSplitter>
+#include <QtGui/QTabWidget>
+#include <QtGui/QPlainTextEdit>
 
 #ifdef _WIN32
 #   define NOMINMAX
@@ -66,6 +69,7 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 #ifdef __GNUC__
 #   pragma GCC diagnostic pop
 #endif
+
 
 //----------------------------------------------------------------------
 //#include <OpenEXR/ImathGL.h>
@@ -127,7 +131,26 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
 }
 
 
-//----------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Unbuffered std::streambuf implementation for output to a text edit widget
+class StreamBufTextEditSink : public std::streambuf
+{
+    public:
+        StreamBufTextEditSink(QPlainTextEdit* textEdit) : m_textEdit(textEdit) {}
+
+    protected:
+        int overflow(int c)
+        {
+            m_textEdit->insertPlainText(QString((char)c));
+            return 0;
+        }
+
+    private:
+        QPlainTextEdit* m_textEdit;
+};
+
+
+//------------------------------------------------------------------------------
 // PointViewArray implementation
 
 PointArrayModel::PointArrayModel()
@@ -158,9 +181,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
     size_t totPoints = lasReader->header.number_of_point_records;
     size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
     if(decimate > 1)
-    {
-        std::cout << "Decimating \"" << fileName.toStdString() << "\" by factor of " << decimate << std::endl;
-    }
+        tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
     m_npoints = (totPoints + decimate - 1) / decimate;
     m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y,
                           lasReader->header.min_z);
@@ -619,14 +640,16 @@ PointViewerMainWindow::PointViewerMainWindow(
     : m_pointView(0),
     m_colorMenu(0),
     m_colorMenuGroup(0),
-    m_colorMenuMapper(0)
+    m_colorMenuMapper(0),
+    m_logTextView(0),
+    m_oldBuf(0)
 {
     setWindowTitle("Displaz");
 
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     QAction* openAct = fileMenu->addAction(tr("&Open"));
-    openAct->setStatusTip(tr("Open a point cloud file"));
+    openAct->setToolTip(tr("Open a point cloud file"));
     openAct->setShortcuts(QKeySequence::Open);
     connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
     QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
@@ -679,7 +702,14 @@ PointViewerMainWindow::PointViewerMainWindow(
     QAction* aboutAct = helpMenu->addAction(tr("&About"));
     connect(aboutAct, SIGNAL(triggered()), this, SLOT(aboutDialog()));
 
-    m_pointView = new PointView(this);
+    // Central display area
+    QSplitter* splitter = new QSplitter(this);
+    setCentralWidget(splitter);
+
+    // Point viewer
+    m_pointView = new PointView(splitter);
+    splitter->addWidget(m_pointView);
+
     connect(m_pointView, SIGNAL(colorChannelsChanged(QStringList)),
             this, SLOT(setColorChannels(QStringList)));
     connect(m_colorMenuMapper, SIGNAL(mapped(QString)),
@@ -688,10 +718,33 @@ PointViewerMainWindow::PointViewerMainWindow(
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
-
-    setCentralWidget(m_pointView);
     if(!initialPointFileNames.empty())
         m_pointView->loadPointFiles(initialPointFileNames);
+
+    // Settings tabs
+    QTabWidget* tabs = new QTabWidget(splitter);
+    splitter->addWidget(tabs);
+
+    m_logTextView = new QPlainTextEdit(tabs);
+    m_logTextView->setReadOnly(true);
+    m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
+
+    tabs->addTab(m_logTextView, tr("Log"));
+}
+
+
+PointViewerMainWindow::~PointViewerMainWindow()
+{
+    if (m_oldBuf)
+        std::cout.rdbuf(m_oldBuf);
+}
+
+
+void PointViewerMainWindow::captureStdout()
+{
+    m_oldBuf = std::cout.rdbuf();
+    m_guiStdoutBuf.reset(new StreamBufTextEditSink(m_logTextView));
+    std::cout.rdbuf(m_guiStdoutBuf.get());
 }
 
 
@@ -819,6 +872,7 @@ int main(int argc, char *argv[])
     QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
+    window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
     if(!g_pointFileNames.empty())
         window.pointView().loadPointFiles(g_pointFileNames);
