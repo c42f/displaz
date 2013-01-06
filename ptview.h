@@ -27,8 +27,8 @@
 //
 // (This is the BSD 3-clause license)
 
-#ifndef AQSIS_PTVIEW_H_INCLUDED
-#define AQSIS_PTVIEW_H_INCLUDED
+#ifndef DISPLAZ_PTVIEW_H_INCLUDED
+#define DISPLAZ_PTVIEW_H_INCLUDED
 
 #ifdef _MSC_VER
 #   define _USE_MATH_DEFINES
@@ -37,8 +37,6 @@
 #include <vector>
 #include <memory>
 
-#include <QtCore/QDir>
-#include <QtGui/QMainWindow>
 #include <QtOpenGL/QGLWidget>
 
 #ifdef _WIN32
@@ -52,12 +50,6 @@
 #endif
 
 #include "interactivecamera.h"
-
-class QActionGroup;
-class QSignalMapper;
-class QPlainTextEdit;
-
-class StreamBufTextEditSink;
 
 using Imath::V3d;
 using Imath::V3f;
@@ -194,47 +186,7 @@ class PointView : public QGLWidget
 };
 
 
-//------------------------------------------------------------------------------
-/// Main window for point cloud viewer application
-class PointViewerMainWindow : public QMainWindow
-{
-    Q_OBJECT
 
-    public:
-        PointViewerMainWindow(const QStringList& initialPointFileNames =
-                              QStringList());
-
-        ~PointViewerMainWindow();
-
-        PointView& pointView() { return *m_pointView; }
-
-        void captureStdout();
-
-    protected:
-        void keyReleaseEvent(QKeyEvent* event);
-
-    private slots:
-        void openFiles();
-        void reloadFiles();
-        void helpDialog();
-        void aboutDialog();
-        void setBackground(const QString& name);
-        void chooseBackground();
-        void setColorChannels(QStringList channels);
-
-    private:
-        PointView* m_pointView;
-        QMenu* m_colorMenu;
-        QActionGroup* m_colorMenuGroup;
-        QSignalMapper* m_colorMenuMapper;
-        QDir m_currFileDir;
-        QPlainTextEdit* m_logTextView;
-        std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
-        std::streambuf* m_oldBuf;
-};
-
-
-
-#endif // AQSIS_PTVIEW_H_INCLUDED
+#endif // DISPLAZ_PTVIEW_H_INCLUDED
 
 // vi: set et:

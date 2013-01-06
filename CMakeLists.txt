@@ -51,11 +51,13 @@ include_directories(BEFORE
 )
 
 qt4_wrap_cpp(moc_srcs
+	mainwindow.h
 	ptview.h
 	interactivecamera.h
 )
 set(srcs
 	${moc_srcs}
+	mainwindow.cpp
 	ptview.cpp
 	argparse.cpp
 )

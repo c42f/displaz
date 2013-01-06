@@ -30,19 +30,14 @@
 #include <GL/glew.h>
 
 #include "ptview.h"
+#include "mainwindow.h"
 
 #define GL_GLEXT_PROTOTYPES
 
-#include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
 #include <QtGui/QKeyEvent>
-#include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
-#include <QtGui/QFileDialog>
-#include <QtGui/QColorDialog>
-#include <QtGui/QSplitter>
 #include <QtGui/QTabWidget>
-#include <QtGui/QPlainTextEdit>
 
 #ifdef _WIN32
 #   define NOMINMAX
@@ -129,25 +124,6 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
         mOut[j][i] = m.constData()[4*j + i];
     return mOut;
 }
-
-
-//------------------------------------------------------------------------------
-// Unbuffered std::streambuf implementation for output to a text edit widget
-class StreamBufTextEditSink : public std::streambuf
-{
-    public:
-        StreamBufTextEditSink(QPlainTextEdit* textEdit) : m_textEdit(textEdit) {}
-
-    protected:
-        int overflow(int c)
-        {
-            m_textEdit->insertPlainText(QString((char)c));
-            return 0;
-        }
-
-    private:
-        QPlainTextEdit* m_textEdit;
-};
 
 
 //------------------------------------------------------------------------------
@@ -629,206 +605,6 @@ void PointView::drawPoints(const PointArrayModel& points,
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
     glPopMatrix();
-}
-
-
-//------------------------------------------------------------------------------
-// PointViewerMainWindow implementation
-
-PointViewerMainWindow::PointViewerMainWindow(
-        const QStringList& initialPointFileNames)
-    : m_pointView(0),
-    m_colorMenu(0),
-    m_colorMenuGroup(0),
-    m_colorMenuMapper(0),
-    m_logTextView(0),
-    m_oldBuf(0)
-{
-    setWindowTitle("Displaz");
-
-    // File menu
-    QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
-    QAction* openAct = fileMenu->addAction(tr("&Open"));
-    openAct->setToolTip(tr("Open a point cloud file"));
-    openAct->setShortcuts(QKeySequence::Open);
-    connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
-    QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
-    reloadAct->setStatusTip(tr("Reload point files from disk"));
-    reloadAct->setShortcut(Qt::Key_F5);
-    connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
-    QAction* quitAct = fileMenu->addAction(tr("&Quit"));
-    quitAct->setStatusTip(tr("Exit the application"));
-    quitAct->setShortcuts(QKeySequence::Quit);
-    connect(quitAct, SIGNAL(triggered()), this, SLOT(close()));
-
-    // View menu
-    QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
-    QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw &Bounding boxes"));
-    drawBoundingBoxes->setCheckable(true);
-    drawBoundingBoxes->setChecked(true);
-    QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
-    trackballMode->setCheckable(true);
-    trackballMode->setChecked(false);
-    // Background sub-menu
-    QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
-    QSignalMapper* mapper = new QSignalMapper(this);
-    // Selectable backgrounds (svg_names from SVG standard - see QColor docs)
-    const char* backgroundNames[] = {/* "Display Name", "svg_name", */
-                                        "&Black",        "black",
-                                        "&Dark Grey",    "dimgrey",
-                                        "&Light Grey",   "lightgrey",
-                                        "&White",        "white" };
-    for(size_t i = 0; i < sizeof(backgroundNames)/sizeof(const char*); i+=2)
-    {
-        QAction* backgroundAct = backMenu->addAction(tr(backgroundNames[i]));
-        mapper->setMapping(backgroundAct, backgroundNames[i+1]);
-        connect(backgroundAct, SIGNAL(triggered()), mapper, SLOT(map()));
-    }
-    connect(mapper, SIGNAL(mapped(QString)),
-            this, SLOT(setBackground(QString)));
-    backMenu->addSeparator();
-    QAction* backgroundCustom = backMenu->addAction(tr("&Custom"));
-    connect(backgroundCustom, SIGNAL(triggered()),
-            this, SLOT(chooseBackground()));
-    // Color channel menu
-    m_colorMenu = viewMenu->addMenu(tr("Color &Channel"));
-    m_colorMenuMapper = new QSignalMapper(this);
-
-    // Help menu
-    QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
-    QAction* helpAct = helpMenu->addAction(tr("&Controls"));
-    connect(helpAct, SIGNAL(triggered()), this, SLOT(helpDialog()));
-    helpMenu->addSeparator();
-    QAction* aboutAct = helpMenu->addAction(tr("&About"));
-    connect(aboutAct, SIGNAL(triggered()), this, SLOT(aboutDialog()));
-
-    // Central display area
-    QSplitter* splitter = new QSplitter(this);
-    setCentralWidget(splitter);
-
-    // Point viewer
-    m_pointView = new PointView(splitter);
-    splitter->addWidget(m_pointView);
-
-    connect(m_pointView, SIGNAL(colorChannelsChanged(QStringList)),
-            this, SLOT(setColorChannels(QStringList)));
-    connect(m_colorMenuMapper, SIGNAL(mapped(QString)),
-            m_pointView, SLOT(setColorChannel(QString)));
-    connect(drawBoundingBoxes, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawBoundingBoxes()));
-    connect(trackballMode, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleCameraMode()));
-    if(!initialPointFileNames.empty())
-        m_pointView->loadPointFiles(initialPointFileNames);
-
-    // Settings tabs
-    QTabWidget* tabs = new QTabWidget(splitter);
-    splitter->addWidget(tabs);
-
-    m_logTextView = new QPlainTextEdit(tabs);
-    m_logTextView->setReadOnly(true);
-    m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
-
-    tabs->addTab(m_logTextView, tr("Log"));
-}
-
-
-PointViewerMainWindow::~PointViewerMainWindow()
-{
-    if (m_oldBuf)
-        std::cout.rdbuf(m_oldBuf);
-}
-
-
-void PointViewerMainWindow::captureStdout()
-{
-    m_oldBuf = std::cout.rdbuf();
-    m_guiStdoutBuf.reset(new StreamBufTextEditSink(m_logTextView));
-    std::cout.rdbuf(m_guiStdoutBuf.get());
-}
-
-
-void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
-{
-    if(event->key() == Qt::Key_Escape)
-        close();
-}
-
-
-void PointViewerMainWindow::openFiles()
-{
-    QFileDialog dialog(this, tr("Select one or more point clouds to open"));
-    dialog.setNameFilter(tr("Point cloud files (*.las *.laz)"));
-    dialog.setFileMode(QFileDialog::ExistingFiles);
-    dialog.setDirectory(m_currFileDir);
-    if(dialog.exec())
-        m_pointView->loadPointFiles(dialog.selectedFiles());
-    m_currFileDir = dialog.directory();
-}
-
-
-void PointViewerMainWindow::reloadFiles()
-{
-    m_pointView->reloadPointFiles();
-}
-
-
-void PointViewerMainWindow::helpDialog()
-{
-    QString message = tr(
-        "<p><h2>Displaz 3D window controls</h2></p>"
-        "<list>"
-        "  <li>LMB+drag = rotate camera</li>"
-        "  <li>RMB+drag = zoom camera</li>"
-        "  <li>Ctrl+LMB+drag = move 3D cursor</li>"
-        "  <li>Ctrl+RMB+drag = zoom 3D cursor along view direction</li>"
-        "  <li>'c' = center camera on 3D cursor</li>"
-        "  <li>'s' = snap 3D cursor to nearest point</li>"
-        "</list>"
-        "<p>(LMB, RMB = left & right mouse buttons)</p>"
-    );
-    QMessageBox::information(this, tr("Displaz control summary"), message);
-}
-
-
-void PointViewerMainWindow::aboutDialog()
-{
-    QString message = tr("Displaz - a qt-based las viewer\nversion 0.0.1");
-    QMessageBox::information(this, tr("About displaz"), message);
-}
-
-
-void PointViewerMainWindow::setBackground(const QString& name)
-{
-    m_pointView->setBackground(QColor(name));
-}
-
-
-void PointViewerMainWindow::chooseBackground()
-{
-    m_pointView->setBackground(
-        QColorDialog::getColor(QColor(255,255,255), this, "background color"));
-}
-
-
-void PointViewerMainWindow::setColorChannels(QStringList channels)
-{
-    // Remove the old set of color channels from the menu
-    delete m_colorMenuGroup;
-    m_colorMenuGroup = new QActionGroup(this);
-    m_colorMenuGroup->setExclusive(true);
-    if(channels.empty())
-        return;
-    // Rebuild the color channel menu with a menu item for each channel
-    for(int i = 0; i < channels.size(); ++i)
-    {
-        QAction* act = m_colorMenuGroup->addAction(channels[i]);
-        act->setCheckable(true);
-        m_colorMenu->addAction(act);
-        m_colorMenuMapper->setMapping(act, channels[i]);
-        connect(act, SIGNAL(triggered()), m_colorMenuMapper, SLOT(map()));
-    }
-    m_colorMenuGroup->actions()[0]->setChecked(true);
 }
 
 
