@@ -241,6 +241,7 @@ PointView::PointView(QWidget *parent)
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
+    m_pointSize(5),
     m_points(),
     m_maxPointCount(10000000)
 {
@@ -311,6 +312,12 @@ void PointView::toggleCameraMode()
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
 }
 
+void PointView::setPointSize(double size)
+{
+    m_pointSize = size;
+    updateGL();
+}
+
 void PointView::setColorChannel(QString channel)
 {
     for(size_t i = 0; i < m_points.size(); ++i)
@@ -371,7 +378,7 @@ void PointView::paintGL()
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], m_drawOffset, m_drawBoundingBoxes);
+            drawPoints(*m_points[i], m_drawOffset);
     }
 
     // Draw overlay stuff, including cursor position.
@@ -460,7 +467,7 @@ void PointView::drawCursor(const V3f& cursorPos) const
 {
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
-    glPointSize(10);
+    glPointSize(2*m_pointSize);
     glBegin(GL_POINTS);
         glVertex(cursorPos);
     glEnd();
@@ -564,11 +571,11 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
 
 /// Draw point cloud
 void PointView::drawPoints(const PointArrayModel& points,
-                           const V3d& drawOffset, bool boundingBoxOn)
+                           const V3d& drawOffset) const
 {
     if(points.empty())
         return;
-    if(boundingBoxOn)
+    if(m_drawBoundingBoxes)
     {
         // Draw bounding box
         Imath::Box3d bbox = points.boundingBox();
@@ -581,7 +588,7 @@ void PointView::drawPoints(const PointArrayModel& points,
     glTranslatef(offset.x, offset.y, offset.z);
 
     // Draw points
-    glPointSize(5);
+    glPointSize(m_pointSize);
     glColor3f(1,1,1);
     // Set distance attenuation for points, following the usual 1/z
     // law.

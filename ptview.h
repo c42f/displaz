@@ -148,6 +148,7 @@ class PointView : public QGLWidget
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
         void toggleCameraMode();
+        void setPointSize(double size);
 
     signals:
         void colorChannelsChanged(QStringList channels);
@@ -166,8 +167,8 @@ class PointView : public QGLWidget
 
     private:
         void drawCursor(const V3f& P) const;
-        static void drawPoints(const PointArrayModel& points,
-                               const V3d& drawOffset, bool boundingBoxOn);
+        void drawPoints(const PointArrayModel& points,
+                        const V3d& drawOffset) const;
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -180,6 +181,7 @@ class PointView : public QGLWidget
         /// Background color for drawing
         QColor m_backgroundColor;
         bool m_drawBoundingBoxes;
+        double m_pointSize;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load

@@ -31,12 +31,16 @@
 #include "ptview.h"
 
 #include <QtCore/QSignalMapper>
+#include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
 #include <QtGui/QFileDialog>
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
 #include <QtGui/QPlainTextEdit>
 #include <QtGui/QSplitter>
+#include <QtGui/QFormLayout>
+#include <QtGui/QDoubleSpinBox>
+#include <QtGui/QDesktopWidget>
 
 //------------------------------------------------------------------------------
 // Unbuffered std::streambuf implementation for output to a text edit widget
@@ -54,6 +58,66 @@ class StreamBufTextEditSink : public std::streambuf
 
     private:
         QPlainTextEdit* m_textEdit;
+};
+
+
+//------------------------------------------------------------------------------
+// Hacked version of QDoubleSpinBox which allows vertical mouse dragging to
+// change the current value.
+//
+// This is extremely handy and intuitive for some purposes, since the value in
+// the spin box mirrors the magnitude of motion of the mouse.
+class DragSpinBox : public QDoubleSpinBox
+{
+    public:
+        DragSpinBox(QWidget* parent = 0)
+            : QDoubleSpinBox(parent)
+        {
+            setMouseTracking(false);
+            setCursor(Qt::SplitVCursor);
+        }
+
+    protected:
+        void mousePressEvent(QMouseEvent* event)
+        {
+            m_pressPos = event->pos();
+            m_prevPos = event->pos();
+            event->accept();
+            setCursor(Qt::BlankCursor);
+        }
+
+        void mouseReleaseEvent(QMouseEvent* event)
+        {
+            QCursor::setPos(mapToGlobal(m_pressPos));
+            setCursor(Qt::SplitVCursor);
+        }
+
+        void mouseMoveEvent(QMouseEvent* event)
+        {
+            event->accept();
+            int y = event->pos().y();
+            int dy = -(y - m_prevPos.y());
+            m_prevPos = event->pos();
+            QRect geom = QApplication::desktop()->screenGeometry(this);
+            // Calling setPos() creates a further mouse event asynchronously;
+            // this is a hack to suppress such unwanted events:
+            if (abs(dy) > geom.height()/2)
+                return;
+            double val = value();
+            val *= exp(dy/100.0); // exponential scaling
+            //val += dy;  // linear scaling
+            setValue(val);
+            // Wrap when mouse goes off top or bottom of screen
+            QPoint gpos = mapToGlobal(event->pos());
+            if (gpos.y() == geom.top())
+                QCursor::setPos(QPoint(gpos.x(), geom.bottom()-1));
+            if (gpos.y() == geom.bottom())
+                QCursor::setPos(QPoint(gpos.x(), geom.top()+1));
+        }
+
+    private:
+        QPoint m_pressPos;
+        QPoint m_prevPos;
 };
 
 
@@ -146,14 +210,26 @@ PointViewerMainWindow::PointViewerMainWindow(
     if(!initialPointFileNames.empty())
         m_pointView->loadPointFiles(initialPointFileNames);
 
-    // Settings tabs
+    // Tabbed widgets
     QTabWidget* tabs = new QTabWidget(splitter);
     splitter->addWidget(tabs);
+    // Settings tab
+    QWidget* settingsTab = new QWidget(tabs);
+    tabs->addTab(settingsTab, tr("Point Display"));
+    QFormLayout* settingsLayout = new QFormLayout(settingsTab);
+    DragSpinBox* pointSizeEdit = new DragSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Point &Size:"), pointSizeEdit);
+    pointSizeEdit->setDecimals(2);
+    pointSizeEdit->setMinimum(1);
+    pointSizeEdit->setMaximum(200);
+    connect(pointSizeEdit, SIGNAL(valueChanged(double)),
+            m_pointView, SLOT(setPointSize(double)));
+    pointSizeEdit->setValue(5);
 
+    // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
-
     tabs->addTab(m_logTextView, tr("Log"));
 }
 
