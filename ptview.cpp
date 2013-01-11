@@ -210,7 +210,8 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
     }
     m_centroid = (1.0/totPoints) * Psum;
     lasReader->close();
-    std::cout << "Read " << totPoints << " points.  Displaying " << m_npoints <<  std::endl;
+    tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
+                totPoints, fileName.toStdString());
     return true;
 }
 
@@ -458,8 +459,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
         }
         newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
         V3d posDiff = m_cursorPos - m_prevCursorSnap;
-        tfm::printf("Selected point %d in file %s: (%.3f,%.3f,%.3f) [diff with prev cursor pos: (%.3f,%.3f,%.3f)]\n", nearestIdx,
-                    m_points[nearestCloudIdx]->fileName().toStdString(),
+        tfm::printf("Point %d: (%.3f, %.3f, %.3f) [diff with previous = (%.3f, %.3f, %.3f)]\n", nearestIdx,
                     newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
         m_cursorPos = newPos;
         m_prevCursorSnap = newPos;

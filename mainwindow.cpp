@@ -52,7 +52,9 @@ class StreamBufTextEditSink : public std::streambuf
     protected:
         int overflow(int c)
         {
+            m_textEdit->moveCursor(QTextCursor::End);
             m_textEdit->insertPlainText(QString((char)c));
+            m_textEdit->ensureCursorVisible();
             return 0;
         }
 
@@ -230,6 +232,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_logTextView = new QPlainTextEdit(tabs);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
+    m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     tabs->addTab(m_logTextView, tr("Log"));
 }
 
