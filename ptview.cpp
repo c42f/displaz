@@ -172,6 +172,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
     size_t nextBlock = 1;
     size_t nextStore = 1;
     V3d Psum(0);
+    //C3f cols[] = {C3f(1,1,1), C3f(1,1,0), C3f(1,0,1), C3f(0,1,1)};
     while(lasReader->read_point())
     {
         // Read a point from the las file
@@ -191,6 +192,10 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
         intens = intens / (1 + intens);
         //float intens = 0.5*point.point_source_ID;
         *outCol++ = color*intens;
+        // Color by point source ID
+        //int id = point.point_source_ID;
+        //*outCol++ = cols[id % 3];
+        // Color by point RGB
         //*outCol++ = (1.0f/256) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
         // Figure out which point will be the next stored point.
         nextBlock += decimate;
@@ -238,6 +243,7 @@ PointView::PointView(QWidget *parent)
     m_lastPos(0,0),
     m_zooming(false),
     m_cursorPos(0),
+    m_prevCursorSnap(0),
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
@@ -451,9 +457,12 @@ void PointView::keyPressEvent(QKeyEvent *event)
             }
         }
         newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
-        tfm::printf("Selected point %d in file %s\n", nearestIdx,
-                    m_points[nearestCloudIdx]->fileName().toStdString());
+        V3d posDiff = m_cursorPos - m_prevCursorSnap;
+        tfm::printf("Selected point %d in file %s: (%.3f,%.3f,%.3f) [diff with prev cursor pos: (%.3f,%.3f,%.3f)]\n", nearestIdx,
+                    m_points[nearestCloudIdx]->fileName().toStdString(),
+                    newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
         m_cursorPos = newPos;
+        m_prevCursorSnap = newPos;
         m_camera.setCenter(exr2qt(newPos - m_drawOffset));
         updateGL();
     }

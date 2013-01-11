@@ -176,6 +176,7 @@ class PointView : public QGLWidget
         bool m_zooming;
         /// Position of 3D cursor
         V3d m_cursorPos;
+        V3d m_prevCursorSnap;
         /// Offset used when drawing
         V3d m_drawOffset;
         /// Background color for drawing
