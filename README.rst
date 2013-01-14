@@ -14,7 +14,7 @@ Displaz should build on both windows and linux using the cmake-based build
 system.  It has quite a few dependencies at the moment:
 
 * Qt4
-* OpenGL and GLEW
+* OpenGL
 * LASlib (note: not the same as liblas!)
 * IlmBase (will possibly remove this dependency)
 

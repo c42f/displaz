@@ -226,7 +226,25 @@ PointViewerMainWindow::PointViewerMainWindow(
     pointSizeEdit->setMaximum(200);
     connect(pointSizeEdit, SIGNAL(valueChanged(double)),
             m_pointView, SLOT(setPointSize(double)));
-    pointSizeEdit->setValue(5);
+    pointSizeEdit->setValue(10);
+
+    DragSpinBox* pointIntensityEdit = new DragSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Exposure:"), pointIntensityEdit);
+    pointIntensityEdit->setDecimals(5);
+    pointIntensityEdit->setMinimum(0.0001);
+    pointIntensityEdit->setMaximum(10000);
+    connect(pointIntensityEdit, SIGNAL(valueChanged(double)),
+            m_pointView, SLOT(setExposure(double)));
+    pointIntensityEdit->setValue(1);
+
+    DragSpinBox* pointIntensPowerEdit = new DragSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Contrast:"), pointIntensPowerEdit);
+    pointIntensPowerEdit->setDecimals(4);
+    pointIntensPowerEdit->setMinimum(0.001);
+    pointIntensPowerEdit->setMaximum(1000);
+    connect(pointIntensPowerEdit, SIGNAL(valueChanged(double)),
+            m_pointView, SLOT(setContrast(double)));
+    pointIntensPowerEdit->setValue(1);
 
     // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);

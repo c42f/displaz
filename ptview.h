@@ -38,6 +38,7 @@
 #include <memory>
 
 #include <QtOpenGL/QGLWidget>
+#include <QtOpenGL/QGLShaderProgram>
 
 #ifdef _WIN32
 #include <ImathVec.h>
@@ -55,7 +56,6 @@ using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
 using Imath::C3f;
-
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
@@ -86,6 +86,7 @@ class PointArrayModel : public QObject
         V3d absoluteP(size_t idx) const { return V3d(m_P[idx]) + m_offset; }
         /// Return point color, or NULL if no color channel is present
         const C3f* color() const { return m_color.get(); }
+        const float* intensity() const { return m_intensity.get(); }
 
         /// Return index of closest point to the given position
         ///
@@ -120,6 +121,7 @@ class PointArrayModel : public QObject
         Imath::Box3d m_bbox;
         V3d m_centroid;
         std::unique_ptr<V3f[]> m_P;
+        std::unique_ptr<float[]> m_intensity;
         std::unique_ptr<C3f[]> m_color;
 };
 
@@ -149,6 +151,8 @@ class PointView : public QGLWidget
         void toggleDrawBoundingBoxes();
         void toggleCameraMode();
         void setPointSize(double size);
+        void setExposure(double intensity);
+        void setContrast(double power);
 
     signals:
         void colorChannelsChanged(QStringList channels);
@@ -183,6 +187,10 @@ class PointView : public QGLWidget
         QColor m_backgroundColor;
         bool m_drawBoundingBoxes;
         double m_pointSize;
+        double m_exposure;
+        double m_contrast;
+        /// Shader programs
+        QGLShaderProgram* m_pointVertexShader;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load

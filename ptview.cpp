@@ -27,8 +27,6 @@
 //
 // (This is the BSD 3-clause license)
 
-#include <GL/glew.h>
-
 #include "ptview.h"
 #include "mainwindow.h"
 
@@ -38,6 +36,9 @@
 #include <QtGui/QKeyEvent>
 #include <QtGui/QMessageBox>
 #include <QtGui/QTabWidget>
+#include <QtOpenGL/QGLShader>
+//#include <QtOpenGL/QGLBuffer>
+#include <QtOpenGL/QGLShaderProgram>
 
 #ifdef _WIN32
 #   define NOMINMAX
@@ -164,10 +165,12 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
     m_P.reset(new V3f[m_npoints]);
     // TODO: Look for color channel?
     m_color.reset(new C3f[m_npoints]);
+    m_intensity.reset(new float[m_npoints]);
     m_bbox.makeEmpty();
     // Iterate over all particles & pull in the data.
     V3f* outP = m_P.get();
-    V3f* outCol = m_color.get();
+    //V3f* outCol = m_color.get();
+    float* outIntens = m_intensity.get();
     size_t readCount = 0;
     size_t nextBlock = 1;
     size_t nextStore = 1;
@@ -188,10 +191,8 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
         // Store the point
         *outP++ = P - m_offset;
         // float intens = float(point.scan_angle_rank) / 40;
-        float intens = float(point.intensity) / 400;
-        intens = intens / (1 + intens);
-        //float intens = 0.5*point.point_source_ID;
-        *outCol++ = color*intens;
+        //float intens = float(point.intensity) / 400;
+        *outIntens++ = point.intensity;
         // Color by point source ID
         //int id = point.point_source_ID;
         //*outCol++ = cols[id % 3];
@@ -249,6 +250,8 @@ PointView::PointView(QWidget *parent)
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
     m_pointSize(5),
+    m_exposure(1),
+    m_contrast(1),
     m_points(),
     m_maxPointCount(10000000)
 {
@@ -325,6 +328,18 @@ void PointView::setPointSize(double size)
     updateGL();
 }
 
+void PointView::setExposure(double intensity)
+{
+    m_exposure = intensity;
+    updateGL();
+}
+
+void PointView::setContrast(double power)
+{
+    m_contrast = power;
+    updateGL();
+}
+
 void PointView::setColorChannel(QString channel)
 {
     for(size_t i = 0; i < m_points.size(); ++i)
@@ -351,8 +366,13 @@ QSize PointView::sizeHint() const
 void PointView::initializeGL()
 {
     //glEnable(GL_MULTISAMPLE);
-    if(glewInit() != GLEW_OK)
-        close();
+    m_pointVertexShader = new QGLShaderProgram(this);
+    if(!m_pointVertexShader->addShaderFromSourceFile(QGLShader::Vertex, ":/points_v.glsl"))
+        std::cout << "ERROR: Shader compilation failed:\n"
+                  << m_pointVertexShader->log().toStdString() << "\n";
+    if(!m_pointVertexShader->link())
+        std::cout << "ERROR: Shader linking failed:\n"
+                  << m_pointVertexShader->log().toStdString() << "\n";
 }
 
 
@@ -476,7 +496,7 @@ void PointView::drawCursor(const V3f& cursorPos) const
 {
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
-    glPointSize(2*m_pointSize);
+    glPointSize(1);
     glBegin(GL_POINTS);
         glVertex(cursorPos);
     glEnd();
@@ -596,30 +616,34 @@ void PointView::drawPoints(const PointArrayModel& points,
     V3d offset = points.offset() - drawOffset;
     glTranslatef(offset.x, offset.y, offset.z);
 
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
-    glPointSize(m_pointSize);
-    glColor3f(1,1,1);
-    // Set distance attenuation for points, following the usual 1/z
-    // law.
-    GLfloat attenParams[3] = {0, 0, 0.001f};
-    glPointParameterfv(GL_POINT_DISTANCE_ATTENUATION, attenParams);
-    glPointParameterf(GL_POINT_SIZE_MIN, 0);
-    glPointParameterf(GL_POINT_SIZE_MAX, 100);
-    // Draw all points at once using vertex arrays.
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
+    m_pointVertexShader->bind();
+    m_pointVertexShader->setUniformValue("exposure", (float)m_exposure);
+    m_pointVertexShader->setUniformValue("contrast", (float)m_contrast);
+    m_pointVertexShader->setUniformValue("minPointSize", 1.0f);
+    m_pointVertexShader->setUniformValue("maxPointSize", 100.0f);
+    m_pointVertexShader->setUniformValue("pointSize", (float)m_pointSize);
+    m_pointVertexShader->enableAttributeArray("position");
+    m_pointVertexShader->enableAttributeArray("intensity");
+//    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
+//    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
+//    intensityBuf.create();
+//    intensityBuf.allocate(sizeof(float)*chunkSize);
+//    intensityBuf.bind();
+//    intensityBuf.write(0, points.intensity() + i, ndraw);
+//    m_pointVertexShader->setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
+//    intensityBuf.release();
     size_t chunkSize = 1000000;
     for (size_t i = 0; i < points.size(); i += chunkSize)
     {
-        const float* P = reinterpret_cast<const float*>(points.P() + i);
-        const float* col = reinterpret_cast<const float*>(points.color() + i);
-        glVertexPointer(3, GL_FLOAT, 3*sizeof(float), P);
-        glColorPointer(3, GL_FLOAT, 3*sizeof(float), col);
+        m_pointVertexShader->setAttributeArray("intensity", points.intensity() + i, 1);
+        m_pointVertexShader->setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
         int ndraw = (int)std::min(points.size() - i, chunkSize);
         glDrawArrays(GL_POINTS, 0, ndraw);
     }
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    m_pointVertexShader->release();
+    glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();
 }
 
