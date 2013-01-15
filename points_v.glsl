@@ -1,5 +1,5 @@
-#line 1 "points_v.glsl"
-#version 120
+//#line 1 "points_v.glsl"
+#version 130
 
 uniform float exposure;
 uniform float contrast;

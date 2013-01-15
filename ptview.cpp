@@ -30,7 +30,10 @@
 #include "ptview.h"
 #include "mainwindow.h"
 
-#define GL_GLEXT_PROTOTYPES
+//#define GL_GLEXT_PROTOTYPES
+#ifndef GL_VERTEX_PROGRAM_POINT_SIZE
+#   define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
+#endif
 
 #include <QtGui/QApplication>
 #include <QtGui/QKeyEvent>
