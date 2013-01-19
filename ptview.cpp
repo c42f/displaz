@@ -255,16 +255,26 @@ PointView::PointView(QWidget *parent)
     m_exposure(1),
     m_contrast(1),
     m_selector(0),
+    m_pointShader(0),
     m_points(),
     m_maxPointCount(10000000)
 {
     setFocusPolicy(Qt::StrongFocus);
+    setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     m_camera.setClipFar(FLT_MAX);
     // Don't use signals/slots for handling view changes... this seems to
     // introduce a bit of extra lag for slowly drawing scenes (?)
     //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(updateGL()));
     //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(updateGL()));
+
+    m_pointShader = new QGLShaderProgram(this);
+    QFile vertexShaderFile(":/points_v.glsl");
+    if (vertexShaderFile.open(QIODevice::ReadOnly))
+        setVertexShader(vertexShaderFile.readAll());
+    QFile fragmentShaderFile(":/points_f.glsl");
+    if (fragmentShaderFile.open(QIODevice::ReadOnly))
+        setFragmentShader(fragmentShaderFile.readAll());
 }
 
 
@@ -351,34 +361,52 @@ void PointView::setSelector(int sel)
     updateGL();
 }
 
+void PointView::setVertexShader(QByteArray src)
+{
+    makeCurrent();
+    if(!m_pointShader->addShaderFromSourceCode(QGLShader::Vertex, src) ||
+       !m_pointShader->link())
+    {
+        tfm::printf("Error setting vertex shader:\n%s\n",
+                    m_pointShader->log().toStdString());
+        // Reset to previous shader
+        m_pointShader->addShaderFromSourceCode(QGLShader::Vertex, m_vertexShaderSource);
+        m_pointShader->link();
+    }
+    else
+    {
+        m_vertexShaderSource = src;
+        updateGL();
+    }
+}
+
+void PointView::setFragmentShader(QByteArray src)
+{
+    makeCurrent();
+    if(!m_pointShader->addShaderFromSourceCode(QGLShader::Fragment, src) ||
+       !m_pointShader->link())
+    {
+        tfm::printf("Error setting fragment shader:\n%s\n",
+                    m_pointShader->log().toStdString());
+        // Reset to previous shader
+        m_pointShader->addShaderFromSourceCode(QGLShader::Fragment, m_fragmentShaderSource);
+        m_pointShader->link();
+    }
+    else
+    {
+        m_fragmentShaderSource = src;
+        updateGL();
+    }
+}
+
 void PointView::setMaxPointCount(size_t maxPointCount)
 {
     m_maxPointCount = maxPointCount;
 }
 
 
-QSize PointView::sizeHint() const
-{
-    // Size hint, mainly for getting the initial window size right.
-    // setMinimumSize() also sort of works for this, but doesn't allow the
-    // user to later make the window smaller.
-    return QSize(640,480);
-}
-
-
 void PointView::initializeGL()
 {
-    //glEnable(GL_MULTISAMPLE);
-    m_pointShader = new QGLShaderProgram(this);
-    if(!m_pointShader->addShaderFromSourceFile(QGLShader::Vertex, ":/points_v.glsl"))
-        std::cout << "ERROR: Shader compilation failed:\n"
-                  << m_pointShader->log().toStdString() << "\n";
-    if(!m_pointShader->addShaderFromSourceFile(QGLShader::Fragment, ":/points_f.glsl"))
-        std::cout << "ERROR: Shader compilation failed:\n"
-                  << m_pointShader->log().toStdString() << "\n";
-    if(!m_pointShader->link())
-        std::cout << "ERROR: Shader linking failed:\n"
-                  << m_pointShader->log().toStdString() << "\n";
 }
 
 

@@ -194,6 +194,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     // Point viewer
     m_pointView = new PointView(splitter);
     splitter->addWidget(m_pointView);
+    splitter->setStretchFactor(0,10);
 
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
@@ -266,6 +267,12 @@ PointViewerMainWindow::~PointViewerMainWindow()
 {
     if (m_oldBuf)
         std::cout.rdbuf(m_oldBuf);
+}
+
+
+QSize PointViewerMainWindow::sizeHint() const
+{
+    return QSize(640,480);
 }
 
 

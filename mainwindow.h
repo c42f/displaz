@@ -56,6 +56,9 @@ class PointViewerMainWindow : public QMainWindow
 
         ~PointViewerMainWindow();
 
+        /// Hint at an appropriate size
+        QSize sizeHint() const;
+
         PointView& pointView() { return *m_pointView; }
 
         void captureStdout();
