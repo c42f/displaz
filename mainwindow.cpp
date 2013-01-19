@@ -345,6 +345,6 @@ void PointViewerMainWindow::chooseBackground()
 
 void PointViewerMainWindow::setLoadedFileNames(const QStringList& fileNames)
 {
-    setWindowTitle(tr("Displaz - %1").arg(fileNames.join(";")));
+    setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
 }
 
