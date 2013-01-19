@@ -255,6 +255,7 @@ PointView::PointView(QWidget *parent)
     m_pointSize(5),
     m_exposure(1),
     m_contrast(1),
+    m_selector(0),
     m_points(),
     m_maxPointCount(10000000)
 {
@@ -343,6 +344,12 @@ void PointView::setContrast(double power)
     updateGL();
 }
 
+void PointView::setSelector(int sel)
+{
+    m_selector = sel;
+    updateGL();
+}
+
 void PointView::setColorChannel(QString channel)
 {
     for(size_t i = 0; i < m_points.size(); ++i)
@@ -369,13 +376,16 @@ QSize PointView::sizeHint() const
 void PointView::initializeGL()
 {
     //glEnable(GL_MULTISAMPLE);
-    m_pointVertexShader = new QGLShaderProgram(this);
-    if(!m_pointVertexShader->addShaderFromSourceFile(QGLShader::Vertex, ":/points_v.glsl"))
+    m_pointShader = new QGLShaderProgram(this);
+    if(!m_pointShader->addShaderFromSourceFile(QGLShader::Vertex, ":/points_v.glsl"))
         std::cout << "ERROR: Shader compilation failed:\n"
-                  << m_pointVertexShader->log().toStdString() << "\n";
-    if(!m_pointVertexShader->link())
+                  << m_pointShader->log().toStdString() << "\n";
+    if(!m_pointShader->addShaderFromSourceFile(QGLShader::Fragment, ":/points_f.glsl"))
+        std::cout << "ERROR: Shader compilation failed:\n"
+                  << m_pointShader->log().toStdString() << "\n";
+    if(!m_pointShader->link())
         std::cout << "ERROR: Shader linking failed:\n"
-                  << m_pointVertexShader->log().toStdString() << "\n";
+                  << m_pointShader->log().toStdString() << "\n";
 }
 
 
@@ -408,7 +418,7 @@ void PointView::paintGL()
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], m_drawOffset);
+            drawPoints(*m_points[i], i, m_drawOffset);
     }
 
     // Draw overlay stuff, including cursor position.
@@ -603,7 +613,7 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
 
 /// Draw point cloud
 void PointView::drawPoints(const PointArrayModel& points,
-                           const V3d& drawOffset) const
+                           int fileNumber, const V3d& drawOffset) const
 {
     if(points.empty())
         return;
@@ -619,33 +629,38 @@ void PointView::drawPoints(const PointArrayModel& points,
     V3d offset = points.offset() - drawOffset;
     glTranslatef(offset.x, offset.y, offset.z);
 
+    glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
-    m_pointVertexShader->bind();
-    m_pointVertexShader->setUniformValue("exposure", (float)m_exposure);
-    m_pointVertexShader->setUniformValue("contrast", (float)m_contrast);
-    m_pointVertexShader->setUniformValue("minPointSize", 1.0f);
-    m_pointVertexShader->setUniformValue("maxPointSize", 100.0f);
-    m_pointVertexShader->setUniformValue("pointSize", (float)m_pointSize);
-    m_pointVertexShader->enableAttributeArray("position");
-    m_pointVertexShader->enableAttributeArray("intensity");
+    m_pointShader->bind();
+    //m_pointShader->setUniformValue("modelViewMatrix", ); // TODO
+    //m_pointShader->setUniformValue("projectionMatrix", );
+    m_pointShader->setUniformValue("exposure", (float)m_exposure);
+    m_pointShader->setUniformValue("contrast", (float)m_contrast);
+    m_pointShader->setUniformValue("selector", m_selector);
+    m_pointShader->setUniformValue("fileNumber", fileNumber);
+    m_pointShader->setUniformValue("minPointSize", 1.0f);
+    m_pointShader->setUniformValue("maxPointSize", 100.0f);
+    m_pointShader->setUniformValue("pointSize", (float)m_pointSize);
+    m_pointShader->enableAttributeArray("position");
+    m_pointShader->enableAttributeArray("intensity");
 //    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
 //    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
 //    intensityBuf.create();
 //    intensityBuf.allocate(sizeof(float)*chunkSize);
 //    intensityBuf.bind();
 //    intensityBuf.write(0, points.intensity() + i, ndraw);
-//    m_pointVertexShader->setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
+//    m_pointShader->setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
 //    intensityBuf.release();
     size_t chunkSize = 1000000;
     for (size_t i = 0; i < points.size(); i += chunkSize)
     {
-        m_pointVertexShader->setAttributeArray("intensity", points.intensity() + i, 1);
-        m_pointVertexShader->setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
+        m_pointShader->setAttributeArray("intensity", points.intensity() + i, 1);
+        m_pointShader->setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
         int ndraw = (int)std::min(points.size() - i, chunkSize);
         glDrawArrays(GL_POINTS, 0, ndraw);
     }
-    m_pointVertexShader->release();
+    m_pointShader->release();
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();
 }

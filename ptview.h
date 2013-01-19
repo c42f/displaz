@@ -153,6 +153,7 @@ class PointView : public QGLWidget
         void setPointSize(double size);
         void setExposure(double intensity);
         void setContrast(double power);
+        void setSelector(int sel);
 
     signals:
         void colorChannelsChanged(QStringList channels);
@@ -172,7 +173,7 @@ class PointView : public QGLWidget
     private:
         void drawCursor(const V3f& P) const;
         void drawPoints(const PointArrayModel& points,
-                        const V3d& drawOffset) const;
+                        int fileNumber, const V3d& drawOffset) const;
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -186,11 +187,13 @@ class PointView : public QGLWidget
         /// Background color for drawing
         QColor m_backgroundColor;
         bool m_drawBoundingBoxes;
+        /// Shader parameters
         double m_pointSize;
         double m_exposure;
         double m_contrast;
+        int m_selector;
         /// Shader programs
-        QGLShaderProgram* m_pointVertexShader;
+        QGLShaderProgram* m_pointShader;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load

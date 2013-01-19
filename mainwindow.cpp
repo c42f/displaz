@@ -228,23 +228,31 @@ PointViewerMainWindow::PointViewerMainWindow(
             m_pointView, SLOT(setPointSize(double)));
     pointSizeEdit->setValue(10);
 
-    DragSpinBox* pointIntensityEdit = new DragSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Exposure:"), pointIntensityEdit);
-    pointIntensityEdit->setDecimals(5);
-    pointIntensityEdit->setMinimum(0.0001);
-    pointIntensityEdit->setMaximum(10000);
-    connect(pointIntensityEdit, SIGNAL(valueChanged(double)),
+    DragSpinBox* exposureEdit = new DragSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Exposure:"), exposureEdit);
+    exposureEdit->setDecimals(5);
+    exposureEdit->setMinimum(0.0001);
+    exposureEdit->setMaximum(10000);
+    connect(exposureEdit, SIGNAL(valueChanged(double)),
             m_pointView, SLOT(setExposure(double)));
-    pointIntensityEdit->setValue(1);
+    exposureEdit->setValue(1);
 
-    DragSpinBox* pointIntensPowerEdit = new DragSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Contrast:"), pointIntensPowerEdit);
-    pointIntensPowerEdit->setDecimals(4);
-    pointIntensPowerEdit->setMinimum(0.001);
-    pointIntensPowerEdit->setMaximum(1000);
-    connect(pointIntensPowerEdit, SIGNAL(valueChanged(double)),
+    DragSpinBox* contrastEdit = new DragSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Contrast:"), contrastEdit);
+    contrastEdit->setDecimals(4);
+    contrastEdit->setMinimum(0.001);
+    contrastEdit->setMaximum(1000);
+    connect(contrastEdit, SIGNAL(valueChanged(double)),
             m_pointView, SLOT(setContrast(double)));
-    pointIntensPowerEdit->setValue(1);
+    contrastEdit->setValue(1);
+
+    QSpinBox* selectorEdit = new QSpinBox(settingsTab);
+    settingsLayout->addRow(tr("Selector:"), selectorEdit);
+    selectorEdit->setMinimum(-1);
+    selectorEdit->setMaximum(1000);
+    connect(selectorEdit, SIGNAL(valueChanged(int)),
+            m_pointView, SLOT(setSelector(int)));
+    selectorEdit->setValue(0);
 
     // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);
