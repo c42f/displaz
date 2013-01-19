@@ -129,9 +129,6 @@ class DragSpinBox : public QDoubleSpinBox
 PointViewerMainWindow::PointViewerMainWindow(
         const QStringList& initialPointFileNames)
     : m_pointView(0),
-    m_colorMenu(0),
-    m_colorMenuGroup(0),
-    m_colorMenuMapper(0),
     m_logTextView(0),
     m_oldBuf(0)
 {
@@ -181,9 +178,6 @@ PointViewerMainWindow::PointViewerMainWindow(
     QAction* backgroundCustom = backMenu->addAction(tr("&Custom"));
     connect(backgroundCustom, SIGNAL(triggered()),
             this, SLOT(chooseBackground()));
-    // Color channel menu
-    m_colorMenu = viewMenu->addMenu(tr("Color &Channel"));
-    m_colorMenuMapper = new QSignalMapper(this);
 
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -201,14 +195,12 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_pointView = new PointView(splitter);
     splitter->addWidget(m_pointView);
 
-    connect(m_pointView, SIGNAL(colorChannelsChanged(QStringList)),
-            this, SLOT(setColorChannels(QStringList)));
-    connect(m_colorMenuMapper, SIGNAL(mapped(QString)),
-            m_pointView, SLOT(setColorChannel(QString)));
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
+    connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
+            this, SLOT(setLoadedFileNames(QStringList)));
     if(!initialPointFileNames.empty())
         m_pointView->loadPointFiles(initialPointFileNames);
 
@@ -254,6 +246,13 @@ PointViewerMainWindow::PointViewerMainWindow(
             m_pointView, SLOT(setSelector(int)));
     selectorEdit->setValue(0);
 
+    // Shader editor
+    /*
+    m_shaderEditor = new QPlainTextEdit(tabs);
+    m_shaderEditor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    tabs->addTab(m_shaderEditor, tr("Shader Editor"));
+    */
+
     // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);
     m_logTextView->setReadOnly(true);
@@ -292,7 +291,10 @@ void PointViewerMainWindow::openFiles()
     dialog.setFileMode(QFileDialog::ExistingFiles);
     dialog.setDirectory(m_currFileDir);
     if(dialog.exec())
-        m_pointView->loadPointFiles(dialog.selectedFiles());
+    {
+        QStringList files = dialog.selectedFiles();
+        m_pointView->loadPointFiles(files);
+    }
     m_currFileDir = dialog.directory();
 }
 
@@ -341,24 +343,8 @@ void PointViewerMainWindow::chooseBackground()
 }
 
 
-void PointViewerMainWindow::setColorChannels(QStringList channels)
+void PointViewerMainWindow::setLoadedFileNames(const QStringList& fileNames)
 {
-    // Remove the old set of color channels from the menu
-    delete m_colorMenuGroup;
-    m_colorMenuGroup = new QActionGroup(this);
-    m_colorMenuGroup->setExclusive(true);
-    if(channels.empty())
-        return;
-    // Rebuild the color channel menu with a menu item for each channel
-    for(int i = 0; i < channels.size(); ++i)
-    {
-        QAction* act = m_colorMenuGroup->addAction(channels[i]);
-        act->setCheckable(true);
-        m_colorMenu->addAction(act);
-        m_colorMenuMapper->setMapping(act, channels[i]);
-        connect(act, SIGNAL(triggered()), m_colorMenuMapper, SLOT(map()));
-    }
-    m_colorMenuGroup->actions()[0]->setChecked(true);
+    setWindowTitle(tr("Displaz - %1").arg(fileNames.join(";")));
 }
-
 

@@ -70,13 +70,10 @@ class PointViewerMainWindow : public QMainWindow
         void aboutDialog();
         void setBackground(const QString& name);
         void chooseBackground();
-        void setColorChannels(QStringList channels);
+        void setLoadedFileNames(const QStringList& fileNames);
 
     private:
         PointView* m_pointView;
-        QMenu* m_colorMenu;
-        QActionGroup* m_colorMenuGroup;
-        QSignalMapper* m_colorMenuMapper;
         QDir m_currFileDir;
         QPlainTextEdit* m_logTextView;
         std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;

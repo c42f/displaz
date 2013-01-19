@@ -279,6 +279,7 @@ void PointView::loadPointFiles(const QStringList& fileNames)
     }
     size_t maxCount = m_maxPointCount / fileNames.size();
     C3f colors[] = {C3f(1,1,1), C3f(1,0.5,0.5), C3f(0.5,1,0.5), C3f(0.5,0.5,1)};
+    QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
@@ -286,11 +287,12 @@ void PointView::loadPointFiles(const QStringList& fileNames)
             colors[i%(sizeof(colors)/sizeof(C3f))]) && !points->empty())
         {
             m_points.push_back(std::move(points));
+            successfullyLoaded.push_back(fileNames[i]);
+            emit pointFilesLoaded(successfullyLoaded);
         }
     }
     if(m_points.empty())
         return;
-    emit colorChannelsChanged(m_points[0]->colorChannels());
     m_cursorPos = m_points[0]->centroid();
     m_drawOffset = m_points[0]->offset();
     m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
@@ -349,14 +351,6 @@ void PointView::setSelector(int sel)
     m_selector = sel;
     updateGL();
 }
-
-void PointView::setColorChannel(QString channel)
-{
-    for(size_t i = 0; i < m_points.size(); ++i)
-        m_points[i]->setColorChannel(channel);
-    updateGL();
-}
-
 
 void PointView::setMaxPointCount(size_t maxPointCount)
 {

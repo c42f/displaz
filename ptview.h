@@ -97,9 +97,6 @@ class PointArrayModel : public QObject
         /// Get a list of channel names which look like color channels
         QStringList colorChannels() { return m_colorChannelNames; }
 
-        /// Set the channel name which the color() function returns data for
-        void setColorChannel(const QString& name) {};
-
         /// Return the centroid of the position data
         const V3d& centroid() const { return m_centroid; }
 
@@ -146,7 +143,6 @@ class PointView : public QGLWidget
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
-        void setColorChannel(QString channel);
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
         void toggleCameraMode();
@@ -156,7 +152,7 @@ class PointView : public QGLWidget
         void setSelector(int sel);
 
     signals:
-        void colorChannelsChanged(QStringList channels);
+        void pointFilesLoaded(QStringList files);
 
     protected:
         // Qt OpenGL callbacks
