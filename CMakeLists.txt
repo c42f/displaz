@@ -2,6 +2,9 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
+option(DISPLAZ_STATIC FALSE)
+
+
 #-----------------------------------------------------------
 # Find laslib
 find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
@@ -74,4 +77,11 @@ if(WIN32)
     target_link_libraries(displaz
         ${QT_QTMAIN_LIBRARY}
     )
+    if(DISPLAZ_STATIC)
+        # These extra libraries are needed on windows when linking against a
+        # static Qt-4.8.? which has been built with the default options.
+        target_link_libraries(displaz
+            imm32.lib Ws2_32.lib Winmm.lib
+        )
+    endif()
 endif()
