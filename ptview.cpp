@@ -31,8 +31,13 @@
 #include "mainwindow.h"
 
 //#define GL_GLEXT_PROTOTYPES
+// Hack: define gl flags which are normally done by GLEW...
+// perhaps should bring glew back as a dependency...
 #ifndef GL_VERTEX_PROGRAM_POINT_SIZE
 #   define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
+#endif
+#ifndef GL_POINT_SPRITE
+#   define GL_POINT_SPRITE 0x8861
 #endif
 
 #include <QtGui/QKeyEvent>
@@ -55,17 +60,23 @@
 #include "ptview.h"
 #include "tinyformat.h"
 
-#ifdef __GNUC__
-// Shut up a small horde of warnings in laslib
+#ifdef _MSC_VER
+#   pragma warning(push)
+#   pragma warning(disable : 4996)
+#   pragma warning(disable : 4267)
+#elif __GNUC__
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #   pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
+// Note... laslib generates a small horde of warnings
 #include <lasreader.hpp>
+#ifdef _MSC_VER
+#   pragma warning(push)
+#elif __GNUC__
+#   pragma GCC diagnostic pop
 // Hack: kill gcc unused variable warning
 class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
-#ifdef __GNUC__
-#   pragma GCC diagnostic pop
 #endif
 
 
