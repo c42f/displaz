@@ -41,6 +41,7 @@ qt4_wrap_cpp(moc_srcs
     mainwindow.h
     ptview.h
     interactivecamera.h
+    shadereditor.h
 )
 qt4_add_resources(rcc_srcs
     resources.qrc
@@ -52,6 +53,7 @@ set(srcs
     ptview.cpp
     argparse.cpp
     main.cpp
+    shadereditor.cpp
 )
 if(WIN32)
     list(APPEND srcs windows_resources.rc)

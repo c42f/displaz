@@ -137,8 +137,8 @@ class PointView : public QGLWidget
         void loadPointFiles(const QStringList& fileNames);
         void reloadPointFiles();
 
-        const QByteArray vertexShader() const;
-        const QByteArray fragmentShader() const;
+        const QString vertexShader() const;
+        const QString fragmentShader() const;
 
     public slots:
         /// Set the backgroud color
@@ -150,8 +150,8 @@ class PointView : public QGLWidget
         void setExposure(double intensity);
         void setContrast(double power);
         void setSelector(int sel);
-        void setVertexShader(QByteArray src);
-        void setFragmentShader(QByteArray src);
+        void setVertexShader(QString src);
+        void setFragmentShader(QString src);
 
     signals:
         void pointFilesLoaded(QStringList files);
@@ -191,9 +191,9 @@ class PointView : public QGLWidget
         double m_contrast;
         int m_selector;
         /// Shader programs
-        QByteArray m_vertexShaderSource;
-        QByteArray m_fragmentShaderSource;
-        QGLShaderProgram* m_pointShader;
+        std::unique_ptr<QGLShader> m_vertexShader;
+        std::unique_ptr<QGLShader> m_fragmentShader;
+        std::unique_ptr<QGLShaderProgram> m_shaderProgram;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load

@@ -29,6 +29,7 @@
 
 #include "mainwindow.h"
 #include "ptview.h"
+#include "shadereditor.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -195,15 +196,19 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_pointView = new PointView(splitter);
     splitter->addWidget(m_pointView);
     splitter->setStretchFactor(0,10);
-
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
-    if(!initialPointFileNames.empty())
-        m_pointView->loadPointFiles(initialPointFileNames);
+    // Set shaders
+    QFile vertexShaderFile(":/points_v.glsl");
+    if (vertexShaderFile.open(QIODevice::ReadOnly))
+        m_pointView->setVertexShader(vertexShaderFile.readAll());
+    QFile fragmentShaderFile(":/points_f.glsl");
+    if (fragmentShaderFile.open(QIODevice::ReadOnly))
+        m_pointView->setFragmentShader(fragmentShaderFile.readAll());
 
     // Tabbed widgets
     QTabWidget* tabs = new QTabWidget(splitter);
@@ -248,11 +253,24 @@ PointViewerMainWindow::PointViewerMainWindow(
     selectorEdit->setValue(0);
 
     // Shader editor
-    /*
-    m_shaderEditor = new QPlainTextEdit(tabs);
-    m_shaderEditor->setLineWrapMode(QPlainTextEdit::NoWrap);
-    tabs->addTab(m_shaderEditor, tr("Shader Editor"));
-    */
+    QWidget* shaderEditorTab = new QWidget(tabs);
+    QGridLayout* shaderEditorTabLayout = new QGridLayout(shaderEditorTab);
+    shaderEditorTabLayout->setContentsMargins(2,2,2,2);
+    tabs->addTab(shaderEditorTab, tr("Shaders"));
+    QTabWidget* shaderTabs = new QTabWidget(shaderEditorTab);
+    shaderEditorTabLayout->addWidget(shaderTabs, 0, 0);
+    // vertex shader
+    ShaderEditor* vertexShaderEditor = new ShaderEditor(shaderTabs);
+    shaderTabs->addTab(vertexShaderEditor, tr("Vertex Shader"));
+    vertexShaderEditor->setPlainText(m_pointView->vertexShader());
+    connect(vertexShaderEditor, SIGNAL(sendShader(QString)),
+            m_pointView, SLOT(setVertexShader(QString)));
+    // fragment shader
+    ShaderEditor* fragmentShaderEditor = new ShaderEditor(shaderTabs);
+    shaderTabs->addTab(fragmentShaderEditor, tr("Fragment Shader"));
+    fragmentShaderEditor->setPlainText(m_pointView->fragmentShader());
+    connect(fragmentShaderEditor, SIGNAL(sendShader(QString)),
+            m_pointView, SLOT(setFragmentShader(QString)));
 
     // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);
@@ -260,6 +278,9 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
     m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     tabs->addTab(m_logTextView, tr("Log"));
+
+    if(!initialPointFileNames.empty())
+        m_pointView->loadPointFiles(initialPointFileNames);
 }
 
 

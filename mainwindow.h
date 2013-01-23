@@ -42,6 +42,7 @@ class QPlainTextEdit;
 
 class PointView;
 class StreamBufTextEditSink;
+class ShaderEditor;
 
 
 //------------------------------------------------------------------------------
