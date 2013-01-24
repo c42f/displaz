@@ -6,6 +6,7 @@ uniform float contrast = 1.0;
 uniform float minPointSize = 1.0;
 uniform float maxPointSize = 10.0;
 uniform float pointSize = 1.0;
+uniform vec3 cursorPos = vec3(0);
 uniform int selector = 0;
 uniform int fileNumber = 0;
 in float intensity;

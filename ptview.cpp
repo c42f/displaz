@@ -700,6 +700,8 @@ void PointView::drawPoints(const PointArrayModel& points,
     m_shaderProgram->bind();
     //m_shaderProgram->setUniformValue("modelViewMatrix", ); // TODO
     //m_shaderProgram->setUniformValue("projectionMatrix", );
+    V3f relCursor = m_cursorPos - m_drawOffset;
+    m_shaderProgram->setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
     m_shaderProgram->setUniformValue("exposure", (float)m_exposure);
     m_shaderProgram->setUniformValue("contrast", (float)m_contrast);
     m_shaderProgram->setUniformValue("selector", m_selector);
