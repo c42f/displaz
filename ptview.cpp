@@ -29,6 +29,7 @@
 
 #include "ptview.h"
 #include "mainwindow.h"
+#include "shader.h"
 
 //#define GL_GLEXT_PROTOTYPES
 // Hack: define gl flags which are normally done by GLEW...
@@ -43,9 +44,7 @@
 #include <QtGui/QKeyEvent>
 #include <QtGui/QMessageBox>
 #include <QtGui/QTabWidget>
-#include <QtOpenGL/QGLShader>
 //#include <QtOpenGL/QGLBuffer>
-#include <QtOpenGL/QGLShaderProgram>
 
 #ifdef _WIN32
 #   define NOMINMAX
@@ -262,12 +261,6 @@ PointView::PointView(QWidget *parent)
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
-    m_pointSize(5),
-    m_exposure(1),
-    m_contrast(1),
-    m_selector(0),
-    m_vertexShader(),
-    m_fragmentShader(),
     m_shaderProgram(),
     m_points(),
     m_maxPointCount(10000000)
@@ -281,9 +274,13 @@ PointView::PointView(QWidget *parent)
     //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(updateGL()));
     //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(updateGL()));
 
-    m_shaderProgram.reset(new QGLShaderProgram(this));
+    makeCurrent();
+    m_shaderProgram.reset(new ShaderProgram(context()));
+    connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
+            this, SLOT(updateGL()));
 }
 
+PointView::~PointView() { }
 
 void PointView::loadPointFiles(const QStringList& fileNames)
 {
@@ -318,18 +315,6 @@ void PointView::loadPointFiles(const QStringList& fileNames)
 }
 
 
-const QString PointView::vertexShader() const
-{
-    return m_vertexShader->sourceCode();
-}
-
-
-const QString PointView::fragmentShader() const
-{
-    return m_fragmentShader->sourceCode();
-}
-
-
 void PointView::reloadPointFiles()
 {
     QStringList fileNames;
@@ -354,92 +339,6 @@ void PointView::toggleDrawBoundingBoxes()
 void PointView::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
-}
-
-void PointView::setPointSize(double size)
-{
-    m_pointSize = size;
-    updateGL();
-}
-
-void PointView::setExposure(double intensity)
-{
-    m_exposure = intensity;
-    updateGL();
-}
-
-void PointView::setContrast(double power)
-{
-    m_contrast = power;
-    updateGL();
-}
-
-void PointView::setSelector(int sel)
-{
-    m_selector = sel;
-    updateGL();
-}
-
-
-void PointView::setVertexShader(QString src)
-{
-    makeCurrent();
-    std::unique_ptr<QGLShader> shader(new QGLShader(QGLShader::Vertex, this));
-    if(!shader->compileSourceCode(src))
-    {
-        tfm::printf("Error compiling shader:\n%s\n",
-                    shader->log().toStdString());
-        return;
-    }
-    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(this));
-    if (!newProgram->addShader(shader.get()) ||
-        (m_fragmentShader && !newProgram->addShader(m_fragmentShader.get())))
-    {
-        tfm::printf("Error adding shaders to program:\n%s\n",
-                    newProgram->log().toStdString());
-        return;
-    }
-    if(!newProgram->link())
-    {
-        tfm::printf("Error linking shaders:\n%s\n",
-                    shader->log().toStdString());
-        return;
-    }
-    // New shader compiled & linked ok; swap out the old program for the new
-    m_vertexShader = std::move(shader);
-    m_shaderProgram = std::move(newProgram);
-    updateGL();
-}
-
-
-void PointView::setFragmentShader(QString src)
-{
-    makeCurrent();
-    std::unique_ptr<QGLShader> shader(new QGLShader(QGLShader::Fragment, this));
-    if(!shader->compileSourceCode(src))
-    {
-        tfm::printf("Error compiling shader:\n%s\n",
-                    shader->log().toStdString());
-        return;
-    }
-    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(this));
-    if (!newProgram->addShader(shader.get()) ||
-        (m_vertexShader && !newProgram->addShader(m_vertexShader.get())))
-    {
-        tfm::printf("Error adding shaders to program:\n%s\n",
-                    newProgram->log().toStdString());
-        return;
-    }
-    if(!newProgram->link())
-    {
-        tfm::printf("Error linking shaders:\n%s\n",
-                    shader->log().toStdString());
-        return;
-    }
-    // New shader compiled & linked ok; swap out the old program for the new
-    m_fragmentShader = std::move(shader);
-    m_shaderProgram = std::move(newProgram);
-    updateGL();
 }
 
 
@@ -697,37 +596,33 @@ void PointView::drawPoints(const PointArrayModel& points,
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
-    m_shaderProgram->bind();
-    //m_shaderProgram->setUniformValue("modelViewMatrix", ); // TODO
-    //m_shaderProgram->setUniformValue("projectionMatrix", );
+    QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
+    prog.bind();
+    m_shaderProgram->setUniforms();
+    //prog.setUniformValue("modelViewMatrix", ); // TODO
+    //prog.setUniformValue("projectionMatrix", );
     V3f relCursor = m_cursorPos - m_drawOffset;
-    m_shaderProgram->setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
-    m_shaderProgram->setUniformValue("exposure", (float)m_exposure);
-    m_shaderProgram->setUniformValue("contrast", (float)m_contrast);
-    m_shaderProgram->setUniformValue("selector", m_selector);
-    m_shaderProgram->setUniformValue("fileNumber", fileNumber);
-    m_shaderProgram->setUniformValue("minPointSize", 1.0f);
-    m_shaderProgram->setUniformValue("maxPointSize", 100.0f);
-    m_shaderProgram->setUniformValue("pointSize", (float)m_pointSize);
-    m_shaderProgram->enableAttributeArray("position");
-    m_shaderProgram->enableAttributeArray("intensity");
+    prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
+    prog.setUniformValue("fileNumber", fileNumber);
+    prog.enableAttributeArray("position");
+    prog.enableAttributeArray("intensity");
 //    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
 //    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
 //    intensityBuf.create();
 //    intensityBuf.allocate(sizeof(float)*chunkSize);
 //    intensityBuf.bind();
 //    intensityBuf.write(0, points.intensity() + i, ndraw);
-//    m_shaderProgram->setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
+//    prog.setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
 //    intensityBuf.release();
     size_t chunkSize = 1000000;
     for (size_t i = 0; i < points.size(); i += chunkSize)
     {
-        m_shaderProgram->setAttributeArray("intensity", points.intensity() + i, 1);
-        m_shaderProgram->setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
+        prog.setAttributeArray("intensity", points.intensity() + i, 1);
+        prog.setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
         int ndraw = (int)std::min(points.size() - i, chunkSize);
         glDrawArrays(GL_POINTS, 0, ndraw);
     }
-    m_shaderProgram->release();
+    prog.release();
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();
 }

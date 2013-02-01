@@ -75,11 +75,13 @@ class PointViewerMainWindow : public QMainWindow
         void setBackground(const QString& name);
         void chooseBackground();
         void setLoadedFileNames(const QStringList& fileNames);
+        void setupShaderParamUI();
 
     private:
         PointView* m_pointView;
         QDir m_currFileDir;
         QPlainTextEdit* m_logTextView;
+        QWidget* m_shaderParamsTab;
         std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
         std::streambuf* m_oldBuf;
 };

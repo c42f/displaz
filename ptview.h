@@ -38,7 +38,6 @@
 #include <memory>
 
 #include <QtOpenGL/QGLWidget>
-#include <QtOpenGL/QGLShaderProgram>
 
 #ifdef _WIN32
 #include <ImathVec.h>
@@ -56,6 +55,8 @@ using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
 using Imath::C3f;
+
+class ShaderProgram;
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
@@ -132,13 +133,13 @@ class PointView : public QGLWidget
 
     public:
         PointView(QWidget *parent = NULL);
+        ~PointView();
 
         /// Load a point cloud from a file
         void loadPointFiles(const QStringList& fileNames);
         void reloadPointFiles();
 
-        const QString vertexShader() const;
-        const QString fragmentShader() const;
+        ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
 
     public slots:
         /// Set the backgroud color
@@ -146,12 +147,6 @@ class PointView : public QGLWidget
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
         void toggleCameraMode();
-        void setPointSize(double size);
-        void setExposure(double intensity);
-        void setContrast(double power);
-        void setSelector(int sel);
-        void setVertexShader(QString src);
-        void setFragmentShader(QString src);
 
     signals:
         void pointFilesLoaded(QStringList files);
@@ -184,16 +179,10 @@ class PointView : public QGLWidget
         V3d m_drawOffset;
         /// Background color for drawing
         QColor m_backgroundColor;
+        /// Option to draw bounding boxes of point clouds
         bool m_drawBoundingBoxes;
-        /// Shader parameters
-        double m_pointSize;
-        double m_exposure;
-        double m_contrast;
-        int m_selector;
-        /// Shader programs
-        std::unique_ptr<QGLShader> m_vertexShader;
-        std::unique_ptr<QGLShader> m_fragmentShader;
-        std::unique_ptr<QGLShaderProgram> m_shaderProgram;
+        /// Shader for point clouds
+        std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Point cloud data
         std::vector<std::unique_ptr<PointArrayModel> > m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load

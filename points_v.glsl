@@ -1,13 +1,13 @@
 //#line 1 "points_v.glsl"
 #version 130
 
-uniform float exposure = 1.0;
-uniform float contrast = 1.0;
+uniform float exposure = 1.0;     //# name=Exposure; range=[0.01,10000]
+uniform float contrast = 1.0;     //# name=Contrast; range=[0.01,10000]
 uniform float minPointSize = 1.0;
-uniform float maxPointSize = 10.0;
-uniform float pointSize = 1.0;
+uniform float maxPointSize = 100.0;
+uniform float pointSize = 1.0;    //# name=Point Size; min=1; max=200
 uniform vec3 cursorPos = vec3(0);
-uniform int selector = 0;
+uniform int selector = 0;         //# Selector [-1, 100]
 uniform int fileNumber = 0;
 in float intensity;
 in vec3 position;

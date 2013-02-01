@@ -29,19 +29,25 @@ void main()
             w = mix(1, w, pointScreenSize/pointScreenSizeLimit - 1);
         }
         vec2 p = 2*(gl_PointCoord - 0.5);
-        if (markerShape == 1) // shape: o
+        if (markerShape == 1) // shape: .
+        {
+            float r = length(p);
+            if (r > w)
+                discard;
+        }
+        else if (markerShape == 2) // shape: o
         {
             float r = length(p);
             if (r > 1 || r < 1 - w)
                 discard;
         }
-        else if (markerShape == 2) // shape: x
+        else if (markerShape == 3) // shape: x
         {
             w *= 0.5*sqrt2;
             if (abs(p.x + p.y) > w && abs(p.x - p.y) > w)
                 discard;
         }
-        else if (markerShape == 3) // shape: +
+        else if (markerShape == 4) // shape: +
         {
             w *= 0.5;
             if (abs(p.x) > w && abs(p.y) > w)

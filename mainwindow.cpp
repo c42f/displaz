@@ -30,16 +30,17 @@
 #include "mainwindow.h"
 #include "ptview.h"
 #include "shadereditor.h"
+#include "shader.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
 #include <QtGui/QFileDialog>
+#include <QtGui/QGridLayout>
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
 #include <QtGui/QPlainTextEdit>
 #include <QtGui/QSplitter>
-#include <QtGui/QFormLayout>
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
 
@@ -65,72 +66,13 @@ class StreamBufTextEditSink : public std::streambuf
 
 
 //------------------------------------------------------------------------------
-// Hacked version of QDoubleSpinBox which allows vertical mouse dragging to
-// change the current value.
-//
-// This is extremely handy and intuitive for some purposes, since the value in
-// the spin box mirrors the magnitude of motion of the mouse.
-class DragSpinBox : public QDoubleSpinBox
-{
-    public:
-        DragSpinBox(QWidget* parent = 0)
-            : QDoubleSpinBox(parent)
-        {
-            setMouseTracking(false);
-            setCursor(Qt::SplitVCursor);
-        }
-
-    protected:
-        void mousePressEvent(QMouseEvent* event)
-        {
-            m_pressPos = event->pos();
-            m_prevPos = event->pos();
-            event->accept();
-            setCursor(Qt::BlankCursor);
-        }
-
-        void mouseReleaseEvent(QMouseEvent* event)
-        {
-            QCursor::setPos(mapToGlobal(m_pressPos));
-            setCursor(Qt::SplitVCursor);
-        }
-
-        void mouseMoveEvent(QMouseEvent* event)
-        {
-            event->accept();
-            int y = event->pos().y();
-            int dy = -(y - m_prevPos.y());
-            m_prevPos = event->pos();
-            QRect geom = QApplication::desktop()->screenGeometry(this);
-            // Calling setPos() creates a further mouse event asynchronously;
-            // this is a hack to suppress such unwanted events:
-            if (abs(dy) > geom.height()/2)
-                return;
-            double val = value();
-            val *= exp(dy/100.0); // exponential scaling
-            //val += dy;  // linear scaling
-            setValue(val);
-            // Wrap when mouse goes off top or bottom of screen
-            QPoint gpos = mapToGlobal(event->pos());
-            if (gpos.y() == geom.top())
-                QCursor::setPos(QPoint(gpos.x(), geom.bottom()-1));
-            if (gpos.y() == geom.bottom())
-                QCursor::setPos(QPoint(gpos.x(), geom.top()+1));
-        }
-
-    private:
-        QPoint m_pressPos;
-        QPoint m_prevPos;
-};
-
-
-//------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
 PointViewerMainWindow::PointViewerMainWindow(
         const QStringList& initialPointFileNames)
     : m_pointView(0),
     m_logTextView(0),
+    m_shaderParamsTab(0),
     m_oldBuf(0)
 {
     setWindowTitle("Displaz");
@@ -202,55 +144,15 @@ PointViewerMainWindow::PointViewerMainWindow(
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
-    // Set shaders
-    QFile vertexShaderFile(":/points_v.glsl");
-    if (vertexShaderFile.open(QIODevice::ReadOnly))
-        m_pointView->setVertexShader(vertexShaderFile.readAll());
-    QFile fragmentShaderFile(":/points_f.glsl");
-    if (fragmentShaderFile.open(QIODevice::ReadOnly))
-        m_pointView->setFragmentShader(fragmentShaderFile.readAll());
 
     // Tabbed widgets
     QTabWidget* tabs = new QTabWidget(splitter);
     splitter->addWidget(tabs);
-    // Settings tab
-    QWidget* settingsTab = new QWidget(tabs);
-    tabs->addTab(settingsTab, tr("Point Display"));
-    QFormLayout* settingsLayout = new QFormLayout(settingsTab);
-    DragSpinBox* pointSizeEdit = new DragSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Point &Size:"), pointSizeEdit);
-    pointSizeEdit->setDecimals(2);
-    pointSizeEdit->setMinimum(1);
-    pointSizeEdit->setMaximum(200);
-    connect(pointSizeEdit, SIGNAL(valueChanged(double)),
-            m_pointView, SLOT(setPointSize(double)));
-    pointSizeEdit->setValue(10);
-
-    DragSpinBox* exposureEdit = new DragSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Exposure:"), exposureEdit);
-    exposureEdit->setDecimals(5);
-    exposureEdit->setMinimum(0.0001);
-    exposureEdit->setMaximum(10000);
-    connect(exposureEdit, SIGNAL(valueChanged(double)),
-            m_pointView, SLOT(setExposure(double)));
-    exposureEdit->setValue(1);
-
-    DragSpinBox* contrastEdit = new DragSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Contrast:"), contrastEdit);
-    contrastEdit->setDecimals(4);
-    contrastEdit->setMinimum(0.001);
-    contrastEdit->setMaximum(1000);
-    connect(contrastEdit, SIGNAL(valueChanged(double)),
-            m_pointView, SLOT(setContrast(double)));
-    contrastEdit->setValue(1);
-
-    QSpinBox* selectorEdit = new QSpinBox(settingsTab);
-    settingsLayout->addRow(tr("Selector:"), selectorEdit);
-    selectorEdit->setMinimum(-1);
-    selectorEdit->setMaximum(1000);
-    connect(selectorEdit, SIGNAL(valueChanged(int)),
-            m_pointView, SLOT(setSelector(int)));
-    selectorEdit->setValue(0);
+    // Shader parameters tab
+    m_shaderParamsTab = new QWidget(tabs);
+    tabs->addTab(m_shaderParamsTab, tr("Shader Parameters"));
+    connect(&m_pointView->shaderProgram(), SIGNAL(paramsChanged()),
+            this, SLOT(setupShaderParamUI()));
 
     // Shader editor
     QWidget* shaderEditorTab = new QWidget(tabs);
@@ -262,15 +164,13 @@ PointViewerMainWindow::PointViewerMainWindow(
     // vertex shader
     ShaderEditor* vertexShaderEditor = new ShaderEditor(shaderTabs);
     shaderTabs->addTab(vertexShaderEditor, tr("Vertex Shader"));
-    vertexShaderEditor->setPlainText(m_pointView->vertexShader());
     connect(vertexShaderEditor, SIGNAL(sendShader(QString)),
-            m_pointView, SLOT(setVertexShader(QString)));
+            &m_pointView->shaderProgram(), SLOT(setVertexShader(QString)));
     // fragment shader
     ShaderEditor* fragmentShaderEditor = new ShaderEditor(shaderTabs);
     shaderTabs->addTab(fragmentShaderEditor, tr("Fragment Shader"));
-    fragmentShaderEditor->setPlainText(m_pointView->fragmentShader());
     connect(fragmentShaderEditor, SIGNAL(sendShader(QString)),
-            m_pointView, SLOT(setFragmentShader(QString)));
+            &m_pointView->shaderProgram(), SLOT(setFragmentShader(QString)));
 
     // Log view tab
     m_logTextView = new QPlainTextEdit(tabs);
@@ -278,6 +178,16 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
     m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     tabs->addTab(m_logTextView, tr("Log"));
+
+    // Set shaders
+    QFile vertexShaderFile(":/points_v.glsl");
+    if (vertexShaderFile.open(QIODevice::ReadOnly))
+        m_pointView->shaderProgram().setVertexShader(vertexShaderFile.readAll());
+    QFile fragmentShaderFile(":/points_f.glsl");
+    if (fragmentShaderFile.open(QIODevice::ReadOnly))
+        m_pointView->shaderProgram().setFragmentShader(fragmentShaderFile.readAll());
+    vertexShaderEditor->setPlainText(m_pointView->shaderProgram().vertexShader());
+    fragmentShaderEditor->setPlainText(m_pointView->shaderProgram().fragmentShader());
 
     if(!initialPointFileNames.empty())
         m_pointView->loadPointFiles(initialPointFileNames);
@@ -291,9 +201,18 @@ PointViewerMainWindow::~PointViewerMainWindow()
 }
 
 
+void PointViewerMainWindow::setupShaderParamUI()
+{
+    while (QWidget* child = m_shaderParamsTab->findChild<QWidget*>())
+        delete child;
+    delete m_shaderParamsTab->layout();
+    m_pointView->shaderProgram().setupParameterUI(m_shaderParamsTab);
+}
+
+
 QSize PointViewerMainWindow::sizeHint() const
 {
-    return QSize(640,480);
+    return QSize(800,600);
 }
 
 
