@@ -39,30 +39,69 @@
 // Shader implementation
 bool Shader::compileSourceCode(const QByteArray& src)
 {
+    if (!m_shader.compileSourceCode(src))
+        return false;
     m_source = src;
     // Search source code looking for uniform variables
-    QRegExp re("uniform +([a-zA-Z_][a-zA-Z_0-9]*) +([a-zA-Z_][a-zA-Z_0-9]*) +=[^\n]*//# +([^\n]*)\\n");
-    int pos = 0;
-    while ((pos = re.indexIn(src, pos)) != -1)
+    QStringList lines = QString(src).split('\n');
+    QRegExp re("uniform +([a-zA-Z_][a-zA-Z_0-9]*) +([a-zA-Z_][a-zA-Z_0-9]*) +=(.+); *//# *(.*)",
+               Qt::CaseSensitive, QRegExp::RegExp2);
+    for (int lineIdx = 0; lineIdx < lines.size(); ++lineIdx)
     {
-        pos += re.matchedLength();
+        if (!re.exactMatch(lines[lineIdx]))
+            continue;
         QByteArray typeStr = re.cap(1).toAscii();
-//        std::cout << "typeStr = " << typeStr.data() << "\n";
+        QVariant defaultValue;
         ShaderParam::Type type;
         if (typeStr == "float")
+        {
             type = ShaderParam::Float;
+            defaultValue = re.cap(3).trimmed().toDouble();
+        }
         else if (typeStr == "int")
+        {
             type = ShaderParam::Int;
+            defaultValue = re.cap(3).trimmed().toInt();
+        }
         else if (typeStr == "vec3")
+        {
             type = ShaderParam::Vec3;
+            //defaultValue = re.cap(3).toDouble(); // FIXME
+        }
         else
             continue;
-        m_uniforms.push_back(ShaderParam(type, re.cap(2).toAscii(),
-                                         re.cap(3).toAscii()));
-//        tfm::printf("Found shader uniform variable \"%s\"\n",
-//                    m_uniforms.back().name.data());
+        ShaderParam param(type, re.cap(2).toAscii(), defaultValue);
+        QMap<QString, QString>& kvPairs = param.kvPairs;
+        QStringList pairList = re.cap(4).split(';');
+        for (int i = 0; i < pairList.size(); ++i)
+        {
+            QStringList keyAndVal = pairList[i].split('=');
+            if (keyAndVal.size() != 2)
+            {
+                tfm::printf("Could not parse metadata \"%s\" for shader variable %s\n",
+                            pairList[i].toStdString(), param.name.data());
+                continue;
+            }
+            kvPairs[keyAndVal[0].trimmed()] = keyAndVal[1].trimmed();
+        }
+        m_uniforms.push_back(param);
     }
-    return m_shader.compileSourceCode(src);
+    /*
+    // Debug: print out what we found
+    for (int i = 0; i < m_uniforms.size(); ++i)
+    {
+        tfm::printf("Found shader uniform \"%s\" with metadata\n",
+                    m_uniforms[i].name.data());
+        const QMap<QString, QString>& kvPairs = m_uniforms[i].kvPairs;
+        for (QMap<QString,QString>::const_iterator i = kvPairs.begin();
+             i != kvPairs.end(); ++i)
+        {
+            tfm::printf("  %s = \"%s\"\n", i.key().toStdString(),
+                        i.value().toStdString());
+        }
+    }
+    */
+    return true;
 }
 
 
@@ -81,94 +120,45 @@ ShaderProgram::ShaderProgram(const QGLContext * context, QObject* parent)
 void ShaderProgram::setupParameterUI(QWidget* parentWidget)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
-    DragSpinBox* pointSizeEdit = new DragSpinBox(parentWidget);
-    layout->addRow(tr("Point &Size:"), pointSizeEdit);
-    pointSizeEdit->setDecimals(2);
-    pointSizeEdit->setMinimum(1);
-    pointSizeEdit->setMaximum(200);
-    connect(pointSizeEdit, SIGNAL(valueChanged(double)),
-            this, SLOT(setPointSize(double)));
-    pointSizeEdit->setValue(10);
-
-    DragSpinBox* exposureEdit = new DragSpinBox(parentWidget);
-    layout->addRow(tr("Exposure:"), exposureEdit);
-    exposureEdit->setDecimals(5);
-    exposureEdit->setMinimum(0.0001);
-    exposureEdit->setMaximum(10000);
-    connect(exposureEdit, SIGNAL(valueChanged(double)),
-            this, SLOT(setExposure(double)));
-    exposureEdit->setValue(1);
-
-    DragSpinBox* contrastEdit = new DragSpinBox(parentWidget);
-    layout->addRow(tr("Contrast:"), contrastEdit);
-    contrastEdit->setDecimals(4);
-    contrastEdit->setMinimum(0.001);
-    contrastEdit->setMaximum(1000);
-    connect(contrastEdit, SIGNAL(valueChanged(double)),
-            this, SLOT(setContrast(double)));
-    contrastEdit->setValue(1);
-
-    QSpinBox* selectorEdit = new QSpinBox(parentWidget);
-    layout->addRow(tr("Selector:"), selectorEdit);
-    selectorEdit->setMinimum(-1);
-    selectorEdit->setMaximum(1000);
-    connect(selectorEdit, SIGNAL(valueChanged(int)),
-            this, SLOT(setSelector(int)));
-    selectorEdit->setValue(0);
-
-#if 0
-    // Collect full set of parameters
-    QFormLayout* layout = new QFormLayout(parentWidget);
-    for (int i = 0; i < params.size(); ++i)
+    for (ParamMap::iterator paramIt = m_params.begin();
+         paramIt != m_params.end(); ++paramIt)
     {
-        QWidget* editor = 0;
-        switch (params[i].type)
+        QWidget* edit = 0;
+        const ShaderParam& parDesc = paramIt.key();
+        const QVariant& parValue = paramIt.value();
+        switch (parDesc.type)
         {
             case ShaderParam::Float:
                 {
-                    DragSpinBox* box = new DragSpinBox(parentWidget);
-                    double min = 0.1;
-                    double max = 200;
-                    box->setDecimals((int)floor(log(min)/log(10) + 0.5) + 2);
-                    box->setMinimum(min);
-                    box->setMaximum(max);
-                    box->connect
-                    editor = box;
+                    DragSpinBox* spin = new DragSpinBox(parentWidget);
+                    double min = parDesc.min();
+                    spin->setDecimals((int)floor(std::max(0.0, -log(min)/log(10)) + 0.5) + 2);
+                    spin->setMinimum(min);
+                    spin->setMaximum(parDesc.max());
+                    spin->setValue(parValue.toDouble());
+                    connect(spin, SIGNAL(valueChanged(double)),
+                            this, SLOT(setUniformValue(double)));
+                    edit = spin;
                 }
                 break;
             case ShaderParam::Int:
                 {
-                    QSpinBox* box = new QSpinBox(parentWidget);
-                    layout->addRow(tr("Selector:"), box);
-                    box->setMinimum(-1);
-                    box->setMaximum(1000);
-                    editor = box;
+                    QSpinBox* spin = new QSpinBox(parentWidget);
+                    spin->setMinimum((int)parDesc.min());
+                    spin->setMaximum((int)parDesc.max());
+                    spin->setValue(parValue.toInt());
+                    connect(spin, SIGNAL(valueChanged(int)),
+                            this, SLOT(setUniformValue(int)));
+                    edit = spin;
                 }
                 break;
             default:
+                // FIXME
                 continue;
         }
-        layout->addRow(tr(params[i].uiName) + ":", editor);
-
-        DragSpinBox* pointSizeEdit = new DragSpinBox(parentWidget);
-        layout->addRow(tr(params[i].uiName) + ":", pointSizeEdit);
-        pointSizeEdit->setDecimals(2);
-        pointSizeEdit->setMinimum(1);
-        pointSizeEdit->setMaximum(200);
-        connect(pointSizeEdit, SIGNAL(valueChanged(double)),
-                this, SLOT(setPointSize(double)));
-        pointSizeEdit->setValue(10);
-
-        QSpinBox* selectorEdit = new QSpinBox(parentWidget);
-        layout->addRow(tr("Selector:"), selectorEdit);
-        selectorEdit->setMinimum(-1);
-        selectorEdit->setMaximum(1000);
-        connect(selectorEdit, SIGNAL(valueChanged(int)),
-                this, SLOT(setSelector(int)));
-        selectorEdit->setValue(0);
-
+        layout->addRow(parDesc.uiName() + ":", edit);
+        edit->setObjectName(parDesc.name);
     }
-#endif
 }
 
 
@@ -233,77 +223,91 @@ void ShaderProgram::setFragmentShader(QString src)
 }
 
 
-// For sorting shader parameters
-bool operator<(const ShaderParam& p1, const ShaderParam& p2)
+void ShaderProgram::setUniformValue(double value)
 {
-    return p1.name < p2.name;
+    if (sender())
+    {
+        ShaderParam key(ShaderParam::Float, sender()->objectName().toAscii());
+        ParamMap::iterator i = m_params.find(key);
+        if (i == m_params.end())
+        {
+            assert(0 && "Couldn't find parameter");
+            return;
+        }
+        i.value() = value;
+        emit uniformValuesChanged();
+    }
 }
 
-struct ShaderParamUniquer
+
+void ShaderProgram::setUniformValue(int value)
 {
-    bool operator()(const ShaderParam& p1, const ShaderParam& p2)
+    if (sender())
     {
-        return p1.name == p2.name;
+        ShaderParam key(ShaderParam::Int, sender()->objectName().toAscii());
+        ParamMap::iterator i = m_params.find(key);
+        if (i == m_params.end())
+        {
+            assert(0 && "Couldn't find parameter");
+            return;
+        }
+        i.value() = value;
+        emit uniformValuesChanged();
     }
-};
+}
 
 
 void ShaderProgram::setupParameters()
 {
-#if 0
-    QList<ShaderParam> params;
+    QList<ShaderParam> paramList;
     if (m_vertexShader)
-        params.append(m_vertexShader->uniforms());
+        paramList.append(m_vertexShader->uniforms());
     if (m_fragmentShader)
-        params.append(m_fragmentShader->uniforms());
-    qSort(params.begin(), params.end());
-    // Erase any duplicate names
-    params.erase(std::unique(params.begin(), params.end(),
-                             ShaderParamUniquer()), params.end());
-    if (params != m_params)
+        paramList.append(m_fragmentShader->uniforms());
+    bool changed = paramList.size() != m_params.size();
+    ParamMap newParams;
+    for (int i = 0; i < paramList.size(); ++i)
     {
-        m_params = params;
+        ParamMap::const_iterator p = m_params.find(paramList[i]);
+        if (p == m_params.end() || !(p.key() == paramList[i]))
+            changed = true;
+        QVariant value;
+        value = paramList[i].defaultValue;
+        // Keep the previous value for convenience
+        if (p != m_params.end() && p.key().type == paramList[i].type)
+            value = p.value();
+        newParams.insert(paramList[i], value);
+    }
+    if (changed)
+    {
+        m_params = newParams;
         emit paramsChanged();
     }
-#endif
-    emit paramsChanged();
 }
 
 
 void ShaderProgram::setUniforms()
 {
-    m_shaderProgram->setUniformValue("exposure", (float)m_exposure);
-    m_shaderProgram->setUniformValue("contrast", (float)m_contrast);
-    m_shaderProgram->setUniformValue("selector", m_selector);
-    m_shaderProgram->setUniformValue("pointSize", (float)m_pointSize);
-}
-
-
-void ShaderProgram::setPointSize(double size)
-{
-    m_pointSize = size;
-    emit uniformValuesChanged();
-}
-
-
-void ShaderProgram::setExposure(double intensity)
-{
-    m_exposure = intensity;
-    emit uniformValuesChanged();
-}
-
-
-void ShaderProgram::setContrast(double power)
-{
-    m_contrast = power;
-    emit uniformValuesChanged();
-}
-
-
-void ShaderProgram::setSelector(int sel)
-{
-    m_selector = sel;
-    emit uniformValuesChanged();
+    for (ParamMap::const_iterator i = m_params.begin();
+         i != m_params.end(); ++i)
+    {
+        const ShaderParam& param = i.key();
+        QVariant value = i.value();
+        switch (param.type)
+        {
+            case ShaderParam::Float:
+                m_shaderProgram->setUniformValue(param.name.data(),
+                                                 (GLfloat)value.toDouble());
+                break;
+            case ShaderParam::Int:
+                m_shaderProgram->setUniformValue(param.name.data(),
+                                                 (GLint)value.toInt());
+                break;
+            case ShaderParam::Vec3:
+                // FIXME
+                break;
+        }
+    }
 }
 
 

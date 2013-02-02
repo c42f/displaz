@@ -27,8 +27,12 @@
 //
 // (This is the BSD 3-clause license)
 
+#ifndef SHADER_H_INCLUDED
+#define SHADER_H_INCLUDED
+
 #include <memory>
 
+#include <QtCore/QMap>
 #include <QtOpenGL/QGLShader>
 #include <QtOpenGL/QGLShaderProgram>
 
@@ -42,17 +46,51 @@ struct ShaderParam
         Vec3
     };
 
-    Type type;          ///< Variable type
-    QByteArray name;    ///< Name of the variable in the shader
-    QString uiName;     ///< Name for display in parameter UI
+    Type type;             ///< Variable type
+    QByteArray name;       ///< Name of the variable in the shader
+    QVariant defaultValue; ///< Default value
+    QMap<QString,QString> kvPairs; ///< name,value pairs with additional metadata
 
-    ShaderParam(Type type=Float, QByteArray name="", QString uiName="")
-        : type(type), name(name), uiName(uiName) {}
+    QString uiName() const
+    {
+        return kvPairs.value("uiname", name);
+    }
+
+    double min() const
+    {
+        return kvPairs.value("min", "0").toDouble();
+    }
+
+    double max() const
+    {
+        return kvPairs.value("max", "100").toDouble();
+    }
+
+    ShaderParam(Type type=Float, QByteArray name="",
+                QVariant defaultValue = QVariant())
+        : type(type), name(name), defaultValue(defaultValue) {}
 };
 
 
+inline bool operator==(const ShaderParam& p1, const ShaderParam& p2)
+{
+    return p1.name == p2.name && p1.type == p2.type &&
+        p1.defaultValue == p2.defaultValue &&
+        p1.kvPairs == p2.kvPairs;
+}
+
+
+// Operator for ordering in QMap
+inline bool operator<(const ShaderParam& p1, const ShaderParam& p2)
+{
+    if (p1.name != p2.name)
+        return p1.name < p2.name;
+    return p1.type < p2.type;
+}
+
+
 /// Wrapper for QGLShader, with functionality added to parse
-/// the list of parameters.
+/// the list of uniform parameters.
 class Shader
 {
     public:
@@ -87,7 +125,13 @@ class Shader
 };
 
 
-/// Wrapper around QGLShaderProgram
+/// Wrapper around QGLShaderProgram providing parameter tweaking UI
+///
+/// When compiling a new shader, the shader source code is scanned for
+/// annotations in the comments which indicate which uniform values should be
+/// tweakable by the user.  An appropriate UI editor widget is automatically
+/// created for each such uniform value by a call to setupParameterUI().
+///
 class ShaderProgram : public QObject
 {
     Q_OBJECT
@@ -107,54 +151,28 @@ class ShaderProgram : public QObject
         void setVertexShader(QString src);
         void setFragmentShader(QString src);
 
-        void setPointSize(double size);
-        void setExposure(double intensity);
-        void setContrast(double power);
-        void setSelector(int sel);
-
     signals:
         void paramsChanged();
         void uniformValuesChanged();
 
+    private slots:
+        void setUniformValue(int value);
+        void setUniformValue(double value);
+
     private:
         void setupParameters();
 
-    private:
         const QGLContext* m_context;
         double m_pointSize;
         double m_exposure;
         double m_contrast;
         int m_selector;
+        typedef QMap<ShaderParam,QVariant> ParamMap;
+        ParamMap m_params;
         std::unique_ptr<Shader> m_vertexShader;
         std::unique_ptr<Shader> m_fragmentShader;
         std::unique_ptr<QGLShaderProgram> m_shaderProgram;
 };
 
 
-/*
-//------------------------------------------------------------------------------
-/// Holder for a shader parameter value and associated metadata
-class ShaderParamValue : public QObject
-{
-    Q_OBJECT
-
-    public:
-        ShaderParamValue(const ShaderParam& param) : m_param(param) { }
-
-        QVariant value() const { return m_value; }
-
-        const ShaderParam& paramDesc() const { return m_paramDesc; }
-
-    signals:
-        void valueChanged();
-
-    public slots:
-        void setValue(QVariant value) { return m_value; }
-
-    private:
-        ShaderParam m_param;
-        QVariant m_value;
-};
-*/
-
-
+#endif // SHADER_H_INCLUDED
