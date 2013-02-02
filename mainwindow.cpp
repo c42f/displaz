@@ -35,6 +35,7 @@
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
+#include <QtGui/QDockWidget>
 #include <QtGui/QFileDialog>
 #include <QtGui/QGridLayout>
 #include <QtGui/QMenuBar>
@@ -72,11 +73,13 @@ PointViewerMainWindow::PointViewerMainWindow(
         const QStringList& initialPointFileNames)
     : m_pointView(0),
     m_logTextView(0),
-    m_shaderParamsTab(0),
+    m_shaderParamsUI(0),
     m_oldBuf(0)
 {
     setWindowTitle("Displaz");
 
+    //--------------------------------------------------
+    // Menus
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     QAction* openAct = fileMenu->addAction(tr("&Open"));
@@ -130,37 +133,42 @@ PointViewerMainWindow::PointViewerMainWindow(
     QAction* aboutAct = helpMenu->addAction(tr("&About"));
     connect(aboutAct, SIGNAL(triggered()), this, SLOT(aboutDialog()));
 
-    // Central display area
-    QSplitter* splitter = new QSplitter(this);
-    setCentralWidget(splitter);
 
+    //--------------------------------------------------
     // Point viewer
-    m_pointView = new PointView(splitter);
-    splitter->addWidget(m_pointView);
-    splitter->setStretchFactor(0,10);
+    m_pointView = new PointView(this);
+    setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
-
-    // Tabbed widgets
-    QTabWidget* tabs = new QTabWidget(splitter);
-    splitter->addWidget(tabs);
-    // Shader parameters tab
-    m_shaderParamsTab = new QWidget(tabs);
-    tabs->addTab(m_shaderParamsTab, tr("Shader Parameters"));
     connect(&m_pointView->shaderProgram(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
 
-    // Shader editor
-    QWidget* shaderEditorTab = new QWidget(tabs);
-    QGridLayout* shaderEditorTabLayout = new QGridLayout(shaderEditorTab);
-    shaderEditorTabLayout->setContentsMargins(2,2,2,2);
-    tabs->addTab(shaderEditorTab, tr("Shaders"));
-    QTabWidget* shaderTabs = new QTabWidget(shaderEditorTab);
-    shaderEditorTabLayout->addWidget(shaderTabs, 0, 0);
+    //--------------------------------------------------
+    // Docked widgets
+    // Shader parameters UI
+    QDockWidget* shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
+    shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
+                                  QDockWidget::DockWidgetClosable);
+    shaderParamsDock->setAllowedAreas(Qt::LeftDockWidgetArea |
+                                      Qt::RightDockWidgetArea);
+    m_shaderParamsUI = new QWidget(shaderParamsDock);
+    shaderParamsDock->setWidget(m_shaderParamsUI);
+
+    // Shader editor UI
+    QDockWidget* shaderEditorDock = new QDockWidget(tr("Shader Editor"), this);
+    shaderEditorDock->setFeatures(QDockWidget::DockWidgetMovable |
+                                  QDockWidget::DockWidgetClosable);
+    shaderEditorDock->setAllowedAreas(Qt::LeftDockWidgetArea |
+                                      Qt::RightDockWidgetArea);
+    QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
+    QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
+    shaderEditorLayout->setContentsMargins(2,2,2,2);
+    QTabWidget* shaderTabs = new QTabWidget(shaderEditorUI);
+    shaderEditorLayout->addWidget(shaderTabs, 0, 0);
     // vertex shader
     ShaderEditor* vertexShaderEditor = new ShaderEditor(shaderTabs);
     shaderTabs->addTab(vertexShaderEditor, tr("Vertex Shader"));
@@ -171,13 +179,31 @@ PointViewerMainWindow::PointViewerMainWindow(
     shaderTabs->addTab(fragmentShaderEditor, tr("Fragment Shader"));
     connect(fragmentShaderEditor, SIGNAL(sendShader(QString)),
             &m_pointView->shaderProgram(), SLOT(setFragmentShader(QString)));
+    shaderEditorDock->setWidget(shaderEditorUI);
 
-    // Log view tab
-    m_logTextView = new QPlainTextEdit(tabs);
+    // Log viewer UI
+    QDockWidget* logDock = new QDockWidget(tr("Log"), this);
+    logDock->setFeatures(QDockWidget::DockWidgetMovable |
+                         QDockWidget::DockWidgetClosable);
+    logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    m_logTextView = new QPlainTextEdit(logDock);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
     m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
-    tabs->addTab(m_logTextView, tr("Log"));
+    logDock->setWidget(m_logTextView);
+
+    // Set up docked widgets
+    addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
+    addDockWidget(Qt::RightDockWidgetArea, shaderEditorDock);
+    addDockWidget(Qt::RightDockWidgetArea, logDock);
+    tabifyDockWidget(shaderParamsDock, shaderEditorDock);
+    shaderEditorDock->setVisible(false);
+
+    // Add dock widget toggles to view menu
+    viewMenu->addSeparator();
+    viewMenu->addAction(shaderParamsDock->toggleViewAction());
+    viewMenu->addAction(shaderEditorDock->toggleViewAction());
+    viewMenu->addAction(logDock->toggleViewAction());
 
     // Set shaders
     QFile vertexShaderFile(":/points_v.glsl");
@@ -203,10 +229,10 @@ PointViewerMainWindow::~PointViewerMainWindow()
 
 void PointViewerMainWindow::setupShaderParamUI()
 {
-    while (QWidget* child = m_shaderParamsTab->findChild<QWidget*>())
+    while (QWidget* child = m_shaderParamsUI->findChild<QWidget*>())
         delete child;
-    delete m_shaderParamsTab->layout();
-    m_pointView->shaderProgram().setupParameterUI(m_shaderParamsTab);
+    delete m_shaderParamsUI->layout();
+    m_pointView->shaderProgram().setupParameterUI(m_shaderParamsUI);
 }
 
 

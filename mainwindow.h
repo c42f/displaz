@@ -81,7 +81,7 @@ class PointViewerMainWindow : public QMainWindow
         PointView* m_pointView;
         QDir m_currFileDir;
         QPlainTextEdit* m_logTextView;
-        QWidget* m_shaderParamsTab;
+        QWidget* m_shaderParamsUI;
         std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
         std::streambuf* m_oldBuf;
 };
