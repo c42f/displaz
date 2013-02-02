@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
     int maxPointCount = 10000000;
 
     ap.options(
-        "qtlasview - view a LAS point cloud\n"
-        "Usage: qtlasview [opts] file1.las [file2.las ...]",
+        "displaz - view a LAS point cloud\n"
+        "Usage: displaz [opts] file1.las [file2.las ...]",
         "%*", storeFileName, "",
         "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
         NULL
