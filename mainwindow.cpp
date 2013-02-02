@@ -189,7 +189,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     m_logTextView = new QPlainTextEdit(logDock);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
-    m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
+    //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     logDock->setWidget(m_logTextView);
 
     // Set up docked widgets
