@@ -196,7 +196,7 @@ PointViewerMainWindow::PointViewerMainWindow(
     addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
     addDockWidget(Qt::RightDockWidgetArea, shaderEditorDock);
     addDockWidget(Qt::RightDockWidgetArea, logDock);
-    tabifyDockWidget(shaderParamsDock, shaderEditorDock);
+    //tabifyDockWidget(shaderParamsDock, shaderEditorDock);
     shaderEditorDock->setVisible(false);
 
     // Add dock widget toggles to view menu
