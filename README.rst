@@ -3,34 +3,37 @@ Displaz - Yet another LiDAR point viewer
 ========================================
 
 Displaz is a viewer application for displaying LiDAR points using qt and
-OpenGL.  It currently supports the las and laz formats via laslib (see
-http://www.cs.unc.edu/~isenburg/lastools/).
+OpenGL.  It supports the .las and .laz formats via laslib.
 
 
 Building
 --------
 
 Displaz should build on both windows and linux using the cmake-based build
-system.  It has quite a few dependencies at the moment:
+system.  Before building, you need to install the following libraries:
 
-* Qt4
-* OpenGL
-* LASlib (note: not the same as liblas!)
+* Qt 4.7
+* OpenGL (requires glsl 1.3)
+* LASlib see http://www.cs.unc.edu/~isenburg/lastools
+  (note that this library is distinct from liblas!)
 * IlmBase (will possibly remove this dependency)
 
 
 Todo
 ----
 
-* Indexing for faster rendering
-* General point attributes
-* Render modes
-* Shader pipeline
-* Shader editing
-* Persistent settings
-* Use liblas (?)
-* Measurement tool
-* Select point subset
-* Investigate approximate ambient occlusion to render points
-* Socket mode for updating point sets
-* Multithreaded point cloud loading
+* Rendering
+  * Indexing for faster rendering
+  * Threaded rendering for better responsiveness
+  * Investigate approximate ambient occlusion (?)
+* GUI
+  * Persistent settings
+  * Measurement tool
+  * Syntax highlighting in editor
+  * General shader parameter UI
+* Point IO
+  * General point attributes
+  * Option to use liblas (?)
+  * Socket mode for updating point sets
+  * Threaded point cloud loading
+
