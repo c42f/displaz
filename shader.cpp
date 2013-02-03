@@ -132,7 +132,7 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                 {
                     DragSpinBox* spin = new DragSpinBox(parentWidget);
                     double min = parDesc.min();
-                    spin->setDecimals((int)floor(std::max(0.0, -log(min)/log(10)) + 0.5) + 2);
+                    spin->setDecimals((int)floor(std::max(0.0, -log(min)/log(10.0)) + 0.5) + 2);
                     spin->setMinimum(min);
                     spin->setMaximum(parDesc.max());
                     spin->setValue(parValue.toDouble());

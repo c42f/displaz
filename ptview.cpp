@@ -47,7 +47,6 @@
 //#include <QtOpenGL/QGLBuffer>
 
 #ifdef _WIN32
-#   define NOMINMAX
 #   include <ImathVec.h>
 #   include <ImathMatrix.h>
 #else

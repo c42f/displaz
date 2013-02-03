@@ -64,6 +64,8 @@ endif()
 
 if(NOT WIN32)
     set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
+else()
+    add_definitions(-DNOMINMAX)
 endif()
 
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
