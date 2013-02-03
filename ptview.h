@@ -68,8 +68,7 @@ class PointArrayModel : public QObject
         PointArrayModel();
 
         /// Load points from a file
-        bool loadPointFile(QString fileName, size_t maxPointCount,
-                           const C3f& color);
+        bool loadPointFile(QString fileName, size_t maxPointCount);
 
         QString fileName() const { return m_fileName; }
 
@@ -88,6 +87,8 @@ class PointArrayModel : public QObject
         /// Return point color, or NULL if no color channel is present
         const C3f* color() const { return m_color.get(); }
         const float* intensity() const { return m_intensity.get(); }
+        //const unsigned char* returnNumber() const { return m_returnNumber.get(); }
+        //const unsigned char* numReturns() const { return m_numReturns.get(); }
 
         /// Return index of closest point to the given position
         ///

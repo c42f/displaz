@@ -190,6 +190,7 @@ void ShaderProgram::setVertexShader(QString src)
     m_vertexShader = std::move(shader);
     m_shaderProgram = std::move(newProgram);
     setupParameters();
+    emit shaderChanged();
 }
 
 
@@ -220,6 +221,7 @@ void ShaderProgram::setFragmentShader(QString src)
     m_fragmentShader = std::move(shader);
     m_shaderProgram = std::move(newProgram);
     setupParameters();
+    emit shaderChanged();
 }
 
 
@@ -227,6 +229,8 @@ void ShaderProgram::setUniformValue(double value)
 {
     if (sender())
     {
+        // Detect which uniform we're setting based on the sender's
+        // name... ick!
         ShaderParam key(ShaderParam::Float, sender()->objectName().toAscii());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
@@ -244,6 +248,8 @@ void ShaderProgram::setUniformValue(int value)
 {
     if (sender())
     {
+        // Detect which uniform we're setting based on the sender's
+        // name... ick!
         ShaderParam key(ShaderParam::Int, sender()->objectName().toAscii());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())

@@ -147,8 +147,7 @@ PointArrayModel::PointArrayModel()
 { }
 
 
-bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
-                                    const C3f& color)
+bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
 {
     m_fileName = fileName;
     LASreadOpener lasReadOpener;
@@ -181,17 +180,20 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
     m_bbox.makeEmpty();
     // Iterate over all particles & pull in the data.
     V3f* outP = m_P.get();
-    //V3f* outCol = m_color.get();
     float* outIntens = m_intensity.get();
     size_t readCount = 0;
     size_t nextBlock = 1;
     size_t nextStore = 1;
     V3d Psum(0);
-    //C3f cols[] = {C3f(1,1,1), C3f(1,1,0), C3f(1,0,1), C3f(0,1,1)};
-    while(lasReader->read_point())
+    if (!lasReader->read_point())
+        return false;
+    const LASpoint& point = lasReader->point;
+    if (point.have_rgb)
+        m_color.reset(new C3f[m_npoints]);
+    V3f* outCol = m_color.get();
+    do
     {
         // Read a point from the las file
-        const LASpoint& point = lasReader->point;
         ++readCount;
         if(readCount % 10000 == 0)
             emit loadedPoints(double(readCount)/totPoints);
@@ -207,9 +209,9 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
         *outIntens++ = point.intensity;
         // Color by point source ID
         //int id = point.point_source_ID;
-        //*outCol++ = cols[id % 3];
         // Color by point RGB
-        //*outCol++ = (1.0f/256) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
+        if (outCol)
+            *outCol++ = (1.0f/256) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
         // Figure out which point will be the next stored point.
         nextBlock += decimate;
         nextStore = nextBlock;
@@ -221,6 +223,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount,
                 nextStore = totPoints;
         }
     }
+    while(lasReader->read_point());
     m_centroid = (1.0/totPoints) * Psum;
     lasReader->close();
     tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
@@ -278,6 +281,8 @@ PointView::PointView(QWidget *parent)
     m_shaderProgram.reset(new ShaderProgram(context()));
     connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
             this, SLOT(updateGL()));
+    connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
+            this, SLOT(updateGL()));
 }
 
 PointView::~PointView() { }
@@ -291,13 +296,11 @@ void PointView::loadPointFiles(const QStringList& fileNames)
         return;
     }
     size_t maxCount = m_maxPointCount / fileNames.size();
-    C3f colors[] = {C3f(1,1,1), C3f(1,0.5,0.5), C3f(0.5,1,0.5), C3f(0.5,0.5,1)};
     QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
-        if(points->loadPointFile(fileNames[i], maxCount,
-            colors[i%(sizeof(colors)/sizeof(C3f))]) && !points->empty())
+        if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
         {
             m_points.push_back(std::move(points));
             successfullyLoaded.push_back(fileNames[i]);
@@ -384,7 +387,6 @@ void PointView::paintGL()
         for(size_t i = 0; i < m_points.size(); ++i)
             drawPoints(*m_points[i], i, m_drawOffset);
     }
-
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
 }
@@ -606,6 +608,9 @@ void PointView::drawPoints(const PointArrayModel& points,
     prog.setUniformValue("fileNumber", fileNumber);
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("intensity");
+    bool useColor = points.color();
+    if (useColor)
+        prog.enableAttributeArray("color");
 //    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
 //    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
 //    intensityBuf.create();
@@ -619,6 +624,8 @@ void PointView::drawPoints(const PointArrayModel& points,
     {
         prog.setAttributeArray("intensity", points.intensity() + i, 1);
         prog.setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
+        if (useColor)
+            prog.setAttributeArray("color", (GLfloat*)(points.color() + i), 3);
         int ndraw = (int)std::min(points.size() - i, chunkSize);
         glDrawArrays(GL_POINTS, 0, ndraw);
     }

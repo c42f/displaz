@@ -30,7 +30,6 @@ Todo
   * Persistent settings
   * Measurement tool
   * Syntax highlighting in editor
-  * General shader parameter UI
 * Point IO
   * General point attributes
   * Option to use liblas (?)

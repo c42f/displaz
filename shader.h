@@ -139,20 +139,44 @@ class ShaderProgram : public QObject
     public:
         ShaderProgram(const QGLContext * context, QObject* parent = 0);
 
+        /// Access to the underlying shader program
         QGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
 
+        /// Set up UI for the shader
         void setupParameterUI(QWidget* parentWidget);
+        /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
 
+        /// Get vertex shader source code
         QByteArray vertexShader() const;
+        /// Get fragment shader source code
         QByteArray fragmentShader() const;
 
     public slots:
+        /// Set, compile and link vertex shader source.
+        ///
+        /// Retain old shader if compilation or linking fails
         void setVertexShader(QString src);
+
+        /// Set, compile and link fragment shader source.
+        ///
+        /// Retain old shader if compilation or linking fails
         void setFragmentShader(QString src);
 
     signals:
+        /// Emitted when the list of user-settable uniform parameters to this
+        /// shader change.
+        ///
+        /// The listening object should take this as a hint to update the UI.
         void paramsChanged();
+
+        /// Emitted when the shader source code is updated.
+        void shaderChanged();
+
+        /// Emitted when a value of one of the current parameters changes
+        ///
+        /// Listeners should take this as a hint that the scene should be
+        /// updated.
         void uniformValuesChanged();
 
     private slots:
