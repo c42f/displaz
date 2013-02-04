@@ -210,7 +210,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
         //int id = point.point_source_ID;
         // Color by point RGB
         if (outCol)
-            *outCol++ = (1.0f/256) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
+            *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
         // Figure out which point will be the next stored point.
         nextBlock += decimate;
         nextStore = nextBlock;
