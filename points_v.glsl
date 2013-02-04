@@ -23,8 +23,10 @@ void main()
     // Point position & size
     vec4 eyeCoord = gl_ModelViewMatrix * vec4(position,1.0);
     gl_Position = gl_ProjectionMatrix * eyeCoord;
-    float r = length(position.xy - cursorPos.xy)/trimRadius;
-    pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * (1 - r*r*r), minPointSize, maxPointSize);
+    float r = length(position.xy - cursorPos.xy);
+    float trimFalloffLen = min(5, trimRadius/2);
+    float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
+    pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale, minPointSize, maxPointSize);
     gl_PointSize = pointScreenSize;
     // Compute vertex color
     if (colorMode == 1)
