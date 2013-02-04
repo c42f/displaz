@@ -252,6 +252,25 @@ size_t PointArrayModel::closestPoint(V3d pos, double* distance) const
 }
 
 
+void PointArrayModel::draw(QGLShaderProgram& prog, const V3d& cameraPos) const
+{
+    prog.enableAttributeArray("position");
+    prog.enableAttributeArray("intensity");
+    if (m_color)
+        prog.enableAttributeArray("color");
+    size_t chunkSize = 1000000;
+    for (size_t i = 0; i < m_npoints; i += chunkSize)
+    {
+        prog.setAttributeArray("intensity", m_intensity.get() + i, 1);
+        prog.setAttributeArray("position", (const GLfloat*)(m_P.get() + i), 3);
+        if (m_color)
+            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + i), 3);
+        int ndraw = (int)std::min(m_npoints - i, chunkSize);
+        glDrawArrays(GL_POINTS, 0, ndraw);
+    }
+}
+
+
 //------------------------------------------------------------------------------
 PointView::PointView(QWidget *parent)
     : QGLWidget(parent),
@@ -602,14 +621,9 @@ void PointView::drawPoints(const PointArrayModel& points,
     m_shaderProgram->setUniforms();
     //prog.setUniformValue("modelViewMatrix", ); // TODO
     //prog.setUniformValue("projectionMatrix", );
-    V3f relCursor = m_cursorPos - m_drawOffset;
+    V3f relCursor = m_cursorPos - points.offset();
     prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
     prog.setUniformValue("fileNumber", fileNumber);
-    prog.enableAttributeArray("position");
-    prog.enableAttributeArray("intensity");
-    bool useColor = points.color();
-    if (useColor)
-        prog.enableAttributeArray("color");
 //    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
 //    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
 //    intensityBuf.create();
@@ -618,16 +632,7 @@ void PointView::drawPoints(const PointArrayModel& points,
 //    intensityBuf.write(0, points.intensity() + i, ndraw);
 //    prog.setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
 //    intensityBuf.release();
-    size_t chunkSize = 1000000;
-    for (size_t i = 0; i < points.size(); i += chunkSize)
-    {
-        prog.setAttributeArray("intensity", points.intensity() + i, 1);
-        prog.setAttributeArray("position", (GLfloat*)(points.P() + i), 3);
-        if (useColor)
-            prog.setAttributeArray("color", (GLfloat*)(points.color() + i), 3);
-        int ndraw = (int)std::min(points.size() - i, chunkSize);
-        glDrawArrays(GL_POINTS, 0, ndraw);
-    }
+    points.draw(prog, m_cursorPos);
     prog.release();
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();

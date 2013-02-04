@@ -57,6 +57,7 @@ using Imath::V2f;
 using Imath::C3f;
 
 class ShaderProgram;
+class QGLShaderProgram;
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
@@ -107,6 +108,12 @@ class PointArrayModel : public QObject
 
         /// Get the offset which should be added to P to get absolute position
         V3d offset() const { return m_offset; }
+
+        /// Draw points using given openGL shader program
+        ///
+        /// Requires that prog is already bound and any necessary uniform
+        /// variables have been set.
+        void draw(QGLShaderProgram& prog, const V3d& cameraPos) const;
 
     signals:
         /// Emitted progress is made loading points
