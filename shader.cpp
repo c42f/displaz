@@ -117,15 +117,24 @@ ShaderProgram::ShaderProgram(const QGLContext * context, QObject* parent)
 { }
 
 
+bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
+                       const QPair<ShaderParam,QVariant>& p2)
+{
+    return p1.first.ordering < p2.first.ordering;
+}
+
 void ShaderProgram::setupParameterUI(QWidget* parentWidget)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
-    for (ParamMap::iterator paramIt = m_params.begin();
-         paramIt != m_params.end(); ++paramIt)
+    QList<QPair<ShaderParam,QVariant> > paramsOrdered;
+    for (ParamMap::iterator p = m_params.begin(); p != m_params.end(); ++p)
+        paramsOrdered.push_back(qMakePair(p.key(), p.value()));
+    qSort(paramsOrdered.begin(), paramsOrdered.end(), paramOrderingLess);
+    for (int i = 0; i < paramsOrdered.size(); ++i)
     {
         QWidget* edit = 0;
-        const ShaderParam& parDesc = paramIt.key();
-        const QVariant& parValue = paramIt.value();
+        const ShaderParam& parDesc = paramsOrdered[i].first;
+        const QVariant& parValue = paramsOrdered[i].second;
         switch (parDesc.type)
         {
             case ShaderParam::Float:
@@ -274,6 +283,7 @@ void ShaderProgram::setupParameters()
     ParamMap newParams;
     for (int i = 0; i < paramList.size(); ++i)
     {
+        paramList[i].ordering = i;
         ParamMap::const_iterator p = m_params.find(paramList[i]);
         if (p == m_params.end() || !(p.key() == paramList[i]))
             changed = true;
@@ -282,7 +292,8 @@ void ShaderProgram::setupParameters()
         // Keep the previous value for convenience
         if (p != m_params.end() && p.key().type == paramList[i].type)
             value = p.value();
-        newParams.insert(paramList[i], value);
+        if (!newParams.contains(paramList[i]))
+            newParams.insert(paramList[i], value);
     }
     if (changed)
     {
