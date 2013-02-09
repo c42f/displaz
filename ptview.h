@@ -129,6 +129,8 @@ class PointArrayModel : public QObject
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<float[]> m_intensity;
         std::unique_ptr<C3f[]> m_color;
+        std::unique_ptr<unsigned char[]> m_returnIndex;
+        std::unique_ptr<unsigned char[]> m_numberOfReturns;
 };
 
 

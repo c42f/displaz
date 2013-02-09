@@ -173,13 +173,16 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
     m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y,
                           lasReader->header.min_z);
     m_P.reset(new V3f[m_npoints]);
-    // TODO: Look for color channel?
     m_color.reset(new C3f[m_npoints]);
     m_intensity.reset(new float[m_npoints]);
+    m_returnIndex.reset(new unsigned char[m_npoints]);
+    m_numberOfReturns.reset(new unsigned char[m_npoints]);
     m_bbox.makeEmpty();
     // Iterate over all particles & pull in the data.
     V3f* outP = m_P.get();
     float* outIntens = m_intensity.get();
+    unsigned char* returnIndex = m_returnIndex.get();
+    unsigned char* numReturns = m_numberOfReturns.get();
     size_t readCount = 0;
     size_t nextBlock = 1;
     size_t nextStore = 1;
@@ -204,11 +207,11 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
         // Store the point
         *outP++ = P - m_offset;
         // float intens = float(point.scan_angle_rank) / 40;
-        //float intens = float(point.intensity) / 400;
         *outIntens++ = point.intensity;
-        // Color by point source ID
-        //int id = point.point_source_ID;
-        // Color by point RGB
+        *returnIndex++ = point.return_number;
+        *numReturns++ = point.number_of_returns_of_given_pulse;
+        // int id = point.point_source_ID;
+        // Extract point RGB
         if (outCol)
             *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
         // Figure out which point will be the next stored point.
@@ -256,6 +259,8 @@ void PointArrayModel::draw(QGLShaderProgram& prog, const V3d& cameraPos) const
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("intensity");
+    prog.enableAttributeArray("returnIndex");
+    prog.enableAttributeArray("numberOfReturns");
     if (m_color)
         prog.enableAttributeArray("color");
     size_t chunkSize = 1000000;
@@ -263,6 +268,8 @@ void PointArrayModel::draw(QGLShaderProgram& prog, const V3d& cameraPos) const
     {
         prog.setAttributeArray("intensity", m_intensity.get() + i, 1);
         prog.setAttributeArray("position", (const GLfloat*)(m_P.get() + i), 3);
+        prog.setAttributeArray("returnIndex", GL_UNSIGNED_BYTE, m_returnIndex.get() + i, 1);
+        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + i, 1);
         if (m_color)
             prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + i), 3);
         int ndraw = (int)std::min(m_npoints - i, chunkSize);
