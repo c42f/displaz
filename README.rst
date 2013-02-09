@@ -30,9 +30,12 @@ Todo
   * Persistent settings
   * Measurement tool
   * Syntax highlighting in editor
+  * Hide and wrap cursor while dragging camera
 * Point IO
   * General point attributes
   * Option to use liblas (?)
   * Socket mode for updating point sets
   * Threaded point cloud loading
 
+* Bugs
+  * Camera moves on reload
