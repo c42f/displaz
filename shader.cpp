@@ -33,6 +33,7 @@
 #include "dragspinbox.h"
 
 #include <QtGui/QFormLayout>
+#include <QtGui/QComboBox>
 
 
 //------------------------------------------------------------------------------
@@ -151,7 +152,20 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                 }
                 break;
             case ShaderParam::Int:
+                if (parDesc.kvPairs.contains("enum"))
                 {
+                    // Parameter is an enumeration variable
+                    QComboBox* box = new QComboBox(parentWidget);
+                    QStringList names = parDesc.kvPairs.value("enum").split('|');
+                    box->insertItems(0, names);
+                    box->setCurrentIndex(parValue.toInt());
+                    connect(box, SIGNAL(currentIndexChanged(int)),
+                            this, SLOT(setUniformValue(int)));
+                    edit = box;
+                }
+                else
+                {
+                    // Parameter is a freely ranging integer
                     QSpinBox* spin = new QSpinBox(parentWidget);
                     spin->setMinimum((int)parDesc.min());
                     spin->setMaximum((int)parDesc.max());

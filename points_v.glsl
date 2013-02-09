@@ -5,7 +5,7 @@ uniform float trimRadius = 10000;  //# uiname=Trim Radius; min=1; max=10000
 uniform int selector = 0;          //# uiname=File Selector; min=-1; max=100
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; min=0; max=3
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns
 uniform float minPointSize = 0;
 uniform float maxPointSize = 100.0;
 uniform vec3 cursorPos = vec3(0);
