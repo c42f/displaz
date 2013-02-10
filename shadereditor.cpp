@@ -33,6 +33,10 @@ ShaderEditor::ShaderEditor(QWidget* parent)
     : QPlainTextEdit(parent)
 {
     setLineWrapMode(QPlainTextEdit::NoWrap);
+    // Use fixed-width font
+    QFont font("Courier");
+    font.setStyleHint(QFont::TypeWriter);
+    setFont(font);
 }
 
 

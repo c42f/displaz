@@ -194,7 +194,7 @@ PointViewerMainWindow::PointViewerMainWindow(
 
     // Set up docked widgets
     addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
-    addDockWidget(Qt::RightDockWidgetArea, shaderEditorDock);
+    addDockWidget(Qt::LeftDockWidgetArea, shaderEditorDock);
     addDockWidget(Qt::RightDockWidgetArea, logDock);
     //tabifyDockWidget(shaderParamsDock, shaderEditorDock);
     shaderEditorDock->setVisible(false);
