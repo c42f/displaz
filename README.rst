@@ -33,9 +33,9 @@ Todo
   * Hide and wrap cursor while dragging camera
 * Point IO
   * General point attributes
-  * Option to use liblas (?)
+  * Option to use laszip directly (?)
   * Socket mode for updating point sets
   * Threaded point cloud loading
 
 * Bugs
-  * Camera moves on reload
+  ...

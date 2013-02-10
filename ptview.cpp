@@ -178,7 +178,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
     m_returnIndex.reset(new unsigned char[m_npoints]);
     m_numberOfReturns.reset(new unsigned char[m_npoints]);
     m_bbox.makeEmpty();
-    // Iterate over all particles & pull in the data.
+    // Iterate over all points & pull in the data.
     V3f* outP = m_P.get();
     float* outIntens = m_intensity.get();
     unsigned char* returnIndex = m_returnIndex.get();
@@ -312,14 +312,11 @@ PointView::PointView(QWidget *parent)
 
 PointView::~PointView() { }
 
-void PointView::loadPointFiles(const QStringList& fileNames)
+
+void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
+                                   const QStringList& fileNames) const
 {
-    m_points.clear();
-    if(fileNames.empty())
-    {
-        updateGL();
-        return;
-    }
+    pointArrays.clear();
     size_t maxCount = m_maxPointCount / fileNames.size();
     QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
@@ -327,28 +324,43 @@ void PointView::loadPointFiles(const QStringList& fileNames)
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
         if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
         {
-            m_points.push_back(std::move(points));
+            pointArrays.push_back(std::move(points));
             successfullyLoaded.push_back(fileNames[i]);
             emit pointFilesLoaded(successfullyLoaded);
         }
     }
-    if(m_points.empty())
-        return;
-    m_cursorPos = m_points[0]->centroid();
-    m_drawOffset = m_points[0]->offset();
-    m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-    double diag = (m_points[0]->boundingBox().max - m_points[0]->boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(diag*0.7);
+}
+
+
+void PointView::loadPointFiles(const QStringList& fileNames)
+{
+    loadPointFilesImpl(m_points, fileNames);
+    if(!m_points.empty())
+    {
+        m_cursorPos = m_points[0]->centroid();
+        m_drawOffset = m_points[0]->offset();
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+        double diag = (m_points[0]->boundingBox().max -
+                       m_points[0]->boundingBox().min).length();
+        m_camera.setEyeToCenterDistance(diag*0.7);
+    }
     updateGL();
 }
 
 
 void PointView::reloadPointFiles()
 {
+    m_drawOffset = m_points[0]->offset();
     QStringList fileNames;
     for(size_t i = 0; i < m_points.size(); ++i)
         fileNames << m_points[i]->fileName();
-    loadPointFiles(fileNames);
+    loadPointFilesImpl(m_points, fileNames);
+    if(!m_points.empty())
+    {
+        m_drawOffset = m_points[0]->offset();
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    }
+    updateGL();
 }
 
 

@@ -159,7 +159,7 @@ class PointView : public QGLWidget
         void toggleCameraMode();
 
     signals:
-        void pointFilesLoaded(QStringList files);
+        void pointFilesLoaded(QStringList files) const;
 
     protected:
         // Qt OpenGL callbacks
@@ -174,6 +174,10 @@ class PointView : public QGLWidget
         void keyPressEvent(QKeyEvent* event);
 
     private:
+        typedef std::vector<std::unique_ptr<PointArrayModel> > PointArrayVec;
+        void loadPointFilesImpl(PointArrayVec& pointArrays,
+                                const QStringList& fileNames) const;
+
         void drawCursor(const V3f& P) const;
         void drawPoints(const PointArrayModel& points,
                         int fileNumber, const V3d& drawOffset) const;
@@ -194,7 +198,7 @@ class PointView : public QGLWidget
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Point cloud data
-        std::vector<std::unique_ptr<PointArrayModel> > m_points;
+        PointArrayVec m_points;
         size_t m_maxPointCount; ///< Maximum desired number of points to load
 };
 
