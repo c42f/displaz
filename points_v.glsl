@@ -19,7 +19,6 @@ in float numberOfReturns;
 
 flat out float pointScreenSize;
 flat out vec4 pointColor;
-flat out int markerShape;
 
 float tonemap(float x, float exposure, float contrast)
 {
@@ -37,6 +36,8 @@ void main()
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
     pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale, minPointSize, maxPointSize);
+    if (selector != fileNumber)
+        pointScreenSize = 0;
     gl_PointSize = pointScreenSize;
     // Compute vertex color
     if (colorMode == 0)
@@ -47,9 +48,5 @@ void main()
         pointColor = vec4(returnIndex*51.0*exposure * vec3(1), 1);
     else if (colorMode == 3)
         pointColor = vec4(numberOfReturns*51.0*exposure * vec3(1), 1);
-    if (selector == fileNumber)
-        markerShape = 0;
-    else
-        markerShape = -1;
 }
 

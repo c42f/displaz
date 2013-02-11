@@ -3,9 +3,9 @@
 uniform float markerWidth = 0.3;
 uniform int selector = 0;
 uniform int fileNumber = 0;
+uniform int markerShape = 0;
 
 flat in float pointScreenSize;
-flat in int markerShape;
 flat in vec4 pointColor;
 
 out vec4 fragColor;
