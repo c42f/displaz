@@ -5,7 +5,7 @@ uniform float trimRadius = 10000;  //# uiname=Trim Radius; min=1; max=10000
 uniform int selector = 0;          //# uiname=File Selector; min=-1; max=100
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source
 uniform float minPointSize = 0;
 uniform float maxPointSize = 100.0;
 uniform vec3 cursorPos = vec3(0);
@@ -16,6 +16,7 @@ in vec3 color;
 // FIXME: Should avoid turning these two into floats!
 in float returnIndex;
 in float numberOfReturns;
+in float pointSourceId;
 
 flat out float pointScreenSize;
 flat out vec4 pointColor;
@@ -48,5 +49,13 @@ void main()
         pointColor = vec4(returnIndex*51.0*exposure * vec3(1), 1);
     else if (colorMode == 3)
         pointColor = vec4(numberOfReturns*51.0*exposure * vec3(1), 1);
+    else if (colorMode == 4)
+    {
+        int id = int(pointSourceId*255);
+        if (id == 1)
+           pointColor = vec4(1,1,0,1);
+        else
+           pointColor = vec4(1,0,1,1);
+    }
 }
 
