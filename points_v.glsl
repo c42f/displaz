@@ -19,7 +19,8 @@ in float numberOfReturns;
 in float pointSourceId;
 
 flat out float pointScreenSize;
-flat out vec4 pointColor;
+flat out vec3 pointColor;
+flat out int markerShape;
 
 float tonemap(float x, float exposure, float contrast)
 {
@@ -40,22 +41,29 @@ void main()
     if (selector != fileNumber)
         pointScreenSize = 0;
     gl_PointSize = pointScreenSize;
+    markerShape = 0;
     // Compute vertex color
     if (colorMode == 0)
-        pointColor = vec4(tonemap(intensity/400.0, exposure, contrast)*vec3(1), 1);
+        pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
     else if (colorMode == 1)
-        pointColor = vec4(contrast*(exposure*color-vec3(0.5)) + vec3(0.5), 1);
+        pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)
-        pointColor = vec4(returnIndex*51.0*exposure * vec3(1), 1);
+        pointColor = returnIndex*51.0*exposure * vec3(1);
     else if (colorMode == 3)
-        pointColor = vec4(numberOfReturns*51.0*exposure * vec3(1), 1);
+        pointColor = numberOfReturns*51.0*exposure * vec3(1);
     else if (colorMode == 4)
     {
         int id = int(pointSourceId*255);
         if (id == 1)
-           pointColor = vec4(1,1,0,1);
+        {
+           pointColor = vec3(1,1,0);
+           markerShape = 2;
+        }
         else
-           pointColor = vec4(1,0,1,1);
+        {
+           pointColor = vec3(1,0,1);
+           markerShape = 3;
+        }
     }
 }
 
