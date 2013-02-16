@@ -39,105 +39,15 @@
 
 #include <QtOpenGL/QGLWidget>
 
-#ifdef _WIN32
-#include <ImathVec.h>
-#include <ImathBox.h>
-#include <ImathColor.h>
-#else
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
-#include <OpenEXR/ImathColor.h>
-#endif
-
 #include "interactivecamera.h"
+#include "pointarray.h"
 
-using Imath::V3d;
-using Imath::V3f;
-using Imath::V2f;
-using Imath::C3f;
-
-class ShaderProgram;
 class QGLShaderProgram;
 
-//------------------------------------------------------------------------------
-/// Container for points to be displayed in the PointView interface
-class PointArrayModel : public QObject
-{
-    Q_OBJECT
-
-    public:
-        PointArrayModel();
-
-        /// Load points from a file
-        bool loadPointFile(QString fileName, size_t maxPointCount);
-
-        QString fileName() const { return m_fileName; }
-
-        /// Return the number of points
-        size_t size() const { return m_npoints; }
-        /// Return true when there are zero points
-        bool empty() const { return m_npoints == 0; }
-
-        /// Return point position
-        ///
-        /// Note that this is stored relative to the offset() of the point
-        /// cloud to avoid loss of precision.
-        const V3f* P() const { return m_P.get(); }
-
-        V3d absoluteP(size_t idx) const { return V3d(m_P[idx]) + m_offset; }
-        /// Return point color, or NULL if no color channel is present
-        const C3f* color() const { return m_color.get(); }
-        const float* intensity() const { return m_intensity.get(); }
-        //const unsigned char* returnNumber() const { return m_returnNumber.get(); }
-        //const unsigned char* numReturns() const { return m_numReturns.get(); }
-
-        /// Return index of closest point to the given position
-        ///
-        /// Also return the euclidian distance to the nearest point if the
-        /// input distance parameter is non-null.
-        size_t closestPoint(V3d pos, double* distance = 0) const;
-
-        /// Get a list of channel names which look like color channels
-        QStringList colorChannels() { return m_colorChannelNames; }
-
-        /// Return the centroid of the position data
-        const V3d& centroid() const { return m_centroid; }
-
-        /// Get bounding box
-        const Imath::Box3d& boundingBox() const { return m_bbox; }
-
-        /// Get the offset which should be added to P to get absolute position
-        V3d offset() const { return m_offset; }
-
-        /// Draw points using given openGL shader program
-        ///
-        /// Requires that prog is already bound and any necessary uniform
-        /// variables have been set.
-        void draw(QGLShaderProgram& prog, const V3d& cameraPos) const;
-
-    signals:
-        /// Emitted as progress is made loading points
-        void pointsLoaded(int percentLoaded);
-
-    private:
-        QString m_fileName;
-        QStringList m_colorChannelNames;
-        size_t m_npoints;
-        V3d m_offset;
-        Imath::Box3d m_bbox;
-        V3d m_centroid;
-        std::unique_ptr<V3f[]> m_P;
-        std::unique_ptr<float[]> m_intensity;
-        std::unique_ptr<C3f[]> m_color;
-        std::unique_ptr<unsigned char[]> m_returnIndex;
-        std::unique_ptr<unsigned char[]> m_numberOfReturns;
-        std::unique_ptr<unsigned char[]> m_pointSourceId;
-};
-
+class ShaderProgram;
 
 //------------------------------------------------------------------------------
-/// OpenGL-based viewer widget for point clouds (or more precisely, clouds of
-/// disk-like surface elements).
+/// OpenGL-based viewer widget for point clouds
 class PointView : public QGLWidget
 {
     Q_OBJECT
@@ -180,12 +90,12 @@ class PointView : public QGLWidget
         void keyPressEvent(QKeyEvent* event);
 
     private:
-        typedef std::vector<std::unique_ptr<PointArrayModel> > PointArrayVec;
+        typedef std::vector<std::unique_ptr<PointArray> > PointArrayVec;
         void loadPointFilesImpl(PointArrayVec& pointArrays,
                                 const QStringList& fileNames);
 
         void drawCursor(const V3f& P) const;
-        void drawPoints(const PointArrayModel& points,
+        void drawPoints(const PointArray& points,
                         int fileNumber, const V3d& drawOffset) const;
 
         /// Mouse-based camera positioning

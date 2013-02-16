@@ -42,6 +42,7 @@ qt4_wrap_cpp(moc_srcs
     interactivecamera.h
     mainwindow.h
     ptview.h
+    pointarray.h
     shadereditor.h
     shader.h
 )
@@ -53,6 +54,7 @@ set(srcs
     ${rcc_srcs}
     mainwindow.cpp
     ptview.cpp
+    pointarray.cpp
     argparse.cpp
     main.cpp
     shadereditor.cpp
