@@ -76,9 +76,9 @@ int main(int argc, char *argv[])
     PointViewerMainWindow window;
     window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
+    window.show();
     if(!g_pointFileNames.empty())
         window.pointView().loadPointFiles(g_pointFileNames);
-    window.show();
 
     return app.exec();
 }

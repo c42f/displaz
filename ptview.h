@@ -116,8 +116,8 @@ class PointArrayModel : public QObject
         void draw(QGLShaderProgram& prog, const V3d& cameraPos) const;
 
     signals:
-        /// Emitted progress is made loading points
-        void loadedPoints(double fractionOfTotal);
+        /// Emitted as progress is made loading points
+        void pointsLoaded(int percentLoaded);
 
     private:
         QString m_fileName;
@@ -160,7 +160,12 @@ class PointView : public QGLWidget
         void toggleCameraMode();
 
     signals:
+        void fileLoadStarted();
+        void fileLoadFinished();
+        /// Emitted each time a file is loaded.  Contains current list of files.
         void pointFilesLoaded(QStringList files) const;
+        /// Emitted as progress is made loading points
+        void pointsLoaded(int percentLoaded) const;
 
     protected:
         // Qt OpenGL callbacks
@@ -177,7 +182,7 @@ class PointView : public QGLWidget
     private:
         typedef std::vector<std::unique_ptr<PointArrayModel> > PointArrayVec;
         void loadPointFilesImpl(PointArrayVec& pointArrays,
-                                const QStringList& fileNames) const;
+                                const QStringList& fileNames);
 
         void drawCursor(const V3f& P) const;
         void drawPoints(const PointArrayModel& points,

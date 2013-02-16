@@ -200,7 +200,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
         // Read a point from the las file
         ++readCount;
         if(readCount % 10000 == 0)
-            emit loadedPoints(double(readCount)/totPoints);
+            emit pointsLoaded(100*readCount/totPoints);
         V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
         m_bbox.extendBy(P);
         Psum += P;
@@ -228,6 +228,7 @@ bool PointArrayModel::loadPointFile(QString fileName, size_t maxPointCount)
         }
     }
     while(lasReader->read_point());
+    emit pointsLoaded(100);
     m_centroid = (1.0/totPoints) * Psum;
     lasReader->close();
     tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
@@ -318,14 +319,17 @@ PointView::~PointView() { }
 
 
 void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
-                                   const QStringList& fileNames) const
+                                   const QStringList& fileNames)
 {
+    emit fileLoadStarted();
     pointArrays.clear();
     size_t maxCount = m_maxPointCount / fileNames.size();
     QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
     {
         std::unique_ptr<PointArrayModel> points(new PointArrayModel());
+        connect(points.get(), SIGNAL(pointsLoaded(int)),
+                this, SIGNAL(pointsLoaded(int)));
         if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
         {
             pointArrays.push_back(std::move(points));
@@ -333,6 +337,7 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
             emit pointFilesLoaded(successfullyLoaded);
         }
     }
+    emit fileLoadFinished();
 }
 
 

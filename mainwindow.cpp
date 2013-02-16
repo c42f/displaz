@@ -41,6 +41,7 @@
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
 #include <QtGui/QPlainTextEdit>
+#include <QtGui/QProgressBar>
 #include <QtGui/QSplitter>
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
@@ -69,8 +70,7 @@ class StreamBufTextEditSink : public std::streambuf
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
-PointViewerMainWindow::PointViewerMainWindow(
-        const QStringList& initialPointFileNames)
+PointViewerMainWindow::PointViewerMainWindow()
     : m_pointView(0),
     m_logTextView(0),
     m_shaderParamsUI(0),
@@ -186,11 +186,26 @@ PointViewerMainWindow::PointViewerMainWindow(
     logDock->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
     logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    m_logTextView = new QPlainTextEdit(logDock);
+    QWidget* logUI = new QWidget(logDock);
+    m_logTextView = new QPlainTextEdit(logUI);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
+    QProgressBar* progressBar = new QProgressBar(logUI);
+    progressBar->setRange(0,100);
+    progressBar->setValue(0);
+    progressBar->hide();
+    connect(m_pointView, SIGNAL(pointsLoaded(int)),
+            progressBar, SLOT(setValue(int)));
+    connect(m_pointView, SIGNAL(fileLoadStarted()),
+            progressBar, SLOT(show()));
+    connect(m_pointView, SIGNAL(fileLoadFinished()),
+            progressBar, SLOT(hide()));
+    QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
+    logUILayout->setContentsMargins(2,2,2,2);
+    logUILayout->addWidget(m_logTextView);
+    logUILayout->addWidget(progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
-    logDock->setWidget(m_logTextView);
+    logDock->setWidget(logUI);
 
     // Set up docked widgets
     addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
@@ -214,9 +229,6 @@ PointViewerMainWindow::PointViewerMainWindow(
         m_pointView->shaderProgram().setFragmentShader(fragmentShaderFile.readAll());
     vertexShaderEditor->setPlainText(m_pointView->shaderProgram().vertexShader());
     fragmentShaderEditor->setPlainText(m_pointView->shaderProgram().fragmentShader());
-
-    if(!initialPointFileNames.empty())
-        m_pointView->loadPointFiles(initialPointFileNames);
 }
 
 

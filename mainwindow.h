@@ -39,6 +39,7 @@
 class QActionGroup;
 class QSignalMapper;
 class QPlainTextEdit;
+class QProgressBar;
 
 class PointView;
 class StreamBufTextEditSink;
@@ -52,9 +53,7 @@ class PointViewerMainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        PointViewerMainWindow(const QStringList& initialPointFileNames =
-                              QStringList());
-
+        PointViewerMainWindow();
         ~PointViewerMainWindow();
 
         /// Hint at an appropriate size
@@ -78,6 +77,7 @@ class PointViewerMainWindow : public QMainWindow
         void setupShaderParamUI();
 
     private:
+        QProgressBar* m_progressBar;
         PointView* m_pointView;
         QDir m_currFileDir;
         QPlainTextEdit* m_logTextView;
