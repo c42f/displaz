@@ -103,6 +103,8 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
     trackballMode->setCheckable(true);
     trackballMode->setChecked(false);
+    QAction* simplifyAction = viewMenu->addAction(tr("&Simplify point cloud"));
+    simplifyAction->setCheckable(true);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -142,10 +144,13 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
+    connect(simplifyAction, SIGNAL(toggled(bool)),
+            m_pointView, SLOT(setStochasticSimplification(bool)));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
     connect(&m_pointView->shaderProgram(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
+    simplifyAction->setChecked(true);
 
     //--------------------------------------------------
     // Docked widgets
@@ -190,20 +195,22 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_logTextView = new QPlainTextEdit(logUI);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
-    QProgressBar* progressBar = new QProgressBar(logUI);
-    progressBar->setRange(0,100);
-    progressBar->setValue(0);
-    progressBar->hide();
+    m_progressBar = new QProgressBar(logUI);
+    m_progressBar->setRange(0,100);
+    m_progressBar->setValue(0);
+    m_progressBar->hide();
+    connect(m_pointView, SIGNAL(loadStepStarted(QString)),
+            this, SLOT(setProgressBarText(QString)));
     connect(m_pointView, SIGNAL(pointsLoaded(int)),
-            progressBar, SLOT(setValue(int)));
+            m_progressBar, SLOT(setValue(int)));
     connect(m_pointView, SIGNAL(fileLoadStarted()),
-            progressBar, SLOT(show()));
+            m_progressBar, SLOT(show()));
     connect(m_pointView, SIGNAL(fileLoadFinished()),
-            progressBar, SLOT(hide()));
+            m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
-    logUILayout->addWidget(progressBar);
+    logUILayout->addWidget(m_progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     logDock->setWidget(logUI);
 
@@ -245,6 +252,12 @@ void PointViewerMainWindow::setupShaderParamUI()
         delete child;
     delete m_shaderParamsUI->layout();
     m_pointView->shaderProgram().setupParameterUI(m_shaderParamsUI);
+}
+
+
+void PointViewerMainWindow::setProgressBarText(QString text)
+{
+    m_progressBar->setFormat(text + " (%p%)");
 }
 
 

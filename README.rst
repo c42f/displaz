@@ -23,9 +23,9 @@ Todo
 ----
 
 * Rendering
-  * Indexing for faster rendering
   * Threaded rendering for better responsiveness
   * Investigate approximate ambient occlusion (?)
+  * Autotune stochastic simplification quality based on total points
 * GUI
   * Persistent settings
   * Measurement tool

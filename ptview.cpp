@@ -41,6 +41,7 @@
 #   define GL_POINT_SPRITE 0x8861
 #endif
 
+#include <QtCore/QTimer>
 #include <QtGui/QKeyEvent>
 //#include <QtOpenGL/QGLBuffer>
 
@@ -130,7 +131,9 @@ PointView::PointView(QWidget *parent)
     m_drawBoundingBoxes(true),
     m_shaderProgram(),
     m_points(),
-    m_maxPointCount(10000000)
+    m_maxPointCount(100000000),
+    m_highQualityTimer(0),
+    m_doHighQuality(false)
 {
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -147,9 +150,21 @@ PointView::PointView(QWidget *parent)
             this, SLOT(updateGL()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
             this, SLOT(updateGL()));
+
+    m_highQualityTimer = new QTimer(this);
+    m_highQualityTimer->setSingleShot(true);
+    connect(m_highQualityTimer, SIGNAL(timeout()),
+            this, SLOT(paintHighQuality()));
 }
 
 PointView::~PointView() { }
+
+
+void PointView::paintHighQuality()
+{
+    m_doHighQuality = true;
+    updateGL();
+}
 
 
 void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
@@ -164,6 +179,8 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
         std::unique_ptr<PointArray> points(new PointArray());
         connect(points.get(), SIGNAL(pointsLoaded(int)),
                 this, SIGNAL(pointsLoaded(int)));
+        connect(points.get(), SIGNAL(loadStepStarted(QString)),
+                this, SIGNAL(loadStepStarted(QString)));
         if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
         {
             pointArrays.push_back(std::move(points));
@@ -225,6 +242,13 @@ void PointView::toggleCameraMode()
 }
 
 
+void PointView::setStochasticSimplification(bool enabled)
+{
+    m_useStochasticSimplification = enabled;
+    updateGL();
+}
+
+
 void PointView::setMaxPointCount(size_t maxPointCount)
 {
     m_maxPointCount = maxPointCount;
@@ -262,13 +286,18 @@ void PointView::paintGL()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw geometry
+    float quality = m_doHighQuality ? 10 : 1;
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], i, m_drawOffset);
+            drawPoints(*m_points[i], i, m_drawOffset, quality);
     }
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
+
+    if (!m_doHighQuality && m_useStochasticSimplification)
+        m_highQualityTimer->start(2000);
+    m_doHighQuality = false;
 }
 
 
@@ -459,7 +488,8 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
 
 /// Draw point cloud
 void PointView::drawPoints(const PointArray& points,
-                           int fileNumber, const V3d& drawOffset) const
+                           int fileNumber, const V3d& drawOffset,
+                           float quality) const
 {
     if(points.empty())
         return;
@@ -494,7 +524,9 @@ void PointView::drawPoints(const PointArray& points,
 //    intensityBuf.write(0, points.intensity() + i, ndraw);
 //    prog.setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
 //    intensityBuf.release();
-    points.draw(prog, m_cursorPos);
+    if (!m_useStochasticSimplification)
+        quality = -1;
+    points.draw(prog, qt2exr(m_camera.position()) + m_drawOffset, quality);
     prog.release();
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();

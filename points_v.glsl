@@ -8,6 +8,9 @@ uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source
 uniform float minPointSize = 0;
 uniform float maxPointSize = 100.0;
+// Point size multiplier to keep coverage constant when doing stochastic
+// simplification
+uniform float pointSizeLodMultiplier = 1;
 uniform vec3 cursorPos = vec3(0);
 uniform int fileNumber = 0;
 in float intensity;
@@ -37,7 +40,8 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale, minPointSize, maxPointSize);
+    pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale * pointSizeLodMultiplier,
+                            minPointSize, maxPointSize);
     if (selector != fileNumber)
         pointScreenSize = 0;
     gl_PointSize = pointScreenSize;

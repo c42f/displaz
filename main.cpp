@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     ArgParse::ArgParse ap;
-    int maxPointCount = 10000000;
+    int maxPointCount = 200000000;
 
     ap.options(
         "displaz - view a LAS point cloud\n"

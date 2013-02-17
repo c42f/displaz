@@ -107,6 +107,8 @@ class InteractiveCamera : public QObject
         qreal fieldOfView() const  { return m_fieldOfView; }
         /// Get center around which the camera will pivot
         QVector3D center() const   { return m_center; }
+        /// Get position of camera
+        QVector3D position() const { return viewMatrix().inverted()*QVector3D(0,0,0); }
         /// Get distance from eye to center
         qreal eyeToCenterDistance() const { return m_dist; }
         /// Get the rotation about the center

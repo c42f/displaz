@@ -43,6 +43,7 @@
 #include "pointarray.h"
 
 class QGLShaderProgram;
+class QTimer;
 
 class ShaderProgram;
 
@@ -68,12 +69,15 @@ class PointView : public QGLWidget
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
         void toggleCameraMode();
+        void setStochasticSimplification(bool);
 
     signals:
         void fileLoadStarted();
         void fileLoadFinished();
         /// Emitted each time a file is loaded.  Contains current list of files.
         void pointFilesLoaded(QStringList files) const;
+        /// Emitted at the start of a point loading step
+        void loadStepStarted(QString stepDescription);
         /// Emitted as progress is made loading points
         void pointsLoaded(int percentLoaded) const;
 
@@ -89,6 +93,9 @@ class PointView : public QGLWidget
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);
 
+    private slots:
+        void paintHighQuality();
+
     private:
         typedef std::vector<std::unique_ptr<PointArray> > PointArrayVec;
         void loadPointFilesImpl(PointArrayVec& pointArrays,
@@ -96,7 +103,8 @@ class PointView : public QGLWidget
 
         void drawCursor(const V3f& P) const;
         void drawPoints(const PointArray& points,
-                        int fileNumber, const V3d& drawOffset) const;
+                        int fileNumber, const V3d& drawOffset,
+                        float quality) const;
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -115,7 +123,12 @@ class PointView : public QGLWidget
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Point cloud data
         PointArrayVec m_points;
-        size_t m_maxPointCount; ///< Maximum desired number of points to load
+        /// Maximum desired number of points to load
+        size_t m_maxPointCount;
+        /// Timer for turning up draw quality
+        QTimer* m_highQualityTimer;
+        bool m_doHighQuality;
+        bool m_useStochasticSimplification;
 };
 
 

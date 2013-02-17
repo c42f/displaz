@@ -32,6 +32,8 @@
 #include <QtGui/QMessageBox>
 #include <QtOpenGL/QGLShaderProgram>
 
+#include <unordered_map>
+
 #include "tinyformat.h"
 
 #ifdef _MSC_VER
@@ -55,11 +57,69 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 
 //------------------------------------------------------------------------------
+// Hashing of std::pair, copied from stack overflow
+template <class T>
+inline void hash_combine(std::size_t & seed, const T & v)
+{
+  std::hash<T> hasher;
+  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+namespace std
+{
+  template<typename S, typename T> struct hash<pair<S, T>>
+  {
+    inline size_t operator()(const pair<S, T> & v) const
+    {
+      size_t seed = 0;
+      ::hash_combine(seed, v.first);
+      ::hash_combine(seed, v.second);
+      return seed;
+    }
+  };
+}
+
+
+//------------------------------------------------------------------------------
 // PointArray implementation
 
 PointArray::PointArray()
-    : m_npoints(0)
+    : m_fileName(),
+    m_npoints(0),
+    m_bucketWidth(100),
+    m_offset(0),
+    m_bbox(),
+    m_centroid(0),
+    m_buckets()
 { }
+
+PointArray::~PointArray()
+{ }
+
+struct PointArray::Bucket
+{
+    V3f centroid;
+    size_t beginIndex;
+    size_t endIndex;
+
+    Bucket(V3f centroid, size_t beginIndex, size_t endIndex)
+        : centroid(centroid),
+        beginIndex(beginIndex),
+        endIndex(endIndex)
+    { }
+};
+
+
+template<typename T>
+void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
+{
+    if (!data)
+        return;
+    std::unique_ptr<T[]> tmpData(new T[size]);
+    for (size_t i = 0; i < size; ++i)
+        tmpData[i] = data[inds[i]];
+    data.swap(tmpData);
+}
 
 
 bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
@@ -80,6 +140,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         return false;
     }
 
+    emit loadStepStarted("Reading file");
     // Figure out how much to decimate the point cloud.
     size_t totPoints = lasReader->header.number_of_point_records;
     size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
@@ -89,7 +150,6 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y,
                           lasReader->header.min_z);
     m_P.reset(new V3f[m_npoints]);
-    m_color.reset(new C3f[m_npoints]);
     m_intensity.reset(new float[m_npoints]);
     m_returnIndex.reset(new unsigned char[m_npoints]);
     m_numberOfReturns.reset(new unsigned char[m_npoints]);
@@ -149,6 +209,48 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     lasReader->close();
     tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
                 totPoints, fileName.toStdString());
+
+    emit loadStepStarted("Bucketing points");
+    typedef std::unordered_map<std::pair<int,int>, std::vector<size_t> > IndexMap;
+    float invBucketSize = 1/m_bucketWidth;
+    IndexMap buckets;
+    for (size_t i = 0; i < m_npoints; ++i)
+    {
+        int x = (int)floor(m_P[i].x*invBucketSize);
+        int y = (int)floor(m_P[i].y*invBucketSize);
+        buckets[std::make_pair(x,y)].push_back(i);
+        if(i % 100000 == 0)
+            emit pointsLoaded(100*i/m_npoints);
+    }
+
+    //emit loadStepStarted("Shuffling buckets");
+    std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
+    size_t idx = 0;
+    m_buckets.clear();
+    m_buckets.reserve(buckets.size() + 1);
+    for (IndexMap::iterator b = buckets.begin(); b != buckets.end(); ++b)
+    {
+        size_t startIdx = idx;
+        std::vector<size_t>& bucketInds = b->second;
+        V3f centroid(0);
+        // Random shuffle so that choosing an initial sequence will correspond
+        // to a stochastic simplification of the bucket.  TODO: Use a
+        // quasirandom shuffling method for better visual properties.
+        std::random_shuffle(bucketInds.begin(), bucketInds.end());
+        for (size_t i = 0, iend = bucketInds.size(); i < iend; ++i, ++idx)
+        {
+            inds[idx] = bucketInds[i];
+            centroid += m_P[inds[idx]];
+        }
+        centroid *= 1.0f/(idx - startIdx);
+        m_buckets.push_back(Bucket(centroid, startIdx, idx));
+    }
+    reorderArray(m_P, inds.get(), m_npoints);
+    reorderArray(m_color, inds.get(), m_npoints);
+    reorderArray(m_intensity, inds.get(), m_npoints);
+    reorderArray(m_returnIndex, inds.get(), m_npoints);
+    reorderArray(m_numberOfReturns, inds.get(), m_npoints);
+    reorderArray(m_pointSourceId, inds.get(), m_npoints);
     return true;
 }
 
@@ -174,7 +276,8 @@ size_t PointArray::closestPoint(V3d pos, double* distance) const
 }
 
 
-void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos) const
+void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
+                      double quality) const
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("intensity");
@@ -183,19 +286,40 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos) const
     prog.enableAttributeArray("pointSourceId");
     if (m_color)
         prog.enableAttributeArray("color");
-    size_t chunkSize = 1000000;
-    for (size_t i = 0; i < m_npoints; i += chunkSize)
+
+    // Draw points in each bucket, with total number drawn depending on how far
+    // away the bucket is.  Since the points are shuffled, this corresponds to
+    // a stochastic simplification of the full point cloud.
+    size_t totDraw = 0;
+    for (size_t bucketIdx = 0; bucketIdx < m_buckets.size(); ++bucketIdx)
     {
-        prog.setAttributeArray("intensity", m_intensity.get() + i, 1);
-        prog.setAttributeArray("position", (const GLfloat*)(m_P.get() + i), 3);
-        prog.setAttributeArray("returnIndex", GL_UNSIGNED_BYTE, m_returnIndex.get() + i, 1);
-        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + i, 1);
-        prog.setAttributeArray("pointSourceId", GL_UNSIGNED_BYTE, m_pointSourceId.get() + i, 1);
+        const Bucket& bucket = m_buckets[bucketIdx];
+        size_t b = bucket.beginIndex;
+        prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + b), 3);
+        prog.setAttributeArray("intensity", m_intensity.get() + b,           1);
+        prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + b, 1);
+        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + b, 1);
+        prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + b, 1);
         if (m_color)
-            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + i), 3);
-        int ndraw = (int)std::min(m_npoints - i, chunkSize);
+            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + b), 3);
+        // Compute the desired fraction of points for this bucket.
+        //
+        // The desired fraction is chosen to keep linear density constant -
+        // this looks better than keeping the density per area constant.
+        float dist = (bucket.centroid + m_offset - cameraPos).length();
+        double desiredFraction = quality <= 0 ? 1 : quality * (m_bucketWidth) / (dist);
+        size_t ndraw = bucket.endIndex - bucket.beginIndex;
+        float lodMultiplier = 1;
+        if (desiredFraction < 1)
+        {
+            ndraw = (size_t) (ndraw*desiredFraction);
+            lodMultiplier = (float)(1/desiredFraction);
+        }
+        prog.setUniformValue("pointSizeLodMultiplier", lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
+        totDraw += ndraw;
     }
+    //tfm::printf("Drew %.2f%% of total points\n", double(totDraw)/m_npoints);
 }
 
 

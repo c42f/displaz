@@ -75,6 +75,7 @@ class PointViewerMainWindow : public QMainWindow
         void chooseBackground();
         void setLoadedFileNames(const QStringList& fileNames);
         void setupShaderParamUI();
+        void setProgressBarText(QString text);
 
     private:
         QProgressBar* m_progressBar;

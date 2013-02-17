@@ -59,6 +59,7 @@ class PointArray : public QObject
 
     public:
         PointArray();
+        ~PointArray();
 
         /// Load points from a file
         bool loadPointFile(QString fileName, size_t maxPointCount);
@@ -102,18 +103,27 @@ class PointArray : public QObject
         ///
         /// Requires that prog is already bound and any necessary uniform
         /// variables have been set.
-        void draw(QGLShaderProgram& prog, const V3d& cameraPos) const;
+        ///
+        /// quality specifies the desired amount of simplification (negative
+        /// numbers indicate no simplification)
+        void draw(QGLShaderProgram& prog, const V3d& cameraPos, double quality) const;
 
     signals:
+        /// Emitted at the start of a point loading step
+        void loadStepStarted(QString stepDescription);
         /// Emitted as progress is made loading points
         void pointsLoaded(int percentLoaded);
 
     private:
+        struct Bucket;
+
         QString m_fileName;
         size_t m_npoints;
+        float m_bucketWidth;
         V3d m_offset;
         Imath::Box3d m_bbox;
         V3d m_centroid;
+        std::vector<Bucket> m_buckets;
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<float[]> m_intensity;
         std::unique_ptr<C3f[]> m_color;
