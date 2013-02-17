@@ -31,6 +31,7 @@
 #define DISPLAZ_POINTARRAY_H_INCLUDED
 
 #include <memory>
+#include <vector>
 
 #include <QtCore/QObject>
 

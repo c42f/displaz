@@ -33,7 +33,9 @@
 #define AQSIS_INTERACTIVE_CAMERA_H_INCLUDED
 
 #ifdef _MSC_VER
-#   define _USE_MATH_DEFINES
+#   ifndef _USE_MATH_DEFINES
+#       define _USE_MATH_DEFINES
+#   endif
 #endif
 #include <cmath>
 

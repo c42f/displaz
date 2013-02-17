@@ -30,9 +30,6 @@
 #ifndef DISPLAZ_PTVIEW_H_INCLUDED
 #define DISPLAZ_PTVIEW_H_INCLUDED
 
-#ifdef _MSC_VER
-#   define _USE_MATH_DEFINES
-#endif
 #include <cmath>
 #include <vector>
 #include <memory>

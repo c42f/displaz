@@ -290,7 +290,7 @@ void PointView::paintGL()
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], i, m_drawOffset, quality);
+            drawPoints(*m_points[i], (int)i, m_drawOffset, quality);
     }
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
