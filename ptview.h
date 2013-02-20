@@ -86,6 +86,7 @@ class PointView : public QGLWidget
 
         // Qt event callbacks
         void mousePressEvent(QMouseEvent* event);
+        void mouseReleaseEvent(QMouseEvent* event);
         void mouseMoveEvent(QMouseEvent* event);
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);
@@ -103,10 +104,13 @@ class PointView : public QGLWidget
                         int fileNumber, const V3d& drawOffset,
                         float quality) const;
 
+        void centreOnCursor();
+
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
-        QPoint m_lastPos;
-        bool m_zooming;
+        QPoint m_prevMousePos;
+        Qt::MouseButton m_mouseButton;
+        bool m_middleButton;
         /// Position of 3D cursor
         V3d m_cursorPos;
         V3d m_prevCursorSnap;

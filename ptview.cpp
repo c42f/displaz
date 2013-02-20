@@ -122,8 +122,8 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
 PointView::PointView(QWidget *parent)
     : QGLWidget(parent),
     m_camera(false, false),
-    m_lastPos(0,0),
-    m_zooming(false),
+    m_prevMousePos(0,0),
+    m_mouseButton(Qt::NoButton),
     m_cursorPos(0),
     m_prevCursorSnap(0),
     m_drawOffset(0),
@@ -303,27 +303,37 @@ void PointView::paintGL()
 
 void PointView::mousePressEvent(QMouseEvent* event)
 {
-    m_zooming = event->button() == Qt::RightButton;
-    m_lastPos = event->pos();
+    m_mouseButton = event->button();
+    m_prevMousePos = event->pos();
+}
+
+
+void PointView::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (m_mouseButton == Qt::MidButton)
+        centreOnCursor();
+    updateGL();
 }
 
 
 void PointView::mouseMoveEvent(QMouseEvent* event)
 {
-    if(event->modifiers() & Qt::ControlModifier)
+    bool zooming = m_mouseButton == Qt::RightButton;
+    if(m_mouseButton == Qt::MidButton ||
+       event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = qt2exr(
             m_camera.mouseMovePoint(exr2qt(m_cursorPos - m_drawOffset),
-                                    event->pos() - m_lastPos,
-                                    m_zooming) ) + m_drawOffset;
+                                    event->pos() - m_prevMousePos,
+                                    zooming) ) + m_drawOffset;
         updateGL();
     }
     else
     {
-        m_camera.mouseDrag(m_lastPos, event->pos(), m_zooming);
+        m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
         updateGL();
     }
-    m_lastPos = event->pos();
+    m_prevMousePos = event->pos();
 }
 
 
@@ -345,34 +355,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
     }
     else if(event->key() == Qt::Key_S)
     {
-        if(m_points.empty())
-            return;
-        // Snap cursor to position of closest point and center on it
-        V3d newPos(0);
-        size_t nearestIdx = 0;
-        size_t nearestCloudIdx = 0;
-        double nearestDist = DBL_MAX;
-        for(size_t i = 0; i < m_points.size(); ++i)
-        {
-            if(m_points[i]->empty())
-                continue;
-            double dist = 0;
-            size_t idx = m_points[i]->closestPoint(m_cursorPos, &dist);
-            if(dist < nearestDist)
-            {
-                nearestDist = dist;
-                nearestIdx = idx;
-                nearestCloudIdx = i;
-            }
-        }
-        newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
-        V3d posDiff = m_cursorPos - m_prevCursorSnap;
-        tfm::printf("Point %d: (%.3f, %.3f, %.3f) [diff with previous = (%.3f, %.3f, %.3f)]\n", nearestIdx,
-                    newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
-        m_cursorPos = newPos;
-        m_prevCursorSnap = newPos;
-        m_camera.setCenter(exr2qt(newPos - m_drawOffset));
-        updateGL();
+        centreOnCursor();
     }
     else
         event->ignore();
@@ -530,6 +513,40 @@ void PointView::drawPoints(const PointArray& points,
     prog.release();
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glPopMatrix();
+}
+
+
+/// Centre the camera on the 3D cursor position
+void PointView::centreOnCursor()
+{
+    if(m_points.empty())
+        return;
+    // Snap cursor to position of closest point and center on it
+    V3d newPos(0);
+    size_t nearestIdx = 0;
+    size_t nearestCloudIdx = 0;
+    double nearestDist = DBL_MAX;
+    for(size_t i = 0; i < m_points.size(); ++i)
+    {
+        if(m_points[i]->empty())
+            continue;
+        double dist = 0;
+        size_t idx = m_points[i]->closestPoint(m_cursorPos, &dist);
+        if(dist < nearestDist)
+        {
+            nearestDist = dist;
+            nearestIdx = idx;
+            nearestCloudIdx = i;
+        }
+    }
+    newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
+    V3d posDiff = m_cursorPos - m_prevCursorSnap;
+    tfm::printf("Point %d: (%.3f, %.3f, %.3f) [diff with previous = (%.3f, %.3f, %.3f)]\n", nearestIdx,
+                newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
+    m_cursorPos = newPos;
+    m_prevCursorSnap = newPos;
+    m_camera.setCenter(exr2qt(newPos - m_drawOffset));
+    updateGL();
 }
 
 
