@@ -85,11 +85,14 @@ class PointArray : public QObject
         //const unsigned char* returnNumber() const { return m_returnNumber.get(); }
         //const unsigned char* numReturns() const { return m_numReturns.get(); }
 
-        /// Return index of closest point to the given position
+        /// Return index of "closest" point to the given position
         ///
-        /// Also return the euclidian distance to the nearest point if the
-        /// input distance parameter is non-null.
-        size_t closestPoint(V3d pos, double* distance = 0) const;
+        /// The distance is the euclidian distance where the normal direction
+        /// has been scaled by the amout normalDirectionScale.  Also return the
+        /// distance to the nearest point if the input distance parameter is
+        /// non-null.
+        size_t closestPoint(V3d pos, V3f N, double normalDirectionScale,
+                            double* distance = 0) const;
 
         /// Return the centroid of the position data
         const V3d& centroid() const { return m_centroid; }

@@ -311,7 +311,7 @@ void PointView::mousePressEvent(QMouseEvent* event)
 void PointView::mouseReleaseEvent(QMouseEvent* event)
 {
     if (m_mouseButton == Qt::MidButton)
-        centreOnCursor();
+        snapCursorAndCentre(0.1);
     updateGL();
 }
 
@@ -355,7 +355,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
     }
     else if(event->key() == Qt::Key_S)
     {
-        centreOnCursor();
+        snapCursorAndCentre(1);
     }
     else
         event->ignore();
@@ -516,8 +516,8 @@ void PointView::drawPoints(const PointArray& points,
 }
 
 
-/// Centre the camera on the 3D cursor position
-void PointView::centreOnCursor()
+/// Snap 3D cursor to closest point and centre the camera
+void PointView::snapCursorAndCentre(double normalScaling)
 {
     if(m_points.empty())
         return;
@@ -526,12 +526,15 @@ void PointView::centreOnCursor()
     size_t nearestIdx = 0;
     size_t nearestCloudIdx = 0;
     double nearestDist = DBL_MAX;
+    V3f N = (qt2exr(m_camera.position()) + m_drawOffset -
+             m_cursorPos).normalized();
     for(size_t i = 0; i < m_points.size(); ++i)
     {
         if(m_points[i]->empty())
             continue;
         double dist = 0;
-        size_t idx = m_points[i]->closestPoint(m_cursorPos, &dist);
+        size_t idx = m_points[i]->closestPoint(m_cursorPos, N,
+                                               normalScaling, &dist);
         if(dist < nearestDist)
         {
             nearestDist = dist;

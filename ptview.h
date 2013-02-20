@@ -104,7 +104,7 @@ class PointView : public QGLWidget
                         int fileNumber, const V3d& drawOffset,
                         float quality) const;
 
-        void centreOnCursor();
+        void snapCursorAndCentre(double normalScaling);
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
