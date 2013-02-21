@@ -346,3 +346,10 @@ void PointViewerMainWindow::setLoadedFileNames(const QStringList& fileNames)
     setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
 }
 
+
+void PointViewerMainWindow::openInitialFiles()
+{
+    if (!g_initialPointFileNames.empty())
+        m_pointView->loadPointFiles(g_initialPointFileNames);
+}
+

@@ -30,17 +30,18 @@
 #include "mainwindow.h"
 #include "ptview.h"
 
+#include <QtCore/QTimer>
 #include <QtGui/QApplication>
 #include <QtOpenGL/QGLFormat>
 
 #include "argparse.h"
 
 
-QStringList g_pointFileNames;
+QStringList g_initialPointFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
     for(int i = 0; i < argc; ++i)
-        g_pointFileNames.push_back (argv[i]);
+        g_initialPointFileNames.push_back (argv[i]);
     return 0;
 }
 
@@ -77,8 +78,11 @@ int main(int argc, char *argv[])
     window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
     window.show();
-    if(!g_pointFileNames.empty())
-        window.pointView().loadPointFiles(g_pointFileNames);
+
+    // Open initial files only after event loop has started.  Use a small but
+    // nonzero timeout to give the GUI a chance to draw itself which makes
+    // things slightly less ugly.
+    QTimer::singleShot(200, &window, SLOT(openInitialFiles()));
 
     return app.exec();
 }

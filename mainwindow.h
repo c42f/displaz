@@ -76,6 +76,7 @@ class PointViewerMainWindow : public QMainWindow
         void setLoadedFileNames(const QStringList& fileNames);
         void setupShaderParamUI();
         void setProgressBarText(QString text);
+        void openInitialFiles();
 
     private:
         QProgressBar* m_progressBar;
@@ -87,5 +88,7 @@ class PointViewerMainWindow : public QMainWindow
         std::streambuf* m_oldBuf;
 };
 
+
+extern QStringList g_initialPointFileNames;
 
 #endif // DISPLAZ_MAINWINDOW_H_INCLUDED
