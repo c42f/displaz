@@ -294,6 +294,11 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     prog.enableAttributeArray("pointSourceId");
     if (m_color)
         prog.enableAttributeArray("color");
+    else
+    {
+        prog.disableAttributeArray("color");
+        prog.setAttributeValue("color", 0.0f, 0.0f, 0.0f);
+    }
 
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
