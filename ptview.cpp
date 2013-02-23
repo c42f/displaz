@@ -264,7 +264,7 @@ void PointView::resizeGL(int w, int h)
 {
     // Draw on full window
     glViewport(0, 0, w, h);
-    m_camera.setViewport(geometry());
+    m_camera.setViewport(QRect(0,0,w,h));
 }
 
 
@@ -310,17 +310,23 @@ void PointView::mousePressEvent(QMouseEvent* event)
 
 void PointView::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (m_mouseButton == Qt::MidButton)
+    if (event->button() == Qt::MidButton)
+    {
+        QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
+        double z = mat.map(exr2qt(m_cursorPos - m_drawOffset)).z();
+        m_cursorPos = qt2exr(mat.inverted().map(QVector3D(event->x(), event->y(), z))) + m_drawOffset;
         snapCursorAndCentre(0.1);
+    }
     updateGL();
 }
 
 
 void PointView::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_mouseButton == Qt::MidButton)
+        return;
     bool zooming = m_mouseButton == Qt::RightButton;
-    if(m_mouseButton == Qt::MidButton ||
-       event->modifiers() & Qt::ControlModifier)
+    if(event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = qt2exr(
             m_camera.mouseMovePoint(exr2qt(m_cursorPos - m_drawOffset),

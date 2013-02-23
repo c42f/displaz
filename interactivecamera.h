@@ -99,6 +99,18 @@ class InteractiveCamera : public QObject
             return m;
         }
 
+        /// Get transformation from screen coords to viewport coords
+        ///
+        /// The viewport coordinates are in pixels, with 0,0 at the top left
+        /// and width,height at the bottom right.
+        QMatrix4x4 viewportMatrix() const
+        {
+            QMatrix4x4 m;
+            m.scale(0.5*m_viewport.width(), -0.5*m_viewport.height(), 1);
+            m.translate(1, -1, 0);
+            return m;
+        }
+
         /// Get the 2D region associated with the camera
         QRect viewport() const     { return m_viewport; }
         /// Get depth of near clipping plane
