@@ -106,6 +106,7 @@ class InteractiveCamera : public QObject
         QMatrix4x4 viewportMatrix() const
         {
             QMatrix4x4 m;
+            m.translate(m_viewport.x(), m_viewport.y(), 0);
             m.scale(0.5*m_viewport.width(), -0.5*m_viewport.height(), 1);
             m.translate(1, -1, 0);
             return m;
