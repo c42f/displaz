@@ -42,13 +42,20 @@
 ///
 /// This is extremely handy and intuitive for some purposes, since the value in
 /// the spin box mirrors the magnitude of motion of the mouse.
+///
+/// Scaling of the value during the drag can be exponential or linear,
+/// depending on the value in the constructor.  Exponential scaling is usually
+/// what you want for positive values with a large range.
 class DragSpinBox : public QDoubleSpinBox
 {
     Q_OBJECT
 
     public:
-        DragSpinBox(QWidget* parent = 0)
-            : QDoubleSpinBox(parent)
+        DragSpinBox(bool exponentialScaling = true, double speed = 1,
+                    QWidget* parent = 0)
+            : QDoubleSpinBox(parent),
+            m_speed(speed),
+            m_exponentialScaling(exponentialScaling)
         {
             setMouseTracking(false);
             setCursor(Qt::SplitVCursor);
@@ -72,8 +79,7 @@ class DragSpinBox : public QDoubleSpinBox
         void mouseMoveEvent(QMouseEvent* event)
         {
             event->accept();
-            int y = event->pos().y();
-            int dy = -(y - m_prevPos.y());
+            int dy = -(event->pos().y() - m_prevPos.y());
             m_prevPos = event->pos();
             QRect geom = QApplication::desktop()->screenGeometry(this);
             // Calling setPos() creates a further mouse event asynchronously;
@@ -81,8 +87,10 @@ class DragSpinBox : public QDoubleSpinBox
             if (abs(dy) > geom.height()/2)
                 return;
             double val = value();
-            val *= exp(dy/100.0); // exponential scaling
-            //val += dy;  // linear scaling
+            if (m_exponentialScaling)
+                val *= exp(0.01*m_speed*dy); // scale proportional to value
+            else
+                val += 0.1*m_speed*dy;  // linear scaling
             setValue(val);
             // Wrap when mouse goes off top or bottom of screen
             QPoint gpos = mapToGlobal(event->pos());
@@ -95,6 +103,8 @@ class DragSpinBox : public QDoubleSpinBox
     private:
         QPoint m_pressPos;
         QPoint m_prevPos;
+        double m_speed;
+        bool m_exponentialScaling;
 };
 
 

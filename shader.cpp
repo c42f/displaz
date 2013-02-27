@@ -140,11 +140,28 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
         {
             case ShaderParam::Float:
                 {
-                    DragSpinBox* spin = new DragSpinBox(parentWidget);
-                    double min = parDesc.min();
-                    spin->setDecimals((int)floor(std::max(0.0, -log(min)/log(10.0)) + 0.5) + 2);
+                    bool expScaling = parDesc.kvPairs.value("scaling", "exponential").
+                                      startsWith("exp");
+                    double speed = parDesc.kvPairs.value("speed", "1").toDouble();
+                    if (speed == 0)
+                        speed = 1;
+                    DragSpinBox* spin = new DragSpinBox(expScaling, speed, parentWidget);
+                    double min = parDesc.getDouble("min", 0);
+                    double max = parDesc.getDouble("max", 100);
+                    if (expScaling)
+                    {
+                        // Prevent min or max == 0 for exp scaling which would be invalid
+                        if (max == 0) max = 100;
+                        if (min == 0) min = max > 0 ? 1e-8 : -1e-8;
+                        spin->setDecimals((int)floor(std::max(0.0, -log(min)/log(10.0)) + 0.5) + 2);
+                    }
+                    else
+                    {
+                        double m = std::max(fabs(min), fabs(max));
+                        spin->setDecimals((int)floor(std::max(0.0, -log(m)/log(10.0)) + 0.5) + 2);
+                    }
                     spin->setMinimum(min);
-                    spin->setMaximum(parDesc.max());
+                    spin->setMaximum(max);
                     spin->setValue(parValue.toDouble());
                     connect(spin, SIGNAL(valueChanged(double)),
                             this, SLOT(setUniformValue(double)));
@@ -167,8 +184,8 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                 {
                     // Parameter is a freely ranging integer
                     QSpinBox* spin = new QSpinBox(parentWidget);
-                    spin->setMinimum((int)parDesc.min());
-                    spin->setMaximum((int)parDesc.max());
+                    spin->setMinimum(parDesc.getInt("min", 0));
+                    spin->setMaximum(parDesc.getInt("max", 100));
                     spin->setValue(parValue.toInt());
                     connect(spin, SIGNAL(valueChanged(int)),
                             this, SLOT(setUniformValue(int)));

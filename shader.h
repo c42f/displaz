@@ -57,14 +57,26 @@ struct ShaderParam
         return kvPairs.value("uiname", name);
     }
 
-    double min() const
+    double getDouble(QString name, double defaultVal) const
     {
-        return kvPairs.value("min", "0").toDouble();
+        if (!kvPairs.contains(name))
+            return defaultVal;
+        bool convOk = false;
+        double val = kvPairs[name].toDouble(&convOk);
+        if (!convOk)
+            return defaultVal;
+        return val;
     }
 
-    double max() const
+    int getInt(QString name, int defaultVal) const
     {
-        return kvPairs.value("max", "100").toDouble();
+        if (!kvPairs.contains(name))
+            return defaultVal;
+        bool convOk = false;
+        double val = kvPairs[name].toInt(&convOk);
+        if (!convOk)
+            return defaultVal;
+        return val;
     }
 
     ShaderParam(Type type=Float, QByteArray name="",
