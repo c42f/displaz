@@ -79,6 +79,8 @@ class PointViewerMainWindow : public QMainWindow
         void openInitialFiles();
 
     private:
+        QColor backgroundColFromName(const QString& name) const;
+
         QProgressBar* m_progressBar;
         PointView* m_pointView;
         QDir m_currFileDir;

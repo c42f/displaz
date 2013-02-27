@@ -110,14 +110,21 @@ PointViewerMainWindow::PointViewerMainWindow()
     QSignalMapper* mapper = new QSignalMapper(this);
     // Selectable backgrounds (svg_names from SVG standard - see QColor docs)
     const char* backgroundNames[] = {/* "Display Name", "svg_name", */
-                                        "&Black",        "black",
-                                        "&Dark Grey",    "dimgrey",
-                                        "&Light Grey",   "lightgrey",
-                                        "&White",        "white" };
+                                        "Default",      "default",
+                                        "Black",        "black",
+                                        "Dark Grey",    "dimgrey",
+                                        "Slate Grey",   "slategrey",
+                                        "Light Grey",   "lightgrey",
+                                        "White",        "white" };
     for(size_t i = 0; i < sizeof(backgroundNames)/sizeof(const char*); i+=2)
     {
         QAction* backgroundAct = backMenu->addAction(tr(backgroundNames[i]));
-        mapper->setMapping(backgroundAct, backgroundNames[i+1]);
+        QPixmap pixmap(50,50);
+        QString colName = backgroundNames[i+1];
+        pixmap.fill(backgroundColFromName(colName));
+        QIcon icon(pixmap);
+        backgroundAct->setIcon(icon);
+        mapper->setMapping(backgroundAct, colName);
         connect(backgroundAct, SIGNAL(triggered()), mapper, SLOT(map()));
     }
     connect(mapper, SIGNAL(mapped(QString)),
@@ -328,9 +335,15 @@ void PointViewerMainWindow::aboutDialog()
 }
 
 
+QColor PointViewerMainWindow::backgroundColFromName(const QString& name) const
+{
+    return (name == "default") ? QColor(60, 50, 50) : QColor(name);
+}
+
+
 void PointViewerMainWindow::setBackground(const QString& name)
 {
-    m_pointView->setBackground(QColor(name));
+    m_pointView->setBackground(backgroundColFromName(name));
 }
 
 
