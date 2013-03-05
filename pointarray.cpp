@@ -147,8 +147,12 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     if(decimate > 1)
         tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
     m_npoints = (totPoints + decimate - 1) / decimate;
-    m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y,
-                          lasReader->header.min_z);
+    m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
+    // Attempt to place all data on the same vertical scale, but allow other
+    // offsets if the magnitude of z is too large (and we would therefore loose
+    // noticable precision by storing the data as floats)
+    if (fabs(lasReader->header.min_z) > 10000)
+        m_offset.z = lasReader->header.min_z;
     m_P.reset(new V3f[m_npoints]);
     m_intensity.reset(new float[m_npoints]);
     m_returnIndex.reset(new unsigned char[m_npoints]);
