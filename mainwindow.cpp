@@ -173,7 +173,8 @@ PointViewerMainWindow::PointViewerMainWindow()
     // Shader editor UI
     QDockWidget* shaderEditorDock = new QDockWidget(tr("Shader Editor"), this);
     shaderEditorDock->setFeatures(QDockWidget::DockWidgetMovable |
-                                  QDockWidget::DockWidgetClosable);
+                                  QDockWidget::DockWidgetClosable |
+                                  QDockWidget::DockWidgetFloatable);
     shaderEditorDock->setAllowedAreas(Qt::LeftDockWidgetArea |
                                       Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
