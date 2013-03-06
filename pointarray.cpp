@@ -321,22 +321,23 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
             prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + b), 3);
         // Compute the desired fraction of points for this bucket.
         //
-        // The desired fraction is chosen to keep linear density constant -
-        // this looks better than keeping the density per area constant.
+        // The desired fraction is chosen such that the density of points per
+        // solid angle is constant; when removing points, the point radii are
+        // scaled up to keep the total area covered by the points constant.
         float dist = (bucket.centroid + m_offset - cameraPos).length();
-        double desiredFraction = quality <= 0 ? 1 : quality * (m_bucketWidth) / (dist);
+        double desiredFraction = quality <= 0 ? 1 : quality * pow(m_bucketWidth/dist, 2);
         size_t ndraw = bucket.endIndex - bucket.beginIndex;
         float lodMultiplier = 1;
         if (desiredFraction < 1)
         {
             ndraw = (size_t) (ndraw*desiredFraction);
-            lodMultiplier = (float)(1/desiredFraction);
+            lodMultiplier = (float)sqrt(1/desiredFraction);
         }
         prog.setUniformValue("pointSizeLodMultiplier", lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
         totDraw += ndraw;
     }
-    //tfm::printf("Drew %.2f%% of total points\n", double(totDraw)/m_npoints);
+    //tfm::printf("Drew %.2f%% of total points\n", 100.0*totDraw/m_npoints);
 }
 
 
