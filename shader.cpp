@@ -124,7 +124,8 @@ bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
     return p1.first.ordering < p2.first.ordering;
 }
 
-void ShaderProgram::setupParameterUI(QWidget* parentWidget)
+void ShaderProgram::setupParameterUI(QWidget* parentWidget,
+                                     const QStringList& fileNames)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
     QList<QPair<ShaderParam,QVariant> > paramsOrdered;
@@ -174,6 +175,19 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     // Parameter is an enumeration variable
                     QComboBox* box = new QComboBox(parentWidget);
                     QStringList names = parDesc.kvPairs.value("enum").split('|');
+                    if (names.contains("$FILE_LIST"))
+                    {
+                        // Replace instance(s) of $FILE_LIST with the actual file list
+                        QStringList inNames;
+                        names.swap(inNames);
+                        for (int i = 0; i < inNames.size(); ++i)
+                        {
+                            if (inNames[i] == "$FILE_LIST")
+                                names << fileNames;
+                            else
+                                names << inNames[i];
+                        }
+                    }
                     box->insertItems(0, names);
                     box->setCurrentIndex(parValue.toInt());
                     connect(box, SIGNAL(currentIndexChanged(int)),

@@ -43,6 +43,7 @@
 
 #include <QtCore/QTimer>
 #include <QtGui/QKeyEvent>
+#include <QtGui/QLayout>
 //#include <QtOpenGL/QGLBuffer>
 
 #ifdef _WIN32
@@ -131,6 +132,7 @@ PointView::PointView(QWidget *parent)
     m_drawBoundingBoxes(true),
     m_shaderProgram(),
     m_points(),
+    m_shaderParamsUI(0),
     m_maxPointCount(100000000),
     m_highQualityTimer(0),
     m_doHighQuality(false)
@@ -150,6 +152,8 @@ PointView::PointView(QWidget *parent)
             this, SLOT(updateGL()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
             this, SLOT(updateGL()));
+    connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
+            this, SLOT(setupShaderParamUI()));
 
     m_highQualityTimer = new QTimer(this);
     m_highQualityTimer->setSingleShot(true);
@@ -189,6 +193,7 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
         }
     }
     emit fileLoadFinished();
+    setupShaderParamUI(); // may have changed file name list
 }
 
 
@@ -221,6 +226,26 @@ void PointView::reloadPointFiles()
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
     }
     updateGL();
+}
+
+
+void PointView::setShaderParamsUIWidget(QWidget* widget)
+{
+    m_shaderParamsUI = widget;
+}
+
+
+void PointView::setupShaderParamUI()
+{
+    if (!m_shaderProgram || !m_shaderParamsUI)
+        return;
+    while (QWidget* child = m_shaderParamsUI->findChild<QWidget*>())
+        delete child;
+    delete m_shaderParamsUI->layout();
+    QStringList fileNames;
+    for(size_t i = 0; i < m_points.size(); ++i)
+        fileNames << QFileInfo(m_points[i]->fileName()).fileName();
+    m_shaderProgram->setupParameterUI(m_shaderParamsUI, fileNames);
 }
 
 
@@ -290,7 +315,7 @@ void PointView::paintGL()
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], (int)i, m_drawOffset, quality);
+            drawPoints(*m_points[i], (int)i + 1, m_drawOffset, quality);
     }
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);

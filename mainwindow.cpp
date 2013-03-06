@@ -73,7 +73,6 @@ class StreamBufTextEditSink : public std::streambuf
 PointViewerMainWindow::PointViewerMainWindow()
     : m_pointView(0),
     m_logTextView(0),
-    m_shaderParamsUI(0),
     m_oldBuf(0)
 {
     setWindowTitle("Displaz");
@@ -155,8 +154,6 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(setStochasticSimplification(bool)));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
-    connect(&m_pointView->shaderProgram(), SIGNAL(paramsChanged()),
-            this, SLOT(setupShaderParamUI()));
     simplifyAction->setChecked(true);
 
     //--------------------------------------------------
@@ -167,8 +164,9 @@ PointViewerMainWindow::PointViewerMainWindow()
                                   QDockWidget::DockWidgetClosable);
     shaderParamsDock->setAllowedAreas(Qt::LeftDockWidgetArea |
                                       Qt::RightDockWidgetArea);
-    m_shaderParamsUI = new QWidget(shaderParamsDock);
-    shaderParamsDock->setWidget(m_shaderParamsUI);
+    QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
+    shaderParamsDock->setWidget(shaderParamsUI);
+    m_pointView->setShaderParamsUIWidget(shaderParamsUI);
 
     // Shader editor UI
     QDockWidget* shaderEditorDock = new QDockWidget(tr("Shader Editor"), this);
@@ -251,15 +249,6 @@ PointViewerMainWindow::~PointViewerMainWindow()
 {
     if (m_oldBuf)
         std::cout.rdbuf(m_oldBuf);
-}
-
-
-void PointViewerMainWindow::setupShaderParamUI()
-{
-    while (QWidget* child = m_shaderParamsUI->findChild<QWidget*>())
-        delete child;
-    delete m_shaderParamsUI->layout();
-    m_pointView->shaderProgram().setupParameterUI(m_shaderParamsUI);
 }
 
 

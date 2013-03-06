@@ -2,7 +2,7 @@
 
 uniform float pointSize = 10.0;    //# uiname=Point Size; min=1; max=200
 uniform float trimRadius = 10000;  //# uiname=Trim Radius; min=1; max=10000
-uniform int selector = -1;         //# uiname=File Selector; min=-1; max=100
+uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source
@@ -42,7 +42,7 @@ void main()
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
     pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale * pointSizeLodMultiplier,
                             minPointSize, maxPointSize);
-    if (selector >= 0 && selector != fileNumber)
+    if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
     gl_PointSize = pointScreenSize;
     markerShape = 0;

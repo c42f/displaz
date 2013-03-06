@@ -156,7 +156,8 @@ class ShaderProgram : public QObject
         QGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
 
         /// Set up UI for the shader
-        void setupParameterUI(QWidget* parentWidget);
+        void setupParameterUI(QWidget* parentWidget,
+                              const QStringList& fileNames);
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
 

@@ -60,6 +60,8 @@ class PointView : public QGLWidget
 
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
 
+        void setShaderParamsUIWidget(QWidget* widget);
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -93,6 +95,7 @@ class PointView : public QGLWidget
 
     private slots:
         void paintHighQuality();
+        void setupShaderParamUI();
 
     private:
         typedef std::vector<std::unique_ptr<PointArray> > PointArrayVec;
@@ -124,6 +127,8 @@ class PointView : public QGLWidget
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Point cloud data
         PointArrayVec m_points;
+        /// UI widget for shader
+        QWidget* m_shaderParamsUI;
         /// Maximum desired number of points to load
         size_t m_maxPointCount;
         /// Timer for turning up draw quality

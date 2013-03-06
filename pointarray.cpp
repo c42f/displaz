@@ -330,7 +330,7 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         float lodMultiplier = 1;
         if (desiredFraction < 1)
         {
-            ndraw = (size_t) (ndraw*desiredFraction);
+            ndraw = std::max((size_t) 1, (size_t) (ndraw*desiredFraction));
             lodMultiplier = (float)sqrt(1/desiredFraction);
         }
         prog.setUniformValue("pointSizeLodMultiplier", lodMultiplier);
