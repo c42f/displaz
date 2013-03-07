@@ -1,7 +1,7 @@
 #version 130
 
 uniform float pointSize = 10.0;    //# uiname=Point Size; min=1; max=200
-uniform float trimRadius = 10000;  //# uiname=Trim Radius; min=1; max=10000
+uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
