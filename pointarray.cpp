@@ -33,6 +33,7 @@
 #include <QtOpenGL/QGLShaderProgram>
 
 #include <unordered_map>
+#include <fstream>
 
 #include "tinyformat.h"
 
@@ -126,93 +127,125 @@ void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
 
 bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 {
-    m_fileName = fileName;
-    LASreadOpener lasReadOpener;
-#ifdef _WIN32
-    // Hack: liblas doesn't like forward slashes as path separators on windows
-    fileName = fileName.replace('/', '\\');
-#endif
-    lasReadOpener.set_file_name(fileName.toAscii().constData());
-    std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
-
-    if(!lasReader)
-    {
-        QMessageBox::critical(0, tr("Error"),
-            tr("Couldn't open file \"%1\"").arg(fileName));
-        return false;
-    }
-
-    emit loadStepStarted("Reading file");
-    // Figure out how much to decimate the point cloud.
-    size_t totPoints = lasReader->header.number_of_point_records;
-    size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
-    if(decimate > 1)
-        tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
-    m_npoints = (totPoints + decimate - 1) / decimate;
-    m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
-    // Attempt to place all data on the same vertical scale, but allow other
-    // offsets if the magnitude of z is too large (and we would therefore loose
-    // noticable precision by storing the data as floats)
-    if (fabs(lasReader->header.min_z) > 10000)
-        m_offset.z = lasReader->header.min_z;
-    m_P.reset(new V3f[m_npoints]);
-    m_intensity.reset(new float[m_npoints]);
-    m_returnIndex.reset(new unsigned char[m_npoints]);
-    m_numberOfReturns.reset(new unsigned char[m_npoints]);
-    m_pointSourceId.reset(new unsigned char[m_npoints]);
-    m_bbox.makeEmpty();
-    // Iterate over all points & pull in the data.
-    V3f* outP = m_P.get();
-    float* outIntens = m_intensity.get();
-    unsigned char* returnIndex = m_returnIndex.get();
-    unsigned char* numReturns = m_numberOfReturns.get();
-    unsigned char* pointSourceId = m_pointSourceId.get();
-    size_t readCount = 0;
-    size_t nextBlock = 1;
-    size_t nextStore = 1;
+    size_t totPoints = 0;
     V3d Psum(0);
-    if (!lasReader->read_point())
-        return false;
-    const LASpoint& point = lasReader->point;
-    if (point.have_rgb)
-        m_color.reset(new C3f[m_npoints]);
-    V3f* outCol = m_color.get();
-    do
+    if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
     {
-        // Read a point from the las file
-        ++readCount;
-        if(readCount % 10000 == 0)
-            emit pointsLoaded(100*readCount/totPoints);
-        V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
-        m_bbox.extendBy(P);
-        Psum += P;
-        if(readCount < nextStore)
-            continue;
-        // Store the point
-        *outP++ = P - m_offset;
-        // float intens = float(point.scan_angle_rank) / 40;
-        *outIntens++ = point.intensity;
-        *returnIndex++ = point.return_number;
-        *numReturns++ = point.number_of_returns_of_given_pulse;
-        *pointSourceId++ = point.point_source_ID;
-        // Extract point RGB
-        if (outCol)
-            *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
-        // Figure out which point will be the next stored point.
-        nextBlock += decimate;
-        nextStore = nextBlock;
-        if(decimate > 1)
+        LASreadOpener lasReadOpener;
+#ifdef _WIN32
+        // Hack: liblas doesn't like forward slashes as path separators on windows
+        fileName = fileName.replace('/', '\\');
+#endif
+        lasReadOpener.set_file_name(fileName.toAscii().constData());
+        std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
+
+        if(!lasReader)
         {
-            // Randomize selected point within block to avoid repeated patterns
-            nextStore += (qrand() % decimate);
-            if(nextBlock <= totPoints && nextStore > totPoints)
-                nextStore = totPoints;
+            QMessageBox::critical(0, tr("Error"),
+                tr("Couldn't open file \"%1\"").arg(fileName));
+            return false;
+        }
+
+        emit loadStepStarted("Reading file");
+        // Figure out how much to decimate the point cloud.
+        totPoints = lasReader->header.number_of_point_records;
+        size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
+        if(decimate > 1)
+            tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
+        m_npoints = (totPoints + decimate - 1) / decimate;
+        m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
+        // Attempt to place all data on the same vertical scale, but allow other
+        // offsets if the magnitude of z is too large (and we would therefore loose
+        // noticable precision by storing the data as floats)
+        if (fabs(lasReader->header.min_z) > 10000)
+            m_offset.z = lasReader->header.min_z;
+        m_P.reset(new V3f[m_npoints]);
+        m_intensity.reset(new float[m_npoints]);
+        m_returnIndex.reset(new unsigned char[m_npoints]);
+        m_numberOfReturns.reset(new unsigned char[m_npoints]);
+        m_pointSourceId.reset(new unsigned char[m_npoints]);
+        m_bbox.makeEmpty();
+        // Iterate over all points & pull in the data.
+        V3f* outP = m_P.get();
+        float* outIntens = m_intensity.get();
+        unsigned char* returnIndex = m_returnIndex.get();
+        unsigned char* numReturns = m_numberOfReturns.get();
+        unsigned char* pointSourceId = m_pointSourceId.get();
+        size_t readCount = 0;
+        size_t nextBlock = 1;
+        size_t nextStore = 1;
+        if (!lasReader->read_point())
+            return false;
+        const LASpoint& point = lasReader->point;
+        if (point.have_rgb)
+            m_color.reset(new C3f[m_npoints]);
+        V3f* outCol = m_color.get();
+        do
+        {
+            // Read a point from the las file
+            ++readCount;
+            if(readCount % 10000 == 0)
+                emit pointsLoaded(100*readCount/totPoints);
+            V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
+            m_bbox.extendBy(P);
+            Psum += P;
+            if(readCount < nextStore)
+                continue;
+            // Store the point
+            *outP++ = P - m_offset;
+            // float intens = float(point.scan_angle_rank) / 40;
+            *outIntens++ = point.intensity;
+            *returnIndex++ = point.return_number;
+            *numReturns++ = point.number_of_returns_of_given_pulse;
+            *pointSourceId++ = point.point_source_ID;
+            // Extract point RGB
+            if (outCol)
+                *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
+            // Figure out which point will be the next stored point.
+            nextBlock += decimate;
+            nextStore = nextBlock;
+            if(decimate > 1)
+            {
+                // Randomize selected point within block to avoid repeated patterns
+                nextStore += (qrand() % decimate);
+                if(nextBlock <= totPoints && nextStore > totPoints)
+                    nextStore = totPoints;
+            }
+        }
+        while(lasReader->read_point());
+        lasReader->close();
+    }
+    else
+    {
+        // Assume text, xyz format
+        // TODO: Make this less braindead!
+        m_fileName = fileName;
+        std::ifstream inFile(fileName.toStdString());
+        std::vector<Imath::V3d> points;
+        Imath::V3d p;
+        m_bbox.makeEmpty();
+        while (inFile >> p.x >> p.y >> p.z)
+        {
+            points.push_back(p);
+            m_bbox.extendBy(p);
+        }
+        m_npoints = points.size();
+        totPoints = points.size();
+        m_offset = points[0];
+        m_P.reset(new V3f[m_npoints]);
+        m_intensity.reset(new float[m_npoints]);
+        m_returnIndex.reset(new unsigned char[m_npoints]);
+        m_numberOfReturns.reset(new unsigned char[m_npoints]);
+        m_pointSourceId.reset(new unsigned char[m_npoints]);
+        for (size_t i = 0; i < m_npoints; ++i)
+        {
+            m_P[i] = points[i] - m_offset;
+            Psum += points[i];
+            m_intensity[i] = 0;
         }
     }
-    while(lasReader->read_point());
     emit pointsLoaded(100);
     m_centroid = (1.0/totPoints) * Psum;
-    lasReader->close();
     tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
                 totPoints, fileName.toStdString());
 
