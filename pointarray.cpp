@@ -51,8 +51,10 @@
 #   pragma warning(push)
 #elif __GNUC__
 #   pragma GCC diagnostic pop
+#if LAS_TOOLS_VERSION <= 120124
 // Hack: kill gcc unused variable warning
 class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
+#endif
 #endif
 
 
