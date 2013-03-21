@@ -127,6 +127,7 @@ void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
 
 bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 {
+    m_fileName = fileName;
     size_t totPoints = 0;
     V3d Psum(0);
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
@@ -219,7 +220,6 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     {
         // Assume text, xyz format
         // TODO: Make this less braindead!
-        m_fileName = fileName;
         std::ifstream inFile(fileName.toStdString());
         std::vector<Imath::V3d> points;
         Imath::V3d p;
