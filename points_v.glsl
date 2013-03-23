@@ -34,13 +34,12 @@ float tonemap(float x, float exposure, float contrast)
 
 void main()
 {
-    // Point position & size
-    vec4 eyeCoord = gl_ModelViewMatrix * vec4(position,1.0);
-    gl_Position = gl_ProjectionMatrix * eyeCoord;
+    vec4 p = gl_ModelViewProjectionMatrix * vec4(position,1.0);
+    gl_Position = p;
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    pointScreenSize = clamp(20.0*pointSize / (-eyeCoord.z) * trimScale * pointSizeLodMultiplier,
+    pointScreenSize = clamp(20.0*pointSize / p.w * trimScale * pointSizeLodMultiplier,
                             minPointSize, maxPointSize);
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
