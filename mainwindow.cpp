@@ -32,6 +32,8 @@
 #include "shadereditor.h"
 #include "shader.h"
 
+#include "config.h"
+
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
@@ -234,10 +236,11 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(logDock->toggleViewAction());
 
     // Set shaders
-    QFile vertexShaderFile(":/points_v.glsl");
+    QString shaderBasePath = DISPLAZ_SHADER_BASE_PATH;
+    QFile vertexShaderFile(shaderBasePath + "/points_v.glsl");
     if (vertexShaderFile.open(QIODevice::ReadOnly))
         m_pointView->shaderProgram().setVertexShader(vertexShaderFile.readAll());
-    QFile fragmentShaderFile(":/points_f.glsl");
+    QFile fragmentShaderFile(shaderBasePath + "/points_f.glsl");
     if (fragmentShaderFile.open(QIODevice::ReadOnly))
         m_pointView->shaderProgram().setFragmentShader(fragmentShaderFile.readAll());
     vertexShaderEditor->setPlainText(m_pointView->shaderProgram().vertexShader());

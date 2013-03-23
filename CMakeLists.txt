@@ -2,7 +2,8 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
-option(DISPLAZ_STATIC FALSE)
+option(DISPLAZ_STATIC "Build against static libraries" FALSE)
+option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 
 
 #-----------------------------------------------------------
@@ -73,6 +74,16 @@ endif()
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
+
+# Create config.h
+if(DISPLAZ_USE_BUILTIN_SHADERS)
+    set(DISPLAZ_SHADER_BASE_PATH ":")
+else()
+    set(DISPLAZ_SHADER_BASE_PATH ${PROJECT_SOURCE_DIR})
+endif()
+configure_file(config.h.in.cmake config.h @ONLY)
+include_directories(${CMAKE_BINARY_DIR})
+
 
 add_executable(displaz WIN32 ${srcs})
 
