@@ -1,6 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-    <file>points_v.glsl</file>
-    <file>points_f.glsl</file>
+    <file>points.glsl</file>
 </qresource>
 </RCC>

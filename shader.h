@@ -161,21 +161,19 @@ class ShaderProgram : public QObject
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
 
-        /// Get vertex shader source code
-        QByteArray vertexShader() const;
-        /// Get fragment shader source code
-        QByteArray fragmentShader() const;
+        /// Get shader source code
+        QByteArray shaderSource() const;
 
     public slots:
-        /// Set, compile and link vertex shader source.
+        /// Set, compile and link shader source.
         ///
         /// Retain old shader if compilation or linking fails
-        void setVertexShader(QString src);
-
-        /// Set, compile and link fragment shader source.
         ///
-        /// Retain old shader if compilation or linking fails
-        void setFragmentShader(QString src);
+        /// The shader source should contain both vertex and fragment shaders,
+        /// separated inside #ifdef blocks using the macros VERTEX_SHADER and
+        /// FRAGMENT_SHADER, which will be defined as appropriate when
+        /// compiling the individual shader types.
+        void setShader(QString src);
 
     signals:
         /// Emitted when the list of user-settable uniform parameters to this

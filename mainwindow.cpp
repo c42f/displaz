@@ -178,20 +178,12 @@ PointViewerMainWindow::PointViewerMainWindow()
     shaderEditorDock->setAllowedAreas(Qt::LeftDockWidgetArea |
                                       Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
+    ShaderEditor* shaderEditor = new ShaderEditor(shaderEditorUI);
+    connect(shaderEditor, SIGNAL(sendShader(QString)),
+            &m_pointView->shaderProgram(), SLOT(setShader(QString)));
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
     shaderEditorLayout->setContentsMargins(2,2,2,2);
-    QTabWidget* shaderTabs = new QTabWidget(shaderEditorUI);
-    shaderEditorLayout->addWidget(shaderTabs, 0, 0);
-    // vertex shader
-    ShaderEditor* vertexShaderEditor = new ShaderEditor(shaderTabs);
-    shaderTabs->addTab(vertexShaderEditor, tr("Vertex Shader"));
-    connect(vertexShaderEditor, SIGNAL(sendShader(QString)),
-            &m_pointView->shaderProgram(), SLOT(setVertexShader(QString)));
-    // fragment shader
-    ShaderEditor* fragmentShaderEditor = new ShaderEditor(shaderTabs);
-    shaderTabs->addTab(fragmentShaderEditor, tr("Fragment Shader"));
-    connect(fragmentShaderEditor, SIGNAL(sendShader(QString)),
-            &m_pointView->shaderProgram(), SLOT(setFragmentShader(QString)));
+    shaderEditorLayout->addWidget(shaderEditor, 0, 0, 1, 1);
     shaderEditorDock->setWidget(shaderEditorUI);
 
     // Log viewer UI
@@ -237,14 +229,10 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     // Set shaders
     QString shaderBasePath = DISPLAZ_SHADER_BASE_PATH;
-    QFile vertexShaderFile(shaderBasePath + "/points_v.glsl");
-    if (vertexShaderFile.open(QIODevice::ReadOnly))
-        m_pointView->shaderProgram().setVertexShader(vertexShaderFile.readAll());
-    QFile fragmentShaderFile(shaderBasePath + "/points_f.glsl");
-    if (fragmentShaderFile.open(QIODevice::ReadOnly))
-        m_pointView->shaderProgram().setFragmentShader(fragmentShaderFile.readAll());
-    vertexShaderEditor->setPlainText(m_pointView->shaderProgram().vertexShader());
-    fragmentShaderEditor->setPlainText(m_pointView->shaderProgram().fragmentShader());
+    QFile shaderFile(shaderBasePath + "/points.glsl");
+    if (shaderFile.open(QIODevice::ReadOnly))
+        m_pointView->shaderProgram().setShader(shaderFile.readAll());
+    shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
 }
 
 

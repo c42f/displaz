@@ -40,7 +40,15 @@
 // Shader implementation
 bool Shader::compileSourceCode(const QByteArray& src)
 {
-    if (!m_shader.compileSourceCode(src))
+    // src may contain parts which are shared for various shader types - set up
+    // defines so we can tell which one we're compiling.
+    QByteArray defines;
+    switch (m_shader.shaderType())
+    {
+        case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
+        case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
+    }
+    if (!m_shader.compileSourceCode(defines + src))
         return false;
     m_source = src;
     // Search source code looking for uniform variables
@@ -216,19 +224,26 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget,
 }
 
 
-void ShaderProgram::setVertexShader(QString src)
+void ShaderProgram::setShader(QString src)
 {
-    std::unique_ptr<Shader> shader(new Shader(QGLShader::Vertex, m_context));
+    std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment, m_context));
+    std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex, m_context));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
-    if(!shader->compileSourceCode(src.toAscii()))
+    if(!vertexShader->compileSourceCode(src.toAscii()))
     {
         tfm::printf("Error compiling shader:\n%s\n",
-                    shader->shader()->log().toStdString());
+                    vertexShader->shader()->log().toStdString());
+        return;
+    }
+    if(!fragmentShader->compileSourceCode(src.toAscii()))
+    {
+        tfm::printf("Error compiling shader:\n%s\n",
+                    fragmentShader->shader()->log().toStdString());
         return;
     }
     std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(m_context));
-    if (!newProgram->addShader(shader->shader()) ||
-        (m_fragmentShader && !newProgram->addShader(m_fragmentShader->shader())))
+    if (!newProgram->addShader(vertexShader->shader()) ||
+        !newProgram->addShader(fragmentShader->shader()))
     {
         tfm::printf("Error adding shaders to program:\n%s\n",
                     newProgram->log().toStdString());
@@ -240,39 +255,9 @@ void ShaderProgram::setVertexShader(QString src)
                     newProgram->log().toStdString());
         return;
     }
-    // New shader compiled & linked ok; swap out the old program for the new
-    m_vertexShader = std::move(shader);
-    m_shaderProgram = std::move(newProgram);
-    setupParameters();
-    emit shaderChanged();
-}
-
-
-void ShaderProgram::setFragmentShader(QString src)
-{
-    std::unique_ptr<Shader> shader(new Shader(QGLShader::Fragment, m_context));
-    if(!shader->compileSourceCode(src.toAscii()))
-    {
-        tfm::printf("Error compiling shader:\n%s\n",
-                    shader->shader()->log().toStdString());
-        return;
-    }
-    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(m_context));
-    if (!newProgram->addShader(shader->shader()) ||
-        (m_vertexShader && !newProgram->addShader(m_vertexShader->shader())))
-    {
-        tfm::printf("Error adding shaders to program:\n%s\n",
-                    newProgram->log().toStdString());
-        return;
-    }
-    if(!newProgram->link())
-    {
-        tfm::printf("Error linking shaders:\n%s\n",
-                    newProgram->log().toStdString());
-        return;
-    }
-    // New shader compiled & linked ok; swap out the old program for the new
-    m_fragmentShader = std::move(shader);
+    // New shaders compiled & linked ok; swap out the old program for the new
+    m_vertexShader = std::move(vertexShader);
+    m_fragmentShader = std::move(fragmentShader);
     m_shaderProgram = std::move(newProgram);
     setupParameters();
     emit shaderChanged();
@@ -322,8 +307,10 @@ void ShaderProgram::setupParameters()
     QList<ShaderParam> paramList;
     if (m_vertexShader)
         paramList.append(m_vertexShader->uniforms());
-    if (m_fragmentShader)
-        paramList.append(m_fragmentShader->uniforms());
+    // TODO: Now that we have a single shared source for both shaders, should
+    // clean up the way uniform parameters are parsed.
+//    if (m_fragmentShader)
+//        paramList.append(m_fragmentShader->uniforms());
     bool changed = paramList.size() != m_params.size();
     ParamMap newParams;
     for (int i = 0; i < paramList.size(); ++i)
@@ -373,19 +360,11 @@ void ShaderProgram::setUniforms()
 }
 
 
-QByteArray ShaderProgram::vertexShader() const
+QByteArray ShaderProgram::shaderSource() const
 {
     if (!m_vertexShader)
         return QByteArray("");
     return m_vertexShader->sourceCode();
-}
-
-
-QByteArray ShaderProgram::fragmentShader() const
-{
-    if (!m_fragmentShader)
-        return QByteArray("");
-    return m_fragmentShader->sourceCode();
 }
 
 
