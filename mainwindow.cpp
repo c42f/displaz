@@ -309,13 +309,14 @@ void PointViewerMainWindow::helpDialog()
         "<p><h2>Displaz 3D window controls</h2></p>"
         "<list>"
         "  <li>LMB+drag = rotate camera</li>"
+        "  <li>MMB = centre camera on closest point under cursor</li>"
         "  <li>RMB+drag = zoom camera</li>"
         "  <li>Ctrl+LMB+drag = move 3D cursor</li>"
         "  <li>Ctrl+RMB+drag = zoom 3D cursor along view direction</li>"
         "  <li>'c' = center camera on 3D cursor</li>"
         "  <li>'s' = snap 3D cursor to nearest point</li>"
         "</list>"
-        "<p>(LMB, RMB = left & right mouse buttons)</p>"
+        "<p>(LMB, MMB, RMB = left, middle, right mouse buttons)</p>"
     );
     QMessageBox::information(this, tr("Displaz control summary"), message);
 }
