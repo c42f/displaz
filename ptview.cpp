@@ -574,7 +574,7 @@ void PointView::snapCursorAndCentre(double normalScaling)
         }
     }
     newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
-    V3d posDiff = m_cursorPos - m_prevCursorSnap;
+    V3d posDiff = newPos - m_prevCursorSnap;
     tfm::printf("Point %d: (%.3f, %.3f, %.3f) [diff with previous = (%.3f, %.3f, %.3f)]\n", nearestIdx,
                 newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
     m_cursorPos = newPos;
