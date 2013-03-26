@@ -335,7 +335,6 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         prog.enableAttributeArray("color");
     else
     {
-        prog.disableAttributeArray("color");
         prog.setAttributeValue("color", 0.0f, 0.0f, 0.0f);
     }
 
@@ -373,6 +372,15 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         totDraw += ndraw;
     }
     //tfm::printf("Drew %.2f%% of total points\n", 100.0*totDraw/m_npoints);
+
+    // Disable all attribute arrays - leaving these enabled seems to screw with
+    // the OpenGL fixed function pipeline in unusual ways.
+    prog.disableAttributeArray("position");
+    prog.disableAttributeArray("intensity");
+    prog.disableAttributeArray("returnIndex");
+    prog.disableAttributeArray("numberOfReturns");
+    prog.disableAttributeArray("pointSourceId");
+    prog.disableAttributeArray("color");
 }
 
 

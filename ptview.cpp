@@ -468,34 +468,33 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 static void drawBoundingBox(const Imath::Box3d& bbox)
 {
-    double xbnd[2] = {bbox.min.x, bbox.max.x};
-    double ybnd[2] = {bbox.min.y, bbox.max.y};
-    double zbnd[2] = {bbox.min.z, bbox.max.z};
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glColor3f(1,1,1);
     glLineWidth(1);
-    glBegin(GL_LINES);
-    for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j)
-    {
-        glVertex3f(xbnd[i], ybnd[j], zbnd[0]);
-        glVertex3f(xbnd[i], ybnd[j], zbnd[1]);
-    }
-    for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j)
-    {
-        glVertex3f(xbnd[i], ybnd[0], zbnd[j]);
-        glVertex3f(xbnd[i], ybnd[1], zbnd[j]);
-    }
-    for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j)
-    {
-        glVertex3f(xbnd[0], ybnd[i], zbnd[j]);
-        glVertex3f(xbnd[1], ybnd[i], zbnd[j]);
-    }
-    glEnd();
+    GLdouble verts[] = {
+        bbox.min.x, bbox.min.y, bbox.min.z,
+        bbox.min.x, bbox.max.y, bbox.min.z,
+        bbox.max.x, bbox.max.y, bbox.min.z,
+        bbox.max.x, bbox.min.y, bbox.min.z,
+        bbox.min.x, bbox.min.y, bbox.max.z,
+        bbox.min.x, bbox.max.y, bbox.max.z,
+        bbox.max.x, bbox.max.y, bbox.max.z,
+        bbox.max.x, bbox.min.y, bbox.max.z
+    };
+    unsigned char inds[] = {
+        // rows: bottom, sides, top
+        0,1, 1,2, 2,3, 3,0,
+        0,4, 1,5, 2,6, 3,7,
+        4,5, 5,6, 6,7, 7,4
+    };
+    // TODO: Use shaders here
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_DOUBLE, 0, verts);
+    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
+                   GL_UNSIGNED_BYTE, inds);
+    glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
 }
 
