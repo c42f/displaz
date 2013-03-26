@@ -150,7 +150,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         emit loadStepStarted("Reading file");
         // Figure out how much to decimate the point cloud.
         totPoints = lasReader->header.number_of_point_records;
-        size_t decimate = (totPoints + maxPointCount - 1) / maxPointCount;
+        size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
         if(decimate > 1)
             tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
         m_npoints = (totPoints + decimate - 1) / decimate;
