@@ -58,8 +58,10 @@ set(srcs
     pointarray.cpp
     argparse.cpp
     main.cpp
+    mesh.cpp
     shadereditor.cpp
     shader.cpp
+    rply/rply.c
 )
 if(WIN32)
     list(APPEND srcs windows_resources.rc)
