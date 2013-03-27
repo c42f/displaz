@@ -104,6 +104,31 @@ bool TriMesh::readFile(const std::string& fileName)
 
 void TriMesh::draw(QGLShaderProgram& prog)
 {
+    /*
+    // Debug: display edges of mesh
+    std::vector<std::pair<GLuint,GLuint> > edges;
+    for (size_t i = 0; i < m_faces.size(); i += 3)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            GLuint i1 = m_faces[i + j];
+            GLuint i2 = m_faces[i + (j+1)%3];
+            if (i1 > i2)
+                std::swap(i1,i2);
+            edges.push_back(std::make_pair(i1, i2));
+        }
+    }
+    std::sort(edges.begin(), edges.end());
+    edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
+    std::cout << "edges.size() = " << edges.size() << "\n";
+    glColor3f(1,1,1);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_DOUBLE, 0, &m_verts[0]);
+    glDrawElements(GL_LINES, 2*edges.size(),
+                   GL_UNSIGNED_INT, &edges[0]);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    */
+
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("normal");
     prog.setAttributeArray("position", GL_DOUBLE, &m_verts[0], 3);
