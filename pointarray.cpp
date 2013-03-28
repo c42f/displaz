@@ -227,11 +227,13 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         while (inFile >> p.x >> p.y >> p.z)
         {
             points.push_back(p);
+            inFile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             m_bbox.extendBy(p);
         }
         m_npoints = points.size();
         totPoints = points.size();
-        m_offset = points[0];
+        if (totPoints > 0)
+            m_offset = points[0];
         m_P.reset(new V3f[m_npoints]);
         m_intensity.reset(new float[m_npoints]);
         m_returnIndex.reset(new unsigned char[m_npoints]);
