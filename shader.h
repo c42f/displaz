@@ -161,6 +161,9 @@ class ShaderProgram : public QObject
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
 
+        /// Read shader source from given file and call setShader()
+        bool setShaderFromSourceFile(QString fileName);
+
         /// Get shader source code
         QByteArray shaderSource() const;
 
@@ -173,7 +176,7 @@ class ShaderProgram : public QObject
         /// separated inside #ifdef blocks using the macros VERTEX_SHADER and
         /// FRAGMENT_SHADER, which will be defined as appropriate when
         /// compiling the individual shader types.
-        void setShader(QString src);
+        bool setShader(QString src);
 
     signals:
         /// Emitted when the list of user-settable uniform parameters to this

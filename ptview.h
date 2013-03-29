@@ -125,6 +125,9 @@ class PointView : public QGLWidget
         bool m_drawBoundingBoxes;
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
+        /// Shaders for polygonal geometry
+        std::unique_ptr<ShaderProgram> m_meshFaceShader;
+        std::unique_ptr<ShaderProgram> m_meshEdgeShader;
         /// Point cloud data
         PointArrayVec m_points;
         /// UI widget for shader

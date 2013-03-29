@@ -31,6 +31,8 @@
 #include "mainwindow.h"
 #include "shader.h"
 
+#include "config.h"
+
 //#define GL_GLEXT_PROTOTYPES
 // Hack: define gl flags which are normally done by GLEW...
 // perhaps should bring glew back as a dependency...
@@ -283,6 +285,12 @@ void PointView::setMaxPointCount(size_t maxPointCount)
 
 void PointView::initializeGL()
 {
+    m_meshFaceShader.reset(new ShaderProgram(context()));
+    m_meshFaceShader->setShaderFromSourceFile(
+        QString(DISPLAZ_SHADER_BASE_PATH) + "/shaders/meshface.glsl");
+    m_meshEdgeShader.reset(new ShaderProgram(context()));
+    m_meshEdgeShader->setShaderFromSourceFile(
+        QString(DISPLAZ_SHADER_BASE_PATH) + "/shaders/meshedge.glsl");
 }
 
 
@@ -311,22 +319,16 @@ void PointView::paintGL()
                  m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    QGLShaderProgram prog;
-    prog.addShaderFromSourceCode(QGLShader::Vertex,
-        "in vec3 position;\n"
-        "in vec3 normal;\n"
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * vec4(position,1.0);\n"
-        "    gl_FrontColor = vec4(vec3(normal.z), 1.0);\n"
-        "}\n"
-    );
-    prog.bind();
     TriMesh mesh;
     mesh.readFile("/home/chris/programming/displaz/rply/cube_tri.ply");
-    mesh.draw(prog);
-    prog.release();
+    QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+    meshFaceShader.bind();
+    mesh.drawFaces(meshFaceShader);
+    meshFaceShader.release();
+    QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+    meshEdgeShader.bind();
+    mesh.drawEdges(meshEdgeShader);
+    meshEdgeShader.release();
 
     // Draw geometry
     float quality = m_doHighQuality ? 10 : 1;

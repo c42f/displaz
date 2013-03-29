@@ -224,7 +224,16 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget,
 }
 
 
-void ShaderProgram::setShader(QString src)
+bool ShaderProgram::setShaderFromSourceFile(QString fileName)
+{
+    QFile file(fileName);
+    if (!file.open(QFile::ReadOnly))
+        return false;
+    return setShader(file.readAll());
+}
+
+
+bool ShaderProgram::setShader(QString src)
 {
     std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment, m_context));
     std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex, m_context));
@@ -233,13 +242,13 @@ void ShaderProgram::setShader(QString src)
     {
         tfm::printf("Error compiling shader:\n%s\n",
                     vertexShader->shader()->log().toStdString());
-        return;
+        return false;
     }
     if(!fragmentShader->compileSourceCode(src.toAscii()))
     {
         tfm::printf("Error compiling shader:\n%s\n",
                     fragmentShader->shader()->log().toStdString());
-        return;
+        return false;
     }
     std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(m_context));
     if (!newProgram->addShader(vertexShader->shader()) ||
@@ -247,13 +256,13 @@ void ShaderProgram::setShader(QString src)
     {
         tfm::printf("Error adding shaders to program:\n%s\n",
                     newProgram->log().toStdString());
-        return;
+        return false;
     }
     if(!newProgram->link())
     {
         tfm::printf("Error linking shaders:\n%s\n",
                     newProgram->log().toStdString());
-        return;
+        return false;
     }
     // New shaders compiled & linked ok; swap out the old program for the new
     m_vertexShader = std::move(vertexShader);
@@ -261,6 +270,7 @@ void ShaderProgram::setShader(QString src)
     m_shaderProgram = std::move(newProgram);
     setupParameters();
     emit shaderChanged();
+    return true;
 }
 
 

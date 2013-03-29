@@ -78,57 +78,14 @@ bool TriMesh::readFile(const std::string& fileName)
     m_faces.reserve(3*ntriangles);
     if (!ply_read(ply.get()))
         return false;
-    // Compute smooth normals
-    std::vector<V3f> normals;
-    m_normals.resize(m_verts.size());
-    const V3d* P = (const V3d*)&m_verts[0];
-    V3f* N = (V3f*)&m_normals[0];
-    for (size_t i = 0; i < m_faces.size(); i += 3)
-    {
-        V3f P1 = P[m_faces[i]];
-        V3f P2 = P[m_faces[i+1]];
-        V3f P3 = P[m_faces[i+2]];
-        V3f Ni = ((P1 - P2).cross(P1 - P3)).normalized();
-        N[m_faces[i]] += Ni;
-        N[m_faces[i+1]] += Ni;
-        N[m_faces[i+2]] += Ni;
-    }
-    for (size_t i = 0; i < normals.size()/3; ++i)
-    {
-        if (N[i].length2() > 0)
-            N[i].normalize();
-    }
+    makeSmoothNormals(m_normals, m_verts, m_faces);
+    makeEdges(m_edges, m_faces);
     return true;
 }
 
 
-void TriMesh::draw(QGLShaderProgram& prog)
+void TriMesh::drawFaces(QGLShaderProgram& prog)
 {
-    /*
-    // Debug: display edges of mesh
-    std::vector<std::pair<GLuint,GLuint> > edges;
-    for (size_t i = 0; i < m_faces.size(); i += 3)
-    {
-        for (int j = 0; j < 3; ++j)
-        {
-            GLuint i1 = m_faces[i + j];
-            GLuint i2 = m_faces[i + (j+1)%3];
-            if (i1 > i2)
-                std::swap(i1,i2);
-            edges.push_back(std::make_pair(i1, i2));
-        }
-    }
-    std::sort(edges.begin(), edges.end());
-    edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
-    std::cout << "edges.size() = " << edges.size() << "\n";
-    glColor3f(1,1,1);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_DOUBLE, 0, &m_verts[0]);
-    glDrawElements(GL_LINES, 2*edges.size(),
-                   GL_UNSIGNED_INT, &edges[0]);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    */
-
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("normal");
     prog.setAttributeArray("position", GL_DOUBLE, &m_verts[0], 3);
@@ -138,3 +95,67 @@ void TriMesh::draw(QGLShaderProgram& prog)
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("normal");
 }
+
+
+void TriMesh::drawEdges(QGLShaderProgram& prog)
+{
+    prog.enableAttributeArray("position");
+    prog.setAttributeArray("position", GL_DOUBLE, &m_verts[0], 3);
+    glDrawElements(GL_LINES, m_edges.size(),
+                   GL_UNSIGNED_INT, &m_edges[0]);
+    prog.disableAttributeArray("position");
+}
+
+
+/// Compute smooth normals by averaging normals on connected faces
+void TriMesh::makeSmoothNormals(std::vector<float>& normals,
+                                const std::vector<double>& verts,
+                                const std::vector<unsigned int>& faces)
+{
+    normals.resize(verts.size());
+    const V3d* P = (const V3d*)&verts[0];
+    V3f* N = (V3f*)&normals[0];
+    for (size_t i = 0; i < faces.size(); i += 3)
+    {
+        V3f P1 = P[faces[i]];
+        V3f P2 = P[faces[i+1]];
+        V3f P3 = P[faces[i+2]];
+        V3f Ni = ((P1 - P2).cross(P1 - P3)).normalized();
+        N[faces[i]] += Ni;
+        N[faces[i+1]] += Ni;
+        N[faces[i+2]] += Ni;
+    }
+    for (size_t i = 0; i < normals.size()/3; ++i)
+    {
+        if (N[i].length2() > 0)
+            N[i].normalize();
+    }
+}
+
+
+/// Figure out a unique set of edges for the given faces
+void TriMesh::makeEdges(std::vector<unsigned int>& edges,
+                        const std::vector<unsigned int>& faces)
+{
+    std::vector<std::pair<GLuint,GLuint> > edgePairs;
+    for (size_t i = 0; i < faces.size(); i += 3)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            GLuint i1 = faces[i + j];
+            GLuint i2 = faces[i + (j+1)%3];
+            if (i1 > i2)
+                std::swap(i1,i2);
+            edgePairs.push_back(std::make_pair(i1, i2));
+        }
+    }
+    std::sort(edgePairs.begin(), edgePairs.end());
+    edgePairs.erase(std::unique(edgePairs.begin(), edgePairs.end()), edgePairs.end());
+    edges.resize(2*edgePairs.size());
+    for (size_t i = 0; i < edgePairs.size(); ++i)
+    {
+        edges[2*i]     = edgePairs[i].first;
+        edges[2*i + 1] = edgePairs[i].second;
+    }
+}
+
