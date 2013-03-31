@@ -73,7 +73,7 @@ bool TriMesh::readFile(const std::string& fileName)
     if (ply_set_read_cb(ply.get(), "vertex", "y", vertex_cb, &info, 1) != nvertices ||
         ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
         return false;
-    long ntriangles = ply_set_read_cb(ply.get(), "face", "vertex_indices", face_cb, &info, 0);
+    long ntriangles = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 0);
     m_verts.reserve(3*nvertices);
     m_faces.reserve(3*ntriangles);
     if (!ply_read(ply.get()))
