@@ -167,6 +167,7 @@ void PointView::paintHighQuality()
 
 
 void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
+                                   MeshArrayVec& meshes,
                                    const QStringList& fileNames)
 {
     emit fileLoadStarted();
@@ -175,16 +176,28 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
     QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
     {
-        std::unique_ptr<PointArray> points(new PointArray());
-        connect(points.get(), SIGNAL(pointsLoaded(int)),
-                this, SIGNAL(pointsLoaded(int)));
-        connect(points.get(), SIGNAL(loadStepStarted(QString)),
-                this, SIGNAL(loadStepStarted(QString)));
-        if(points->loadPointFile(fileNames[i], maxCount) && !points->empty())
+        const QString& fileName = fileNames[i];
+        if(fileName.endsWith(".ply"))
         {
-            pointArrays.push_back(std::move(points));
-            successfullyLoaded.push_back(fileNames[i]);
-            emit pointFilesLoaded(successfullyLoaded);
+            // Load mesh
+            std::unique_ptr<TriMesh> mesh(new TriMesh());
+            if(mesh->readFile(fileName))
+                meshes.push_back(std::move(mesh));
+        }
+        else
+        {
+            // Load point cloud
+            std::unique_ptr<PointArray> points(new PointArray());
+            connect(points.get(), SIGNAL(pointsLoaded(int)),
+                    this, SIGNAL(pointsLoaded(int)));
+            connect(points.get(), SIGNAL(loadStepStarted(QString)),
+                    this, SIGNAL(loadStepStarted(QString)));
+            if(points->loadPointFile(fileName, maxCount) && !points->empty())
+            {
+                pointArrays.push_back(std::move(points));
+                successfullyLoaded.push_back(fileName);
+                emit pointFilesLoaded(successfullyLoaded);
+            }
         }
     }
     emit fileLoadFinished();
@@ -192,9 +205,10 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
 }
 
 
-void PointView::loadPointFiles(const QStringList& fileNames)
+void PointView::loadFiles(const QStringList& fileNames)
 {
-    loadPointFilesImpl(m_points, fileNames);
+    m_meshes.clear(); // FIXME - reloadFiles should reload meshes too
+    loadPointFilesImpl(m_points, m_meshes, fileNames);
     if(!m_points.empty())
     {
         m_cursorPos = m_points[0]->centroid();
@@ -204,17 +218,23 @@ void PointView::loadPointFiles(const QStringList& fileNames)
                        m_points[0]->boundingBox().min).length();
         m_camera.setEyeToCenterDistance(diag*0.7);
     }
+    else if(!m_meshes.empty())
+    {
+        m_cursorPos = m_meshes[0]->centroid();
+        m_drawOffset = m_meshes[0]->offset();
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    }
     updateGL();
 }
 
 
-void PointView::reloadPointFiles()
+void PointView::reloadFiles()
 {
     m_drawOffset = m_points[0]->offset();
     QStringList fileNames;
     for(size_t i = 0; i < m_points.size(); ++i)
         fileNames << m_points[i]->fileName();
-    loadPointFilesImpl(m_points, fileNames);
+    loadPointFilesImpl(m_points, m_meshes, fileNames);
     if(!m_points.empty())
     {
         m_drawOffset = m_points[0]->offset();
@@ -293,7 +313,6 @@ void PointView::resizeGL(int w, int h)
     m_camera.setViewport(QRect(0,0,w,h));
 }
 
-TriMesh mesh;
 
 void PointView::paintGL()
 {
@@ -312,23 +331,11 @@ void PointView::paintGL()
                  m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glPushMatrix();
-    if (mesh.offset().x == 0) // FIXME!
-        mesh.readFile("/home/chris/programming/displaz/tin.ply");
-    V3d offset = mesh.offset() - m_drawOffset;
-    glTranslatef(offset.x, offset.y, offset.z);
-    QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
-    meshFaceShader.bind();
-    meshFaceShader.setUniformValue("lightDir_eye",
-                m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
-    mesh.drawFaces(meshFaceShader);
-    meshFaceShader.release();
-    //glLineWidth(1);
-    //QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-    //meshEdgeShader.bind();
-    //mesh.drawEdges(meshEdgeShader);
-    //meshEdgeShader.release();
-    glPopMatrix();
+    if (!m_meshes.empty())
+    {
+        for(size_t i = 0; i < m_meshes.size(); ++i)
+            drawMesh(*m_meshes[i], m_drawOffset);
+    }
 
     // Draw geometry
     float quality = m_doHighQuality ? 10 : 1;
@@ -343,6 +350,26 @@ void PointView::paintGL()
     if (!m_doHighQuality && m_useStochasticSimplification)
         m_highQualityTimer->start(2000);
     m_doHighQuality = false;
+}
+
+
+void PointView::drawMesh(const TriMesh& mesh, const V3d& drawOffset) const
+{
+    glPushMatrix();
+    V3d offset = mesh.offset() - drawOffset;
+    glTranslatef(offset.x, offset.y, offset.z);
+    QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+    meshFaceShader.bind();
+    meshFaceShader.setUniformValue("lightDir_eye",
+                m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
+    mesh.drawFaces(meshFaceShader);
+    meshFaceShader.release();
+    //glLineWidth(1);
+    //QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+    //meshEdgeShader.bind();
+    //mesh.drawEdges(meshEdgeShader);
+    //meshEdgeShader.release();
+    glPopMatrix();
 }
 
 

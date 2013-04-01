@@ -37,11 +37,11 @@
 #include "argparse.h"
 
 
-QStringList g_initialPointFileNames;
+QStringList g_initialFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
     for(int i = 0; i < argc; ++i)
-        g_initialPointFileNames.push_back (argv[i]);
+        g_initialFileNames.push_back (argv[i]);
     return 0;
 }
 

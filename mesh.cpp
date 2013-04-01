@@ -52,11 +52,11 @@ static int face_cb(p_ply_argument argument)
 }
 
 
-bool TriMesh::readFile(const std::string& fileName)
+bool TriMesh::readFile(const QString& fileName)
 {
     // Read a triangulation from a .ply file
     std::unique_ptr<t_ply_, int(&)(p_ply)> ply(
-            ply_open(fileName.c_str(), NULL, 0, NULL), ply_close);
+            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
     MeshInfo info;
@@ -72,13 +72,18 @@ bool TriMesh::readFile(const std::string& fileName)
     if (!ply_read(ply.get()))
         return false;
     m_offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
+    V3d posSum(0);
+    for (size_t i = 0; i < m_verts.size(); i+=3)
+        posSum += V3d(m_verts[i], m_verts[i+1], m_verts[i+2]);
+    if (m_verts.size() > 0)
+        m_centroid = (3.0/m_verts.size())*posSum + m_offset;
     makeSmoothNormals(m_normals, m_verts, m_faces);
     makeEdges(m_edges, m_faces);
     return true;
 }
 
 
-void TriMesh::drawFaces(QGLShaderProgram& prog)
+void TriMesh::drawFaces(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("normal");
@@ -91,7 +96,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog)
 }
 
 
-void TriMesh::drawEdges(QGLShaderProgram& prog)
+void TriMesh::drawEdges(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);

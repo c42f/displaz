@@ -89,6 +89,6 @@ class PointViewerMainWindow : public QMainWindow
 };
 
 
-extern QStringList g_initialPointFileNames;
+extern QStringList g_initialFileNames;
 
 #endif // DISPLAZ_MAINWINDOW_H_INCLUDED

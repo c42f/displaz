@@ -272,14 +272,18 @@ void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 
 void PointViewerMainWindow::openFiles()
 {
-    QFileDialog dialog(this, tr("Select one or more point clouds to open"));
-    dialog.setNameFilter(tr("Point cloud files (*.las *.laz)"));
+    QFileDialog dialog(this, tr("Select one or more point clouds or meshes to open"));
+    QStringList nameFilters;
+    nameFilters << tr("Point cloud files (*.las *.laz *.txt)")
+                << tr("Mesh files (*.ply)")
+                << tr("All files (*)");
+    dialog.setNameFilters(nameFilters);
     dialog.setFileMode(QFileDialog::ExistingFiles);
     dialog.setDirectory(m_currFileDir);
     if(dialog.exec())
     {
         QStringList files = dialog.selectedFiles();
-        m_pointView->loadPointFiles(files);
+        m_pointView->loadFiles(files);
     }
     m_currFileDir = dialog.directory();
 }
@@ -287,7 +291,7 @@ void PointViewerMainWindow::openFiles()
 
 void PointViewerMainWindow::reloadFiles()
 {
-    m_pointView->reloadPointFiles();
+    m_pointView->reloadFiles();
 }
 
 
@@ -344,7 +348,7 @@ void PointViewerMainWindow::setLoadedFileNames(const QStringList& fileNames)
 
 void PointViewerMainWindow::openInitialFiles()
 {
-    if (!g_initialPointFileNames.empty())
-        m_pointView->loadPointFiles(g_initialPointFileNames);
+    if (!g_initialFileNames.empty())
+        m_pointView->loadFiles(g_initialFileNames);
 }
 

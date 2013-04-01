@@ -43,6 +43,7 @@ class QGLShaderProgram;
 class QTimer;
 
 class ShaderProgram;
+class TriMesh;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
@@ -54,9 +55,9 @@ class PointView : public QGLWidget
         PointView(QWidget *parent = NULL);
         ~PointView();
 
-        /// Load a point cloud from a file
-        void loadPointFiles(const QStringList& fileNames);
-        void reloadPointFiles();
+        /// Load geometry files from disk
+        void loadFiles(const QStringList& fileNames);
+        void reloadFiles();
 
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
 
@@ -99,13 +100,16 @@ class PointView : public QGLWidget
 
     private:
         typedef std::vector<std::unique_ptr<PointArray> > PointArrayVec;
+        typedef std::vector<std::unique_ptr<TriMesh> > MeshArrayVec;
         void loadPointFilesImpl(PointArrayVec& pointArrays,
+                                MeshArrayVec& meshes,
                                 const QStringList& fileNames);
 
         void drawCursor(const V3f& P) const;
         void drawPoints(const PointArray& points,
                         int fileNumber, const V3d& drawOffset,
                         float quality) const;
+        void drawMesh(const TriMesh& mesh, const V3d& drawOffset) const;
 
         void snapCursorAndCentre(double normalScaling);
 
@@ -130,6 +134,7 @@ class PointView : public QGLWidget
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
         /// Point cloud data
         PointArrayVec m_points;
+        MeshArrayVec m_meshes;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Maximum desired number of points to load
