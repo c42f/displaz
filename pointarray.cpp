@@ -147,6 +147,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             return false;
         }
 
+        //std::ofstream dumpFile("points.txt");
         emit loadStepStarted("Reading file");
         // Figure out how much to decimate the point cloud.
         totPoints = lasReader->header.number_of_point_records;
@@ -190,6 +191,8 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
             m_bbox.extendBy(P);
             Psum += P;
+            //if (std::max(abs(P.x - 389661.571), (abs(P.y - 7281119.875))) < 500)
+                //tfm::format(dumpFile, "%.3f %.3f %.3f\n", P.x, P.y, P.z);
             if(readCount < nextStore)
                 continue;
             // Store the point

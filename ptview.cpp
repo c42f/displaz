@@ -32,6 +32,7 @@
 #include "shader.h"
 
 #include "config.h"
+#include "util.h"
 
 //#define GL_GLEXT_PROTOTYPES
 // Hack: define gl flags which are normally done by GLEW...
@@ -47,15 +48,6 @@
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
 //#include <QtOpenGL/QGLBuffer>
-
-#ifdef _WIN32
-#   include <ImathVec.h>
-#   include <ImathMatrix.h>
-#else
-#   include <OpenEXR/ImathVec.h>
-#   include <OpenEXR/ImathBox.h>
-#   include <OpenEXR/ImathMatrix.h>
-#endif
 
 #include "ptview.h"
 #include "mesh.h"
@@ -301,6 +293,7 @@ void PointView::resizeGL(int w, int h)
     m_camera.setViewport(QRect(0,0,w,h));
 }
 
+TriMesh mesh;
 
 void PointView::paintGL()
 {
@@ -319,16 +312,23 @@ void PointView::paintGL()
                  m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    TriMesh mesh;
-    mesh.readFile("/home/chris/programming/displaz/rply/cube_tri.ply");
+    glPushMatrix();
+    if (mesh.offset().x == 0) // FIXME!
+        mesh.readFile("/home/chris/programming/displaz/tin.ply");
+    V3d offset = mesh.offset() - m_drawOffset;
+    glTranslatef(offset.x, offset.y, offset.z);
     QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
     meshFaceShader.bind();
+    meshFaceShader.setUniformValue("lightDir_eye",
+                m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
     mesh.drawFaces(meshFaceShader);
     meshFaceShader.release();
-    QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-    meshEdgeShader.bind();
-    mesh.drawEdges(meshEdgeShader);
-    meshEdgeShader.release();
+    //glLineWidth(1);
+    //QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+    //meshEdgeShader.bind();
+    //mesh.drawEdges(meshEdgeShader);
+    //meshEdgeShader.release();
+    glPopMatrix();
 
     // Draw geometry
     float quality = m_doHighQuality ? 10 : 1;
@@ -516,6 +516,7 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
                    GL_UNSIGNED_BYTE, inds);
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
+    glDisable(GL_LINE_SMOOTH);
 }
 
 

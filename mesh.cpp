@@ -8,33 +8,26 @@
 #include "tinyformat.h"
 #include "rply/rply.h"
 
-// FIXME
-#ifdef _WIN32
-#include <ImathVec.h>
-#include <ImathBox.h>
-#include <ImathColor.h>
-#else
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
-#include <OpenEXR/ImathColor.h>
-#endif
-
-using Imath::V3d;
-using Imath::V3f;
-using Imath::V2f;
-using Imath::C3f;
-
 struct MeshInfo
 {
-    std::vector<double>* verts;
+    std::vector<float>* verts;
     std::vector<GLuint>* faces;
+    double offset[3];
 };
 
 static int vertex_cb(p_ply_argument argument)
 {
-    void* info = 0;
-    ply_get_argument_user_data(argument, &info, NULL);
-    ((MeshInfo*)info)->verts->push_back(ply_get_argument_value(argument));
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    MeshInfo& info = *((MeshInfo*)pinfo);
+    double v = ply_get_argument_value(argument);
+    if (info.verts->size() < 3)
+    {
+        // First vertex is used for the constant offset
+        info.offset[info.verts->size()] = v;
+    }
+    v -= info.offset[info.verts->size() % 3];
+    info.verts->push_back((float)v);
     return 1;
 }
 
@@ -51,9 +44,9 @@ static int face_cb(p_ply_argument argument)
     }
     if (index < 0) // ignore length argument
         return 1;
-    void* info = 0;
-    ply_get_argument_user_data(argument, &info, NULL);
-    ((MeshInfo*)info)->faces->push_back(
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    ((MeshInfo*)pinfo)->faces->push_back(
             (unsigned int)ply_get_argument_value(argument));
     return 1;
 }
@@ -78,6 +71,7 @@ bool TriMesh::readFile(const std::string& fileName)
     m_faces.reserve(3*ntriangles);
     if (!ply_read(ply.get()))
         return false;
+    m_offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
     makeSmoothNormals(m_normals, m_verts, m_faces);
     makeEdges(m_edges, m_faces);
     return true;
@@ -88,7 +82,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog)
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("normal");
-    prog.setAttributeArray("position", GL_DOUBLE, &m_verts[0], 3);
+    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
     prog.setAttributeArray("normal", GL_FLOAT, &m_normals[0], 3);
     glDrawElements(GL_TRIANGLES, m_faces.size(),
                    GL_UNSIGNED_INT, &m_faces[0]);
@@ -100,7 +94,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog)
 void TriMesh::drawEdges(QGLShaderProgram& prog)
 {
     prog.enableAttributeArray("position");
-    prog.setAttributeArray("position", GL_DOUBLE, &m_verts[0], 3);
+    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
     glDrawElements(GL_LINES, m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
     prog.disableAttributeArray("position");
@@ -109,11 +103,11 @@ void TriMesh::drawEdges(QGLShaderProgram& prog)
 
 /// Compute smooth normals by averaging normals on connected faces
 void TriMesh::makeSmoothNormals(std::vector<float>& normals,
-                                const std::vector<double>& verts,
+                                const std::vector<float>& verts,
                                 const std::vector<unsigned int>& faces)
 {
     normals.resize(verts.size());
-    const V3d* P = (const V3d*)&verts[0];
+    const V3f* P = (const V3f*)&verts[0];
     V3f* N = (V3f*)&normals[0];
     for (size_t i = 0; i < faces.size(); i += 3)
     {
