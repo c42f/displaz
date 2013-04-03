@@ -577,6 +577,7 @@ void PointView::drawPoints(const PointArray& points,
     V3f relCursor = m_cursorPos - points.offset();
     prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
     prog.setUniformValue("fileNumber", fileNumber);
+    prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
 //    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
 //    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
 //    intensityBuf.create();

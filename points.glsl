@@ -1,20 +1,24 @@
 #version 130
 
 
+
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointSize = 10.0;    //# uiname=Point Size; min=1; max=200
+uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source
 uniform float minPointSize = 0;
-uniform float maxPointSize = 100.0;
+uniform float maxPointSize = 400.0;
 // Point size multiplier to keep coverage constant when doing stochastic
 // simplification
 uniform float pointSizeLodMultiplier = 1;
+// Point size multiplier to get from a width in projected coordinates to the
+// number of pixels across as required for gl_PointSize
+uniform float pointPixelScale = 0;
 uniform vec3 cursorPos = vec3(0);
 uniform int fileNumber = 0;
 in float intensity;
@@ -25,6 +29,7 @@ in float returnIndex;
 in float numberOfReturns;
 in float pointSourceId;
 
+flat out float modifiedPointRadius;
 flat out float pointScreenSize;
 flat out vec3 pointColor;
 flat out int markerShape;
@@ -43,12 +48,12 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    pointScreenSize = clamp(20.0*pointSize / p.w * trimScale * pointSizeLodMultiplier,
-                            minPointSize, maxPointSize);
+    modifiedPointRadius = pointRadius * trimScale * pointSizeLodMultiplier;
+    pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
     gl_PointSize = pointScreenSize;
-    markerShape = 0;
+    markerShape = 1;
     // Compute vertex color
     if (colorMode == 0)
         pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
@@ -80,6 +85,7 @@ void main()
 
 uniform float markerWidth = 0.3;
 
+flat in float modifiedPointRadius;
 flat in float pointScreenSize;
 flat in vec3 pointColor;
 flat in int markerShape;
@@ -96,6 +102,7 @@ void main()
     if (markerShape < 0) // markerShape == -1: discarded.
         discard;
     // (markerShape == 0: Square shape)
+    gl_FragDepth = gl_FragCoord.z;
     if (markerShape > 0 && pointScreenSize > pointScreenSizeLimit)
     {
         float w = markerWidth;
@@ -108,8 +115,10 @@ void main()
         if (markerShape == 1) // shape: .
         {
             float r = length(p);
-            if (r > w)
+            if (r > 1)
                 discard;
+            gl_FragDepth += gl_ProjectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
+                            * modifiedPointRadius*sqrt(1-r*r);
         }
         else if (markerShape == 2) // shape: o
         {
