@@ -118,7 +118,8 @@ void main()
             if (r > 1)
                 discard;
             gl_FragDepth += gl_ProjectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
-                            * modifiedPointRadius*sqrt(1-r*r);
+                            // TODO: Why is the factor of 0.5 required here?
+                            * 0.5*modifiedPointRadius*sqrt(1-r*r);
         }
         else if (markerShape == 2) // shape: o
         {
