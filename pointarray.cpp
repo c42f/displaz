@@ -267,7 +267,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             emit pointsLoaded(100*i/m_npoints);
     }
 
-    //emit loadStepStarted("Shuffling buckets");
+    emit loadStepStarted("Shuffling buckets");
     std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
     size_t idx = 0;
     m_buckets.clear();
@@ -288,6 +288,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
         centroid *= 1.0f/(idx - startIdx);
         m_buckets.push_back(Bucket(centroid, startIdx, idx));
+        emit pointsLoaded(100*idx/m_npoints);
     }
     reorderArray(m_P, inds.get(), m_npoints);
     reorderArray(m_color, inds.get(), m_npoints);
