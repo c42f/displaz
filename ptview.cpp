@@ -167,7 +167,8 @@ void PointView::paintHighQuality()
 
 
 void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
-                                   MeshArrayVec& meshes,
+                                   MeshVec& meshes,
+                                   LineSegVec& lines,
                                    const QStringList& fileNames)
 {
     emit fileLoadStarted();
@@ -179,10 +180,16 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
         const QString& fileName = fileNames[i];
         if(fileName.endsWith(".ply"))
         {
-            // Load mesh
-            std::unique_ptr<TriMesh> mesh(new TriMesh());
-            if(mesh->readFile(fileName))
-                meshes.push_back(std::move(mesh));
+            // Load data from ply format
+            std::unique_ptr<TriMesh> mesh;
+            std::unique_ptr<LineSegments> lineSegs;
+            if(readPlyFile(fileName, mesh, lineSegs))
+            {
+                if (mesh)
+                    meshes.push_back(std::move(mesh));
+                if (lineSegs)
+                    lines.push_back(std::move(lineSegs));
+            }
         }
         else
         {
@@ -208,7 +215,7 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
 void PointView::loadFiles(const QStringList& fileNames)
 {
     m_meshes.clear(); // FIXME - reloadFiles should reload meshes too
-    loadPointFilesImpl(m_points, m_meshes, fileNames);
+    loadPointFilesImpl(m_points, m_meshes, m_lines, fileNames);
     if(!m_points.empty())
     {
         m_cursorPos = m_points[0]->centroid();
@@ -234,7 +241,7 @@ void PointView::reloadFiles()
     QStringList fileNames;
     for(size_t i = 0; i < m_points.size(); ++i)
         fileNames << m_points[i]->fileName();
-    loadPointFilesImpl(m_points, m_meshes, fileNames);
+    loadPointFilesImpl(m_points, m_meshes, m_lines, fileNames);
     if(!m_points.empty())
     {
         m_drawOffset = m_points[0]->offset();
@@ -331,19 +338,28 @@ void PointView::paintGL()
                  m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Draw meshes, lines and points
     if (!m_meshes.empty())
     {
         for(size_t i = 0; i < m_meshes.size(); ++i)
             drawMesh(*m_meshes[i], m_drawOffset);
     }
-
-    // Draw geometry
+    if (!m_lines.empty())
+    {
+        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+        glLineWidth(1);
+        meshEdgeShader.bind();
+        for(size_t i = 0; i < m_lines.size(); ++i)
+            m_lines[i]->drawEdges(meshEdgeShader);
+        meshEdgeShader.release();
+    }
     float quality = m_doHighQuality ? 10 : 1;
     if (!m_points.empty())
     {
         for(size_t i = 0; i < m_points.size(); ++i)
             drawPoints(*m_points[i], (int)i + 1, m_drawOffset, quality);
     }
+
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
 
