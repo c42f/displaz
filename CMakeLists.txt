@@ -70,11 +70,12 @@ endif()
 if(NOT WIN32)
     set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
 else()
-    add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES)
+    add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+    FORCE
 )
 
 # Create config.h

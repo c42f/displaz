@@ -126,7 +126,8 @@ bool readPlyFile(const QString& fileName,
                  std::unique_ptr<LineSegments>& lines)
 {
     // Read a triangulation from a .ply file
-    std::unique_ptr<t_ply_, int(&)(p_ply)> ply(
+    typedef int (*ply_close_t)(p_ply);
+    std::unique_ptr<t_ply_, ply_close_t> ply(
             ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
@@ -181,7 +182,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog) const
     prog.enableAttributeArray("normal");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
     prog.setAttributeArray("normal", GL_FLOAT, &m_normals[0], 3);
-    glDrawElements(GL_TRIANGLES, m_faces.size(),
+    glDrawElements(GL_TRIANGLES, (GLsizei)m_faces.size(),
                    GL_UNSIGNED_INT, &m_faces[0]);
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("normal");
@@ -192,7 +193,7 @@ void TriMesh::drawEdges(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    glDrawElements(GL_LINES, m_edges.size(),
+    glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
     prog.disableAttributeArray("position");
 }
@@ -267,7 +268,7 @@ void LineSegments::drawEdges(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    glDrawElements(GL_LINES, m_edges.size(),
+    glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
     prog.disableAttributeArray("position");
 }
