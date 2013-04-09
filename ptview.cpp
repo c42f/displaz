@@ -350,7 +350,13 @@ void PointView::paintGL()
         glLineWidth(1);
         meshEdgeShader.bind();
         for(size_t i = 0; i < m_lines.size(); ++i)
+        {
+            glPushMatrix();
+            V3d offset = m_lines[i]->offset() - m_drawOffset;
+            glTranslatef(offset.x, offset.y, offset.z);
             m_lines[i]->drawEdges(meshEdgeShader);
+            glPopMatrix();
+        }
         meshEdgeShader.release();
     }
     float quality = m_doHighQuality ? 10 : 1;
