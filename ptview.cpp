@@ -409,7 +409,7 @@ void PointView::mouseReleaseEvent(QMouseEvent* event)
         QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
         double z = mat.map(exr2qt(m_cursorPos - m_drawOffset)).z();
         m_cursorPos = qt2exr(mat.inverted().map(QVector3D(event->x(), event->y(), z))) + m_drawOffset;
-        snapCursorAndCentre(0.1);
+        snapCursorAndCentre(0.025);
     }
     updateGL();
 }
@@ -620,32 +620,60 @@ void PointView::drawPoints(const PointArray& points,
 /// Snap 3D cursor to closest point and centre the camera
 void PointView::snapCursorAndCentre(double normalScaling)
 {
-    if(m_points.empty())
+    if(m_points.empty() && m_lines.empty() && m_meshes.empty())
         return;
-    // Snap cursor to position of closest point and center on it
-    V3d newPos(0);
-    size_t nearestIdx = 0;
-    size_t nearestCloudIdx = 0;
-    double nearestDist = DBL_MAX;
     V3f N = (qt2exr(m_camera.position()) + m_drawOffset -
              m_cursorPos).normalized();
-    for(size_t i = 0; i < m_points.size(); ++i)
+    V3d newPos(0);
+    double nearestDist = DBL_MAX;
+    if (!m_points.empty())
     {
-        if(m_points[i]->empty())
-            continue;
-        double dist = 0;
-        size_t idx = m_points[i]->closestPoint(m_cursorPos, N,
-                                               normalScaling, &dist);
-        if(dist < nearestDist)
+        // Snap cursor to position of closest point and center on it
+        for(size_t i = 0; i < m_points.size(); ++i)
         {
-            nearestDist = dist;
-            nearestIdx = idx;
-            nearestCloudIdx = i;
+            if(m_points[i]->empty())
+                continue;
+            double dist = 0;
+            size_t idx = m_points[i]->closestPoint(m_cursorPos, N,
+                                                normalScaling, &dist);
+            if(dist < nearestDist)
+            {
+                nearestDist = dist;
+                newPos = m_points[i]->absoluteP(idx);
+            }
         }
     }
-    newPos = m_points[nearestCloudIdx]->absoluteP(nearestIdx);
+    // FIXME: Remove this duplicate code!
+    if (!m_meshes.empty())
+    {
+        for(size_t i = 0; i < m_meshes.size(); ++i)
+        {
+            double dist = 0;
+            size_t idx = m_meshes[i]->closestVertex(m_cursorPos, N,
+                                                    normalScaling, &dist);
+            if(dist < nearestDist)
+            {
+                nearestDist = dist;
+                newPos = m_meshes[i]->vertex(idx);
+            }
+        }
+    }
+    if (!m_lines.empty())
+    {
+        for(size_t i = 0; i < m_lines.size(); ++i)
+        {
+            double dist = 0;
+            size_t idx = m_lines[i]->closestVertex(m_cursorPos, N,
+                                                   normalScaling, &dist);
+            if(dist < nearestDist)
+            {
+                nearestDist = dist;
+                newPos = m_lines[i]->vertex(idx);
+            }
+        }
+    }
     V3d posDiff = newPos - m_prevCursorSnap;
-    tfm::printf("Point %d: (%.3f, %.3f, %.3f) [diff with previous = (%.3f, %.3f, %.3f)]\n", nearestIdx,
+    tfm::printf("Selected (%.3f) [diff with previous = (%.3f)]\n",
                 newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;

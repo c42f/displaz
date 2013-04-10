@@ -27,38 +27,31 @@
 //
 // (This is the BSD 3-clause license)
 
-#ifndef UTIL_H_INCLUDED
-#define UTIL_H_INCLUDED
 
-#ifdef _WIN32
-// FIXME
-#include <ImathVec.h>
-#include <ImathBox.h>
-#include <ImathColor.h>
-#include <ImathMatrix.h>
-#else
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
-#include <OpenEXR/ImathColor.h>
-#include <OpenEXR/ImathMatrix.h>
-#endif
-
-using Imath::V3d;
-using Imath::V3f;
-using Imath::V2f;
-using Imath::C3f;
+#include "util.h"
 
 
-/// Return index of closest point to the given ray, favouring points near ray
-/// origin.
-///
-/// The distance function is the euclidian distance from the ray origin to the
-/// point, where the space has been scaled along the ray direction by the amout
-/// longitudinalScale.  Also return the distance to the nearest point if the
-/// input distance parameter is non-null.
 size_t closestPointToRay(const V3f* points, size_t nPoints,
                          const V3f& rayOrigin, const V3f& rayDirection,
-                         double longitudinalScale, double* distance = 0);
-
-
-#endif // UTIL_H_INCLUDED
+                         double longitudinalScale, double* distance)
+{
+    V3f T = rayDirection.normalized();
+    size_t nearestIdx = -1;
+    double nearestDist2 = DBL_MAX;
+    double f = longitudinalScale*longitudinalScale;
+    for(size_t i = 0; i < nPoints; ++i, ++points)
+    {
+        V3f v = rayOrigin - *points;
+        float distN = T.dot(v);
+        float distNperp = (v - distN*T).length2();
+        float d = f*distN*distN + distNperp;
+        if(d < nearestDist2)
+        {
+            nearestDist2 = d;
+            nearestIdx = i;
+        }
+    }
+    if(distance)
+        *distance = sqrt(nearestDist2);
+    return nearestIdx;
+}

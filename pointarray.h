@@ -35,20 +35,7 @@
 
 #include <QtCore/QObject>
 
-#ifdef _WIN32
-#include <ImathVec.h>
-#include <ImathBox.h>
-#include <ImathColor.h>
-#else
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
-#include <OpenEXR/ImathColor.h>
-#endif
-
-using Imath::V3d;
-using Imath::V3f;
-using Imath::V2f;
-using Imath::C3f;
+#include "util.h"
 
 class QGLShaderProgram;
 
@@ -91,8 +78,8 @@ class PointArray : public QObject
         /// has been scaled by the amout normalDirectionScale.  Also return the
         /// distance to the nearest point if the input distance parameter is
         /// non-null.
-        size_t closestPoint(V3d pos, V3f N, double normalDirectionScale,
-                            double* distance = 0) const;
+        size_t closestPoint(const V3d& pos, const V3f& N,
+                            double longitudinalScale, double* distance = 0) const;
 
         /// Return the centroid of the position data
         const V3d& centroid() const { return m_centroid; }

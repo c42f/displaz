@@ -199,6 +199,15 @@ void TriMesh::drawEdges(QGLShaderProgram& prog) const
 }
 
 
+size_t TriMesh::closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
+                              double longitudinalScale, double* distance) const
+{
+    return closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
+                             rayOrigin - m_offset, rayDirection,
+                             longitudinalScale, distance);
+}
+
+
 /// Compute smooth normals by averaging normals on connected faces
 void TriMesh::makeSmoothNormals(std::vector<float>& normals,
                                 const std::vector<float>& verts,
@@ -271,4 +280,13 @@ void LineSegments::drawEdges(QGLShaderProgram& prog) const
     glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
     prog.disableAttributeArray("position");
+}
+
+
+size_t LineSegments::closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
+                                   double longitudinalScale, double* distance) const
+{
+    return closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
+                             rayOrigin - m_offset, rayDirection,
+                             longitudinalScale, distance);
 }

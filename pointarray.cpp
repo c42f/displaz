@@ -300,32 +300,12 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 }
 
 
-size_t PointArray::closestPoint(V3d pos, V3f N,
-                                double normalDirectionScale,
+size_t PointArray::closestPoint(const V3d& pos, const V3f& N,
+                                double longitudinalScale,
                                 double* distance) const
 {
-    pos -= m_offset;
-    N.normalize();
-    const V3f* P = m_P.get();
-    size_t nearestIdx = -1;
-    double nearestDist2 = DBL_MAX;
-    double f = normalDirectionScale*normalDirectionScale;
-    for(size_t i = 0; i < m_npoints; ++i, ++P)
-    {
-        V3f v = pos - *P;
-        float distN = N.dot(v);
-        float distNperp = (v - distN*N).length2();
-        float d = f*distN*distN + distNperp;
-        //float d = (pos - *P).length2();
-        if(d < nearestDist2)
-        {
-            nearestDist2 = d;
-            nearestIdx = i;
-        }
-    }
-    if(distance)
-        *distance = sqrt(nearestDist2);
-    return nearestIdx;
+    return closestPointToRay(m_P.get(), m_npoints, pos - m_offset, N,
+                             longitudinalScale, distance);
 }
 
 

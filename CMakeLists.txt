@@ -62,6 +62,7 @@ set(srcs
     shadereditor.cpp
     shader.cpp
     rply/rply.c
+    util.cpp
 )
 if(WIN32)
     list(APPEND srcs windows_resources.rc)

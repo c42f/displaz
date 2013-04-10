@@ -50,8 +50,12 @@ class TriMesh
         void drawFaces(QGLShaderProgram& prog) const;
         void drawEdges(QGLShaderProgram& prog) const;
 
+        size_t closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
+                             double longitudinalScale, double* distance = 0) const;
+
         const V3d& offset() const { return m_offset; }
         const V3d& centroid() const { return m_centroid; }
+        V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
 
     private:
         static void makeSmoothNormals(std::vector<float>& normals,
@@ -83,6 +87,10 @@ class LineSegments
 
         const V3d& offset() const { return m_offset; }
         const V3d& centroid() const { return m_centroid; }
+        V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
+
+        size_t closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
+                             double longitudinalScale, double* distance = 0) const;
 
     private:
         V3d m_offset;
