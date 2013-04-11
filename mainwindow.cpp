@@ -229,7 +229,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     // Set shaders
     QString shaderBasePath = DISPLAZ_SHADER_BASE_PATH;
-    QFile shaderFile(shaderBasePath + "/points.glsl");
+    QFile shaderFile(shaderBasePath + "/shaders/points_default.glsl");
     if (shaderFile.open(QIODevice::ReadOnly))
         m_pointView->shaderProgram().setShader(shaderFile.readAll());
     shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
