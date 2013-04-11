@@ -231,6 +231,12 @@ void PointView::loadFiles(const QStringList& fileNames)
         m_drawOffset = m_meshes[0]->offset();
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
     }
+    else if(!m_lines.empty())
+    {
+        m_cursorPos = m_lines[0]->centroid();
+        m_drawOffset = m_lines[0]->offset();
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    }
     updateGL();
 }
 
@@ -673,8 +679,8 @@ void PointView::snapCursorAndCentre(double normalScaling)
         }
     }
     V3d posDiff = newPos - m_prevCursorSnap;
-    tfm::printf("Selected (%.3f) [diff with previous = (%.3f)]\n",
-                newPos.x, newPos.y, newPos.z, posDiff.x, posDiff.y, posDiff.z);
+    tfm::printf("Selected %.3f [diff with previous = %.3f]\n",
+                newPos, posDiff);
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;
     m_camera.setCenter(exr2qt(newPos - m_drawOffset));

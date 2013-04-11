@@ -137,8 +137,14 @@ bool readPlyFile(const QString& fileName,
         ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
         return false;
     info.verts.reserve(3*nvertices);
+    // Attempt to load attributes with names face/vertex_index or face/vertex_indices
+    // There doesn't seem to be a real standard here...
     long nfaces = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 0);
+    if (nfaces == 0)
+        nfaces = ply_set_read_cb(ply.get(), "face", "vertex_indices", face_cb, &info, 0);
     long nedges = ply_set_read_cb(ply.get(), "edge", "vertex_index", edge_cb, &info, 0);
+    if (nedges == 0)
+        nedges = ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
     if (nedges <= 0 && nfaces <= 0)
         return false;
     if (nfaces > 0)
