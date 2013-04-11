@@ -316,7 +316,10 @@ void PointViewerMainWindow::helpDialog()
 
 void PointViewerMainWindow::aboutDialog()
 {
-    QString message = tr("Displaz - a qt-based las viewer\nversion 0.0.1");
+    QString message = tr(
+        "<p><b>Displaz</b> - a LiDAR viewer for geographic data</p>"
+        "<p>version " DISPLAZ_VERSION_STRING "</p>"
+    );
     QMessageBox::information(this, tr("About displaz"), message);
 }
 

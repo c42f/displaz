@@ -87,6 +87,7 @@ Various things which would be nice to do, in no particular order
   * Threaded rendering for better responsiveness
   * Autotune simplification quality based on total points
   * Approximate ambient occlusion (?)
+  * Fix GLSL deprecation warnings for builtin variables
 
 * GUI
 

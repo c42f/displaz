@@ -35,6 +35,7 @@
 #include <QtOpenGL/QGLFormat>
 
 #include "argparse.h"
+#include "config.h"
 
 
 QStringList g_initialFileNames;
@@ -51,13 +52,17 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     ArgParse::ArgParse ap;
+    bool printVersion = false;
+    bool printHelp = false;
     int maxPointCount = 200000000;
 
     ap.options(
         "displaz - view a LAS point cloud\n"
-        "Usage: displaz [opts] file1.las [file2.las ...]",
+        "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
-        "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
+        "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
+        "--version",      &printVersion,  "Print version number",
+        "--help",         &printHelp,     "Print command line usage help",
         NULL
     );
 
@@ -66,6 +71,17 @@ int main(int argc, char *argv[])
         std::cerr << ap.geterror() << std::endl;
         ap.usage();
         return EXIT_FAILURE;
+    }
+
+    if (printVersion)
+    {
+        std::cout << "version " DISPLAZ_VERSION_STRING "\n";
+        return EXIT_SUCCESS;
+    }
+    if (printHelp)
+    {
+        ap.usage();
+        return EXIT_SUCCESS;
     }
 
     // Turn on multisampled antialiasing - this makes rendered point clouds
