@@ -121,6 +121,7 @@ class PointArray : public QObject
         std::unique_ptr<unsigned char[]> m_returnIndex;
         std::unique_ptr<unsigned char[]> m_numberOfReturns;
         std::unique_ptr<unsigned char[]> m_pointSourceId;
+        std::unique_ptr<unsigned char[]> m_classification;
 };
 
 

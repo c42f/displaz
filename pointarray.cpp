@@ -166,6 +166,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         m_returnIndex.reset(new unsigned char[m_npoints]);
         m_numberOfReturns.reset(new unsigned char[m_npoints]);
         m_pointSourceId.reset(new unsigned char[m_npoints]);
+        m_classification.reset(new unsigned char[m_npoints]);
         m_bbox.makeEmpty();
         // Iterate over all points & pull in the data.
         V3f* outP = m_P.get();
@@ -173,6 +174,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         unsigned char* returnIndex = m_returnIndex.get();
         unsigned char* numReturns = m_numberOfReturns.get();
         unsigned char* pointSourceId = m_pointSourceId.get();
+        unsigned char* classification = m_classification.get();
         size_t readCount = 0;
         size_t nextBlock = 1;
         size_t nextStore = 1;
@@ -202,6 +204,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             *returnIndex++ = point.return_number;
             *numReturns++ = point.number_of_returns_of_given_pulse;
             *pointSourceId++ = point.point_source_ID;
+            *classification++ = point.classification;
             // Extract point RGB
             if (outCol)
                 *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
@@ -242,6 +245,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         m_returnIndex.reset(new unsigned char[m_npoints]);
         m_numberOfReturns.reset(new unsigned char[m_npoints]);
         m_pointSourceId.reset(new unsigned char[m_npoints]);
+        m_classification.reset(new unsigned char[m_npoints]);
         for (size_t i = 0; i < m_npoints; ++i)
         {
             m_P[i] = points[i] - m_offset;
@@ -296,6 +300,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     reorderArray(m_returnIndex, inds.get(), m_npoints);
     reorderArray(m_numberOfReturns, inds.get(), m_npoints);
     reorderArray(m_pointSourceId, inds.get(), m_npoints);
+    reorderArray(m_classification, inds.get(), m_npoints);
     return true;
 }
 
@@ -317,6 +322,7 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     prog.enableAttributeArray("returnIndex");
     prog.enableAttributeArray("numberOfReturns");
     prog.enableAttributeArray("pointSourceId");
+    prog.enableAttributeArray("classification");
     if (m_color)
         prog.enableAttributeArray("color");
     else
@@ -337,6 +343,7 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + b, 1);
         prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + b, 1);
         prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + b, 1);
+        prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + b, 1);
         if (m_color)
             prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + b), 3);
         // Compute the desired fraction of points for this bucket.
@@ -366,6 +373,7 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     prog.disableAttributeArray("returnIndex");
     prog.disableAttributeArray("numberOfReturns");
     prog.disableAttributeArray("pointSourceId");
+    prog.disableAttributeArray("classification");
     prog.disableAttributeArray("color");
 }
 

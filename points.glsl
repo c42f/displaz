@@ -10,7 +10,7 @@ uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to keep coverage constant when doing stochastic
@@ -28,6 +28,7 @@ in vec3 color;
 in float returnIndex;
 in float numberOfReturns;
 in float pointSourceId;
+in float classification;
 
 flat out float modifiedPointRadius;
 flat out float pointScreenSize;
@@ -76,6 +77,19 @@ void main()
            pointColor = vec3(1,0,1);
            markerShape = 3;
         }
+    }
+    else if (colorMode == 5)
+    {
+        // Default coloring: greyscale
+        pointColor = vec3(exposure*classification);
+        // Some special colors for standard ASPRS classification numbers
+        int cl = int(classification*255);
+        if (cl == 2)      pointColor = vec3(0.33, 0.18, 0.0); // ground
+        else if (cl == 3) pointColor = vec3(0.25, 0.49, 0.0); // low vegetation
+        else if (cl == 4) pointColor = vec3(0.36, 0.7,  0.0); // medium vegetation
+        else if (cl == 5) pointColor = vec3(0.52, 1.0,  0.0); // high vegetation
+        else if (cl == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
+        else if (cl == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
     }
 }
 
