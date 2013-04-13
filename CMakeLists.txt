@@ -5,6 +5,14 @@ cmake_minimum_required(VERSION 2.8)
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 
+if (CMAKE_BUILD_TYPE STREQUAL "")
+    # Make sure we default to a release build
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+        "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+        FORCE
+    )
+endif()
+
 
 #-----------------------------------------------------------
 # Find laslib
@@ -28,7 +36,7 @@ find_package(OpenGL)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
 if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT LASLIB_FOUND OR NOT ILMBASE_FOUND)
-    message(SEND_ERROR "Qt, opengl, glew, laslib and ilmbase are required.")
+    message(SEND_ERROR "Qt, opengl, laslib and ilmbase are required.")
 endif()
 
 include_directories(BEFORE
@@ -73,11 +81,6 @@ if(NOT WIN32)
 else()
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
-
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-    "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
-    FORCE
-)
 
 # Create config.h
 if(DISPLAZ_USE_BUILTIN_SHADERS)
