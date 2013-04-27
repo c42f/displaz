@@ -5,6 +5,22 @@
 
 #include "tinyformat.h"
 
+/// An interface for loading point data which supports generic attributes
+///
+/// Aims for the interface
+///
+/// * Convenient access to arbitrarily named point attributes
+///   - Ultimate efficiency for statically known attributes
+///   - Ability to use attributes which are only known at runtime (TODO)
+/// * Support out of core iteration over large files
+/// * Zero-copy support for memory buffers/mmaped files as backend
+///
+/// The implementation attempts to make arbitrary named attributes almost as
+/// nice to use as an array of structs (we can't just use an array of structs
+/// because this would limit us to a rigid set of attributes known at compile
+/// time).
+///
+
 namespace ptio
 {
 
@@ -216,10 +232,6 @@ int main()
     using namespace ptio;
     std::unique_ptr<PointInput> in = PointInput::create("test");
 
-    // API 5: Point attribute accessors
-    //
-    // + Hell yes.
-
     Attr<double> x = in->findAttr<double>("x");
     Attr<double> y = in->findAttr<double>("y");
     Attr<double> z = in->findAttr<double>("z");
@@ -232,102 +244,6 @@ int main()
         const double* p = pt[pos];
         tfm::printf("pos2 = (%f,%f,%f), intensity = %d\n", p[0], p[1], p[2], pt[intensity]);
     }
-
-#if 0
-    // API 4
-    //
-    // + mmapable
-    // + supports circular buffer
-    // + fairly simple
-    // + only calculate indices where necessary
-    // + indexed expressions have simple type
-    // - user indexing
-
-    parray<double> x = in->findAttr<double>("x");
-    parray<int>    y = in->findAttr<int>("y");
-    parray<char>   z = in->findAttr<char>("z");
-
-    parray<double[3]> pos = in->findAttr<double,3>("position");
-    parray<double[]> pos  = in->findAttrArray<double>("position", 3); // ?
-
-    for (size_t i = in->begin(); in->valid(); i = in->next())
-    {
-        double* p = pos[i];
-        tfm::printf("pos = (%f,%f,%f)\n", pos[i][0], pos[i][1], pos[i][2]);
-    }
-
-    // API 2
-    //
-    // + Mmapable / circ buffer
-    // + No need to index
-    // - Ref is a complex type
-    // - Non inline incrementing
-    Ref<double> x = in->findAttr<double>("x");
-    Ref<int>    y = in->findAttr<int>("y");
-    Ref<char>   z = in->findAttr<char>("z");
-
-    Ref<double[3]> pos = in->findAttr<double,3>("pos");
-
-    while (in.readNext())
-    {
-        tfm::printf("pos = (%f,%f,%f)\n", pos[0], pos[1], pos[2]);
-    }
-
-    // API 1
-    //
-    // + Nice simple binding to local vars
-    // - Complex implementation
-    // - Not mmapable
-    //
-    double x;
-    int y;
-    char z;
-    auto reader = in->bind("x", &x,
-                           "y", &y,
-                           "z", &z);
-
-    // or
-    auto reader = in->bind("x", &x)
-                     .bind("y", &y)
-                     .bind("z", &z)
-                     .reader();
-
-    while (reader.readNext())
-    {
-        tfm::printf("pos = (%f,%f,%f)\n", x,y,z);
-    }
-
-
-    // API 2
-    //
-    // + Mmapable (?)
-    // - 
-    AttrRef<double> x = in->findAttr<double>("x");
-    AttrRef<int>    y = in->findAttr<int>("y");
-    AttrRef<char>   z = in->findAttr<char>("z");
-
-    while (in.readNext())
-    {
-        tfm::printf("pos = (%f,%f,%f)\n", x,y,z);
-    }
-
-
-    // API 3
-    //
-    // + Mmapable only for certain storage ordering
-
-    double* x = in->findAttr<double>("x");
-    int* y = in->findAttr<int>("y");
-    char* z = in->findAttr<char>("z");
-
-    double (*pos)[3] = in->findAttrArray<double, 3>("position");
-
-    while (size_t index = in->next())
-    {
-        tfm::printf("pos = (%f,%f,%f)\n", pos[index][0], pos[index][1], pos[index][2]);
-    }
-
-#endif
 
     return 0;
 }
