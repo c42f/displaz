@@ -79,18 +79,21 @@ all the source files together into a static library.
 Todo
 ----
 
-Various things which would be nice to do, in no particular order
+Various things which would be nice to do, in rough order of precedence
 
 * Rendering
 
   * Frustum culling of tiles
-  * Threaded rendering for better responsiveness
   * Autotune simplification quality based on total points
-  * Approximate ambient occlusion (?)
   * Fix GLSL deprecation warnings for builtin variables
+  * Octree point heirarchy for improved robustness
+  * Threaded rendering for better responsiveness
+  * Approximate ambient occlusion (?)
 
 * GUI
 
+  * Trimming based on line segment
+  * Better panning support
   * Persistent settings
   * Measurement tool
   * Syntax highlighting in shader editor
@@ -100,10 +103,10 @@ Various things which would be nice to do, in no particular order
 * Point IO
 
   * General point attributes
-  * Flexible text file import
-  * Import points from .ply files
   * Socket mode for updating point sets
+  * Flexible text file import
   * Threaded point cloud loading
+  * Import points from .ply files
 
 * Infrastructure
 
