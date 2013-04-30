@@ -26,10 +26,10 @@ loading very large files - just wait for it and it should eventually finish.
 Navigation
 ~~~~~~~~~~
 
-  * Click and drag the left mouse button to rotate
-  * Click the middle mouse button to centre the camera on the closest point
-    under the mouse
-  * Click and drag the right mouse button to zoom, or use the mouse wheel
+* Click and drag the left mouse button to rotate
+* Click the middle mouse button to centre the camera on the closest point
+  under the mouse
+* Click and drag the right mouse button to zoom, or use the mouse wheel
 
 Point display
 ~~~~~~~~~~~~~
@@ -38,11 +38,11 @@ To change how the points are displayed, use the controls in the box on
 the right hand side of the screen.  Additional controls may be added and
 configured at runtime via hints in the the shader program. Examples:
 
-  * To change the point radius, click and **vertically drag** on the arrows
-    of the spinbox labeled "Point Radius".  This extension works for all
-    spinboxes containing real numbers; somewhat nonstandard but extremely
-    convenient.
-  * To view in colour, select "Colour" from the Colour Mode drop down box.
+* To change the point radius, click and **vertically drag** on the arrows
+  of the spinbox labeled "Point Radius".  This extension works for all
+  spinboxes containing real numbers; somewhat nonstandard but extremely
+  convenient.
+* To view in colour, select "Colour" from the Colour Mode drop down box.
 
 
 Supported file formats
