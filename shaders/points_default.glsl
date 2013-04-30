@@ -45,7 +45,6 @@ float tonemap(float x, float exposure, float contrast)
 void main()
 {
     vec4 p = gl_ModelViewProjectionMatrix * vec4(position,1.0);
-    gl_Position = p;
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
@@ -53,7 +52,6 @@ void main()
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
-    gl_PointSize = pointScreenSize;
     markerShape = 1;
     // Compute vertex color
     if (colorMode == 0)
@@ -91,6 +89,16 @@ void main()
         else if (cl == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
         else if (cl == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
     }
+    // Ensure zero size points are discarded.  The actual minimum point size is
+    // hardware and driver dependent, so set the markerShape to discarded for
+    // good measure.
+    if (pointScreenSize <= 0)
+    {
+        pointScreenSize = 0;
+        markerShape = -1;
+    }
+    gl_PointSize = pointScreenSize;
+    gl_Position = p;
 }
 
 
