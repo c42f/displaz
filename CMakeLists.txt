@@ -112,3 +112,15 @@ if(WIN32)
         )
     endif()
 endif()
+
+# Documentation
+find_program(RST2HTML rst2html)
+if (RST2HTML)
+    set (readmeHtml ${PROJECT_BINARY_DIR}/README.html)
+    add_custom_command(OUTPUT ${readmeHtml}
+        COMMAND rst2html ${PROJECT_SOURCE_DIR}/README.rst > ${readmeHtml}
+        DEPENDS README.rst
+    )
+    add_custom_target(doc ALL DEPENDS ${readmeHtml})
+endif()
+
