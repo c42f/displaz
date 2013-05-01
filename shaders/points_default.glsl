@@ -10,7 +10,7 @@ uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to keep coverage constant when doing stochastic
@@ -88,6 +88,15 @@ void main()
         else if (cl == 5) pointColor = vec3(0.52, 1.0,  0.0); // high vegetation
         else if (cl == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
         else if (cl == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
+    }
+    else if (colorMode == 6)
+    {
+        // Set point colour and marker shape cyclically based on file number to
+        // give a unique combinations for 5*7 files.
+        markerShape = fileNumber % 5;
+        vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
+                             vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
+        pointColor = cols[fileNumber % 7];
     }
     // Ensure zero size points are discarded.  The actual minimum point size is
     // hardware and driver dependent, so set the markerShape to discarded for
