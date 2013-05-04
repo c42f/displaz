@@ -45,6 +45,7 @@
 #endif
 
 #include <QtCore/QTimer>
+#include <QtCore/QTime>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
 //#include <QtOpenGL/QGLBuffer>
@@ -114,6 +115,8 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
 }
 
 
+static const size_t g_defaultPointRenderCount = 1000000;
+
 //------------------------------------------------------------------------------
 PointView::PointView(QWidget *parent)
     : QGLWidget(parent),
@@ -130,6 +133,7 @@ PointView::PointView(QWidget *parent)
     m_shaderParamsUI(0),
     m_maxPointCount(100000000),
     m_highQualityTimer(0),
+    m_maxPointsPerFrame(g_defaultPointRenderCount),
     m_doHighQuality(false)
 {
     setFocusPolicy(Qt::StrongFocus);
@@ -209,6 +213,7 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
     }
     emit fileLoadFinished();
     setupShaderParamUI(); // may have changed file name list
+    m_maxPointsPerFrame = g_defaultPointRenderCount;
 }
 
 
@@ -329,6 +334,8 @@ void PointView::resizeGL(int w, int h)
 
 void PointView::paintGL()
 {
+    QTime frameTimer;
+    frameTimer.start();
     //--------------------------------------------------
     // Draw main scene
     // Set camera projection
@@ -344,7 +351,7 @@ void PointView::paintGL()
                  m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw meshes, lines and points
+    // Draw meshes and lines
     if (!m_meshes.empty())
     {
         for(size_t i = 0; i < m_meshes.size(); ++i)
@@ -365,17 +372,40 @@ void PointView::paintGL()
         }
         meshEdgeShader.release();
     }
-    float quality = m_doHighQuality ? 10 : 1;
+
+    // Figure out how many points we should render
+    size_t totPoints = 0;
+    for (size_t i = 0; i < m_points.size(); ++i)
+        totPoints += m_points[i]->size();
+    size_t numPointsToRender = m_maxPointsPerFrame * (m_doHighQuality ? 10 : 1);
+    bool simplify = numPointsToRender < totPoints && m_useStochasticSimplification;
+    if (!simplify)
+        numPointsToRender = totPoints;
+    // Render points
     if (!m_points.empty())
-    {
-        for(size_t i = 0; i < m_points.size(); ++i)
-            drawPoints(*m_points[i], (int)i + 1, m_drawOffset, quality);
-    }
+        drawPoints(m_points, numPointsToRender, simplify);
 
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
 
-    if (!m_doHighQuality && m_useStochasticSimplification)
+    // Measure frame time to update estimate for how many points we can
+    // draw interactively
+    glFinish();
+    if (!m_doHighQuality)
+    {
+        int frameTime = frameTimer.elapsed();
+        // Aim at 50ms per frame (20fps) which is bearable for desktop usage
+        const double targetMillisecs = 50;
+        double predictedPointNumber = numPointsToRender * targetMillisecs /
+                                      std::max(1, frameTime);
+        // Simple smoothing to avoid wild jumps in point count
+        double decayFactor = 0.7;
+        m_maxPointsPerFrame = (size_t) ( decayFactor     * m_maxPointsPerFrame +
+                                        (1-decayFactor) * predictedPointNumber );
+    }
+
+    // Set up timer to draw a high quality frame if necessary
+    if (!m_doHighQuality && simplify)
         m_highQualityTimer->start(2000);
     m_doHighQuality = false;
 }
@@ -576,50 +606,59 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
 
 
 /// Draw point cloud
-void PointView::drawPoints(const PointArray& points,
-                           int fileNumber, const V3d& drawOffset,
-                           float quality) const
+void PointView::drawPoints(const PointArrayVec& points,
+                           size_t numPointsToRender,
+                           bool simplify) const
 {
-    if(points.empty())
-        return;
-    if(m_drawBoundingBoxes)
+    for(size_t i = 0; i < m_points.size(); ++i)
     {
-        // Draw bounding box
-        Imath::Box3d bbox = points.boundingBox();
-        bbox.min -= drawOffset;
-        bbox.max -= drawOffset;
-        drawBoundingBox(bbox);
+        PointArray& points = *m_points[i];
+        if(points.empty())
+            continue;
+        if(m_drawBoundingBoxes)
+        {
+            // Draw bounding box
+            Imath::Box3d bbox = points.boundingBox();
+            bbox.min -= m_drawOffset;
+            bbox.max -= m_drawOffset;
+            drawBoundingBox(bbox);
+        }
     }
-    glPushMatrix();
-    V3d offset = points.offset() - drawOffset;
-    glTranslatef(offset.x, offset.y, offset.z);
-
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    double quality = 1;
+    V3d globalCamPos = qt2exr(m_camera.position()) + m_drawOffset;
+    if (simplify)
+    {
+        // Get total number of points we would draw at quality == 1
+        double totSimplified = 0;
+        for(size_t i = 0; i < m_points.size(); ++i)
+            totSimplified += m_points[i]->simplifiedSize(globalCamPos);
+        quality = numPointsToRender / totSimplified;
+    }
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
-    //prog.setUniformValue("modelViewMatrix", ); // TODO
-    //prog.setUniformValue("projectionMatrix", );
-    V3f relCursor = m_cursorPos - points.offset();
-    prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
-    prog.setUniformValue("fileNumber", fileNumber);
-    prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-//    QGLBuffer intensityBuf(QGLBuffer::VertexBuffer);
-//    intensityBuf.setUsagePattern(QGLBuffer::DynamicDraw);
-//    intensityBuf.create();
-//    intensityBuf.allocate(sizeof(float)*chunkSize);
-//    intensityBuf.bind();
-//    intensityBuf.write(0, points.intensity() + i, ndraw);
-//    prog.setAttributeBuffer("intensity", GL_FLOAT, 0, 1);
-//    intensityBuf.release();
-    if (!m_useStochasticSimplification)
-        quality = -1;
-    points.draw(prog, qt2exr(m_camera.position()) + m_drawOffset, quality);
-    prog.release();
+    for(size_t i = 0; i < m_points.size(); ++i)
+    {
+        PointArray& points = *m_points[i];
+        if(points.empty())
+            continue;
+        glPushMatrix();
+        V3d offset = points.offset() - m_drawOffset;
+        glTranslatef(offset.x, offset.y, offset.z);
+        //prog.setUniformValue("modelViewMatrix", ); // TODO
+        //prog.setUniformValue("projectionMatrix", );
+        V3f relCursor = m_cursorPos - points.offset();
+        prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
+        prog.setUniformValue("fileNumber", (GLint)(i + 1));
+        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
+        points.draw(prog, globalCamPos, quality, simplify);
+        glPopMatrix();
+    }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    glPopMatrix();
+    prog.release();
 }
 
 

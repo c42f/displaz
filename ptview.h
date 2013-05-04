@@ -108,9 +108,9 @@ class PointView : public QGLWidget
                                 const QStringList& fileNames);
 
         void drawCursor(const V3f& P) const;
-        void drawPoints(const PointArray& points,
-                        int fileNumber, const V3d& drawOffset,
-                        float quality) const;
+        void drawPoints(const PointArrayVec& points,
+                        size_t numPointsToRender,
+                        bool simplify) const;
         void drawMesh(const TriMesh& mesh, const V3d& drawOffset) const;
 
         void snapCursorAndCentre(double normalScaling);
@@ -144,6 +144,8 @@ class PointView : public QGLWidget
         size_t m_maxPointCount;
         /// Timer for turning up draw quality
         QTimer* m_highQualityTimer;
+        /// Target for max total number of points to draw per frame
+        size_t m_maxPointsPerFrame;
         bool m_doHighQuality;
         bool m_useStochasticSimplification;
 };

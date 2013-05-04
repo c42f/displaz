@@ -90,14 +90,18 @@ class PointArray : public QObject
         /// Get the offset which should be added to P to get absolute position
         V3d offset() const { return m_offset; }
 
+        /// Compute the number of points which would be drawn at quality == 1
+        double simplifiedSize(const V3d& cameraPos);
+
         /// Draw points using given openGL shader program
         ///
         /// Requires that prog is already bound and any necessary uniform
         /// variables have been set.
         ///
-        /// quality specifies the desired amount of simplification (negative
-        /// numbers indicate no simplification)
-        void draw(QGLShaderProgram& prog, const V3d& cameraPos, double quality) const;
+        /// quality specifies the desired amount of simplification when
+        /// simplify is true.  If simplify is false, all points are drawn.
+        void draw(QGLShaderProgram& prog, const V3d& cameraPos,
+                  double quality, bool simplify) const;
 
     signals:
         /// Emitted at the start of a point loading step

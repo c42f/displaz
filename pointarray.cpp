@@ -86,6 +86,30 @@ namespace std
 //------------------------------------------------------------------------------
 // PointArray implementation
 
+struct PointArray::Bucket
+{
+    V3f centroid;
+    size_t beginIndex;
+    size_t endIndex;
+
+    Bucket(V3f centroid, size_t beginIndex, size_t endIndex)
+        : centroid(centroid),
+        beginIndex(beginIndex),
+        endIndex(endIndex)
+    { }
+
+    size_t size() const { return endIndex - beginIndex; }
+
+    double simplifiedSize(const V3f& cameraPos, double quality,
+                          double bucketWidth) const
+    {
+        double dist = (centroid - cameraPos).length();
+        double desiredFraction = std::min(1.0, quality*pow(bucketWidth/dist, 2));
+        return ceil(size()*desiredFraction);
+    }
+};
+
+
 PointArray::PointArray()
     : m_fileName(),
     m_npoints(0),
@@ -98,19 +122,6 @@ PointArray::PointArray()
 
 PointArray::~PointArray()
 { }
-
-struct PointArray::Bucket
-{
-    V3f centroid;
-    size_t beginIndex;
-    size_t endIndex;
-
-    Bucket(V3f centroid, size_t beginIndex, size_t endIndex)
-        : centroid(centroid),
-        beginIndex(beginIndex),
-        endIndex(endIndex)
-    { }
-};
 
 
 template<typename T>
@@ -314,8 +325,18 @@ size_t PointArray::closestPoint(const V3d& pos, const V3f& N,
 }
 
 
+double PointArray::simplifiedSize(const V3d& cameraPos)
+{
+    double totDraw = 0;
+    V3f relCamera = cameraPos - m_offset;
+    for (size_t i = 0; i < m_buckets.size(); ++i)
+        totDraw += m_buckets[i].simplifiedSize(relCamera, 1.0, m_bucketWidth);
+    return totDraw;
+}
+
+
 void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                      double quality) const
+                      double quality, bool simplify) const
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("intensity");
@@ -326,14 +347,13 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     if (m_color)
         prog.enableAttributeArray("color");
     else
-    {
         prog.setAttributeValue("color", 0.0f, 0.0f, 0.0f);
-    }
 
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
     size_t totDraw = 0;
+    V3f relCamera = cameraPos - m_offset;
     for (size_t bucketIdx = 0; bucketIdx < m_buckets.size(); ++bucketIdx)
     {
         const Bucket& bucket = m_buckets[bucketIdx];
@@ -351,20 +371,18 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         // The desired fraction is chosen such that the density of points per
         // solid angle is constant; when removing points, the point radii are
         // scaled up to keep the total area covered by the points constant.
-        float dist = (bucket.centroid + m_offset - cameraPos).length();
-        double desiredFraction = quality <= 0 ? 1 : quality * pow(m_bucketWidth/dist, 2);
-        size_t ndraw = bucket.endIndex - bucket.beginIndex;
-        float lodMultiplier = 1;
-        if (desiredFraction < 1)
+        size_t ndraw = bucket.size();
+        double lodMultiplier = 1;
+        if (simplify)
         {
-            ndraw = std::max((size_t) 1, (size_t) (ndraw*desiredFraction));
-            lodMultiplier = (float)sqrt(1/desiredFraction);
+            ndraw = (size_t)bucket.simplifiedSize(relCamera, quality, m_bucketWidth);
+            lodMultiplier = sqrt(double(bucket.size())/ndraw);
         }
-        prog.setUniformValue("pointSizeLodMultiplier", lodMultiplier);
+        prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
         totDraw += ndraw;
     }
-    //tfm::printf("Drew %.2f%% of total points\n", 100.0*totDraw/m_npoints);
+    //tfm::printf("Drew %d of total points %d, quality %f\n", totDraw, m_npoints, quality);
 
     // Disable all attribute arrays - leaving these enabled seems to screw with
     // the OpenGL fixed function pipeline in unusual ways.

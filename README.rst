@@ -114,10 +114,10 @@ Various things which would be nice to do, in rough order of precedence
 * Rendering
 
   * Frustum culling of tiles
-  * Autotune simplification quality based on total points
   * Fix GLSL deprecation warnings for builtin variables
   * Octree point heirarchy for improved robustness
-  * Threaded rendering for better responsiveness
+  * Incremental rendering for large point clouds
+  * GPU buffering
   * Approximate ambient occlusion (?)
 
 * GUI
