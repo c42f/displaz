@@ -104,6 +104,9 @@ struct PointArray::Bucket
                           double bucketWidth) const
     {
         double dist = (centroid - cameraPos).length();
+        // Subtract bucket diagonal dist, since we really want an approx
+        // distance to closest point in the bucket, rather than dist to centre.
+        dist = std::max(10.0, dist - bucketWidth*0.7071);
         double desiredFraction = std::min(1.0, quality*pow(bucketWidth/dist, 2));
         return ceil(size()*desiredFraction);
     }
