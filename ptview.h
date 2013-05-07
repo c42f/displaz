@@ -96,7 +96,7 @@ class PointView : public QGLWidget
         void keyPressEvent(QKeyEvent* event);
 
     private slots:
-        void paintHighQuality();
+        void restartRender();
         void setupShaderParamUI();
 
     private:
@@ -108,9 +108,9 @@ class PointView : public QGLWidget
                                 const QStringList& fileNames);
 
         void drawCursor(const V3f& P) const;
-        void drawPoints(const PointArrayVec& points,
-                        size_t numPointsToRender,
-                        bool simplify) const;
+        size_t drawPoints(const PointArrayVec& allPoints,
+                          size_t numPointsToRender, bool simplify,
+                          bool incrementalDraw);
         void drawMesh(const TriMesh& mesh, const V3d& drawOffset) const;
 
         void snapCursorAndCentre(double normalScaling);
@@ -142,11 +142,11 @@ class PointView : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Maximum desired number of points to load
         size_t m_maxPointCount;
-        /// Timer for turning up draw quality
-        QTimer* m_highQualityTimer;
+        /// Timer for next incremental frame
+        QTimer* m_incrementalFrameTimer;
+        bool m_incrementalDraw;
         /// Target for max total number of points to draw per frame
         size_t m_maxPointsPerFrame;
-        bool m_doHighQuality;
         bool m_useStochasticSimplification;
 };
 

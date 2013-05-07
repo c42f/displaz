@@ -132,9 +132,9 @@ PointView::PointView(QWidget *parent)
     m_points(),
     m_shaderParamsUI(0),
     m_maxPointCount(100000000),
-    m_highQualityTimer(0),
-    m_maxPointsPerFrame(g_defaultPointRenderCount),
-    m_doHighQuality(false)
+    m_incrementalFrameTimer(0),
+    m_incrementalDraw(false),
+    m_maxPointsPerFrame(g_defaultPointRenderCount)
 {
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -142,30 +142,29 @@ PointView::PointView(QWidget *parent)
     m_camera.setClipFar(FLT_MAX);
     // Don't use signals/slots for handling view changes... this seems to
     // introduce a bit of extra lag for slowly drawing scenes (?)
-    //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(updateGL()));
-    //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(updateGL()));
+    //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
+    //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
     makeCurrent();
     m_shaderProgram.reset(new ShaderProgram(context()));
     connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
-            this, SLOT(updateGL()));
+            this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
-            this, SLOT(updateGL()));
+            this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
 
-    m_highQualityTimer = new QTimer(this);
-    m_highQualityTimer->setSingleShot(true);
-    connect(m_highQualityTimer, SIGNAL(timeout()),
-            this, SLOT(paintHighQuality()));
+    m_incrementalFrameTimer = new QTimer(this);
+    m_incrementalFrameTimer->setSingleShot(false);
+    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
 PointView::~PointView() { }
 
 
-void PointView::paintHighQuality()
+void PointView::restartRender()
 {
-    m_doHighQuality = true;
+    m_incrementalDraw = false;
     updateGL();
 }
 
@@ -242,7 +241,7 @@ void PointView::loadFiles(const QStringList& fileNames)
         m_drawOffset = m_lines[0]->offset();
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
     }
-    updateGL();
+    restartRender();
 }
 
 
@@ -258,7 +257,7 @@ void PointView::reloadFiles()
         m_drawOffset = m_points[0]->offset();
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
     }
-    updateGL();
+    restartRender();
 }
 
 
@@ -285,13 +284,14 @@ void PointView::setupShaderParamUI()
 void PointView::setBackground(QColor col)
 {
     m_backgroundColor = col;
-    updateGL();
+    restartRender();
 }
 
 
 void PointView::toggleDrawBoundingBoxes()
 {
     m_drawBoundingBoxes = !m_drawBoundingBoxes;
+    restartRender();
 }
 
 void PointView::toggleCameraMode()
@@ -303,7 +303,7 @@ void PointView::toggleCameraMode()
 void PointView::setStochasticSimplification(bool enabled)
 {
     m_useStochasticSimplification = enabled;
-    updateGL();
+    restartRender();
 }
 
 
@@ -329,6 +329,7 @@ void PointView::resizeGL(int w, int h)
     // Draw on full window
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
+    restartRender();
 }
 
 
@@ -349,15 +350,16 @@ void PointView::paintGL()
     glDepthFunc(GL_LEQUAL);
     glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
                  m_backgroundColor.blueF(), 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (!m_incrementalDraw)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw meshes and lines
-    if (!m_meshes.empty())
+    if (!m_meshes.empty() && !m_incrementalDraw)
     {
         for(size_t i = 0; i < m_meshes.size(); ++i)
             drawMesh(*m_meshes[i], m_drawOffset);
     }
-    if (!m_lines.empty())
+    if (!m_lines.empty() && !m_incrementalDraw)
     {
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1);
@@ -377,13 +379,13 @@ void PointView::paintGL()
     size_t totPoints = 0;
     for (size_t i = 0; i < m_points.size(); ++i)
         totPoints += m_points[i]->size();
-    size_t numPointsToRender = m_maxPointsPerFrame * (m_doHighQuality ? 10 : 1);
+    size_t numPointsToRender = m_maxPointsPerFrame;
     bool simplify = numPointsToRender < totPoints && m_useStochasticSimplification;
     if (!simplify)
         numPointsToRender = totPoints;
     // Render points
-    if (!m_points.empty())
-        drawPoints(m_points, numPointsToRender, simplify);
+    size_t totDrawn = drawPoints(m_points, numPointsToRender, simplify,
+                                 m_incrementalDraw);
 
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
@@ -391,10 +393,10 @@ void PointView::paintGL()
     // Measure frame time to update estimate for how many points we can
     // draw interactively
     glFinish();
-    if (!m_doHighQuality)
+    if (!m_incrementalDraw)
     {
         int frameTime = frameTimer.elapsed();
-        // Aim at 50ms per frame (20fps) which is bearable for desktop usage
+        // Aim for a frame time which is ok for desktop usage
         const double targetMillisecs = 50;
         double predictedPointNumber = numPointsToRender * targetMillisecs /
                                       std::max(1, frameTime);
@@ -405,9 +407,14 @@ void PointView::paintGL()
     }
 
     // Set up timer to draw a high quality frame if necessary
-    if (!m_doHighQuality && simplify)
-        m_highQualityTimer->start(2000);
-    m_doHighQuality = false;
+    if (simplify)
+    {
+        if (totDrawn == 0)
+            m_incrementalFrameTimer->stop();
+        else
+            m_incrementalFrameTimer->start(10);
+        m_incrementalDraw = true;
+    }
 }
 
 
@@ -447,7 +454,7 @@ void PointView::mouseReleaseEvent(QMouseEvent* event)
         m_cursorPos = qt2exr(mat.inverted().map(QVector3D(event->x(), event->y(), z))) + m_drawOffset;
         snapCursorAndCentre(0.025);
     }
-    updateGL();
+    restartRender();
 }
 
 
@@ -462,12 +469,12 @@ void PointView::mouseMoveEvent(QMouseEvent* event)
             m_camera.mouseMovePoint(exr2qt(m_cursorPos - m_drawOffset),
                                     event->pos() - m_prevMousePos,
                                     zooming) ) + m_drawOffset;
-        updateGL();
+        restartRender();
     }
     else
     {
         m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
-        updateGL();
+        restartRender();
     }
     m_prevMousePos = event->pos();
 }
@@ -477,7 +484,7 @@ void PointView::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
     m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
-    updateGL();
+    restartRender();
 }
 
 
@@ -487,7 +494,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
     {
         // Centre camera on current cursor location
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        updateGL();
+        restartRender();
     }
     else if(event->key() == Qt::Key_S)
     {
@@ -606,16 +613,18 @@ static void drawBoundingBox(const Imath::Box3d& bbox)
 
 
 /// Draw point cloud
-void PointView::drawPoints(const PointArrayVec& points,
-                           size_t numPointsToRender,
-                           bool simplify) const
+size_t PointView::drawPoints(const PointArrayVec& allPoints,
+                             size_t numPointsToRender, bool simplify,
+                             bool incrementalDraw)
 {
-    for(size_t i = 0; i < m_points.size(); ++i)
+    if (allPoints.empty())
+        return 0;
+    for(size_t i = 0; i < allPoints.size(); ++i)
     {
-        PointArray& points = *m_points[i];
+        PointArray& points = *allPoints[i];
         if(points.empty())
             continue;
-        if(m_drawBoundingBoxes)
+        if(m_drawBoundingBoxes && !incrementalDraw)
         {
             // Draw bounding box
             Imath::Box3d bbox = points.boundingBox();
@@ -626,23 +635,25 @@ void PointView::drawPoints(const PointArrayVec& points,
     }
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    double quality = 1;
     V3d globalCamPos = qt2exr(m_camera.position()) + m_drawOffset;
+    double quality = 1;
     if (simplify)
     {
         // Get total number of points we would draw at quality == 1
-        double totSimplified = 0;
-        for(size_t i = 0; i < m_points.size(); ++i)
-            totSimplified += m_points[i]->simplifiedSize(globalCamPos);
-        quality = numPointsToRender / totSimplified;
+        size_t totSimplified = 0;
+        for(size_t i = 0; i < allPoints.size(); ++i)
+            totSimplified += allPoints[i]->simplifiedSize(globalCamPos,
+                                                         incrementalDraw);
+        quality = double(numPointsToRender) / totSimplified;
     }
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
-    for(size_t i = 0; i < m_points.size(); ++i)
+    size_t totDrawn = 0;
+    for(size_t i = 0; i < allPoints.size(); ++i)
     {
-        PointArray& points = *m_points[i];
+        PointArray& points = *allPoints[i];
         if(points.empty())
             continue;
         glPushMatrix();
@@ -654,11 +665,12 @@ void PointView::drawPoints(const PointArrayVec& points,
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(i + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-        points.draw(prog, globalCamPos, quality, simplify);
+        totDrawn += points.draw(prog, globalCamPos, quality, simplify, incrementalDraw);
         glPopMatrix();
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     prog.release();
+    return totDrawn;
 }
 
 
@@ -723,7 +735,7 @@ void PointView::snapCursorAndCentre(double normalScaling)
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;
     m_camera.setCenter(exr2qt(newPos - m_drawOffset));
-    updateGL();
+    restartRender();
 }
 
 

@@ -91,7 +91,7 @@ class PointArray : public QObject
         V3d offset() const { return m_offset; }
 
         /// Compute the number of points which would be drawn at quality == 1
-        double simplifiedSize(const V3d& cameraPos);
+        size_t simplifiedSize(const V3d& cameraPos, bool incrementalDraw);
 
         /// Draw points using given openGL shader program
         ///
@@ -100,8 +100,10 @@ class PointArray : public QObject
         ///
         /// quality specifies the desired amount of simplification when
         /// simplify is true.  If simplify is false, all points are drawn.
-        void draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                  double quality, bool simplify) const;
+        ///
+        /// Return total number of points actually drawn
+        size_t draw(QGLShaderProgram& prog, const V3d& cameraPos,
+                    double quality, bool simplify, bool incrementalDraw) const;
 
     signals:
         /// Emitted at the start of a point loading step

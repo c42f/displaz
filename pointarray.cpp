@@ -91,24 +91,33 @@ struct PointArray::Bucket
     V3f centroid;
     size_t beginIndex;
     size_t endIndex;
+    mutable size_t nextBeginIndex;
 
     Bucket(V3f centroid, size_t beginIndex, size_t endIndex)
         : centroid(centroid),
         beginIndex(beginIndex),
-        endIndex(endIndex)
+        endIndex(endIndex),
+        nextBeginIndex(beginIndex)
     { }
 
     size_t size() const { return endIndex - beginIndex; }
 
-    double simplifiedSize(const V3f& cameraPos, double quality,
-                          double bucketWidth) const
+    size_t simplifiedSize(const V3f& cameraPos, double quality,
+                          double bucketWidth, bool incrementalDraw) const
     {
         double dist = (centroid - cameraPos).length();
         // Subtract bucket diagonal dist, since we really want an approx
         // distance to closest point in the bucket, rather than dist to centre.
         dist = std::max(10.0, dist - bucketWidth*0.7071);
         double desiredFraction = std::min(1.0, quality*pow(bucketWidth/dist, 2));
-        return ceil(size()*desiredFraction);
+        size_t chunkSize = (size_t)ceil(size()*desiredFraction);
+        size_t ndraw = chunkSize;
+        if (incrementalDraw)
+        {
+            ndraw = (nextBeginIndex >= endIndex) ? 0 :
+                    std::min(chunkSize, endIndex - nextBeginIndex);
+        }
+        return ndraw;
     }
 };
 
@@ -328,18 +337,19 @@ size_t PointArray::closestPoint(const V3d& pos, const V3f& N,
 }
 
 
-double PointArray::simplifiedSize(const V3d& cameraPos)
+size_t PointArray::simplifiedSize(const V3d& cameraPos, bool incrementalDraw)
 {
-    double totDraw = 0;
+    size_t totDraw = 0;
     V3f relCamera = cameraPos - m_offset;
     for (size_t i = 0; i < m_buckets.size(); ++i)
-        totDraw += m_buckets[i].simplifiedSize(relCamera, 1.0, m_bucketWidth);
+        totDraw += m_buckets[i].simplifiedSize(relCamera, 1.0, m_bucketWidth,
+                                               incrementalDraw);
     return totDraw;
 }
 
 
-void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                      double quality, bool simplify) const
+size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
+                        double quality, bool simplify, bool incrementalDraw) const
 {
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("intensity");
@@ -355,20 +365,11 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
-    size_t totDraw = 0;
+    size_t totDrawn = 0;
     V3f relCamera = cameraPos - m_offset;
     for (size_t bucketIdx = 0; bucketIdx < m_buckets.size(); ++bucketIdx)
     {
         const Bucket& bucket = m_buckets[bucketIdx];
-        size_t b = bucket.beginIndex;
-        prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + b), 3);
-        prog.setAttributeArray("intensity", m_intensity.get() + b,           1);
-        prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + b, 1);
-        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + b, 1);
-        prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + b, 1);
-        prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + b, 1);
-        if (m_color)
-            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + b), 3);
         // Compute the desired fraction of points for this bucket.
         //
         // The desired fraction is chosen such that the density of points per
@@ -376,14 +377,30 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         // scaled up to keep the total area covered by the points constant.
         size_t ndraw = bucket.size();
         double lodMultiplier = 1;
+        size_t idx = bucket.beginIndex;
+        if (!incrementalDraw)
+            bucket.nextBeginIndex = bucket.beginIndex;
         if (simplify)
         {
-            ndraw = (size_t)bucket.simplifiedSize(relCamera, quality, m_bucketWidth);
-            lodMultiplier = sqrt(double(bucket.size())/ndraw);
+            ndraw = (size_t)bucket.simplifiedSize(relCamera, quality, m_bucketWidth,
+                                                  incrementalDraw);
+            idx = bucket.nextBeginIndex;
+            if (ndraw == 0)
+                continue;
+            //lodMultiplier = sqrt(double(bucket.size())/ndraw);
         }
+        prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
+        prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
+        prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + idx, 1);
+        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + idx, 1);
+        prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + idx, 1);
+        prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + idx, 1);
+        if (m_color)
+            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + idx), 3);
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
-        totDraw += ndraw;
+        bucket.nextBeginIndex += ndraw;
+        totDrawn += ndraw;
     }
     //tfm::printf("Drew %d of total points %d, quality %f\n", totDraw, m_npoints, quality);
 
@@ -396,6 +413,7 @@ void PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     prog.disableAttributeArray("pointSourceId");
     prog.disableAttributeArray("classification");
     prog.disableAttributeArray("color");
+    return totDrawn;
 }
 
 
