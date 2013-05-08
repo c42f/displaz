@@ -264,16 +264,10 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         if (totPoints > 0)
             m_offset = points[0];
         m_P.reset(new V3f[m_npoints]);
-        m_intensity.reset(new float[m_npoints]);
-        m_returnIndex.reset(new unsigned char[m_npoints]);
-        m_numberOfReturns.reset(new unsigned char[m_npoints]);
-        m_pointSourceId.reset(new unsigned char[m_npoints]);
-        m_classification.reset(new unsigned char[m_npoints]);
         for (size_t i = 0; i < m_npoints; ++i)
         {
             m_P[i] = points[i] - m_offset;
             Psum += points[i];
-            m_intensity[i] = 0;
         }
     }
     emit pointsLoaded(100);
@@ -348,19 +342,28 @@ size_t PointArray::simplifiedSize(const V3d& cameraPos, bool incrementalDraw)
 }
 
 
+namespace {
+template<typename T, typename ArrayT>
+void enableAttrOrSetDefault(QGLShaderProgram& prog, const char* attrName, const ArrayT& nonNull, const T& defaultValue)
+{
+    if (nonNull)
+        prog.enableAttributeArray(attrName);
+    else
+        prog.setAttributeValue(attrName, defaultValue);
+}
+}
+
+
 size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
                         double quality, bool simplify, bool incrementalDraw) const
 {
     prog.enableAttributeArray("position");
-    prog.enableAttributeArray("intensity");
-    prog.enableAttributeArray("returnIndex");
-    prog.enableAttributeArray("numberOfReturns");
-    prog.enableAttributeArray("pointSourceId");
-    prog.enableAttributeArray("classification");
-    if (m_color)
-        prog.enableAttributeArray("color");
-    else
-        prog.setAttributeValue("color", 0.0f, 0.0f, 0.0f);
+    enableAttrOrSetDefault(prog, "intensity",       m_intensity,       0.0f);
+    enableAttrOrSetDefault(prog, "returnIndex",     m_returnIndex,     0.0f);
+    enableAttrOrSetDefault(prog, "numberOfReturns", m_numberOfReturns, 0.0f);
+    enableAttrOrSetDefault(prog, "pointSourceId",   m_pointSourceId,   0.0f);
+    enableAttrOrSetDefault(prog, "classification",  m_classification,  0.0f);
+    enableAttrOrSetDefault(prog, "color",           m_color,  QColor(0,0,0));
 
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
@@ -390,13 +393,12 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
             //lodMultiplier = sqrt(double(bucket.size())/ndraw);
         }
         prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
-        prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
-        prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + idx, 1);
-        prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + idx, 1);
-        prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + idx, 1);
-        prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + idx, 1);
-        if (m_color)
-            prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + idx), 3);
+        if (m_intensity)       prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
+        if (m_returnIndex)     prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + idx, 1);
+        if (m_numberOfReturns) prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + idx, 1);
+        if (m_pointSourceId)   prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + idx, 1);
+        if (m_classification)  prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + idx, 1);
+        if (m_color)           prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + idx), 3);
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
         bucket.nextBeginIndex += ndraw;
