@@ -128,6 +128,8 @@ PointView::PointView(QWidget *parent)
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
+    m_drawPoints(true),
+    m_drawMeshes(true),
     m_shaderProgram(),
     m_points(),
     m_shaderParamsUI(0),
@@ -294,6 +296,18 @@ void PointView::toggleDrawBoundingBoxes()
     restartRender();
 }
 
+void PointView::toggleDrawPoints()
+{
+    m_drawPoints = !m_drawPoints;
+    restartRender();
+}
+
+void PointView::toggleDrawMeshes()
+{
+    m_drawMeshes = !m_drawMeshes;
+    restartRender();
+}
+
 void PointView::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
@@ -354,12 +368,12 @@ void PointView::paintGL()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw meshes and lines
-    if (!m_meshes.empty() && !m_incrementalDraw)
+    if (m_drawMeshes && !m_meshes.empty() && !m_incrementalDraw)
     {
         for(size_t i = 0; i < m_meshes.size(); ++i)
             drawMesh(*m_meshes[i], m_drawOffset);
     }
-    if (!m_lines.empty() && !m_incrementalDraw)
+    if (m_drawMeshes && !m_lines.empty() && !m_incrementalDraw)
     {
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1);
@@ -383,9 +397,13 @@ void PointView::paintGL()
     bool simplify = numPointsToRender < totPoints && m_useStochasticSimplification;
     if (!simplify)
         numPointsToRender = totPoints;
-    // Render points
-    size_t totDrawn = drawPoints(m_points, numPointsToRender, simplify,
-                                 m_incrementalDraw);
+    size_t totDrawn = 0;
+    if (m_drawPoints)
+    {
+        // Render points
+        totDrawn = drawPoints(m_points, numPointsToRender, simplify,
+                              m_incrementalDraw);
+    }
 
     // Draw overlay stuff, including cursor position.
     drawCursor(m_cursorPos - m_drawOffset);
@@ -393,7 +411,7 @@ void PointView::paintGL()
     // Measure frame time to update estimate for how many points we can
     // draw interactively
     glFinish();
-    if (!m_incrementalDraw)
+    if (m_drawPoints && !m_incrementalDraw)
     {
         int frameTime = frameTimer.elapsed();
         // Aim for a frame time which is ok for desktop usage
@@ -407,7 +425,7 @@ void PointView::paintGL()
     }
 
     // Set up timer to draw a high quality frame if necessary
-    if (simplify)
+    if (m_drawPoints && simplify)
     {
         if (totDrawn == 0)
             m_incrementalFrameTimer->stop();

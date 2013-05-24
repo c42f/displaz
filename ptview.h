@@ -69,6 +69,8 @@ class PointView : public QGLWidget
         void setBackground(QColor col);
         void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
+        void toggleDrawPoints();
+        void toggleDrawMeshes();
         void toggleCameraMode();
         void setStochasticSimplification(bool);
 
@@ -129,6 +131,8 @@ class PointView : public QGLWidget
         QColor m_backgroundColor;
         /// Option to draw bounding boxes of point clouds
         bool m_drawBoundingBoxes;
+        bool m_drawPoints;
+        bool m_drawMeshes;
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Shaders for polygonal geometry

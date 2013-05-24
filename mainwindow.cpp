@@ -98,9 +98,6 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     // View menu
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
-    QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw &Bounding boxes"));
-    drawBoundingBoxes->setCheckable(true);
-    drawBoundingBoxes->setChecked(true);
     QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
     trackballMode->setCheckable(true);
     trackballMode->setChecked(false);
@@ -134,6 +131,17 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* backgroundCustom = backMenu->addAction(tr("&Custom"));
     connect(backgroundCustom, SIGNAL(triggered()),
             this, SLOT(chooseBackground()));
+    // Check boxes for drawing various scene elements by category
+    viewMenu->addSeparator();
+    QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw Bounding bo&xes"));
+    drawBoundingBoxes->setCheckable(true);
+    drawBoundingBoxes->setChecked(true);
+    QAction* drawPoints = viewMenu->addAction(tr("Draw &Points"));
+    drawPoints->setCheckable(true);
+    drawPoints->setChecked(true);
+    QAction* drawMeshes = viewMenu->addAction(tr("Draw &Meshes"));
+    drawMeshes->setCheckable(true);
+    drawMeshes->setChecked(true);
 
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -150,6 +158,10 @@ PointViewerMainWindow::PointViewerMainWindow()
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
+    connect(drawPoints, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawPoints()));
+    connect(drawMeshes, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawMeshes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(simplifyAction, SIGNAL(toggled(bool)),
