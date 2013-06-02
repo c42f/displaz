@@ -106,8 +106,6 @@ void main()
         pointScreenSize = 0;
         markerShape = -1;
     }
-    if (classification != 0)
-        pointColor = vec3(1,0,0);
     gl_PointSize = pointScreenSize;
     gl_Position = p;
 }
