@@ -57,6 +57,7 @@ V3d getCentroid(const V3d& offset, const std::vector<float>& vertices)
 struct PlyLoadInfo
 {
     std::vector<float> verts;
+    std::vector<float> colors;
     std::vector<GLuint> faces;
     std::vector<GLuint> edges;
     double offset[3];
@@ -76,6 +77,17 @@ static int vertex_cb(p_ply_argument argument)
     }
     v -= info.offset[info.verts.size() % 3];
     info.verts.push_back((float)v);
+    return 1;
+}
+
+
+static int color_cb(p_ply_argument argument)
+{
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
+    double v = ply_get_argument_value(argument);
+    info.colors.push_back((float)v);
     return 1;
 }
 
@@ -137,6 +149,13 @@ bool readPlyFile(const QString& fileName,
         ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
         return false;
     info.verts.reserve(3*nvertices);
+    long ncolors = ply_set_read_cb(ply.get(), "color", "r", color_cb, &info, 0);
+    if (ncolors != 0)
+    {
+        ply_set_read_cb(ply.get(), "color", "g", color_cb, &info, 1);
+        ply_set_read_cb(ply.get(), "color", "b", color_cb, &info, 2);
+        info.colors.reserve(3*nvertices);
+    }
     // Attempt to load attributes with names face/vertex_index or face/vertex_indices
     // There doesn't seem to be a real standard here...
     long nfaces = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 0);
@@ -159,11 +178,13 @@ bool readPlyFile(const QString& fileName,
     }
     if (!ply_read(ply.get()))
         return false;
+    if (info.colors.size() != info.verts.size())
+        info.colors.clear();
     V3d offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
     if (info.faces.size() > 0)
-        mesh.reset(new TriMesh(offset, info.verts, info.faces));
+        mesh.reset(new TriMesh(offset, info.verts, info.colors, info.faces));
     if (info.edges.size() > 0)
-        lines.reset(new LineSegments(offset, info.verts, info.edges));
+        lines.reset(new LineSegments(offset, info.verts, info.colors, info.edges));
     return true;
 }
 
@@ -171,10 +192,12 @@ bool readPlyFile(const QString& fileName,
 //------------------------------------------------------------------------------
 // TriMesh implementation
 TriMesh::TriMesh(const V3d& offset, const std::vector<float>& vertices,
+                 const std::vector<float>& colors,
                  const std::vector<unsigned int>& faces)
     : m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
     m_verts(vertices),
+    m_colors(colors),
     m_faces(faces)
 {
     makeSmoothNormals(m_normals, m_verts, m_faces);
@@ -188,8 +211,16 @@ void TriMesh::drawFaces(QGLShaderProgram& prog) const
     prog.enableAttributeArray("normal");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
     prog.setAttributeArray("normal", GL_FLOAT, &m_normals[0], 3);
+    if (m_colors.size() == m_verts.size())
+    {
+        prog.enableAttributeArray("color");
+        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
+    }
+    else
+        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
     glDrawElements(GL_TRIANGLES, (GLsizei)m_faces.size(),
                    GL_UNSIGNED_INT, &m_faces[0]);
+    prog.disableAttributeArray("color");
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("normal");
 }
@@ -271,10 +302,12 @@ void TriMesh::makeEdges(std::vector<unsigned int>& edges,
 // LineSegments implementation
 
 LineSegments::LineSegments(const V3d& offset, const std::vector<float>& vertices,
+                           const std::vector<float>& colors,
                            const std::vector<unsigned int>& edges)
     : m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
     m_verts(vertices),
+    m_colors(colors),
     m_edges(edges)
 { }
 
@@ -283,8 +316,16 @@ void LineSegments::drawEdges(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
+    if (m_colors.size() == m_verts.size())
+    {
+        prog.enableAttributeArray("color");
+        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
+    }
+    else
+        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
     glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
+    prog.disableAttributeArray("color");
     prog.disableAttributeArray("position");
 }
 

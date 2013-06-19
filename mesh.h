@@ -44,6 +44,7 @@ class TriMesh
         TriMesh() : m_offset(0), m_centroid(0) {}
 
         TriMesh(const V3d& offset, const std::vector<float>& vertices,
+                const std::vector<float>& colors,
                 const std::vector<unsigned int>& faces);
 
         /// Draw mesh using current OpenGL context
@@ -69,6 +70,9 @@ class TriMesh
         V3d m_centroid;
         /// xyz triples
         std::vector<float> m_verts;
+        /// Per-vertex color
+        std::vector<float> m_colors;
+        /// Per-vertex normal
         std::vector<float> m_normals;
         /// triples of indices into vertex array
         std::vector<unsigned int> m_faces;
@@ -81,6 +85,7 @@ class LineSegments
 {
     public:
         LineSegments(const V3d& offset, const std::vector<float>& vertices,
+                     const std::vector<float>& colors,
                      const std::vector<unsigned int>& edges);
 
         void drawEdges(QGLShaderProgram& prog) const;
@@ -97,6 +102,8 @@ class LineSegments
         V3d m_centroid;
         /// xyz triples
         std::vector<float> m_verts;
+        /// Per-vertex color
+        std::vector<float> m_colors;
         /// Pairs of indices into vertex array
         std::vector<unsigned int> m_edges;
 };
