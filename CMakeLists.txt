@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 2.8)
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
+option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     # Make sure we default to a release build
@@ -15,12 +16,34 @@ endif()
 
 
 #-----------------------------------------------------------
-# Find laslib
-find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
-find_library (LASLIB_LIBRARIES NAMES laslib)
-if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
-    set (LASLIB_FOUND TRUE)
+# Find a library to read .las or .laz
+if (DISPLAZ_USE_PDAL)
+    find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
+    find_library (PDAL_LIBRARIES NAMES pdal)
+    if (PDAL_LIBRARIES AND PDAL_INCLUDES)
+        set (PDAL_FOUND TRUE)
+    endif()
+
+    if (PDAL_FOUND)
+        find_package (Boost 1.48)
+        if (NOT Boost_FOUND)
+            message (SEND_ERROR "Boost headers are required when compiling with PDAL")
+        endif()
+        list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
+    endif()
+else()
+    # laslib support
+    find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
+    find_library (LASLIB_LIBRARIES NAMES laslib)
+    if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
+        set (LASLIB_FOUND TRUE)
+    endif()
 endif()
+
+if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
+    message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
+endif()
+
 
 #-----------------------------------------------------------
 # Find IlmBase - probably temporary dependency
@@ -35,14 +58,20 @@ endif()
 find_package(OpenGL)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
-if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT LASLIB_FOUND OR NOT ILMBASE_FOUND)
+if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT ILMBASE_FOUND)
     message(SEND_ERROR "Qt, opengl, laslib and ilmbase are required.")
+endif()
+
+if(DISPLAZ_USE_PDAL)
+    add_definitions(-DDISPLAZ_USE_PDAL)
+    include_directories(${PDAL_INCLUDES})
+else()
+    include_directories(${LASLIB_INCLUDES})
 endif()
 
 include_directories(BEFORE
     ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
-    ${LASLIB_INCLUDES}
     ${ILMBASE_INCLUDES}
 )
 
@@ -97,8 +126,14 @@ add_executable(displaz WIN32 ${srcs})
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${OPENGL_gl_LIBRARY}
-    ${LASLIB_LIBRARIES}
 )
+
+if (DISPLAZ_USE_PDAL)
+    target_link_libraries (displaz ${PDAL_LIBRARIES})
+else()
+    target_link_libraries (displaz ${LASLIB_LIBRARIES})
+endif()
+
 
 if(WIN32)
     target_link_libraries(displaz

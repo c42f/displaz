@@ -31,12 +31,27 @@
 
 #include <QtGui/QMessageBox>
 #include <QtOpenGL/QGLShaderProgram>
+#include <QtCore/QTime>
 
 #include <unordered_map>
 #include <fstream>
 
 #include "tinyformat.h"
 
+
+#ifdef DISPLAZ_USE_PDAL
+
+// OpenEXR unfortunately #defines restrict, which clashes with PDAL's use of
+// boost.iostreams which uses "restrict" as an identifier.
+#ifdef restrict
+#   undef restrict
+#endif
+#include <pdal/drivers/las/Reader.hpp>
+#include <pdal/PointBuffer.hpp>
+
+#else
+
+// Use laslib
 #ifdef _MSC_VER
 #   pragma warning(push)
 #   pragma warning(disable : 4996)
@@ -58,6 +73,7 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 #endif
 #endif
 
+#endif
 
 //------------------------------------------------------------------------------
 // Hashing of std::pair, copied from stack overflow
@@ -150,10 +166,121 @@ void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
 
 bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 {
+    QTime loadTimer;
+    loadTimer.start();
     m_fileName = fileName;
     size_t totPoints = 0;
     V3d Psum(0);
+    m_bbox.makeEmpty();
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
+#ifdef DISPLAZ_USE_PDAL
+    {
+        emit loadStepStarted("Reading file");
+
+        // Open file
+        std::unique_ptr<pdal::Stage> reader(
+            new pdal::drivers::las::Reader(fileName.toAscii().constData()));
+        reader->initialize();
+        const pdal::Schema& schema = reader->getSchema();
+        bool hasColor = bool(schema.getDimensionOptional("Red"));
+
+        // Figure out how much to decimate the point cloud.
+        totPoints = reader->getNumPoints();
+        size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
+        if(decimate > 1)
+            tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
+        m_npoints = (totPoints + decimate - 1) / decimate;
+        const pdal::Bounds<double>& bbox = reader->getBounds();
+        m_offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
+                       0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
+                       0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
+        // Attempt to place all data on the same vertical scale, but allow
+        // other offsets if the magnitude of z is too large (and we would
+        // therefore loose noticable precision by storing the data as floats)
+        if (fabs(m_offset.z) < 10000)
+            m_offset.z = 0;
+        // Allocate all arrays
+        m_P.reset(new V3f[m_npoints]);
+        m_intensity.reset(new float[m_npoints]);
+        m_returnIndex.reset(new unsigned char[m_npoints]);
+        m_numberOfReturns.reset(new unsigned char[m_npoints]);
+        m_pointSourceId.reset(new unsigned char[m_npoints]);
+        m_classification.reset(new unsigned char[m_npoints]);
+        if (hasColor)
+            m_color.reset(new C3f[m_npoints]);
+        // Output iterators for the output arrays
+        V3f* outP = m_P.get();
+        float* outIntens = m_intensity.get();
+        unsigned char* returnIndex = m_returnIndex.get();
+        unsigned char* numReturns = m_numberOfReturns.get();
+        unsigned char* pointSourceId = m_pointSourceId.get();
+        unsigned char* classification = m_classification.get();
+        V3f* outCol = m_color.get();
+        // Read big chunks of points at a time
+        pdal::PointBuffer buf(schema, 1000);
+        // Cache dimensions for fast access to buffer
+        const pdal::Dimension& xDim = schema.getDimension("X");
+        const pdal::Dimension& yDim = schema.getDimension("Y");
+        const pdal::Dimension& zDim = schema.getDimension("Z");
+        const pdal::Dimension *rDim = 0, *gDim = 0, *bDim = 0;
+        if (hasColor)
+        {
+            rDim = &schema.getDimension("Red");
+            gDim = &schema.getDimension("Green");
+            bDim = &schema.getDimension("Blue");
+        }
+        const pdal::Dimension& intensityDim       = schema.getDimension("Intensity");
+        const pdal::Dimension& returnNumberDim    = schema.getDimension("ReturnNumber");
+        const pdal::Dimension& numberOfReturnsDim = schema.getDimension("NumberOfReturns");
+        const pdal::Dimension& pointSourceIdDim   = schema.getDimension("PointSourceId");
+        const pdal::Dimension& classificationDim  = schema.getDimension("Classification");
+        std::unique_ptr<pdal::StageSequentialIterator> chunkIter(
+                reader->createSequentialIterator(buf));
+        size_t readCount = 0;
+        size_t nextDecimateBlock = 1;
+        size_t nextStore = 1;
+        while (size_t numRead = chunkIter->read(buf))
+        {
+            for (size_t i = 0; i < numRead; ++i)
+            {
+                ++readCount;
+                V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
+                            yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
+                            zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
+                m_bbox.extendBy(P);
+                Psum += P;
+                if(readCount < nextStore)
+                    continue;
+                // Store the point
+                *outP++ = P - m_offset;
+                *outIntens++   = buf.getField<uint16_t>(intensityDim, i);
+                *returnIndex++ = buf.getField<uint8_t>(returnNumberDim, i);
+                *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
+                *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
+                *classification++ = buf.getField<uint8_t>(classificationDim, i);
+                // Extract point RGB
+                if (hasColor)
+                {
+                    *outCol++ = (1.0f/USHRT_MAX) *
+                                C3f(rDim->applyScaling(buf.getField<uint16_t>(*rDim, i)),
+                                    gDim->applyScaling(buf.getField<uint16_t>(*gDim, i)),
+                                    bDim->applyScaling(buf.getField<uint16_t>(*bDim, i)));
+                }
+                // Figure out which point will be the next stored point.
+                nextDecimateBlock += decimate;
+                nextStore = nextDecimateBlock;
+                if(decimate > 1)
+                {
+                    // Randomize selected point within block to avoid repeated patterns
+                    nextStore += (qrand() % decimate);
+                    if(nextDecimateBlock <= totPoints && nextStore > totPoints)
+                        nextStore = totPoints;
+                }
+            }
+            emit pointsLoaded(100*readCount/totPoints);
+        }
+    }
+#else
     {
         LASreadOpener lasReadOpener;
 #ifdef _WIN32
@@ -190,7 +317,6 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         m_numberOfReturns.reset(new unsigned char[m_npoints]);
         m_pointSourceId.reset(new unsigned char[m_npoints]);
         m_classification.reset(new unsigned char[m_npoints]);
-        m_bbox.makeEmpty();
         // Iterate over all points & pull in the data.
         V3f* outP = m_P.get();
         float* outIntens = m_intensity.get();
@@ -199,7 +325,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         unsigned char* pointSourceId = m_pointSourceId.get();
         unsigned char* classification = m_classification.get();
         size_t readCount = 0;
-        size_t nextBlock = 1;
+        size_t nextDecimateBlock = 1;
         size_t nextStore = 1;
         if (!lasReader->read_point())
             return false;
@@ -232,19 +358,20 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             if (outCol)
                 *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
             // Figure out which point will be the next stored point.
-            nextBlock += decimate;
-            nextStore = nextBlock;
+            nextDecimateBlock += decimate;
+            nextStore = nextDecimateBlock;
             if(decimate > 1)
             {
                 // Randomize selected point within block to avoid repeated patterns
                 nextStore += (qrand() % decimate);
-                if(nextBlock <= totPoints && nextStore > totPoints)
+                if(nextDecimateBlock <= totPoints && nextStore > totPoints)
                     nextStore = totPoints;
             }
         }
         while(lasReader->read_point());
         lasReader->close();
     }
+#endif
     else
     {
         // Assume text, xyz format
@@ -252,7 +379,6 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         std::ifstream inFile(fileName.toStdString());
         std::vector<Imath::V3d> points;
         Imath::V3d p;
-        m_bbox.makeEmpty();
         while (inFile >> p.x >> p.y >> p.z)
         {
             points.push_back(p);
@@ -272,8 +398,9 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     }
     emit pointsLoaded(100);
     m_centroid = (1.0/totPoints) * Psum;
-    tfm::printf("Displaying %d of %d points from file %s\n", m_npoints,
-                totPoints, fileName.toStdString());
+    tfm::printf("Loaded %d of %d points from file %s in %.2f seconds\n",
+                m_npoints, totPoints, fileName.toStdString(),
+                loadTimer.elapsed()/1000.0);
 
     emit loadStepStarted("Bucketing points");
     typedef std::unordered_map<std::pair<int,int>, std::vector<size_t> > IndexMap;
