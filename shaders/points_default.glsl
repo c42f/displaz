@@ -25,7 +25,7 @@ in float intensity;
 in vec3 position;
 in vec3 color;
 // FIXME: Should avoid turning these two into floats!
-in float returnIndex;
+in float returnNumber;
 in float numberOfReturns;
 in float pointSourceId;
 in float classification;
@@ -59,7 +59,7 @@ void main()
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)
-        pointColor = returnIndex*51.0*exposure * vec3(1);
+        pointColor = returnNumber*51.0*exposure * vec3(1);
     else if (colorMode == 3)
         pointColor = numberOfReturns*51.0*exposure * vec3(1);
     else if (colorMode == 4)

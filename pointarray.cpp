@@ -202,7 +202,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         // Allocate all arrays
         m_P.reset(new V3f[m_npoints]);
         m_intensity.reset(new float[m_npoints]);
-        m_returnIndex.reset(new unsigned char[m_npoints]);
+        m_returnNumber.reset(new unsigned char[m_npoints]);
         m_numberOfReturns.reset(new unsigned char[m_npoints]);
         m_pointSourceId.reset(new unsigned char[m_npoints]);
         m_classification.reset(new unsigned char[m_npoints]);
@@ -211,7 +211,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         // Output iterators for the output arrays
         V3f* outP = m_P.get();
         float* outIntens = m_intensity.get();
-        unsigned char* returnIndex = m_returnIndex.get();
+        unsigned char* returnNumber = m_returnNumber.get();
         unsigned char* numReturns = m_numberOfReturns.get();
         unsigned char* pointSourceId = m_pointSourceId.get();
         unsigned char* classification = m_classification.get();
@@ -254,7 +254,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
                 // Store the point
                 *outP++ = P - m_offset;
                 *outIntens++   = buf.getField<uint16_t>(intensityDim, i);
-                *returnIndex++ = buf.getField<uint8_t>(returnNumberDim, i);
+                *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
                 *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
                 *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
                 *classification++ = buf.getField<uint8_t>(classificationDim, i);
@@ -313,14 +313,14 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             m_offset.z = lasReader->header.min_z;
         m_P.reset(new V3f[m_npoints]);
         m_intensity.reset(new float[m_npoints]);
-        m_returnIndex.reset(new unsigned char[m_npoints]);
+        m_returnNumber.reset(new unsigned char[m_npoints]);
         m_numberOfReturns.reset(new unsigned char[m_npoints]);
         m_pointSourceId.reset(new unsigned char[m_npoints]);
         m_classification.reset(new unsigned char[m_npoints]);
         // Iterate over all points & pull in the data.
         V3f* outP = m_P.get();
         float* outIntens = m_intensity.get();
-        unsigned char* returnIndex = m_returnIndex.get();
+        unsigned char* returnNumber = m_returnNumber.get();
         unsigned char* numReturns = m_numberOfReturns.get();
         unsigned char* pointSourceId = m_pointSourceId.get();
         unsigned char* classification = m_classification.get();
@@ -350,7 +350,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             *outP++ = P - m_offset;
             // float intens = float(point.scan_angle_rank) / 40;
             *outIntens++ = point.intensity;
-            *returnIndex++ = point.return_number;
+            *returnNumber++ = point.return_number;
             *numReturns++ = point.number_of_returns_of_given_pulse;
             *pointSourceId++ = point.point_source_ID;
             *classification++ = point.classification;
@@ -441,7 +441,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     reorderArray(m_P, inds.get(), m_npoints);
     reorderArray(m_color, inds.get(), m_npoints);
     reorderArray(m_intensity, inds.get(), m_npoints);
-    reorderArray(m_returnIndex, inds.get(), m_npoints);
+    reorderArray(m_returnNumber, inds.get(), m_npoints);
     reorderArray(m_numberOfReturns, inds.get(), m_npoints);
     reorderArray(m_pointSourceId, inds.get(), m_npoints);
     reorderArray(m_classification, inds.get(), m_npoints);
@@ -486,7 +486,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
 {
     prog.enableAttributeArray("position");
     enableAttrOrSetDefault(prog, "intensity",       m_intensity,       0.0f);
-    enableAttrOrSetDefault(prog, "returnIndex",     m_returnIndex,     0.0f);
+    enableAttrOrSetDefault(prog, "returnNumber",     m_returnNumber,     0.0f);
     enableAttrOrSetDefault(prog, "numberOfReturns", m_numberOfReturns, 0.0f);
     enableAttrOrSetDefault(prog, "pointSourceId",   m_pointSourceId,   0.0f);
     enableAttrOrSetDefault(prog, "classification",  m_classification,  0.0f);
@@ -521,7 +521,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         }
         prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
         if (m_intensity)       prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
-        if (m_returnIndex)     prog.setAttributeArray("returnIndex",     GL_UNSIGNED_BYTE, m_returnIndex.get()     + idx, 1);
+        if (m_returnNumber)     prog.setAttributeArray("returnNumber",     GL_UNSIGNED_BYTE, m_returnNumber.get()     + idx, 1);
         if (m_numberOfReturns) prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + idx, 1);
         if (m_pointSourceId)   prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + idx, 1);
         if (m_classification)  prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + idx, 1);
@@ -537,7 +537,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     // the OpenGL fixed function pipeline in unusual ways.
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("intensity");
-    prog.disableAttributeArray("returnIndex");
+    prog.disableAttributeArray("returnNumber");
     prog.disableAttributeArray("numberOfReturns");
     prog.disableAttributeArray("pointSourceId");
     prog.disableAttributeArray("classification");
