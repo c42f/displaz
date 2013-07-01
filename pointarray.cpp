@@ -217,7 +217,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         unsigned char* classification = m_classification.get();
         V3f* outCol = m_color.get();
         // Read big chunks of points at a time
-        pdal::PointBuffer buf(schema, 1000);
+        pdal::PointBuffer buf(schema);
         // Cache dimensions for fast access to buffer
         const pdal::Dimension& xDim = schema.getDimension("X");
         const pdal::Dimension& yDim = schema.getDimension("Y");
