@@ -40,6 +40,7 @@
 #include "pointarray.h"
 
 class QGLShaderProgram;
+class QGLFramebufferObject;
 class QTimer;
 
 class ShaderProgram;
@@ -148,6 +149,7 @@ class PointView : public QGLWidget
         size_t m_maxPointCount;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
+        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Target for max total number of points to draw per frame
         size_t m_maxPointsPerFrame;

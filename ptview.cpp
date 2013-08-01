@@ -48,6 +48,7 @@
 #include <QtCore/QTime>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
+#include <QtOpenGL/QGLFramebufferObject>
 //#include <QtOpenGL/QGLBuffer>
 
 #include "ptview.h"
@@ -343,6 +344,11 @@ void PointView::resizeGL(int w, int h)
     // Draw on full window
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
+    // TODO:
+    // * Is this always the same pixel format as the backbuffer?
+    // * Should we use multisampling 1 to avoid binding to a texture?
+    m_incrementalFramebuffer.reset(
+        new QGLFramebufferObject(w, h, QGLFramebufferObject::Depth));
     restartRender();
 }
 
@@ -351,6 +357,8 @@ void PointView::paintGL()
 {
     QTime frameTimer;
     frameTimer.start();
+
+    m_incrementalFramebuffer->bind();
     //--------------------------------------------------
     // Draw main scene
     // Set camera projection
@@ -423,6 +431,11 @@ void PointView::paintGL()
         m_maxPointsPerFrame = (size_t) ( decayFactor     * m_maxPointsPerFrame +
                                         (1-decayFactor) * predictedPointNumber );
     }
+    m_incrementalFramebuffer->release();
+    QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
+                                          m_incrementalFramebuffer.get(),
+                                          QRect(0,0,width(),height()),
+                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up timer to draw a high quality frame if necessary
     if (m_drawPoints && simplify)
