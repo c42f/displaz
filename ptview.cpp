@@ -345,10 +345,14 @@ void PointView::resizeGL(int w, int h)
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
     // TODO:
-    // * Is this always the same pixel format as the backbuffer?
     // * Should we use multisampling 1 to avoid binding to a texture?
+    const QGLFormat fmt = context()->format();
+    QGLFramebufferObjectFormat fboFmt;
+    fboFmt.setAttachment(QGLFramebufferObject::Depth);
+    fboFmt.setSamples(fmt.samples());
+    //fboFmt.setTextureTarget();
     m_incrementalFramebuffer.reset(
-        new QGLFramebufferObject(w, h, QGLFramebufferObject::Depth));
+        new QGLFramebufferObject(w, h, fboFmt));
     restartRender();
 }
 
