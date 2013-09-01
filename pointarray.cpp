@@ -29,6 +29,8 @@
 
 #include "pointarray.h"
 
+#include "glutil.h"
+
 #include <QtGui/QMessageBox>
 #include <QtOpenGL/QGLShaderProgram>
 #include <QtCore/QTime>
@@ -75,78 +77,129 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 #endif
 
-//------------------------------------------------------------------------------
-// Hashing of std::pair, copied from stack overflow
-template <class T>
-inline void hash_combine(std::size_t & seed, const T & v)
-{
-  std::hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
 
-namespace std
+//------------------------------------------------------------------------------
+/// Functor to compute octree child node index with respect to some given split
+/// point
+struct OctreeChildIdx
 {
-  template<typename S, typename T> struct hash<pair<S, T>>
-  {
-    inline size_t operator()(const pair<S, T> & v) const
+    const V3f* m_P;
+    V3f m_center;
+    int operator()(size_t i)
     {
-      size_t seed = 0;
-      ::hash_combine(seed, v.first);
-      ::hash_combine(seed, v.second);
-      return seed;
+        V3f p = m_P[i];
+        return 4*(p.z >= m_center.z) +
+               2*(p.y >= m_center.y) +
+                 (p.x >= m_center.x);
     }
-  };
+
+    OctreeChildIdx(const V3f* P, const V3f& center) : m_P(P), m_center(center) {}
+};
+
+
+struct OctreeNode
+{
+    OctreeNode* children[8]; ///< Child nodes - order (x + 2*y + 4*z)
+    size_t beginIndex;       ///< Begin index of points in this node
+    size_t endIndex;         ///< End index of points in this node
+    mutable size_t nextBeginIndex; ///< Next index for incremental rendering
+    Imath::Box3f bbox;       ///< Actual bounding box of points in node
+    V3f center;              ///< Centre of the node
+    float radius;            ///< Distance to centre to node edge along an axis
+
+    OctreeNode(const V3f& center, float radius)
+        : beginIndex(0), endIndex(0), nextBeginIndex(0),
+        center(center), radius(radius)
+    {
+        for (int i = 0; i < 8; ++i)
+            children[i] = 0;
+    }
+
+    size_t size() const { return endIndex - beginIndex; }
+
+    bool isLeaf() const { return beginIndex != endIndex; }
+};
+
+
+struct ProgressFunc
+{
+    PointArray& points;
+    size_t totProcessed;
+
+    ProgressFunc(PointArray& points) : points(points), totProcessed(0) {}
+
+    void operator()(size_t additionalProcessed)
+    {
+        totProcessed += additionalProcessed;
+        emit points.pointsLoaded(100*totProcessed/points.size());
+    }
+};
+
+/// Create an octree over the given set of points with position P
+///
+/// The points for consideration in the current node are the set
+/// P[inds[beginIndex..endIndex]]; the tree building process sorts the inds
+/// array in place so that points for the output leaf nodes are held in
+/// the range P[inds[node.beginIndex, node.endIndex)]].  center is the central
+/// split point for splitting children of the current node; radius is the
+/// current node radius measured along one of the axes.
+static OctreeNode* makeTree(int depth, size_t* inds,
+                            size_t beginIndex, size_t endIndex,
+                            const V3f* P, const V3f& center,
+                            float radius, ProgressFunc& progressFunc)
+{
+    OctreeNode* node = new OctreeNode(center, radius);
+    const size_t pointsPerNode = 100000;
+    // Limit max depth of tree to prevent infinite recursion when
+    // greater than pointsPerNode points lie at the same position in
+    // space.  floats effectively have 24 bit of precision in the
+    // mantissa, so there's never any point splitting more than 24 times.
+    const int maxDepth = 24;
+    size_t* beginPtr = inds + beginIndex;
+    size_t* endPtr = inds + endIndex;
+    if (endIndex - beginIndex <= pointsPerNode || depth >= maxDepth)
+    {
+        std::random_shuffle(beginPtr, endPtr);
+        for (size_t i = beginIndex; i < endIndex; ++i)
+            node->bbox.extendBy(P[inds[i]]);
+        node->beginIndex = beginIndex;
+        node->endIndex = endIndex;
+        progressFunc(endIndex - beginIndex);
+        return node;
+    }
+    // Partition points into the 8 child nodes
+    size_t* childRanges[9];
+    multi_partition(beginPtr, endPtr, OctreeChildIdx(P, center), childRanges+1, 8);
+    childRanges[0] = beginPtr;
+    // Recursively generate child nodes
+    float r = radius/2;
+    for (int i = 0; i < 8; ++i)
+    {
+        size_t childBeginIndex = childRanges[i]   - inds;
+        size_t childEndIndex   = childRanges[i+1] - inds;
+        if (childEndIndex == childBeginIndex)
+            continue;
+        V3f c = center + V3f((i     % 2 == 0) ? -r : r,
+                             ((i/2) % 2 == 0) ? -r : r,
+                             ((i/4) % 2 == 0) ? -r : r);
+        node->children[i] = makeTree(depth+1, inds, childBeginIndex,
+                                     childEndIndex, P, c, r, progressFunc);
+        node->bbox.extendBy(node->children[i]->bbox);
+    }
+    return node;
 }
 
 
 //------------------------------------------------------------------------------
 // PointArray implementation
-
-struct PointArray::Bucket
-{
-    V3f centroid;
-    size_t beginIndex;
-    size_t endIndex;
-    mutable size_t nextBeginIndex;
-
-    Bucket(V3f centroid, size_t beginIndex, size_t endIndex)
-        : centroid(centroid),
-        beginIndex(beginIndex),
-        endIndex(endIndex),
-        nextBeginIndex(beginIndex)
-    { }
-
-    size_t size() const { return endIndex - beginIndex; }
-
-    size_t simplifiedSize(const V3f& cameraPos, double quality,
-                          double bucketWidth, bool incrementalDraw) const
-    {
-        double dist = (centroid - cameraPos).length();
-        // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
-        dist = std::max(10.0, dist - bucketWidth*0.7071);
-        double desiredFraction = std::min(1.0, quality*pow(bucketWidth/dist, 2));
-        size_t chunkSize = (size_t)ceil(size()*desiredFraction);
-        size_t ndraw = chunkSize;
-        if (incrementalDraw)
-        {
-            ndraw = (nextBeginIndex >= endIndex) ? 0 :
-                    std::min(chunkSize, endIndex - nextBeginIndex);
-        }
-        return ndraw;
-    }
-};
-
-
 PointArray::PointArray()
     : m_fileName(),
     m_npoints(0),
-    m_bucketWidth(100),
     m_offset(0),
     m_bbox(),
-    m_centroid(0),
-    m_buckets()
+    m_centroid(0)
 { }
+
 
 PointArray::~PointArray()
 { }
@@ -402,42 +455,20 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
                 m_npoints, totPoints, fileName.toStdString(),
                 loadTimer.elapsed()/1000.0);
 
-    emit loadStepStarted("Bucketing points");
-    typedef std::unordered_map<std::pair<int,int>, std::vector<size_t> > IndexMap;
-    float invBucketSize = 1/m_bucketWidth;
-    IndexMap buckets;
-    for (size_t i = 0; i < m_npoints; ++i)
-    {
-        int x = (int)floor(m_P[i].x*invBucketSize);
-        int y = (int)floor(m_P[i].y*invBucketSize);
-        buckets[std::make_pair(x,y)].push_back(i);
-        if(i % 100000 == 0)
-            emit pointsLoaded(100*i/m_npoints);
-    }
-
-    emit loadStepStarted("Shuffling buckets");
+    emit loadStepStarted("Sorting points");
     std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
-    size_t idx = 0;
-    m_buckets.clear();
-    m_buckets.reserve(buckets.size() + 1);
-    for (IndexMap::iterator b = buckets.begin(); b != buckets.end(); ++b)
-    {
-        size_t startIdx = idx;
-        std::vector<size_t>& bucketInds = b->second;
-        V3f centroid(0);
-        // Random shuffle so that choosing an initial sequence will correspond
-        // to a stochastic simplification of the bucket.  TODO: Use a
-        // quasirandom shuffling method for better visual properties.
-        std::random_shuffle(bucketInds.begin(), bucketInds.end());
-        for (size_t i = 0, iend = bucketInds.size(); i < iend; ++i, ++idx)
-        {
-            inds[idx] = bucketInds[i];
-            centroid += m_P[inds[idx]];
-        }
-        centroid *= 1.0f/(idx - startIdx);
-        m_buckets.push_back(Bucket(centroid, startIdx, idx));
-        emit pointsLoaded(100*idx/m_npoints);
-    }
+    for (size_t i = 0; i < m_npoints; ++i)
+        inds[i] = i;
+    // Expand the bound so that it's cubic.  Not exactly sure it's required
+    // here, but cubic nodes sometimes work better the points are better
+    // distributed for LoD, splitting is unbiased, etc.
+    Imath::Box3f rootBound(m_bbox.min - m_offset, m_bbox.max - m_offset);
+    V3f diag = rootBound.size();
+    float rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
+    ProgressFunc progressFunc(*this);
+    m_rootNode.reset(makeTree(0, &inds[0], 0, m_npoints, &m_P[0],
+                              rootBound.center(), rootRadius, progressFunc));
+
     reorderArray(m_P, inds.get(), m_npoints);
     reorderArray(m_color, inds.get(), m_npoints);
     reorderArray(m_intensity, inds.get(), m_npoints);
@@ -458,14 +489,65 @@ size_t PointArray::closestPoint(const V3d& pos, const V3f& N,
 }
 
 
+static size_t simplifiedSize(const OctreeNode* node, const V3f& cameraPos,
+                             double quality, bool incrementalDraw)
+{
+    // Distance below which all points will be drawn for a node, at quality == 1
+    // TODO: Auto-adjust this for various length scales?
+    const double drawAllDist = 100;
+    if (node->isLeaf())
+    {
+        double dist = (node->bbox.center() - cameraPos).length();
+        // double diagRadius = node->radius*sqrt(3);
+        double diagRadius = node->bbox.size().length()/2;
+        // Subtract bucket diagonal dist, since we really want an approx
+        // distance to closest point in the bucket, rather than dist to centre.
+        dist = std::max(10.0, dist - diagRadius);
+        double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
+        size_t chunkSize = (size_t)ceil(node->size()*desiredFraction);
+        size_t ndraw = chunkSize;
+        if (incrementalDraw)
+        {
+            ndraw = (node->nextBeginIndex >= node->endIndex) ? 0 :
+                    std::min(chunkSize, node->endIndex - node->nextBeginIndex);
+        }
+        return ndraw;
+    }
+    size_t ndraw = 0;
+    for (int i = 0; i < 8; ++i)
+    {
+        OctreeNode* n = node->children[i];
+        if (n)
+            ndraw += simplifiedSize(n, cameraPos, quality, incrementalDraw);
+    }
+    return ndraw;
+}
+
+
 size_t PointArray::simplifiedSize(const V3d& cameraPos, bool incrementalDraw)
 {
-    size_t totDraw = 0;
     V3f relCamera = cameraPos - m_offset;
-    for (size_t i = 0; i < m_buckets.size(); ++i)
-        totDraw += m_buckets[i].simplifiedSize(relCamera, 1.0, m_bucketWidth,
-                                               incrementalDraw);
-    return totDraw;
+    return ::simplifiedSize(m_rootNode.get(), relCamera, 1.0, incrementalDraw);
+}
+
+
+static void drawTree(const OctreeNode* node)
+{
+    Imath::Box3f bbox(node->center - Imath::V3f(node->radius),
+                        node->center + Imath::V3f(node->radius));
+    drawBoundingBox(bbox, Imath::C3f(1));
+    drawBoundingBox(node->bbox, Imath::C3f(1,0,0));
+    for (int i = 0; i < 8; ++i)
+    {
+        OctreeNode* n = node->children[i];
+        if (n)
+            drawTree(n);
+    }
+}
+
+void PointArray::drawTree() const
+{
+    ::drawTree(m_rootNode.get());
 }
 
 
@@ -497,27 +579,40 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     // a stochastic simplification of the full point cloud.
     size_t totDrawn = 0;
     V3f relCamera = cameraPos - m_offset;
-    for (size_t bucketIdx = 0; bucketIdx < m_buckets.size(); ++bucketIdx)
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
     {
-        const Bucket& bucket = m_buckets[bucketIdx];
-        // Compute the desired fraction of points for this bucket.
-        //
-        // The desired fraction is chosen such that the density of points per
-        // solid angle is constant; when removing points, the point radii are
-        // scaled up to keep the total area covered by the points constant.
-        size_t ndraw = bucket.size();
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        if (!node->isLeaf())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
+        }
+        size_t ndraw = node->size();
         double lodMultiplier = 1;
-        size_t idx = bucket.beginIndex;
+        size_t idx = node->beginIndex;
         if (!incrementalDraw)
-            bucket.nextBeginIndex = bucket.beginIndex;
+            node->nextBeginIndex = node->beginIndex;
         if (simplify)
         {
-            ndraw = (size_t)bucket.simplifiedSize(relCamera, quality, m_bucketWidth,
-                                                  incrementalDraw);
-            idx = bucket.nextBeginIndex;
+            ndraw = ::simplifiedSize(node, relCamera, quality, incrementalDraw);
+            idx = node->nextBeginIndex;
             if (ndraw == 0)
                 continue;
-            //lodMultiplier = sqrt(double(bucket.size())/ndraw);
+            // For LoD, compute the desired fraction of points for this node.
+            //
+            // The desired fraction is chosen such that the density of points
+            // per solid angle is constant; when removing points, the point
+            // radii are scaled up to keep the total area covered by the points
+            // constant.
+            //lodMultiplier = sqrt(double(node->size())/ndraw);
         }
         prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
         if (m_intensity)       prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
@@ -528,7 +623,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         if (m_color)           prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + idx), 3);
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
-        bucket.nextBeginIndex += ndraw;
+        node->nextBeginIndex += ndraw;
         totDrawn += ndraw;
     }
     //tfm::printf("Drew %d of total points %d, quality %f\n", totDraw, m_npoints, quality);

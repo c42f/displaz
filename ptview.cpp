@@ -32,17 +32,8 @@
 #include "shader.h"
 
 #include "config.h"
+#include "glutil.h"
 #include "util.h"
-
-//#define GL_GLEXT_PROTOTYPES
-// Hack: define gl flags which are normally done by GLEW...
-// perhaps should bring glew back as a dependency...
-#ifndef GL_VERTEX_PROGRAM_POINT_SIZE
-#   define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
-#endif
-#ifndef GL_POINT_SPRITE
-#   define GL_POINT_SPRITE 0x8861
-#endif
 
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
@@ -54,39 +45,6 @@
 #include "ptview.h"
 #include "mesh.h"
 #include "tinyformat.h"
-
-
-//----------------------------------------------------------------------
-//#include <OpenEXR/ImathGL.h>
-// Utilities for OpenEXR / OpenGL interoperability.
-//
-// Technically we could use the stuff from ImathGL instead here, but it has
-// portability problems for OSX due to how it includes gl.h (this is an
-// libilmbase bug, at least up until 1.0.2)
-inline void glTranslate(const Imath::V3f& v)
-{
-    glTranslatef(v.x, v.y, v.z);
-}
-
-inline void glVertex(const Imath::V3f& v)
-{
-    glVertex3f(v.x, v.y, v.z);
-}
-
-inline void glVertex(const Imath::V2f& v)
-{
-    glVertex2f(v.x, v.y);
-}
-
-inline void glColor(const Imath::C3f& c)
-{
-    glColor3f(c.x, c.y, c.z);
-}
-
-inline void glLoadMatrix(const Imath::M44f& m)
-{
-    glLoadMatrixf((GLfloat*)m[0]);
-}
 
 
 //----------------------------------------------------------------------
@@ -613,40 +571,6 @@ void PointView::drawCursor(const V3f& cursorPos) const
 }
 
 
-static void drawBoundingBox(const Imath::Box3d& bbox)
-{
-    glEnable(GL_LINE_SMOOTH);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor3f(1,1,1);
-    glLineWidth(1);
-    GLdouble verts[] = {
-        bbox.min.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.min.y, bbox.max.z,
-        bbox.min.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.min.y, bbox.max.z
-    };
-    unsigned char inds[] = {
-        // rows: bottom, sides, top
-        0,1, 1,2, 2,3, 3,0,
-        0,4, 1,5, 2,6, 3,7,
-        4,5, 5,6, 6,7, 7,4
-    };
-    // TODO: Use shaders here
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_DOUBLE, 0, verts);
-    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
-                   GL_UNSIGNED_BYTE, inds);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisable(GL_BLEND);
-    glDisable(GL_LINE_SMOOTH);
-}
-
-
 /// Draw point cloud
 size_t PointView::drawPoints(const PointArrayVec& allPoints,
                              size_t numPointsToRender, bool simplify,
@@ -662,10 +586,11 @@ size_t PointView::drawPoints(const PointArrayVec& allPoints,
         if(m_drawBoundingBoxes && !incrementalDraw)
         {
             // Draw bounding box
-            Imath::Box3d bbox = points.boundingBox();
-            bbox.min -= m_drawOffset;
-            bbox.max -= m_drawOffset;
-            drawBoundingBox(bbox);
+            Imath::Box3f bbox;
+            bbox.min = points.boundingBox().min - m_drawOffset;
+            bbox.max = points.boundingBox().max - m_drawOffset;
+            drawBoundingBox(bbox, Imath::C3f(1));
+            //points.drawTree();
         }
     }
     glEnable(GL_POINT_SPRITE);

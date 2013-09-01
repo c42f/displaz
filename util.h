@@ -43,10 +43,13 @@
 #include <OpenEXR/ImathMatrix.h>
 #endif
 
+#include <iostream>
+
 using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
 using Imath::C3f;
+using Imath::Box3f;
 
 
 /// Return index of closest point to the given ray, favouring points near ray
@@ -59,6 +62,61 @@ using Imath::C3f;
 size_t closestPointToRay(const V3f* points, size_t nPoints,
                          const V3f& rayOrigin, const V3f& rayDirection,
                          double longitudinalScale, double* distance = 0);
+
+
+/// In-place partition of elements into multiple classes.
+///
+/// multi_partition partitions the range [first,last) into numClasses groups,
+/// based on the value of classFunc evaluated on each element.  classFunc(elem)
+/// must return an integer in the range [0,numClasses) which specifies the
+/// class of the element.
+///
+/// classEndIters is the start of a random access sequence of length
+/// numClasses.  On return, classEndIters[c] will contain an IterT iterator
+/// pointing to the end of the range occupied by elements of class c.
+///
+/// For efficiency, the number of classes should be small compared to the
+/// length of the range.  If not, it's much better just to use std::sort, since
+/// multi_partition is quite similar to a bubble sort in the limit of a large
+/// number of classes.
+template<typename IterT, typename IterTIter, typename ClassFuncT>
+void multi_partition(IterT first, IterT last, ClassFuncT classFunc,
+                     IterTIter classEndIters, int numClasses)
+{
+    for (int j = 0; j < numClasses; ++j)
+        classEndIters[j] = first;
+    for (IterT i = first; i != last; ++i)
+    {
+        int c = classFunc(*i);
+        // Perform swaps to bubble the current element down
+        for (int j = numClasses-1; j > c; --j)
+        {
+            std::swap(*classEndIters[j], *classEndIters[j-1]);
+            ++classEndIters[j];
+        }
+        ++classEndIters[c];
+    }
+}
+
+
+/// Return true if box b1 contains box b2
+template<typename T>
+bool contains(const Imath::Box<T> b1, const Imath::Box<T> b2)
+{
+    for (unsigned int i = 0; i < T::dimensions(); ++i)
+        if (b2.min[i] < b1.min[i] || b2.max[i] > b1.max[i])
+            return false;
+    return true;
+}
+
+
+/// Print bounding box to stream
+template<typename T>
+std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
+{
+    out << b.min << "--" << b.max;
+    return out;
+}
 
 
 #endif // UTIL_H_INCLUDED

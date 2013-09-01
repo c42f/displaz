@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 2.8)
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
+option(DISPLAZ_USE_TESTS "Build the test cases" FALSE)
 
 if (CMAKE_BUILD_TYPE STREQUAL "")
     # Make sure we default to a release build
@@ -100,6 +101,7 @@ set(srcs
     shader.cpp
     rply/rply.c
     util.cpp
+    glutil.cpp
 )
 if(WIN32)
     list(APPEND srcs windows_resources.rc)
@@ -157,5 +159,13 @@ if (RST2HTML)
         DEPENDS README.rst
     )
     add_custom_target(doc ALL DEPENDS ${readmeHtml})
+endif()
+
+
+# Tests
+if (DISPLAZ_USE_TESTS)
+    enable_testing()
+    add_executable(util_test util_test.cpp)
+    add_test(util_test util_test)
 endif()
 

@@ -39,6 +39,8 @@
 
 class QGLShaderProgram;
 
+class OctreeNode;
+
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
 class PointArray : public QObject
@@ -66,11 +68,6 @@ class PointArray : public QObject
         const V3f* P() const { return m_P.get(); }
 
         V3d absoluteP(size_t idx) const { return V3d(m_P[idx]) + m_offset; }
-        /// Return point color, or NULL if no color channel is present
-        const C3f* color() const { return m_color.get(); }
-        const float* intensity() const { return m_intensity.get(); }
-        //const unsigned char* returnNumber() const { return m_returnNumber.get(); }
-        //const unsigned char* numReturns() const { return m_numReturns.get(); }
 
         /// Return index of "closest" point to the given position
         ///
@@ -105,6 +102,11 @@ class PointArray : public QObject
         size_t draw(QGLShaderProgram& prog, const V3d& cameraPos,
                     double quality, bool simplify, bool incrementalDraw) const;
 
+        /// Draw a representation of the point hierarchy.
+        ///
+        /// Probably only useful for debugging.
+        void drawTree() const;
+
     signals:
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
@@ -112,15 +114,14 @@ class PointArray : public QObject
         void pointsLoaded(int percentLoaded);
 
     private:
-        struct Bucket;
+        friend struct ProgressFunc;
 
         QString m_fileName;
         size_t m_npoints;
-        float m_bucketWidth;
         V3d m_offset;
         Imath::Box3d m_bbox;
         V3d m_centroid;
-        std::vector<Bucket> m_buckets;
+        std::unique_ptr<OctreeNode> m_rootNode;
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<float[]> m_intensity;
         std::unique_ptr<C3f[]> m_color;
