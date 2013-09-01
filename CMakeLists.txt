@@ -71,40 +71,41 @@ else()
 endif()
 
 include_directories(BEFORE
+    src/thirdparty
     ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
     ${ILMBASE_INCLUDES}
 )
 
 qt4_wrap_cpp(moc_srcs
-    dragspinbox.h
-    interactivecamera.h
-    mainwindow.h
-    ptview.h
-    pointarray.h
-    shadereditor.h
-    shader.h
+    src/dragspinbox.h
+    src/interactivecamera.h
+    src/mainwindow.h
+    src/ptview.h
+    src/pointarray.h
+    src/shadereditor.h
+    src/shader.h
 )
 qt4_add_resources(rcc_srcs
-    resources.qrc
+    package/resources.qrc
 )
 set(srcs
     ${moc_srcs}
     ${rcc_srcs}
-    mainwindow.cpp
-    ptview.cpp
-    pointarray.cpp
-    argparse.cpp
-    main.cpp
-    mesh.cpp
-    shadereditor.cpp
-    shader.cpp
-    rply/rply.c
-    util.cpp
-    glutil.cpp
+    src/mainwindow.cpp
+    src/ptview.cpp
+    src/pointarray.cpp
+    src/thirdparty/argparse.cpp
+    src/main.cpp
+    src/mesh.cpp
+    src/shadereditor.cpp
+    src/shader.cpp
+    src/thirdparty/rply/rply.c
+    src/util.cpp
+    src/glutil.cpp
 )
 if(WIN32)
-    list(APPEND srcs windows_resources.rc)
+    list(APPEND srcs package/windows_resources.rc)
 endif()
 
 if(NOT WIN32)
@@ -119,7 +120,7 @@ if(DISPLAZ_USE_BUILTIN_SHADERS)
 else()
     set(DISPLAZ_SHADER_BASE_PATH ${PROJECT_SOURCE_DIR})
 endif()
-configure_file(config.h.in.cmake config.h @ONLY)
+configure_file(src/config.h.in.cmake config.h @ONLY)
 include_directories(${CMAKE_BINARY_DIR})
 
 
@@ -165,7 +166,7 @@ endif()
 # Tests
 if (DISPLAZ_USE_TESTS)
     enable_testing()
-    add_executable(util_test util_test.cpp)
+    add_executable(util_test src/util_test.cpp)
     add_test(util_test util_test)
 endif()
 
