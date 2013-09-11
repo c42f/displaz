@@ -375,9 +375,6 @@ void PointView::paintGL()
                               m_incrementalDraw);
     }
 
-    // Draw overlay stuff, including cursor position.
-    drawCursor(m_cursorPos - m_drawOffset);
-
     // Measure frame time to update estimate for how many points we can
     // draw interactively
     glFinish();
@@ -398,6 +395,9 @@ void PointView::paintGL()
                                           m_incrementalFramebuffer.get(),
                                           QRect(0,0,width(),height()),
                                           GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw overlay stuff, including cursor position.
+    drawCursor(m_cursorPos - m_drawOffset);
 
     // Set up timer to draw a high quality frame if necessary
     if (m_drawPoints && simplify)
@@ -511,8 +511,9 @@ void PointView::drawCursor(const V3f& cursorPos) const
     // Find position of cursor in screen space
     V3f screenP3 = qt2exr(m_camera.projectionMatrix()*m_camera.viewMatrix() *
                           exr2qt(cursorPos));
-    if(screenP3.z < 0)
-        return; // Cull if behind the camera.  TODO: doesn't work quite right
+    // Cull if behind the camera
+    if((m_camera.viewMatrix() * exr2qt(cursorPos)).z() > 0)
+        return;
 
     // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
     // cursor, even when when it's behind something.
