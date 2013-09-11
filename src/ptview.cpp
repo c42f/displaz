@@ -101,6 +101,12 @@ PointView::PointView(QWidget *parent)
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     m_camera.setClipFar(FLT_MAX);
+    // Setting a good value for the near camera clipping plane is difficult
+    // when trying to show a large variation of length scales:  Setting a very
+    // small value allows us to see objects very close to the camera; the
+    // tradeoff is that this reduces the resolution of the z-buffer leading to
+    // z-fighting in the distance.
+    m_camera.setClipNear(1);
     // Don't use signals/slots for handling view changes... this seems to
     // introduce a bit of extra lag for slowly drawing scenes (?)
     //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
