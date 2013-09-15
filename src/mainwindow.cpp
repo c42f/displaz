@@ -274,6 +274,22 @@ void PointViewerMainWindow::captureStdout()
     std::cout.rdbuf(m_guiStdoutBuf.get());
 }
 
+void PointViewerMainWindow::runCommand(const QByteArray& command)
+{
+    QList<QByteArray> commandTokens = command.split('\n');
+    if (commandTokens.empty())
+        return;
+    if (commandTokens[0] != "OPEN_FILES")
+    {
+        std::cout << "Unkown command " << command.data() << "\n";
+        return;
+    }
+    QStringList files;
+    for (int i = 1; i < commandTokens.size(); ++i)
+        files << QString(commandTokens[i]);
+    m_pointView->loadFiles(files);
+}
+
 
 void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 {

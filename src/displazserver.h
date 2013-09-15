@@ -27,71 +27,56 @@
 //
 // (This is the BSD 3-clause license)
 
+#ifndef DISPLAZ_SERVER_H_INCLUDED
+#define DISPLAZ_SERVER_H_INCLUDED
 
-#ifndef DISPLAZ_MAINWINDOW_H_INCLUDED
-#define DISPLAZ_MAINWINDOW_H_INCLUDED
+#include <iostream>
 
-#include <QtCore/QDir>
-#include <QtGui/QMainWindow>
-
-#include <memory>
-
-class QActionGroup;
-class QSignalMapper;
-class QPlainTextEdit;
-class QProgressBar;
-
-class PointView;
-class StreamBufTextEditSink;
-class ShaderEditor;
+#include <QtNetwork/QLocalServer>
+#include <QtNetwork/QLocalSocket>
 
 
-//------------------------------------------------------------------------------
-/// Main window for point cloud viewer application
-class PointViewerMainWindow : public QMainWindow
+/// Server which listens for incoming messages on a local socket
+class DisplazServer : public QObject
 {
     Q_OBJECT
-
     public:
-        PointViewerMainWindow();
-        ~PointViewerMainWindow();
+        DisplazServer(QString socketName, QObject* parent = NULL)
+            : QObject(parent)
+        {
+            m_server = new QLocalServer(this);
+            m_server->listen(socketName);
+            connect(m_server, SIGNAL(newConnection()),
+                    this, SLOT(newConnection()));
+        }
 
-        /// Hint at an appropriate size
-        QSize sizeHint() const;
-
-        PointView& pointView() { return *m_pointView; }
-
-        void captureStdout();
-
-    public slots:
-        void runCommand(const QByteArray& command);
-
-    protected:
-        void keyReleaseEvent(QKeyEvent* event);
+    signals:
+        /// Triggered when a message arrives
+        void messageReceived(QByteArray msg);
 
     private slots:
-        void openFiles();
-        void reloadFiles();
-        void helpDialog();
-        void aboutDialog();
-        void setBackground(const QString& name);
-        void chooseBackground();
-        void setLoadedFileNames(const QStringList& fileNames);
-        void setProgressBarText(QString text);
-        void openInitialFiles();
+        void newConnection()
+        {
+            // Simple one-shot for short commands: wait for disconnection, and
+            // read the command message from the internal buffer.
+            QLocalSocket* socket = m_server->nextPendingConnection();
+            if (socket->waitForDisconnected(1000))
+            {
+                QByteArray msg = socket->readAll();
+                emit messageReceived(msg);
+            }
+            else
+            {
+                std::cerr << "Warning - got socket connection, but it didn't "
+                             "disconnect in a timely fashion - ignoring\n";
+            }
+            // socket is a child of m_server but we may clean it up if we like
+            delete socket;
+        }
 
     private:
-        QColor backgroundColFromName(const QString& name) const;
-
-        QProgressBar* m_progressBar;
-        PointView* m_pointView;
-        QDir m_currFileDir;
-        QPlainTextEdit* m_logTextView;
-        std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
-        std::streambuf* m_oldBuf;
+        QLocalServer* m_server;
 };
 
 
-extern QStringList g_initialFileNames;
-
-#endif // DISPLAZ_MAINWINDOW_H_INCLUDED
+#endif // DISPLAZ_SERVER_H_INCLUDED

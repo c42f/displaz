@@ -78,6 +78,7 @@ include_directories(BEFORE
 )
 
 qt4_wrap_cpp(moc_srcs
+    src/displazserver.h
     src/dragspinbox.h
     src/interactivecamera.h
     src/mainwindow.h
@@ -128,7 +129,7 @@ add_executable(displaz WIN32 ${srcs})
 
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${OPENGL_gl_LIBRARY}
+    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY}
 )
 
 if (DISPLAZ_USE_PDAL)

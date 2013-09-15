@@ -36,6 +36,7 @@
 
 #include "argparse.h"
 #include "config.h"
+#include "displazserver.h"
 
 
 QStringList g_initialFileNames;
@@ -55,12 +56,16 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
     int maxPointCount = 200000000;
+    std::string serverName = "default";
+    bool remoteMode = true;
 
     ap.options(
         "displaz - view a LAS point cloud\n"
         "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
         "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
+        "--noremote %!",  &remoteMode,    "Don't attempt to open files in existing window",
+        "--servername %s", &serverName,   "Name of displaz instance to message on startup",
         "--version",      &printVersion,  "Print version number",
         "--help",         &printHelp,     "Print command line usage help",
         NULL
@@ -84,13 +89,50 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    // Turn on multisampled antialiasing - this makes rendered point clouds
-    // look much nicer.
+    QString socketName = QString::fromStdString("displaz-ipc-" + serverName);
+    if (remoteMode)
+    {
+        QLocalSocket socket;
+        // Attempt to locate a running displaz instance
+        socket.connectToServer(socketName);
+        if (socket.waitForConnected(100))
+        {
+            if (g_initialFileNames.empty())
+            {
+                std::cerr << "No files to open in existing window, exiting.\n";
+                return EXIT_FAILURE;
+            }
+            QByteArray command("OPEN_FILES");
+            for (int i = 0; i < g_initialFileNames.size(); ++i)
+            {
+                command += "\n";
+                command += g_initialFileNames[i].toUtf8();
+            }
+            socket.write(command);
+            socket.disconnectFromServer();
+            socket.waitForDisconnected(10000);
+            return EXIT_SUCCESS;
+        }
+    }
+    // If we didn't find any other running instance, start up a server to
+    // accept incoming connections, if desired
+    std::unique_ptr<DisplazServer> server;
+    if (remoteMode)
+        server.reset(new DisplazServer(socketName));
+
     QGLFormat f = QGLFormat::defaultFormat();
+    // Multisampled antialiasing - this makes rendered point clouds look much
+    // nicer, but also makes the render much slower, especially on lower
+    // powered graphics cards.
     //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
+    if (remoteMode)
+    {
+        QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray)),
+                         &window, SLOT(runCommand(QByteArray)));
+    }
     window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
     window.show();
