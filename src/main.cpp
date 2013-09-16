@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     QString socketName = QString::fromStdString("displaz-ipc-" + serverName);
     if (remoteMode)
     {
+        QDir currentDir = QDir::current();
         QLocalSocket socket;
         // Attempt to locate a running displaz instance
         socket.connectToServer(socketName);
@@ -106,7 +107,7 @@ int main(int argc, char *argv[])
             for (int i = 0; i < g_initialFileNames.size(); ++i)
             {
                 command += "\n";
-                command += g_initialFileNames[i].toUtf8();
+                command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
             }
             socket.write(command);
             socket.disconnectFromServer();

@@ -143,6 +143,8 @@ void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
 {
     emit fileLoadStarted();
     pointArrays.clear();
+    meshes.clear();
+    lines.clear();
     size_t maxCount = m_maxPointCount / fileNames.size();
     QStringList successfullyLoaded;
     for(int i = 0; i < fileNames.size(); ++i)
