@@ -266,7 +266,7 @@ void PointViewerMainWindow::setProgressBarText(QString text)
 
 void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
-    if (event->mimeData()->hasFormat("text/uri-list"))
+    if (event->mimeData()->hasUrls())
         event->acceptProposedAction();
 }
 
