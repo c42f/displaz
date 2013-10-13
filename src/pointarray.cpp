@@ -440,6 +440,9 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
         m_npoints = points.size();
         totPoints = points.size();
+        // Zero points + failed to get to EOF => bad text file format
+        if (totPoints == 0 && !inFile.eof())
+            return false;
         if (totPoints > 0)
             m_offset = points[0];
         m_P.reset(new V3f[m_npoints]);
@@ -450,7 +453,8 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
     }
     emit pointsLoaded(100);
-    m_centroid = (1.0/totPoints) * Psum;
+    if (totPoints > 0)
+        m_centroid = (1.0/totPoints) * Psum;
     tfm::printf("Loaded %d of %d points from file %s in %.2f seconds\n",
                 m_npoints, totPoints, fileName.toStdString(),
                 loadTimer.elapsed()/1000.0);
