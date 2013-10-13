@@ -121,12 +121,12 @@ int main(int argc, char *argv[])
     if (remoteMode)
         server.reset(new DisplazServer(socketName));
 
-    QGLFormat f = QGLFormat::defaultFormat();
     // Multisampled antialiasing - this makes rendered point clouds look much
     // nicer, but also makes the render much slower, especially on lower
     // powered graphics cards.
+    //QGLFormat f = QGLFormat::defaultFormat();
     //f.setSampleBuffers(true);
-    QGLFormat::setDefaultFormat(f);
+    //QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
     if (remoteMode)
