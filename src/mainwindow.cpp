@@ -275,12 +275,15 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
     QList<QUrl> urls = event->mimeData()->urls();
     if (urls.isEmpty())
         return;
-
-    QStringList DroppedFiles;
-    for( int i=0; i<urls.size(); i++ ) 
-			DroppedFiles << urls[i].toLocalFile();
-
-    m_pointView->loadFiles(DroppedFiles);
+    QStringList droppedFiles;
+    for( int i = 0; i < urls.size(); ++i ) 
+    {
+         if( urls[i].isLocalFile() )
+         {
+             droppedFiles << urls[i].toLocalFile();
+         }
+    }
+    m_pointView->loadFiles(droppedFiles);
 }
 
 

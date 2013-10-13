@@ -68,8 +68,8 @@ class PointViewerMainWindow : public QMainWindow
 
     protected:
         void keyReleaseEvent(QKeyEvent* event);
-	void dragEnterEvent(QDragEnterEvent *event);
-	void dropEvent(QDropEvent *event);
+        void dragEnterEvent(QDragEnterEvent *event);
+        void dropEvent(QDropEvent *event);
     
     private slots:
         void openFiles();
