@@ -47,6 +47,8 @@
 #include <QtGui/QSplitter>
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
+#include <QUrl>
+#include <QDropEvent>
 
 //------------------------------------------------------------------------------
 // Unbuffered std::streambuf implementation for output to a text edit widget
@@ -245,6 +247,8 @@ PointViewerMainWindow::PointViewerMainWindow()
     if (shaderFile.open(QIODevice::ReadOnly))
         m_pointView->shaderProgram().setShader(shaderFile.readAll());
     shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
+
+    setAcceptDrops(true);
 }
 
 
@@ -258,6 +262,25 @@ PointViewerMainWindow::~PointViewerMainWindow()
 void PointViewerMainWindow::setProgressBarText(QString text)
 {
     m_progressBar->setFormat(text + " (%p%)");
+}
+
+void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasFormat("text/uri-list"))
+        event->acceptProposedAction();
+}
+
+void PointViewerMainWindow::dropEvent(QDropEvent *event)
+{
+    QList<QUrl> urls = event->mimeData()->urls();
+    if (urls.isEmpty())
+        return;
+
+    QStringList DroppedFiles;
+    for( int i=0; i<urls.size(); i++ ) 
+			DroppedFiles << urls[i].toLocalFile();
+
+    m_pointView->loadFiles(DroppedFiles);
 }
 
 
