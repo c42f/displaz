@@ -17,6 +17,14 @@ option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 
+
+# Install directory for binaries
+if(WIN32)
+    set(DISPLAZ_BIN_DIR ".")
+else()
+    set(DISPLAZ_BIN_DIR "bin")
+endif()
+
 #------------------------------------------------------------------------------
 # Find third party dependencies
 
@@ -154,10 +162,13 @@ if(WIN32)
 endif()
 
 
+install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 if(WIN32)
-    install(TARGETS displaz DESTINATION "")
-else()
-    install(TARGETS displaz DESTINATION "bin")
+    # Install required qt libraries
+    install(CODE "
+        include(BundleUtilities)
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
+    ")
 endif()
 
 
@@ -184,18 +195,36 @@ endif()
 
 
 #------------------------------------------------------------------------------
-# Packaging, mainly for windows really
+# Packaging, mostly just for windows at this stage.
 
-set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "2")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${DISPLAZ_BIN_DIR}")
+include(InstallRequiredSystemLibraries)
+
+find_package(Git)
+set(CPACK_PACKAGE_VERSION "Unknown")
+if (GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe
+                    OUTPUT_VARIABLE gitVersion)
+    string(STRIP "${gitVersion}" CPACK_PACKAGE_VERSION)
+endif()
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
-#set(CPACK_PACKAGE_DESCRIPTION_FILE ".....")
-set(CPACK_PACKAGE_ICON "package/displaz.ico")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
+set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.rst")
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
+if (WIN32)
+    # Some paths need at at least one backslash to workaround NSIS bug
+    set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/package\\\\displaz.ico")
+else()
+    set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/package/displaz.ico")
+endif()
+set(CPACK_PACKAGE_EXECUTABLES "displaz;Displaz")
 set(CPACK_MONOLITHIC_INSTALL TRUE)
 if (WIN32)
     set(CPACK_GENERATOR NSIS)
+    set(CPACK_NSIS_MODIFY_PATH TRUE)
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY "${DISPLAZ_BIN_DIR}")
+    # cpack bug workaround: avoid installing into "C:\Program Files (x86)"
+    set(CPACK_NSIS_INSTALL_ROOT "C:\\\\Program Files")
 else()
     set(CPACK_GENERATOR TGZ)
 endif()
