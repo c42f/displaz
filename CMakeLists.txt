@@ -15,9 +15,11 @@ cmake_minimum_required(VERSION 2.8)
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
-option(DISPLAZ_USE_TESTS "Build the test cases" FALSE)
+option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 
 #------------------------------------------------------------------------------
+# Find third party dependencies
+
 # Find a library to read .las or .laz
 if (DISPLAZ_USE_PDAL)
     find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
@@ -47,21 +49,17 @@ if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
 endif()
 
 
-#------------------------------------------------------------------------------
 # Find IlmBase - temporary dependency?
-
 find_path (ILMBASE_INCLUDES NAMES ImathVec.h)
 if (ILMBASE_INCLUDES)
     set (ILMBASE_FOUND TRUE)
 endif()
 
-#------------------------------------------------------------------------------
-
-find_package(OpenGL)
+find_package(OpenGL REQUIRED)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
-if(NOT QT_FOUND OR NOT OPENGL_FOUND OR NOT ILMBASE_FOUND)
-    message(SEND_ERROR "Qt, opengl, laslib and ilmbase are required.")
+if(NOT QT_FOUND)
+    message(SEND_ERROR "Qt 4 not found")
 endif()
 
 if(DISPLAZ_USE_PDAL)
@@ -70,6 +68,8 @@ if(DISPLAZ_USE_PDAL)
 else()
     include_directories(${LASLIB_INCLUDES})
 endif()
+
+#------------------------------------------------------------------------------
 
 include_directories(BEFORE
     src/thirdparty
@@ -153,6 +153,15 @@ if(WIN32)
     endif()
 endif()
 
+
+if(WIN32)
+    install(TARGETS displaz DESTINATION "")
+else()
+    install(TARGETS displaz DESTINATION "bin")
+endif()
+
+
+#------------------------------------------------------------------------------
 # Documentation
 find_program(RST2HTML rst2html)
 if (RST2HTML)
@@ -165,10 +174,32 @@ if (RST2HTML)
 endif()
 
 
+#------------------------------------------------------------------------------
 # Tests
 if (DISPLAZ_USE_TESTS)
     enable_testing()
     add_executable(util_test src/util_test.cpp)
     add_test(util_test util_test)
 endif()
+
+
+#------------------------------------------------------------------------------
+# Packaging, mainly for windows really
+
+set(CPACK_PACKAGE_VERSION_MAJOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "2")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
+#set(CPACK_PACKAGE_DESCRIPTION_FILE ".....")
+set(CPACK_PACKAGE_ICON "package/displaz.ico")
+set(CPACK_MONOLITHIC_INSTALL TRUE)
+if (WIN32)
+    set(CPACK_GENERATOR NSIS)
+else()
+    set(CPACK_GENERATOR TGZ)
+endif()
+set(CPACK_STRIP_FILES TRUE)
+
+include(CPack)
 
