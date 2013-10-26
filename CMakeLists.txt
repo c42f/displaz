@@ -1,3 +1,13 @@
+#------------------------------------------------------------------------------
+# User-settable variables and options.
+#
+# Note that defaults for cmake builtin variables must be set before calling
+# project(), otherwise the cmake-provided defaults will get in first!
+
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+    "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+)
+
 project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
@@ -7,16 +17,7 @@ option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" FALSE)
 
-if (CMAKE_BUILD_TYPE STREQUAL "")
-    # Make sure we default to a release build
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
-        "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
-        FORCE
-    )
-endif()
-
-
-#-----------------------------------------------------------
+#------------------------------------------------------------------------------
 # Find a library to read .las or .laz
 if (DISPLAZ_USE_PDAL)
     find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
@@ -46,15 +47,15 @@ if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
 endif()
 
 
-#-----------------------------------------------------------
-# Find IlmBase - probably temporary dependency
+#------------------------------------------------------------------------------
+# Find IlmBase - temporary dependency?
 
 find_path (ILMBASE_INCLUDES NAMES ImathVec.h)
 if (ILMBASE_INCLUDES)
     set (ILMBASE_FOUND TRUE)
 endif()
 
-#-----------------------------------------------------------
+#------------------------------------------------------------------------------
 
 find_package(OpenGL)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
