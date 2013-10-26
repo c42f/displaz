@@ -39,7 +39,7 @@
 
 class QGLShaderProgram;
 
-class OctreeNode;
+struct OctreeNode;
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface

@@ -44,7 +44,7 @@ size_t closestPointToRay(const V3f* points, size_t nPoints,
         V3f v = rayOrigin - *points;
         float distN = T.dot(v);
         float distNperp = (v - distN*T).length2();
-        float d = f*distN*distN + distNperp;
+        double d = f*distN*distN + distNperp;
         if(d < nearestDist2)
         {
             nearestDist2 = d;
