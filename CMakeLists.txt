@@ -19,11 +19,9 @@ option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 
 
 # Install directory for binaries
-if(WIN32)
-    set(DISPLAZ_BIN_DIR ".")
-else()
-    set(DISPLAZ_BIN_DIR "bin")
-endif()
+# (It would seem sensible to avoid a bin directory on windows, but in practise
+# the NSIS installer expects binaries to be there.)
+set(DISPLAZ_BIN_DIR "bin")
 
 #------------------------------------------------------------------------------
 # Find third party dependencies
@@ -167,7 +165,7 @@ if(WIN32)
     # Install required qt libraries
     install(CODE "
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
     ")
 endif()
 
@@ -197,16 +195,23 @@ endif()
 #------------------------------------------------------------------------------
 # Packaging, mostly just for windows at this stage.
 
+# Ensure we can find NSIS.InstallOptions.ini.in
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/package")
+
 set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${DISPLAZ_BIN_DIR}")
 include(InstallRequiredSystemLibraries)
 
 find_package(Git)
-set(CPACK_PACKAGE_VERSION "Unknown")
+set(gitVersion "Unknown")
 if (GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} describe
                     OUTPUT_VARIABLE gitVersion)
-    string(STRIP "${gitVersion}" CPACK_PACKAGE_VERSION)
+    string(STRIP "${gitVersion}" gitVersion)
+    # For better or worse, I've been tagging as v0.1 - strip off the "v"
+    string(REGEX REPLACE "^v" "" gitVersion "${gitVersion}")
 endif()
+set(CPACK_PACKAGE_VERSION "${gitVersion}")
+set(fullVersion "displaz-${gitVersion}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
 set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.rst")
@@ -220,9 +225,29 @@ endif()
 set(CPACK_PACKAGE_EXECUTABLES "displaz;Displaz")
 set(CPACK_MONOLITHIC_INSTALL TRUE)
 if (WIN32)
+    # NSIS Setup
     set(CPACK_GENERATOR NSIS)
     set(CPACK_NSIS_MODIFY_PATH TRUE)
     set(CPACK_NSIS_EXECUTABLES_DIRECTORY "${DISPLAZ_BIN_DIR}")
+    # Registry guff to set up file associations
+    set(CPACK_NSIS_DEFINES "
+    !include ${PROJECT_SOURCE_DIR}\\\\package\\\\FileAssoc.nsh
+    Var ASSOCIATE_FILES
+    ")
+    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+    !insertmacro MUI_INSTALLOPTIONS_READ \\\$ASSOCIATE_FILES \\\"NSIS.InstallOptions.ini\\\" \\\"Field 6\\\" \\\"State\\\"
+
+    StrCmp \\\"$ASSOCIATE_FILES\\\" \\\"0\\\" fileAssocSkip
+    !insertmacro APP_ASSOCIATE \\\"laz\\\" \\\"${fullVersion}.laz\\\" \\\"Laser point cloud\\\" \\\"\\\$INSTDIR\\\\bin\\\\displaz.exe,0\\\" \\\"Open with displaz\\\" \\\"\\\$INSTDIR\\\\bin\\\\displaz.exe \\\$\\\\\\\"%1\\\$\\\\\\\"\\\"
+    !insertmacro APP_ASSOCIATE \\\"las\\\" \\\"${fullVersion}.las\\\" \\\"Laser point cloud\\\" \\\"\\\$INSTDIR\\\\bin\\\\displaz.exe,0\\\" \\\"Open with displaz\\\" \\\"\\\$INSTDIR\\\\bin\\\\displaz.exe \\\$\\\\\\\"%1\\\$\\\\\\\"\\\"
+    !insertmacro UPDATEFILEASSOC
+    fileAssocSkip:
+    ")
+    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+    !insertmacro APP_UNASSOCIATE \\\"laz\\\" \\\"${fullVersion}.laz\\\"
+    !insertmacro APP_UNASSOCIATE \\\"las\\\" \\\"${fullVersion}.las\\\"
+    !insertmacro UPDATEFILEASSOC
+    ")
     # cpack bug workaround: avoid installing into "C:\Program Files (x86)"
     set(CPACK_NSIS_INSTALL_ROOT "C:\\\\Program Files")
 else()
