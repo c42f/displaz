@@ -30,6 +30,17 @@
 
 #include "util.h"
 
+#ifdef _WIN32
+#   ifndef WIN32_LEAN_AND_MEAN
+#       define WIN32_LEAN_AND_MEAN
+#   endif
+#   ifndef NOMINMAX
+#       define NOMINMAX
+#   endif
+#   include <windows.h>
+#   include <io.h>
+#endif
+
 
 size_t closestPointToRay(const V3f* points, size_t nPoints,
                          const V3f& rayOrigin, const V3f& rayDirection,
@@ -55,3 +66,27 @@ size_t closestPointToRay(const V3f* points, size_t nPoints,
         *distance = sqrt(nearestDist2);
     return nearestIdx;
 }
+
+
+void attachToParentConsole()
+{
+#ifdef _WIN32
+    // The following small but helpful snippet was found in the firefox source
+    if (AttachConsole(ATTACH_PARENT_PROCESS))
+    {
+        // Change std handles to refer to new console handles.
+        // Before doing so, ensure that stdout/stderr haven't been
+        // redirected to a valid file
+        if (_fileno(stdout) == -1 || _get_osfhandle(_fileno(stdout)) == -1)
+            freopen("CONOUT$", "w", stdout);
+        // Merge stderr into CONOUT$ since there isn't any `CONERR$`.
+        // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683231%28v=vs.85%29.aspx
+        if (_fileno(stderr) == -1 || _get_osfhandle(_fileno(stderr)) == -1)
+            freopen("CONOUT$", "w", stderr);
+        if (_fileno(stdin) == -1 || _get_osfhandle(_fileno(stdin)) == -1)
+            freopen("CONIN$", "r", stdin);
+        std::cout << "\n";
+    }
+#endif
+}
+

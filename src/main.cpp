@@ -38,7 +38,6 @@
 #include "config.h"
 #include "displazserver.h"
 
-
 QStringList g_initialFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
@@ -60,7 +59,7 @@ int main(int argc, char *argv[])
     bool remoteMode = true;
 
     ap.options(
-        "displaz - view a LAS point cloud\n"
+        "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
         "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
@@ -71,10 +70,11 @@ int main(int argc, char *argv[])
         NULL
     );
 
+    attachToParentConsole();
     if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
     {
-        std::cerr << ap.geterror() << std::endl;
         ap.usage();
+        std::cerr << "ERROR: " << ap.geterror() << std::endl;
         return EXIT_FAILURE;
     }
 
