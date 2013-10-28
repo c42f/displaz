@@ -123,11 +123,26 @@ else()
 endif()
 
 # Create config.h
+find_package(Git)
+set(displazVersion "0.1")
+if (GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe
+                    OUTPUT_VARIABLE displazVersionGit
+                    RESULT_VARIABLE gitDescribeResult)
+    if (gitDescribeResult STREQUAL "0")
+        string(STRIP "${displazVersionGit}" displazVersion)
+        # For better or worse, I've been tagging as v0.1 - strip off the "v"
+        string(REGEX REPLACE "^v" "" displazVersion "${displazVersion}")
+    endif()
+else()
+    message(WARNING "Git not found - assuming hardcoded version ${displazVersion}")
+endif()
 if(DISPLAZ_USE_BUILTIN_SHADERS)
     set(DISPLAZ_SHADER_BASE_PATH ":")
 else()
     set(DISPLAZ_SHADER_BASE_PATH ${PROJECT_SOURCE_DIR})
 endif()
+set(DISPLAZ_VERSION_STRING "${displazVersion}")
 configure_file(src/config.h.in.cmake config.h @ONLY)
 include_directories(${CMAKE_BINARY_DIR})
 
@@ -201,17 +216,8 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/package")
 set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${DISPLAZ_BIN_DIR}")
 include(InstallRequiredSystemLibraries)
 
-find_package(Git)
-set(gitVersion "Unknown")
-if (GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe
-                    OUTPUT_VARIABLE gitVersion)
-    string(STRIP "${gitVersion}" gitVersion)
-    # For better or worse, I've been tagging as v0.1 - strip off the "v"
-    string(REGEX REPLACE "^v" "" gitVersion "${gitVersion}")
-endif()
-set(CPACK_PACKAGE_VERSION "${gitVersion}")
-set(fullVersion "displaz-${gitVersion}")
+set(CPACK_PACKAGE_VERSION "${displazVersion}")
+set(fullVersion "displaz-${displazVersion}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
 set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.rst")
