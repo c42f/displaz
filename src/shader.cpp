@@ -48,7 +48,23 @@ bool Shader::compileSourceCode(const QByteArray& src)
         case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
         case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
     }
-    if (!m_shader.compileSourceCode(defines + src))
+    QByteArray modifiedSrc = src;
+    // Add defines.  Some shader compilers require #version to come first (even
+    // before any #defines) so detect #version if it's present and put the
+    // defines after that.
+    int versionPos = src.indexOf("#version");
+    if (versionPos != -1)
+    {
+        int insertPos = src.indexOf('\n', versionPos);
+        if (insertPos == -1)
+            insertPos = src.length();
+        modifiedSrc.insert(insertPos+1, defines);
+    }
+    else
+    {
+        modifiedSrc = defines + src;
+    }
+    if (!m_shader.compileSourceCode(modifiedSrc))
         return false;
     m_source = src;
     // Search source code looking for uniform variables
