@@ -31,7 +31,9 @@
 #define DISPLAZ_SERVER_H_INCLUDED
 
 #include <iostream>
+#include <memory>
 
+#include <QtCore/QDataStream>
 #include <QtNetwork/QLocalServer>
 #include <QtNetwork/QLocalSocket>
 
@@ -57,21 +59,41 @@ class DisplazServer : public QObject
     private slots:
         void newConnection()
         {
-            // Simple one-shot for short commands: wait for disconnection, and
-            // read the command message from the internal buffer.
-            QLocalSocket* socket = m_server->nextPendingConnection();
-            if (socket->waitForDisconnected(1000))
+            // Note - socket is a child of m_server but we may clean it up when
+            // we're done with it, so stuff it into a unique_ptr
+            std::unique_ptr<QLocalSocket> socket(m_server->nextPendingConnection());
+            // Wait until we have enough bytes to read the message length
+            while (socket->bytesAvailable() < (int)sizeof(quint32))
             {
-                QByteArray msg = socket->readAll();
-                emit messageReceived(msg);
+                if (!socket->isValid())
+                {
+                    std::cerr << "Socket became invalid waiting for message length\n";
+                    return;
+                }
+                socket->waitForReadyRead(1000);
             }
-            else
+            quint32 msgLen = 0;
+            QDataStream stream(socket.get());
+            stream >> msgLen;
+            // Read actual message
+            QByteArray msg(msgLen, '\0');
+            quint32 bytesRead = 0;
+            do
             {
-                std::cerr << "Warning - got socket connection, but it didn't "
-                             "disconnect in a timely fashion - ignoring\n";
+                int n = stream.readRawData(msg.data() + bytesRead, msgLen - bytesRead);
+                if (n < 0)
+                {
+                    std::cerr << "Error while reading socket data\n";
+                    return;
+                }
+                bytesRead += n;
+            } while (bytesRead < msgLen && socket->waitForReadyRead(1000));
+            if (bytesRead < msgLen)
+            {
+                std::cerr << "Socket message truncated - ignoring\n";
+                return;
             }
-            // socket is a child of m_server but we may clean it up if we like
-            delete socket;
+            emit messageReceived(msg);
         }
 
     private:

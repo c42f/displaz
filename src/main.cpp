@@ -30,6 +30,7 @@
 #include "mainwindow.h"
 #include "ptview.h"
 
+#include <QtCore/QDataStream>
 #include <QtCore/QTimer>
 #include <QtGui/QApplication>
 #include <QtOpenGL/QGLFormat>
@@ -109,9 +110,12 @@ int main(int argc, char *argv[])
                 command += "\n";
                 command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
             }
-            socket.write(command);
+            QDataStream stream(&socket);
+            // Writes length as big endian uint32 followed by raw bytes
+            stream.writeBytes(command.data(), command.length());
             socket.disconnectFromServer();
             socket.waitForDisconnected(10000);
+            //std::cerr << "Opening files in existing displaz instance\n";
             return EXIT_SUCCESS;
         }
     }
