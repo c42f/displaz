@@ -699,8 +699,8 @@ void PointView::snapCursorAndCentre(double normalScaling)
         }
     }
     V3d posDiff = newPos - m_prevCursorSnap;
-    tfm::printf("Selected %.3f [diff with previous = %.3f]\n",
-                newPos, posDiff);
+    tfm::printf("Selected %.3f [diff with previous = %.3f m; %.3f]\n",
+                newPos, posDiff.length(), posDiff);
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;
     m_camera.setCenter(exr2qt(newPos - m_drawOffset));
