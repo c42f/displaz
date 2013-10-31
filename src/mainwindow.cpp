@@ -371,6 +371,17 @@ void PointViewerMainWindow::aboutDialog()
     QString message = tr(
         "<p><b>Displaz</b> - a LiDAR viewer for geographic data</p>"
         "<p>version " DISPLAZ_VERSION_STRING "</p>"
+        "<br/>"
+        "<p>This software is released under the BSD 3-clause license.  "
+        "Code is available at <a href=\"https://github.com/c42f/displaz\">https://github.com/c42f/displaz</a>.</p>"
+        "<p>The following libraries are gratefully acknowledged:</p>"
+        "<list>"
+        "<li>Qt - <a href=\"http://qt-project.org\">http://qt-project.org</a></li>"
+        "<li>LASLib - <a href=\"http://www.cs.unc.edu/~isenburg/lastools\">http://www.cs.unc.edu/~isenburg/lastools</a></li>"
+        "<li>ilmbase - <a href=\"http://www.openexr.com\">http://www.openexr.com</a></li>"
+        "<li>rply - <a href=\"http://www.impa.br/~diego/software/rply\">http://www.impa.br/~diego/software/rply</a></li>"
+        "<li>Parts of OpenImageIO - <a href=\"http://openimageio.org\">http://openimageio.org</a></li>"
+        "</list>"
     );
     QMessageBox::information(this, tr("About displaz"), message);
 }
