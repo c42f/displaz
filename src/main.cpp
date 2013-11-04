@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
     bool printHelp = false;
     int maxPointCount = 200000000;
     std::string serverName = "default";
+    std::string shaderName;
     bool remoteMode = true;
 
     ap.options(
@@ -66,6 +67,7 @@ int main(int argc, char *argv[])
         "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
         "--noremote %!",  &remoteMode,    "Don't attempt to open files in existing window",
         "--servername %s", &serverName,   "Name of displaz instance to message on startup",
+        "--shader %s",    &shaderName,    "Name of shader file to load on startup",
         "--version",      &printVersion,  "Print version number",
         "--help",         &printHelp,     "Print command line usage help",
         NULL
@@ -140,6 +142,8 @@ int main(int argc, char *argv[])
     }
     window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
+    if (!shaderName.empty())
+        window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
 
     // Open initial files only after event loop has started.  Use a small but

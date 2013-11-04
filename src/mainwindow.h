@@ -65,6 +65,7 @@ class PointViewerMainWindow : public QMainWindow
 
     public slots:
         void runCommand(const QByteArray& command);
+        void openShaderFile(const QString& shaderFileName);
 
     protected:
         void keyReleaseEvent(QKeyEvent* event);

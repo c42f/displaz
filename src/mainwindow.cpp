@@ -252,11 +252,8 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(logDock->toggleViewAction());
 
     // Set shaders
-    QString shaderBasePath = DISPLAZ_SHADER_BASE_PATH;
-    QFile shaderFile(shaderBasePath + "/shaders/points_default.glsl");
-    if (shaderFile.open(QIODevice::ReadOnly))
-        m_pointView->shaderProgram().setShader(shaderFile.readAll());
-    m_shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
+    QString defaultShaderPath = DISPLAZ_SHADER_BASE_PATH "/shaders/points_default.glsl";
+    openShaderFile(defaultShaderPath);
 
     setAcceptDrops(true);
 }
@@ -324,7 +321,6 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
     m_pointView->loadFiles(files);
 }
 
-
 void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 {
     if(event->key() == Qt::Key_Escape)
@@ -355,20 +351,12 @@ void PointViewerMainWindow::openFiles()
 }
 
 
-void PointViewerMainWindow::openShaderFile()
+void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
 {
-    QString shaderFileName = QFileDialog::getOpenFileName(
-        this,
-        tr("Open OpenGL shader in displaz format"),
-        m_currShaderFileName,
-        tr("OpenGL shader files (*.glsl);;All files(*)")
-    );
-    if (shaderFileName.isNull())
-        return;
     QFile shaderFile(shaderFileName);
-    m_currShaderFileName = shaderFileName;
     if (shaderFile.open(QIODevice::ReadOnly))
     {
+        m_currShaderFileName = shaderFileName;
         QByteArray src = shaderFile.readAll();
         m_shaderEditor->setPlainText(src);
         m_pointView->shaderProgram().setShader(src);
@@ -381,6 +369,20 @@ void PointViewerMainWindow::openShaderFile()
                 .arg(shaderFile.errorString())
         );
     }
+}
+
+
+void PointViewerMainWindow::openShaderFile()
+{
+    QString shaderFileName = QFileDialog::getOpenFileName(
+        this,
+        tr("Open OpenGL shader in displaz format"),
+        m_currShaderFileName,
+        tr("OpenGL shader files (*.glsl);;All files(*)")
+    );
+    if (shaderFileName.isNull())
+        return;
+    openShaderFile(shaderFileName);
 }
 
 
