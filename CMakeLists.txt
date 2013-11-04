@@ -216,6 +216,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/package")
 set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${DISPLAZ_BIN_DIR}")
 include(InstallRequiredSystemLibraries)
 
+set(CPACK_PACKAGE_NAME "displaz")
 set(CPACK_PACKAGE_VERSION "${displazVersion}")
 set(fullVersion "displaz-${displazVersion}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
@@ -235,6 +236,7 @@ if (WIN32)
     set(CPACK_GENERATOR NSIS)
     set(CPACK_NSIS_MODIFY_PATH TRUE)
     set(CPACK_NSIS_EXECUTABLES_DIRECTORY "${DISPLAZ_BIN_DIR}")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL TRUE)
     # Registry guff to set up file associations
     set(CPACK_NSIS_DEFINES "
     !include ${PROJECT_SOURCE_DIR}\\\\package\\\\FileAssoc.nsh
