@@ -324,20 +324,24 @@ void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 
 void PointViewerMainWindow::openFiles()
 {
-    QFileDialog dialog(this, tr("Select one or more point clouds or meshes to open"));
-    QStringList nameFilters;
-    nameFilters << tr("Point cloud files (*.las *.laz *.txt)")
-                << tr("Mesh files (*.ply)")
-                << tr("All files (*)");
-    dialog.setNameFilters(nameFilters);
-    dialog.setFileMode(QFileDialog::ExistingFiles);
-    dialog.setDirectory(m_currFileDir);
-    if(dialog.exec())
-    {
-        QStringList files = dialog.selectedFiles();
-        m_pointView->loadFiles(files);
-    }
-    m_currFileDir = dialog.directory();
+    // Note - using the static getOpenFileNames seems to be the only way to get
+    // a native dialog.  This is annoying, since the last selected directory
+    // can't be deduced directly from the native dialog, but only when it
+    // returns a valid selected file.  However we'll just have to put up with
+    // this, because not having native dialogs is jarring.
+    QStringList files = QFileDialog::getOpenFileNames(
+        this,
+        tr("Select one or more point clouds or meshes to open"),
+        m_currFileDir.path(),
+        tr("Point cloud files (*.las *.laz *.txt);;Mesh files (*.ply);;All files (*)"),
+        0,
+        QFileDialog::ReadOnly
+    );
+    if (files.empty())
+        return;
+    m_pointView->loadFiles(files);
+    m_currFileDir = QFileInfo(files[0]).dir();
+    m_currFileDir.makeAbsolute();
 }
 
 
