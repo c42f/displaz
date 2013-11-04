@@ -59,8 +59,11 @@ class PointView : public QGLWidget
 
         /// Load geometry files from disk
         void loadFiles(const QStringList& fileNames);
+
+        /// Reload current files from disk
         void reloadFiles();
 
+        /// Return shader used for displaying points
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
 
         void setShaderParamsUIWidget(QWidget* widget);

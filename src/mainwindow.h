@@ -73,6 +73,8 @@ class PointViewerMainWindow : public QMainWindow
 
     private slots:
         void openFiles();
+        void openShaderFile();
+        void saveShaderFile();
         void reloadFiles();
         void helpDialog();
         void aboutDialog();
@@ -87,7 +89,9 @@ class PointViewerMainWindow : public QMainWindow
 
         QProgressBar* m_progressBar;
         PointView* m_pointView;
+        ShaderEditor* m_shaderEditor;
         QDir m_currFileDir;
+        QString m_currShaderFileName;
         QPlainTextEdit* m_logTextView;
         std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
         std::streambuf* m_oldBuf;

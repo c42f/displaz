@@ -93,6 +93,16 @@ PointViewerMainWindow::PointViewerMainWindow()
     reloadAct->setStatusTip(tr("Reload point files from disk"));
     reloadAct->setShortcut(Qt::Key_F5);
     connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
+
+    fileMenu->addSeparator();
+    QAction* openShaderAct = fileMenu->addAction(tr("Open &Shader"));
+    openAct->setToolTip(tr("Open a shader file"));
+    connect(openShaderAct, SIGNAL(triggered()), this, SLOT(openShaderFile()));
+    QAction* saveShaderAct = fileMenu->addAction(tr("Sa&ve Shader"));
+    openAct->setToolTip(tr("Save current shader file"));
+    connect(saveShaderAct, SIGNAL(triggered()), this, SLOT(saveShaderFile()));
+
+    fileMenu->addSeparator();
     QAction* quitAct = fileMenu->addAction(tr("&Quit"));
     quitAct->setStatusTip(tr("Exit the application"));
     quitAct->setShortcuts(QKeySequence::Quit);
@@ -192,12 +202,12 @@ PointViewerMainWindow::PointViewerMainWindow()
     shaderEditorDock->setAllowedAreas(Qt::LeftDockWidgetArea |
                                       Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
-    ShaderEditor* shaderEditor = new ShaderEditor(shaderEditorUI);
-    connect(shaderEditor, SIGNAL(sendShader(QString)),
+    m_shaderEditor = new ShaderEditor(shaderEditorUI);
+    connect(m_shaderEditor, SIGNAL(sendShader(QString)),
             &m_pointView->shaderProgram(), SLOT(setShader(QString)));
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
     shaderEditorLayout->setContentsMargins(2,2,2,2);
-    shaderEditorLayout->addWidget(shaderEditor, 0, 0, 1, 1);
+    shaderEditorLayout->addWidget(m_shaderEditor, 0, 0, 1, 1);
     shaderEditorDock->setWidget(shaderEditorUI);
 
     // Log viewer UI
@@ -246,7 +256,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     QFile shaderFile(shaderBasePath + "/shaders/points_default.glsl");
     if (shaderFile.open(QIODevice::ReadOnly))
         m_pointView->shaderProgram().setShader(shaderFile.readAll());
-    shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
+    m_shaderEditor->setPlainText(m_pointView->shaderProgram().shaderSource());
 
     setAcceptDrops(true);
 }
@@ -325,13 +335,13 @@ void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 void PointViewerMainWindow::openFiles()
 {
     // Note - using the static getOpenFileNames seems to be the only way to get
-    // a native dialog.  This is annoying, since the last selected directory
+    // a native dialog.  This is annoying since the last selected directory
     // can't be deduced directly from the native dialog, but only when it
     // returns a valid selected file.  However we'll just have to put up with
     // this, because not having native dialogs is jarring.
     QStringList files = QFileDialog::getOpenFileNames(
         this,
-        tr("Select one or more point clouds or meshes to open"),
+        tr("Open point clouds or meshes"),
         m_currFileDir.path(),
         tr("Point cloud files (*.las *.laz *.txt);;Mesh files (*.ply);;All files (*)"),
         0,
@@ -342,6 +352,63 @@ void PointViewerMainWindow::openFiles()
     m_pointView->loadFiles(files);
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
+}
+
+
+void PointViewerMainWindow::openShaderFile()
+{
+    QString shaderFileName = QFileDialog::getOpenFileName(
+        this,
+        tr("Open OpenGL shader in displaz format"),
+        m_currShaderFileName,
+        tr("OpenGL shader files (*.glsl);;All files(*)")
+    );
+    if (shaderFileName.isNull())
+        return;
+    QFile shaderFile(shaderFileName);
+    m_currShaderFileName = shaderFileName;
+    if (shaderFile.open(QIODevice::ReadOnly))
+    {
+        QByteArray src = shaderFile.readAll();
+        m_shaderEditor->setPlainText(src);
+        m_pointView->shaderProgram().setShader(src);
+    }
+    else
+    {
+        QMessageBox::critical(0, tr("Error"),
+            tr("Couldn't open shader file \"%1\": %2")
+                .arg(shaderFileName)
+                .arg(shaderFile.errorString())
+        );
+    }
+}
+
+
+void PointViewerMainWindow::saveShaderFile()
+{
+    QString shaderFileName = QFileDialog::getSaveFileName(
+        this,
+        tr("Save current OpenGL shader"),
+        m_currShaderFileName,
+        tr("OpenGL shader files (*.glsl);;All files(*)")
+    );
+    if (shaderFileName.isNull())
+        return;
+    QFile shaderFile(shaderFileName);
+    if (shaderFile.open(QIODevice::WriteOnly))
+    {
+        QTextStream stream(&shaderFile);
+        stream << m_shaderEditor->toPlainText();
+        m_currShaderFileName = shaderFileName;
+    }
+    else
+    {
+        QMessageBox::critical(0, tr("Error"),
+            tr("Couldn't open shader file \"%1\": %2")
+                .arg(shaderFileName)
+                .arg(shaderFile.errorString())
+        );
+    }
 }
 
 
