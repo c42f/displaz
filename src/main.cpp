@@ -101,16 +101,22 @@ int main(int argc, char *argv[])
         socket.connectToServer(socketName);
         if (socket.waitForConnected(100))
         {
+            QByteArray command;
             if (g_initialFileNames.empty())
             {
-                std::cerr << "No files to open in existing window, exiting.\n";
-                return EXIT_FAILURE;
+                std::cerr << "WARNING: Existing window found, but no remote command specified\n";
+                // Since we opened the connection, close it nicely by sending a
+                // zero-length message to say goodbye.
+                command = "";
             }
-            QByteArray command("OPEN_FILES");
-            for (int i = 0; i < g_initialFileNames.size(); ++i)
+            else
             {
-                command += "\n";
-                command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
+                command = "OPEN_FILES";
+                for (int i = 0; i < g_initialFileNames.size(); ++i)
+                {
+                    command += "\n";
+                    command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
+                }
             }
             QDataStream stream(&socket);
             // Writes length as big endian uint32 followed by raw bytes

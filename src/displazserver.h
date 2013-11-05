@@ -65,9 +65,14 @@ class DisplazServer : public QObject
             // Wait until we have enough bytes to read the message length
             while (socket->bytesAvailable() < (int)sizeof(quint32))
             {
-                if (!socket->isValid())
+                // Note that isValid() can return true even when the socket is
+                // disconnected - protect against this with extra checks.
+                if (!socket->isValid() ||
+                    (socket->state() == QLocalSocket::UnconnectedState &&
+                     socket->bytesAvailable() < (int)sizeof(quint32)))
                 {
-                    std::cerr << "Socket became invalid waiting for message length\n";
+                    std::cerr << "Socket became invalid or disconnected "
+                                 "while waiting for message length\n";
                     return;
                 }
                 socket->waitForReadyRead(1000);
@@ -75,6 +80,8 @@ class DisplazServer : public QObject
             quint32 msgLen = 0;
             QDataStream stream(socket.get());
             stream >> msgLen;
+            if (msgLen == 0)
+                return;
             // Read actual message
             QByteArray msg(msgLen, '\0');
             quint32 bytesRead = 0;
