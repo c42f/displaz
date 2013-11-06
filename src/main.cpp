@@ -56,7 +56,8 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
     int maxPointCount = 200000000;
-    std::string serverName = "default";
+    std::string serverName;
+
     std::string shaderName;
     bool remoteMode = true;
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[])
         "%*", storeFileName, "",
         "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
         "--noremote %!",  &remoteMode,    "Don't attempt to open files in existing window",
-        "--servername %s", &serverName,   "Name of displaz instance to message on startup",
+        "--server %s",    &serverName,    "Name of displaz instance to message on startup",
         "--shader %s",    &shaderName,    "Name of shader file to load on startup",
         "--version",      &printVersion,  "Print version number",
         "--help",         &printHelp,     "Print command line usage help",
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    QString socketName = QString::fromStdString("displaz-ipc-" + serverName);
+    QString socketName = DisplazServer::socketName(QString::fromStdString(serverName));
     if (remoteMode)
     {
         QDir currentDir = QDir::current();
@@ -104,7 +105,8 @@ int main(int argc, char *argv[])
             QByteArray command;
             if (g_initialFileNames.empty())
             {
-                std::cerr << "WARNING: Existing window found, but no remote command specified\n";
+                std::cerr << "WARNING: Existing window found, but no remote "
+                             "command specified - exiting\n";
                 // Since we opened the connection, close it nicely by sending a
                 // zero-length message to say goodbye.
                 command = "";

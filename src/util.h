@@ -131,4 +131,12 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 void attachToParentConsole();
 
 
+/// Get a unique id string for the current user
+///
+/// On unix this is just the user's numeric id; on windows, it's the session
+/// id, which isn't quite the same thing but should work as a unique id on the
+/// machine.
+std::string currentUserUid();
+
+
 #endif // UTIL_H_INCLUDED

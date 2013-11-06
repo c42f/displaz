@@ -37,6 +37,7 @@
 #include <QtNetwork/QLocalServer>
 #include <QtNetwork/QLocalSocket>
 
+#include "util.h"
 
 /// Server which listens for incoming messages on a local socket
 class DisplazServer : public QObject
@@ -47,9 +48,21 @@ class DisplazServer : public QObject
             : QObject(parent)
         {
             m_server = new QLocalServer(this);
-            m_server->listen(socketName);
+            if (!QLocalServer::removeServer(socketName))
+                qWarning("Could not clean up socket file \"%s\"", qPrintable(socketName));
+            if (!m_server->listen(socketName))
+                qWarning("Could not listen on socket \"%s\"", qPrintable(socketName));
             connect(m_server, SIGNAL(newConnection()),
                     this, SLOT(newConnection()));
+        }
+
+        static QString socketName(QString suffix)
+        {
+            QString currUid = QString::fromStdString(currentUserUid());
+            QString name = "displaz-ipc-" + currUid;
+            if (!suffix.isEmpty())
+                name += "-" + suffix;
+            return name;
         }
 
     signals:
@@ -94,7 +107,8 @@ class DisplazServer : public QObject
                     return;
                 }
                 bytesRead += n;
-            } while (bytesRead < msgLen && socket->waitForReadyRead(1000));
+            }
+            while (bytesRead < msgLen && socket->waitForReadyRead(1000));
             if (bytesRead < msgLen)
             {
                 std::cerr << "Socket message truncated - ignoring\n";

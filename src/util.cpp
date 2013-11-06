@@ -39,8 +39,11 @@
 #   endif
 #   include <windows.h>
 #   include <io.h>
+#else
+#   include <unistd.h>
 #endif
 
+#include "tinyformat.h"
 
 size_t closestPointToRay(const V3f* points, size_t nPoints,
                          const V3f& rayOrigin, const V3f& rayDirection,
@@ -88,5 +91,16 @@ void attachToParentConsole()
         std::cout << "\n";
     }
 #endif
+}
+
+std::string currentUserUid()
+{
+#   ifdef _WIN32
+    DWORD sessId = 0;
+    ProcessIdToSessionId(GetCurrentProcessId(), &sessId);
+    return tfm::format("%d", sessId);
+#   else
+    return tfm::format("%d", ::getuid());
+#   endif
 }
 
