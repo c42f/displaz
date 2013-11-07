@@ -252,9 +252,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(logDock->toggleViewAction());
 
     // Set shaders
-    QString defaultShaderPath = DISPLAZ_SHADER_BASE_PATH "/shaders/points_default.glsl";
-    openShaderFile(defaultShaderPath);
-
+    openShaderFile("shaders:points_default.glsl");
     setAcceptDrops(true);
 }
 
@@ -356,7 +354,7 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     QFile shaderFile(shaderFileName);
     if (shaderFile.open(QIODevice::ReadOnly))
     {
-        m_currShaderFileName = shaderFileName;
+        m_currShaderFileName = shaderFile.fileName();
         QByteArray src = shaderFile.readAll();
         m_shaderEditor->setPlainText(src);
         m_pointView->shaderProgram().setShader(src);

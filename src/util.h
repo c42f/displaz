@@ -45,6 +45,8 @@
 
 #include <iostream>
 
+#include <QString>
+
 using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
@@ -115,6 +117,13 @@ template<typename T>
 std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 {
     out << b.min << "--" << b.max;
+    return out;
+}
+
+/// Print QString to std stream
+inline std::ostream& operator<<(std::ostream& out, const QString& s)
+{
+    out << s.toStdString();
     return out;
 }
 

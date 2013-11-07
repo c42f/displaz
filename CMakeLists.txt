@@ -13,7 +13,6 @@ project(displaz)
 cmake_minimum_required(VERSION 2.8)
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
-option(DISPLAZ_USE_BUILTIN_SHADERS "Package shaders into executable" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 
@@ -22,6 +21,11 @@ option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 # (It would seem sensible to avoid a bin directory on windows, but in practise
 # the NSIS installer expects binaries to be there.)
 set(DISPLAZ_BIN_DIR "bin")
+if (WIN32)
+    set(DISPLAZ_SHADER_DIR "shaders")
+else()
+    set(DISPLAZ_SHADER_DIR "share/displaz/shaders")
+endif()
 
 #------------------------------------------------------------------------------
 # Find third party dependencies
@@ -94,12 +98,9 @@ qt4_wrap_cpp(moc_srcs
     src/shadereditor.h
     src/shader.h
 )
-qt4_add_resources(rcc_srcs
-    package/resources.qrc
-)
+#qt4_add_resources(rcc_srcs package/resources.qrc)
 set(srcs
     ${moc_srcs}
-    ${rcc_srcs}
     src/mainwindow.cpp
     src/ptview.cpp
     src/pointarray.cpp
@@ -137,11 +138,6 @@ if (GIT_FOUND)
 else()
     message(WARNING "Git not found - assuming hardcoded version ${displazVersion}")
 endif()
-if(DISPLAZ_USE_BUILTIN_SHADERS)
-    set(DISPLAZ_SHADER_BASE_PATH ":")
-else()
-    set(DISPLAZ_SHADER_BASE_PATH ${PROJECT_SOURCE_DIR})
-endif()
 set(DISPLAZ_VERSION_STRING "${displazVersion}")
 configure_file(src/config.h.in.cmake config.h @ONLY)
 include_directories(${CMAKE_BINARY_DIR})
@@ -176,6 +172,8 @@ endif()
 
 
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
+install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
+
 if(WIN32)
     # Install required qt libraries
     install(CODE "

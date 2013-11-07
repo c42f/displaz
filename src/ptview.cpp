@@ -297,11 +297,9 @@ void PointView::setMaxPointCount(size_t maxPointCount)
 void PointView::initializeGL()
 {
     m_meshFaceShader.reset(new ShaderProgram(context()));
-    m_meshFaceShader->setShaderFromSourceFile(
-        QString(DISPLAZ_SHADER_BASE_PATH) + "/shaders/meshface.glsl");
+    m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
-    m_meshEdgeShader->setShaderFromSourceFile(
-        QString(DISPLAZ_SHADER_BASE_PATH) + "/shaders/meshedge.glsl");
+    m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 }
 
 

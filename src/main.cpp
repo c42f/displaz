@@ -48,6 +48,27 @@ static int storeFileName (int argc, const char *argv[])
 }
 
 
+/// Set up search paths to our application directory for Qt's file search
+/// mechanism.
+///
+/// This allows us to use "shaders:points_default.glsl" as a path to a shader
+/// in the rest of the code, regardless of the system-specific details of how
+/// the install directories are laid out.
+static void setupQFileSearchPaths()
+{
+    QString installBinDir = QCoreApplication::applicationDirPath();
+    if (!installBinDir.endsWith("/bin"))
+    {
+        std::cerr << "WARNING: strange install location detected "
+                     "- shaders will not be found\n";
+        return;
+    }
+    QString installBaseDir = installBinDir;
+    installBaseDir.chop(4);
+    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
+}
+
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
@@ -93,6 +114,10 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+    setupQFileSearchPaths();
+
+    // TODO: Factor out this socket comms code - sending and recieving of
+    // messages should happen in a centralised place.
     QString socketName = DisplazServer::socketName(QString::fromStdString(serverName));
     if (remoteMode)
     {
