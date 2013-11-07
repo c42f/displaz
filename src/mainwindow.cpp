@@ -28,11 +28,12 @@
 // (This is the BSD 3-clause license)
 
 #include "mainwindow.h"
+
+#include "config.h"
+#include "helpdialog.h"
 #include "ptview.h"
 #include "shadereditor.h"
 #include "shader.h"
-
-#include "config.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -75,11 +76,16 @@ class StreamBufTextEditSink : public std::streambuf
 // PointViewerMainWindow implementation
 
 PointViewerMainWindow::PointViewerMainWindow()
-    : m_pointView(0),
+    : m_progressBar(0),
+    m_pointView(0),
+    m_shaderEditor(0),
+    m_helpDialog(0),
     m_logTextView(0),
     m_oldBuf(0)
 {
     setWindowTitle("Displaz");
+    setAcceptDrops(true);
+    m_helpDialog = new HelpDialog(this);
 
     //--------------------------------------------------
     // Menus
@@ -157,7 +163,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
-    QAction* helpAct = helpMenu->addAction(tr("&Controls"));
+    QAction* helpAct = helpMenu->addAction(tr("User &Guide"));
     connect(helpAct, SIGNAL(triggered()), this, SLOT(helpDialog()));
     helpMenu->addSeparator();
     QAction* aboutAct = helpMenu->addAction(tr("&About"));
@@ -251,9 +257,9 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(shaderEditorDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
 
-    // Set shaders
+    //--------------------------------------------------
+    // Final setup
     openShaderFile("shaders:points_default.glsl");
-    setAcceptDrops(true);
 }
 
 
@@ -420,39 +426,18 @@ void PointViewerMainWindow::reloadFiles()
 
 void PointViewerMainWindow::helpDialog()
 {
-    QString message = tr(
-        "<p><h2>Displaz 3D window controls</h2></p>"
-        "<list>"
-        "  <li>LMB+drag = rotate camera</li>"
-        "  <li>MMB = centre camera on closest point under cursor</li>"
-        "  <li>RMB+drag = zoom camera</li>"
-        "  <li>Ctrl+LMB+drag = move 3D cursor</li>"
-        "  <li>Ctrl+RMB+drag = zoom 3D cursor along view direction</li>"
-        "  <li>'c' = center camera on 3D cursor</li>"
-        "  <li>'s' = snap 3D cursor to nearest point</li>"
-        "</list>"
-        "<p>(LMB, MMB, RMB = left, middle, right mouse buttons)</p>"
-    );
-    QMessageBox::information(this, tr("Displaz control summary"), message);
+    m_helpDialog->show();
 }
 
 
 void PointViewerMainWindow::aboutDialog()
 {
     QString message = tr(
-        "<p><b>Displaz</b> - a LiDAR viewer for geographic data</p>"
+        "<p><b>Displaz</b> - a viewer for geospatial LiDAR data</p>"
         "<p>version " DISPLAZ_VERSION_STRING "</p>"
         "<br/>"
         "<p>This software is released under the BSD 3-clause license.  "
         "Code is available at <a href=\"https://github.com/c42f/displaz\">https://github.com/c42f/displaz</a>.</p>"
-        "<p>The following libraries are gratefully acknowledged:</p>"
-        "<list>"
-        "<li>Qt - <a href=\"http://qt-project.org\">http://qt-project.org</a></li>"
-        "<li>LASLib - <a href=\"http://www.cs.unc.edu/~isenburg/lastools\">http://www.cs.unc.edu/~isenburg/lastools</a></li>"
-        "<li>ilmbase - <a href=\"http://www.openexr.com\">http://www.openexr.com</a></li>"
-        "<li>rply - <a href=\"http://www.impa.br/~diego/software/rply\">http://www.impa.br/~diego/software/rply</a></li>"
-        "<li>Parts of OpenImageIO - <a href=\"http://openimageio.org\">http://openimageio.org</a></li>"
-        "</list>"
     );
     QMessageBox::information(this, tr("About displaz"), message);
 }

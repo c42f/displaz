@@ -41,6 +41,7 @@ class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
 
+class HelpDialog;
 class PointView;
 class StreamBufTextEditSink;
 class ShaderEditor;
@@ -88,12 +89,18 @@ class PointViewerMainWindow : public QMainWindow
     private:
         QColor backgroundColFromName(const QString& name) const;
 
+        // Gui objects
         QProgressBar* m_progressBar;
         PointView* m_pointView;
         ShaderEditor* m_shaderEditor;
+        HelpDialog* m_helpDialog;
+        QPlainTextEdit* m_logTextView;
+
+        // Gui state
         QDir m_currFileDir;
         QString m_currShaderFileName;
-        QPlainTextEdit* m_logTextView;
+
+        // Stdout capture (uh, ok... ugh)
         std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
         std::streambuf* m_oldBuf;
 };

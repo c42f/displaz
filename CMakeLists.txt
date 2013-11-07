@@ -23,8 +23,10 @@ option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 set(DISPLAZ_BIN_DIR "bin")
 if (WIN32)
     set(DISPLAZ_SHADER_DIR "shaders")
+    set(DISPLAZ_DOC_DIR "doc")
 else()
     set(DISPLAZ_SHADER_DIR "share/displaz/shaders")
+    set(DISPLAZ_DOC_DIR "share/doc/displaz")
 endif()
 
 #------------------------------------------------------------------------------
@@ -91,6 +93,7 @@ include_directories(BEFORE
 qt4_wrap_cpp(moc_srcs
     src/displazserver.h
     src/dragspinbox.h
+    src/helpdialog.h
     src/interactivecamera.h
     src/mainwindow.h
     src/ptview.h
@@ -193,6 +196,10 @@ if (RST2HTML)
         DEPENDS README.rst
     )
     add_custom_target(doc ALL DEPENDS ${readmeHtml})
+    install(FILES ${readmeHtml} DESTINATION "${DISPLAZ_DOC_DIR}")
+else()
+    message(WARNING "rst2html not found - documentation will be installed as text!")
+    install(FILES README.rst DESTINATION "${DISPLAZ_DOC_DIR}")
 endif()
 
 

@@ -33,8 +33,7 @@ Navigation
 Point display
 ~~~~~~~~~~~~~
 To change how the points are displayed, use the controls in the box on
-the right hand side of the screen.  Additional controls may be added and
-configured at runtime via hints in the the shader program. Examples:
+the right hand side of the screen.  Examples:
 
 * To change the point radius, click and **vertically drag** on the arrows
   of the spinbox labeled "Point Radius".  This extension works for all
@@ -44,13 +43,10 @@ configured at runtime via hints in the the shader program. Examples:
 
 Shader editing
 ~~~~~~~~~~~~~~
-* Shader properties may be edited using the controls in the shader parameters
-  box.
-
-* Additional controls and behaviour may be defined by bringing up the shader
-  editor using the view menu.  While in the shader editor, pressing
-  Shift+Return will cause a valid shader to be recompiled and applied to the
-  point cloud immediately.
+Additional point display controls may be added and configured at runtime via
+hints in the the shader program.  While in the shader editor (accessible via
+the view menu), pressing Shift+Return will cause a valid shader to be
+recompiled and applied to the point cloud immediately.
 
 
 Supported file formats
@@ -82,18 +78,32 @@ element is replaced with an edge element in the same format, each edge will be
 rendered as a set of linear segments.
 
 
-Supported Operating Systems
----------------------------
+Supported Systems
+-----------------
 
 displaz is intended to be cross-platform, and is known to run on both windows
 and linux.  The author doesn't have access to an OSX system, but welcomes
 contributions toward making things work there as well.
 
-The intention is to use modern OpenGL for all rendering tasks.  This gives us a
-lot of power via the OpenGL shading language, but unfortunately presents
-potential portability issues.  displaz is known to work well with NVidia
-graphics cards; portability problems to other systems will be addressed as they
-come up.
+The intention is to use modern OpenGL (at least version 3.2) for all rendering
+tasks.  This gives us a lot of power via the OpenGL shading language, but
+presents additional portability challanges.  displaz is known to work well with
+recent NVidia and ATI graphics cards and drivers.  Some issues have been
+observed with intel integrated graphics and older ATI drivers - these will be
+addressed in the future where possible.
+
+
+Third party libraries used in displaz
+-------------------------------------
+
+Behind the scenes displaz uses code written by many people.  The following
+third party projects are gratefully acknowledged:
+
+* Qt - http://qt-project.org
+* LASLib - http://www.cs.unc.edu/~isenburg/lastools
+* ilmbase - http://www.openexr.com
+* rply - http://www.impa.br/~diego/software/rply
+* Small pieces from OpenImageIO - http://openimageio.org
 
 
 Building
@@ -105,11 +115,6 @@ Before building, you need the following
 * Qt >= 4.7
 * LASlib >= 120124 (NOTE: not the same as liblas from http://www.liblas.org!)
 * IlmBase >= 1.0.2
-* A **recent graphics card driver is required**, supporting at least OpenGL
-  version 3.2.
 
-Unfortunately LASlib (see http://www.cs.unc.edu/~isenburg/lastools) appears to
-come without a build system - for now, the author recommends you simply build
-all the source files together into a static library.
-
+In order to build the html documentation, you will also need python docutils.
 

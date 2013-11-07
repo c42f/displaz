@@ -66,6 +66,7 @@ static void setupQFileSearchPaths()
     QString installBaseDir = installBinDir;
     installBaseDir.chop(4);
     QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
+    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
 }
 
 
