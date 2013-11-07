@@ -1,5 +1,5 @@
 ============================================
-displaz - A viewer for geographic LiDAR data
+displaz - A viewer for geospatial LiDAR data
 ============================================
 
 **displaz** is a cross platform viewer application for displaying LiDAR point
@@ -25,7 +25,6 @@ loading very large files - just wait for it and it should eventually finish.
 
 Navigation
 ~~~~~~~~~~
-
 * Click and drag the left mouse button to rotate
 * Click the middle mouse button to centre the camera on the closest point
   under the mouse
@@ -33,7 +32,6 @@ Navigation
 
 Point display
 ~~~~~~~~~~~~~
-
 To change how the points are displayed, use the controls in the box on
 the right hand side of the screen.  Additional controls may be added and
 configured at runtime via hints in the the shader program. Examples:
@@ -43,6 +41,16 @@ configured at runtime via hints in the the shader program. Examples:
   spinboxes containing real numbers; somewhat nonstandard but extremely
   convenient.
 * To view in colour, select "Colour" from the Colour Mode drop down box.
+
+Shader editing
+~~~~~~~~~~~~~~
+* Shader properties may be edited using the controls in the shader parameters
+  box.
+
+* Additional controls and behaviour may be defined by bringing up the shader
+  editor using the view menu.  While in the shader editor, pressing
+  Shift+Return will cause a valid shader to be recompiled and applied to the
+  point cloud immediately.
 
 
 Supported file formats
