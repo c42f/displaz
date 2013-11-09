@@ -119,8 +119,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
     trackballMode->setCheckable(true);
     trackballMode->setChecked(false);
-    QAction* simplifyAction = viewMenu->addAction(tr("&Simplify point cloud"));
-    simplifyAction->setCheckable(true);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -182,11 +180,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawMeshes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
-    connect(simplifyAction, SIGNAL(toggled(bool)),
-            m_pointView, SLOT(setStochasticSimplification(bool)));
     connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
             this, SLOT(setLoadedFileNames(QStringList)));
-    simplifyAction->setChecked(true);
 
     //--------------------------------------------------
     // Docked widgets

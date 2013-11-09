@@ -95,12 +95,11 @@ class PointArray : public QObject
         /// Requires that prog is already bound and any necessary uniform
         /// variables have been set.
         ///
-        /// quality specifies the desired amount of simplification when
-        /// simplify is true.  If simplify is false, all points are drawn.
+        /// quality specifies the desired amount of simplification.
         ///
         /// Return total number of points actually drawn
         size_t draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                    double quality, bool simplify, bool incrementalDraw) const;
+                    double quality, bool incrementalDraw) const;
 
         /// Draw a representation of the point hierarchy.
         ///

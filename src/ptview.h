@@ -76,7 +76,6 @@ class PointView : public QGLWidget
         void toggleDrawPoints();
         void toggleDrawMeshes();
         void toggleCameraMode();
-        void setStochasticSimplification(bool);
 
     signals:
         void fileLoadStarted();
@@ -115,8 +114,7 @@ class PointView : public QGLWidget
 
         void drawCursor(const V3f& P) const;
         size_t drawPoints(const PointArrayVec& allPoints,
-                          size_t numPointsToRender, bool simplify,
-                          bool incrementalDraw);
+                          size_t numPointsToRender, bool incrementalDraw);
         void drawMesh(const TriMesh& mesh, const V3d& drawOffset) const;
 
         void snapCursorAndCentre(double normalScaling);
@@ -156,7 +154,6 @@ class PointView : public QGLWidget
         bool m_incrementalDraw;
         /// Target for max total number of points to draw per frame
         size_t m_maxPointsPerFrame;
-        bool m_useStochasticSimplification;
 };
 
 

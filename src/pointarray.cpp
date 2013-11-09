@@ -568,7 +568,7 @@ void enableAttrOrSetDefault(QGLShaderProgram& prog, const char* attrName, const 
 
 
 size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                        double quality, bool simplify, bool incrementalDraw) const
+                        double quality, bool incrementalDraw) const
 {
     prog.enableAttributeArray("position");
     enableAttrOrSetDefault(prog, "intensity",       m_intensity,       0.0f);
@@ -604,20 +604,17 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
-        if (simplify)
-        {
-            ndraw = ::simplifiedSize(node, relCamera, quality, incrementalDraw);
-            idx = node->nextBeginIndex;
-            if (ndraw == 0)
-                continue;
-            // For LoD, compute the desired fraction of points for this node.
-            //
-            // The desired fraction is chosen such that the density of points
-            // per solid angle is constant; when removing points, the point
-            // radii are scaled up to keep the total area covered by the points
-            // constant.
-            //lodMultiplier = sqrt(double(node->size())/ndraw);
-        }
+        ndraw = ::simplifiedSize(node, relCamera, quality, incrementalDraw);
+        idx = node->nextBeginIndex;
+        if (ndraw == 0)
+            continue;
+        // For LoD, compute the desired fraction of points for this node.
+        //
+        // The desired fraction is chosen such that the density of points
+        // per solid angle is constant; when removing points, the point
+        // radii are scaled up to keep the total area covered by the points
+        // constant.
+        //lodMultiplier = sqrt(double(node->size())/ndraw);
         prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
         if (m_intensity)       prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
         if (m_returnNumber)     prog.setAttributeArray("returnNumber",     GL_UNSIGNED_BYTE, m_returnNumber.get()     + idx, 1);

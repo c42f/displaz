@@ -281,13 +281,6 @@ void PointView::toggleCameraMode()
 }
 
 
-void PointView::setStochasticSimplification(bool enabled)
-{
-    m_useStochasticSimplification = enabled;
-    restartRender();
-}
-
-
 void PointView::setMaxPointCount(size_t maxPointCount)
 {
     m_maxPointCount = maxPointCount;
@@ -369,16 +362,12 @@ void PointView::paintGL()
     size_t totPoints = 0;
     for (size_t i = 0; i < m_points.size(); ++i)
         totPoints += m_points[i]->size();
-    size_t numPointsToRender = m_maxPointsPerFrame;
-    bool simplify = numPointsToRender < totPoints && m_useStochasticSimplification;
-    if (!simplify)
-        numPointsToRender = totPoints;
+    size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
     if (m_drawPoints)
     {
         // Render points
-        totDrawn = drawPoints(m_points, numPointsToRender, simplify,
-                              m_incrementalDraw);
+        totDrawn = drawPoints(m_points, numPointsToRender, m_incrementalDraw);
     }
 
     // Measure frame time to update estimate for how many points we can
@@ -406,7 +395,7 @@ void PointView::paintGL()
     drawCursor(m_cursorPos - m_drawOffset);
 
     // Set up timer to draw a high quality frame if necessary
-    if (m_drawPoints && simplify)
+    if (m_drawPoints)
     {
         if (totDrawn == 0)
             m_incrementalFrameTimer->stop();
@@ -580,7 +569,7 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 /// Draw point cloud
 size_t PointView::drawPoints(const PointArrayVec& allPoints,
-                             size_t numPointsToRender, bool simplify,
+                             size_t numPointsToRender,
                              bool incrementalDraw)
 {
     if (allPoints.empty())
@@ -604,15 +593,12 @@ size_t PointView::drawPoints(const PointArrayVec& allPoints,
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     V3d globalCamPos = qt2exr(m_camera.position()) + m_drawOffset;
     double quality = 1;
-    if (simplify)
-    {
-        // Get total number of points we would draw at quality == 1
-        size_t totSimplified = 0;
-        for(size_t i = 0; i < allPoints.size(); ++i)
-            totSimplified += allPoints[i]->simplifiedSize(globalCamPos,
-                                                         incrementalDraw);
-        quality = double(numPointsToRender) / totSimplified;
-    }
+    // Get total number of points we would draw at quality == 1
+    size_t totSimplified = 0;
+    for(size_t i = 0; i < allPoints.size(); ++i)
+        totSimplified += allPoints[i]->simplifiedSize(globalCamPos,
+                                                        incrementalDraw);
+    quality = double(numPointsToRender) / totSimplified;
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
@@ -632,7 +618,7 @@ size_t PointView::drawPoints(const PointArrayVec& allPoints,
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(i + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-        totDrawn += points.draw(prog, globalCamPos, quality, simplify, incrementalDraw);
+        totDrawn += points.draw(prog, globalCamPos, quality, incrementalDraw);
         glPopMatrix();
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
