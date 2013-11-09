@@ -55,34 +55,39 @@ void main()
     //
     // Notes:
     //
-    // * Projected x is an angle in the camera's xz plane
+    // * Projected x should be an angle in the camera's xz plane
     //
-    // * Projected y is projected using the xz distance
+    // * Projected y should be projected by dividing by the xz distance
     //
-    // * Projected z is only necessary for the z-buffer, so we compute it the
+    // * Projected z is only necessary for the z-buffer, and we compute it the
     //   same way as usual for simplicity.
     //
-    // * The w component is set to magnitude 1 to avoid opengl messing up our
-    //   custom projection when it tries to do the perspective divide.  It's
-    //   set to negative 1 to cull things behind the camera.
+    // OpenGL will automatically divide by gl_Position.w to do what it assumes
+    // is a normal perspective projection.  For consistency with depth
+    // calculations in the fragment shader, we'd like to avoid completely
+    // subverting the w component, so we set it equal to xzlen (with sign(p0.z)
+    // to ensure proper culling behind the camera).  This means we need to
+    // factor it into the x and z components so OpenGL can remove it
+    // again in the unwanted perspective divide.
+    //
     float hfovScale = hfov*0.008726646259971648;
     float vfov = hfovScale * gl_ProjectionMatrix[0][0] / gl_ProjectionMatrix[1][1];
-    float xylen = length(p0.xz);
+    float xzlen = length(p0.xz);
     float theta = atan(-p0.x/p0.z);
     float projZ = (gl_ProjectionMatrix[2][2]*p0.z + gl_ProjectionMatrix[2][3]) /
                   (gl_ProjectionMatrix[3][2]*p0.z);
     vec4 p = vec4(
-        theta / hfovScale,
-        p0.y/xylen / atan(vfov),
-        projZ,
-        p0.z < 0 ? 1 : -1
+        xzlen * theta / hfovScale,
+        p0.y / atan(vfov),
+        xzlen * projZ,
+        xzlen * -sign(p0.z)
     );
     // Standard stuff from default shader.  TODO: Really need to factor this code somehow
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
     modifiedPointRadius = pointRadius * trimScale * pointSizeLodMultiplier;
-    pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / xylen, minPointSize, maxPointSize);
+    pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / xzlen, minPointSize, maxPointSize);
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
     markerShape = 1;
