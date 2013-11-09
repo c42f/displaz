@@ -81,14 +81,14 @@ int main(int argc, char *argv[])
     std::string serverName;
 
     std::string shaderName;
-    bool remoteMode = true;
+    bool useServer = true;
 
     ap.options(
         "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
         "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
-        "--noremote %!",  &remoteMode,    "Don't attempt to open files in existing window",
+        "--noserver %!",  &useServer,     "Don't attempt to open files in existing window",
         "--server %s",    &serverName,    "Name of displaz instance to message on startup",
         "--shader %s",    &shaderName,    "Name of shader file to load on startup",
         "--version",      &printVersion,  "Print version number",
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.
     QString socketName = DisplazServer::socketName(QString::fromStdString(serverName));
-    if (remoteMode)
+    if (useServer)
     {
         QDir currentDir = QDir::current();
         QLocalSocket socket;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     // If we didn't find any other running instance, start up a server to
     // accept incoming connections, if desired
     std::unique_ptr<DisplazServer> server;
-    if (remoteMode)
+    if (useServer)
         server.reset(new DisplazServer(socketName));
 
     // Multisampled antialiasing - this makes rendered point clouds look much
@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
     //QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
-    if (remoteMode)
+    if (useServer)
     {
         QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray)),
                          &window, SLOT(runCommand(QByteArray)));
