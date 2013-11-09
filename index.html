@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Displaz by c42f</title>
+    <title>Displaz lidar viewer</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
@@ -13,41 +13,59 @@
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
-  <body>
-    <div class="wrapper">
-      <header>
-        <h1 class="header">Displaz</h1>
-        <p class="header">A las viewer for geospatial LiDAR data</p>
+<body>
+<div class="wrapper">
+<header>
+  <h1 class="header">Displaz</h1>
+  <p class="header">A las viewer for geospatial point clouds</p>
 
-        <ul>
-          <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/zipball/master">Download ZIP</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/tarball/master">Download TAR</a></li>
-          <li><a class="buttons github" href="https://github.com/c42f/displaz">View On GitHub</a></li>
-        </ul>
+  <ul>
+    <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/zipball/master">Download ZIP</a></li>
+    <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/tarball/master">Download TAR</a></li>
+    <li><a class="buttons github" href="https://github.com/c42f/displaz">View On GitHub</a></li>
+  </ul>
 
-        <p class="header">This project is maintained by <a class="header name" href="https://github.com/c42f">c42f</a></p>
+  <p class="header">This project is maintained by <a class="header name" href="https://github.com/c42f">c42f</a></p>
+</header>
+<section>
+<!-- ======================================================================= -->
+<h3><a name="overview" class="anchor" href="#overview"><span class="octicon octicon-link"></span></a>Overview</h3>
+
+<p>
+<strong>displaz</strong> is a cross platform viewer for displaying lidar point
+clouds and high level features deduced from such point clouds.  The interface is
+optimised for viewing airborne laser scans of geographic data, but should also
+work for point clouds taken from other sources.
+</p>
+
+<p>
+The goal is to provide a fully programmable technical tool for exploring lidar
+point data sets and vector geometry arising from them.  Currently this consists
+of programmable OpenGL shaders which may be customised on the fly &mdash; either
+with user-definable GUI controls or by editing the shader directly.
+</p>
+
+<p>
+Displaz uses incremental rendering to gracefully handle point clouds up to the
+size of a machine's main memory.  As of release 0.2 this is roughly 300 million
+standard lidar points for a machine with 8GB of RAM.
+</p>
 
 
-      </header>
-      <section>
-        <h3>
-<a name="overview" class="anchor" href="#overview"><span class="octicon octicon-link"></span></a>Overview</h3>
+<!-- ======================================================================= -->
+<h3><a name="screenshot" class="anchor" href="#screenshot"><span class="octicon octicon-link"></span></a>Screenshot</h3>
 
-<p><strong>displaz</strong> is a cross platform viewer for displaying LiDAR point clouds and high level features deduced from such point clouds.  The interface is optimised for viewing airborne laser scans of geographic data, but should also work for point clouds taken from other sources.</p>
-
-<p>displaz is intended to be a highly flexible technical tool for exploring LiDAR point data sets and vector geometry arising from them.  Display of point data is fully programmable through the power of OpenGL shaders.</p>
-
-<h3>
-<a name="screenshot" class="anchor" href="#screenshot"><span class="octicon octicon-link"></span></a>Screenshot</h3>
-
-<p>Here's a screenshot showing <a href="http://www.liblas.org/samples/autzen-colorized-1.2-3.laz">autzen stadium in colour</a>.  This scene contains a
-relatively small number of points (10,000,000) and is nicely interactive inside the viewer.</p>
+<p>
+Here's a screenshot showing
+<a href="http://www.liblas.org/samples/autzen-colorized-1.2-3.laz">Autzen stadium in colour</a>.
+This scene contains a relatively small number of points (10,000,000) and is
+nicely interactive.  </p>
 
 <img border="0" src="images/autzen_colorized_sshot.png" alt="Screenshot - Autzen colorized">
 
 
-<h3>
-<a name="usage-quickstart" class="anchor" href="#usage-quickstart"><span class="octicon octicon-link"></span></a>Usage quickstart</h3>
+<!-- ======================================================================= -->
+<h3><a name="usage-quickstart" class="anchor" href="#usage-quickstart"><span class="octicon octicon-link"></span></a>Usage quickstart</h3>
 
 <p>Use File-&gt;Open to open a las file.  Note that displaz may appear unresponsive when loading very large files - just wait for it and it should eventually finish.</p>
 
@@ -65,27 +83,37 @@ relatively small number of points (10,000,000) and is nicely interactive inside 
 the right hand side of the screen.  Examples:</p>
 
 <ul>
-<li>To change the point radius, click and <em>vertically drag</em> on the arrows of the spinbox labeled "Point Radius".  This extension works for all spinboxes containing real numbers; somewhat nonstandard but extremely convenient.</li>
+<li>To change the point radius, click and <em>vertically drag</em> on the arrows of the spinbox labelled "Point Radius".  This extension works for all spinboxes containing real numbers; somewhat nonstandard but extremely convenient.</li>
 <li>To view in colour, select "Colour" from the Colour Mode drop down box.</li>
 </ul><h4>
 <a name="shader-editing" class="anchor" href="#shader-editing"><span class="octicon octicon-link"></span></a>Shader editing</h4>
 
 <p>Additional point display controls may be added and configured at runtime via hints in the the shader program.  While in the shader editor (accessible via the view menu), pressing Shift+Return will cause a valid shader to be recompiled and applied to the point cloud immediately.</p>
 
-<h3>
-<a name="supported-file-formats" class="anchor" href="#supported-file-formats"><span class="octicon octicon-link"></span></a>Supported file formats</h3>
 
-<h4>
-<a name="point-cloud-input" class="anchor" href="#point-cloud-input"><span class="octicon octicon-link"></span></a>Point cloud input</h4>
+<!-- ======================================================================= -->
+<h3><a name="supported-file-formats" class="anchor" href="#supported-file-formats"><span class="octicon octicon-link"></span></a>Supported file formats</h3>
 
-<p>The primary file format is the ASPRS .las format; compressed .laz is also supported.  Internally these formats are read using the laszip library (via LASlib) so any standards-conforming las file should be read correctly.</p>
+<h4><a name="point-cloud-input" class="anchor" href="#point-cloud-input"><span class="octicon octicon-link"></span></a>Point cloud input</h4>
 
-<p>Very basic plain text import is also supported: Each line of a .txt file will be interpreted as <code>X Y Z ...</code> where the trailing part of the line is ignored.</p>
+<p>
+The primary file format is the ASPRS .las format; compressed .laz is also
+supported.  Internally these formats are read using the laszip library (via
+LASlib) so any standards-conforming las file should be read correctly.
+</p>
 
-<h4>
-<a name="vector-geometry" class="anchor" href="#vector-geometry"><span class="octicon octicon-link"></span></a>Vector geometry</h4>
+<p>
+Very basic plain text import is also supported: Each line of a .txt file will be
+interpreted as <code>X Y Z ...</code> where the trailing part of the line is
+ignored.
+</p>
 
-<p>Basic support for vector geometry (meshes and line segments) is available via the .ply file format.  Any .ply file containing a header of the form</p>
+<h4><a name="vector-geometry" class="anchor" href="#vector-geometry"><span class="octicon octicon-link"></span></a>Vector geometry</h4>
+
+<p>
+Basic support for vector geometry (meshes and line segments) is available via
+the .ply file format.  Any .ply file containing a header of the form
+</p>
 
 <pre><code>element vertex &lt;N&gt;
 property float x
@@ -95,20 +123,34 @@ element face &lt;M&gt;
 property list uchar int vertex_index
 </code></pre>
 
-<p>will be recognised and rendered as a mesh with solid faces.  When the face element is replaced with an edge element in the same format, each edge will be rendered as a set of linear segments.</p>
+<p>
+will be recognised and rendered as a mesh with solid faces.  When the face
+element is replaced with an edge element in the same format, each edge will be
+rendered as a set of linear segments.
+</p>
 
-<h3>
-<a name="supported-systems" class="anchor" href="#supported-systems"><span class="octicon octicon-link"></span></a>Supported Systems</h3>
+<!-- ======================================================================= -->
+<h3><a name="supported-systems" class="anchor" href="#supported-systems"><span class="octicon octicon-link"></span></a>Supported Systems</h3>
 
-<p>displaz is intended to be cross-platform, and runs on both windows and linux.  It should also work on OSX with minimal effort, but the author doesn't have access to an OSX system for testing.</p>
+<p>
+displaz is intended to be cross-platform, and runs on both windows and linux.
+It should also work on OSX with minimal effort, but the author doesn't have
+access to an OSX system for testing.
+</p>
 
-<p>displaz uses modern OpenGL features, so requires a reasonably up to date graphic driver.  It is known to work well with recent nvidia and ATI drivers.  Some problems have been reported with older ATI and intel drivers - these will be fixed in the future where possible.</p>
-      </section>
-      <footer>
-        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
-      </footer>
-    </div>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
-		
-  </body>
+<p>
+displaz uses modern OpenGL features, so requires a reasonably up to date
+graphic driver.  It is known to work well with recent Nvidia and ATI drivers.
+Some problems have been reported with older ATI and Intel drivers - these will
+be fixed in the future where possible.
+</p>
+
+</section>
+<footer>
+  <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+</footer>
+</div>
+<!--[if !IE]><script>fixScale(document);</script><![endif]-->
+          
+</body>
 </html>
