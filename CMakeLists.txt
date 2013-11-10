@@ -177,6 +177,8 @@ endif()
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
 
+install(DIRECTORY src/thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
+
 if(WIN32)
     # Install required qt libraries
     install(CODE "
