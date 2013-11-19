@@ -8,6 +8,10 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
+endif()
+
 project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
@@ -15,7 +19,7 @@ cmake_minimum_required(VERSION 2.8)
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
-
+option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
 
 # Install directory for binaries
 # (It would seem sensible to avoid a bin directory on windows, but in practise
@@ -32,39 +36,47 @@ endif()
 #------------------------------------------------------------------------------
 # Find third party dependencies
 
-# Find a library to read .las or .laz
-if (DISPLAZ_USE_PDAL)
-    find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
-    find_library (PDAL_LIBRARIES NAMES pdal)
-    if (PDAL_LIBRARIES AND PDAL_INCLUDES)
-        set (PDAL_FOUND TRUE)
-    endif()
-
-    if (PDAL_FOUND)
-        find_package (Boost 1.48)
-        if (NOT Boost_FOUND)
-            message (SEND_ERROR "Boost headers are required when compiling with PDAL")
-        endif()
-        list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
-    endif()
+if (DISPLAZ_BUILD_EXTERNAL)
+    set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
+    set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
+    set(external_builds ilmbase laslib)
+    set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
+    set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
+    add_subdirectory(thirdparty/external)
 else()
-    # laslib support
-    find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
-    find_library (LASLIB_LIBRARIES NAMES laslib)
-    if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
-        set (LASLIB_FOUND TRUE)
+    # Find a library to read .las or .laz
+    if (DISPLAZ_USE_PDAL)
+        find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
+        find_library (PDAL_LIBRARIES NAMES pdal)
+        if (PDAL_LIBRARIES AND PDAL_INCLUDES)
+            set (PDAL_FOUND TRUE)
+        endif()
+
+        if (PDAL_FOUND)
+            find_package (Boost 1.48)
+            if (NOT Boost_FOUND)
+                message (SEND_ERROR "Boost headers are required when compiling with PDAL")
+            endif()
+            list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
+        endif()
+    else()
+        # laslib support
+        find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
+        find_library (LASLIB_LIBRARIES NAMES laslib)
+        if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
+            set (LASLIB_FOUND TRUE)
+        endif()
     endif()
-endif()
 
-if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
-    message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
-endif()
+    if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
+        message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
+    endif()
 
-
-# Find IlmBase - temporary dependency?
-find_path (ILMBASE_INCLUDES NAMES ImathVec.h)
-if (ILMBASE_INCLUDES)
-    set (ILMBASE_FOUND TRUE)
+    # Find IlmBase
+    find_path (ILMBASE_INCLUDES NAMES OpenEXR/ImathVec.h)
+    if (ILMBASE_INCLUDES)
+        set (ILMBASE_FOUND TRUE)
+    endif()
 endif()
 
 find_package(OpenGL REQUIRED)
@@ -87,7 +99,7 @@ include_directories(BEFORE
     thirdparty
     ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
-    ${ILMBASE_INCLUDES}
+    ${THIRDPARTY_INSTALL_DIR}/include
 )
 
 qt4_wrap_cpp(moc_srcs
@@ -120,9 +132,7 @@ if(WIN32)
     list(APPEND srcs package/windows_resources.rc)
 endif()
 
-if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
-else()
+if(WIN32)
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
@@ -148,11 +158,12 @@ include_directories(${CMAKE_BINARY_DIR})
 
 add_executable(displaz WIN32 ${srcs})
 
+add_dependencies(displaz ${external_builds})
+
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY}
 )
-
 if (DISPLAZ_USE_PDAL)
     target_link_libraries (displaz ${PDAL_LIBRARIES})
 else()
@@ -210,6 +221,7 @@ endif()
 if (DISPLAZ_USE_TESTS)
     enable_testing()
     add_executable(util_test src/util_test.cpp)
+    add_dependencies(util_test ${external_builds})
     add_test(util_test util_test)
 endif()
 

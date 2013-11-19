@@ -30,18 +30,10 @@
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 
-#ifdef _WIN32
-// FIXME
-#include <ImathVec.h>
-#include <ImathBox.h>
-#include <ImathColor.h>
-#include <ImathMatrix.h>
-#else
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathBox.h>
 #include <OpenEXR/ImathColor.h>
 #include <OpenEXR/ImathMatrix.h>
-#endif
 
 #include <iostream>
 

@@ -48,7 +48,6 @@ void drawBoundingBox(const Imath::Box3f& bbox, const Imath::C3f& col);
 
 
 //----------------------------------------------------------------------
-//#include <OpenEXR/ImathGL.h>
 // Utilities for OpenEXR / OpenGL interoperability.
 //
 // Technically we could use the stuff from ImathGL instead here, but it has
