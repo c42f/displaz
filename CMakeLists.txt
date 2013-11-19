@@ -84,7 +84,7 @@ endif()
 #------------------------------------------------------------------------------
 
 include_directories(BEFORE
-    src/thirdparty
+    thirdparty
     ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
     ${ILMBASE_INCLUDES}
@@ -107,14 +107,14 @@ set(srcs
     src/mainwindow.cpp
     src/ptview.cpp
     src/pointarray.cpp
-    src/thirdparty/argparse.cpp
     src/main.cpp
     src/mesh.cpp
     src/shadereditor.cpp
     src/shader.cpp
-    src/thirdparty/rply/rply.c
     src/util.cpp
     src/glutil.cpp
+    thirdparty/argparse.cpp
+    thirdparty/rply/rply.c
 )
 if(WIN32)
     list(APPEND srcs package/windows_resources.rc)
@@ -177,7 +177,7 @@ endif()
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
 
-install(DIRECTORY src/thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
+install(DIRECTORY thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
 
 if(WIN32)
     # Install required qt libraries
