@@ -17,7 +17,7 @@ project(displaz)
 cmake_minimum_required(VERSION 2.8)
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
-option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
+option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" TRUE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
 
@@ -37,12 +37,19 @@ endif()
 # Find third party dependencies
 
 if (DISPLAZ_BUILD_EXTERNAL)
-    set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
-    set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-    set(external_builds ilmbase laslib)
-    set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-    set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
+    if (NOT DISPLAZ_USE_PDAL)
+        message(WARNING "Automated thirdparty build forces use of PDAL as las reader")
+        set (DISPLAZ_USE_PDAL TRUE)
+    endif()
+    set(THIRDPARTY_INSTALL_DIR "${PROJECT_BINARY_DIR}/thirdparty_install")
+    set(ILMBASE_INCLUDES "${THIRDPARTY_INSTALL_DIR}/include")
+    set(PDAL_INCLUDES "${THIRDPARTY_INSTALL_DIR}/include")
+    set(PDAL_LIBRARIES
+        "${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}pdalcpp${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        "${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laszip${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
     add_subdirectory(thirdparty/external)
+    set(external_builds ilmbase pdal)
 else()
     # Find a library to read .las or .laz
     if (DISPLAZ_USE_PDAL)
