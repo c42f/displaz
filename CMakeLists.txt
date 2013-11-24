@@ -138,7 +138,7 @@ endif()
 
 # Create config.h
 find_package(Git)
-set(displazVersion "0.1")
+set(displazVersion "0.2")
 if (GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} describe
                     OUTPUT_VARIABLE displazVersionGit
