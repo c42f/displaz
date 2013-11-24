@@ -428,11 +428,10 @@ void PointViewerMainWindow::helpDialog()
 void PointViewerMainWindow::aboutDialog()
 {
     QString message = tr(
-        "<p><b>Displaz</b> - a viewer for geospatial LiDAR data</p>"
-        "<p>version " DISPLAZ_VERSION_STRING "</p>"
-        "<br/>"
-        "<p>This software is released under the BSD 3-clause license.  "
-        "Code is available at <a href=\"https://github.com/c42f/displaz\">https://github.com/c42f/displaz</a>.</p>"
+        "<p><a href=\"http://c42f.github.io/displaz\"><b>Displaz</b></a> &mdash; a viewer for geospatial LiDAR data</p>"
+        "<p>Version " DISPLAZ_VERSION_STRING "</p>"
+        "<p>This software is open source under the BSD 3-clause license.  "
+        "Source code is available at <a href=\"https://github.com/c42f/displaz\">https://github.com/c42f/displaz</a>.</p>"
     );
     QMessageBox::information(this, tr("About displaz"), message);
 }
