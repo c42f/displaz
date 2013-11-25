@@ -100,7 +100,7 @@ static int face_cb(p_ply_argument argument)
     if (length != 3)
     {
         // Not a triangle - ignore for now!
-        tfm::printf("WARNING: Discarding non-triangular face\n");
+        std::cout << "WARNING: Discarding non-triangular face\n";
         return 1;
     }
     if (index < 0) // ignore length argument
