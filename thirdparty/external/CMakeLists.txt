@@ -50,3 +50,9 @@ ExternalProject_Add_Step(laslib patchdeps
     DEPENDS laslib-CMakeLists.txt lastools-131105-build.patch
 )
 
+
+# Don't build Qt here, because it's massive and available elsewhere on various
+# platforms.  However, a nice win64 binary distribution of Qt < 5.0 isn't
+# available.  Here's how you would configure it for win64 with msvc2012
+#
+# configure -release -no-webkit -nomake demos -nomake examples -opensource -platform win32-msvc2012
