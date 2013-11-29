@@ -273,7 +273,17 @@ void PointViewerMainWindow::setProgressBarText(QString text)
 void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasUrls())
-        event->acceptProposedAction();
+    {
+        QList<QUrl> urls = event->mimeData()->urls();
+        for (int i = 0; i < urls.size(); ++i)
+        {
+            if (urls[i].isLocalFile())
+            {
+                event->acceptProposedAction();
+                break;
+            }
+        }
+    }
 }
 
 void PointViewerMainWindow::dropEvent(QDropEvent *event)
