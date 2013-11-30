@@ -225,11 +225,10 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     size_t totPoints = 0;
     V3d Psum(0);
     m_bbox.makeEmpty();
+    emit loadStepStarted("Reading file");
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
 #ifdef DISPLAZ_USE_PDAL
     {
-        emit loadStepStarted("Reading file");
-
         // Open file
         std::unique_ptr<pdal::Stage> reader(
             new pdal::drivers::las::Reader(fileName.toAscii().constData()));
@@ -351,7 +350,6 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
 
         //std::ofstream dumpFile("points.txt");
-        emit loadStepStarted("Reading file");
         // Figure out how much to decimate the point cloud.
         totPoints = lasReader->header.number_of_point_records;
         size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
@@ -430,16 +428,23 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         // Assume text, xyz format
         // TODO: Make this less braindead!
         std::ifstream inFile(fileName.toStdString());
+        inFile.seekg(0, std::ios::end);
+        const size_t numBytes = inFile.tellg();
+        inFile.seekg(0);
         std::vector<Imath::V3d> points;
         Imath::V3d p;
+        size_t readCount = 0;
         while (inFile >> p.x >> p.y >> p.z)
         {
             points.push_back(p);
             inFile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             m_bbox.extendBy(p);
+            ++readCount;
+            if (readCount % 10000 == 0)
+                emit pointsLoaded(100*inFile.tellg()/numBytes);
         }
-        m_npoints = points.size();
         totPoints = points.size();
+        m_npoints = points.size();
         // Zero points + failed to get to EOF => bad text file format
         if (totPoints == 0 && !inFile.eof())
             return false;
@@ -453,11 +458,13 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
     }
     emit pointsLoaded(100);
-    if (totPoints > 0)
-        m_centroid = (1.0/totPoints) * Psum;
     tfm::printf("Loaded %d of %d points from file %s in %.2f seconds\n",
                 m_npoints, totPoints, fileName.toStdString(),
                 loadTimer.elapsed()/1000.0);
+    if (totPoints == 0)
+        return true;
+
+    m_centroid = (1.0/totPoints) * Psum;
 
     emit loadStepStarted("Sorting points");
     std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
