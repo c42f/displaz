@@ -113,8 +113,9 @@ Before building, you need the following
 
 * cmake >= 2.8
 * Qt >= 4.7
-* LASlib >= 120124 (NOTE: not the same as liblas from http://www.liblas.org!)
-* IlmBase >= 1.0.2
+* Python docutils (optional - required to build the html documentation)
 
-In order to build the html documentation, you will also need python docutils.
+The additional third party libraries are downloaded and built automatically by
+the build system (LASlib and IlmBase), or included with the displaz source
+code if they're small enough.
 
