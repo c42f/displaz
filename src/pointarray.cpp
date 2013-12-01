@@ -426,27 +426,30 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     else
     {
         // Assume text, xyz format
-        // TODO: Make this less braindead!
-        std::ifstream inFile(fileName.toStdString());
-        inFile.seekg(0, std::ios::end);
-        const size_t numBytes = inFile.tellg();
-        inFile.seekg(0);
+        // Use C file IO here, since it's about 40% faster than C++ streams for
+        // large text files (tested on linux x86_64, gcc 4.6.3).
+        FILE* inFile = fopen(fileName.toUtf8(), "r");
+        if (!inFile)
+            return false;
+        fseek(inFile, 0, SEEK_END);
+        const size_t numBytes = ftell(inFile);
+        fseek(inFile, 0, SEEK_SET);
         std::vector<Imath::V3d> points;
         Imath::V3d p;
         size_t readCount = 0;
-        while (inFile >> p.x >> p.y >> p.z)
+        // Read three doubles; "%*[^\n]" discards up to just before end of line
+        while (fscanf(inFile, " %lf %lf %lf%*[^\n]", &p.x, &p.y, &p.z) == 3)
         {
             points.push_back(p);
-            inFile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            m_bbox.extendBy(p);
             ++readCount;
             if (readCount % 10000 == 0)
-                emit pointsLoaded(100*inFile.tellg()/numBytes);
+                emit pointsLoaded(100*ftell(inFile)/numBytes);
         }
+        fclose(inFile);
         totPoints = points.size();
         m_npoints = points.size();
-        // Zero points + failed to get to EOF => bad text file format
-        if (totPoints == 0 && !inFile.eof())
+        // Zero points + nonzero bytes => bad text file
+        if (totPoints == 0 && numBytes != 0)
             return false;
         if (totPoints > 0)
             m_offset = points[0];
@@ -454,6 +457,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         for (size_t i = 0; i < m_npoints; ++i)
         {
             m_P[i] = points[i] - m_offset;
+            m_bbox.extendBy(points[i]);
             Psum += points[i];
         }
     }
