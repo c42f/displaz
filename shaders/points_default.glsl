@@ -11,6 +11,7 @@ uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FIL
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number
+uniform int selectionMode = 0;     //# uiname=Selection; enum=All|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to keep coverage constant when doing stochastic
@@ -97,6 +98,26 @@ void main()
         vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
                              vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
         pointColor = cols[fileNumber % 7];
+    }
+    if (selectionMode != 0)
+    {
+        int intReturnNumber = int(returnNumber*255);
+        int intNumberOfReturns = int(numberOfReturns*255);
+        if (selectionMode == 1)
+        {
+            if (intReturnNumber != 1)
+                markerShape = -1;
+        }
+        else if (selectionMode == 2)
+        {
+            if (intReturnNumber != intNumberOfReturns)
+                markerShape = -1;
+        }
+        else if (selectionMode == 3)
+        {
+            if (intReturnNumber != 1 || intNumberOfReturns < 2)
+                markerShape = -1;
+        }
     }
     // Ensure zero size points are discarded.  The actual minimum point size is
     // hardware and driver dependent, so set the markerShape to discarded for
