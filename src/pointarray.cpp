@@ -420,6 +420,15 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             }
         }
         while(lasReader->read_point());
+        if (readCount < totPoints)
+        {
+            QMessageBox::warning(0, tr("Warning"),
+                tr("Expected %1 points in file \"%2\", got %3")
+                .arg(totPoints).arg(fileName).arg(readCount)
+            );
+            m_npoints = outP - m_P.get();
+            totPoints = readCount;
+        }
         lasReader->close();
     }
 #endif
