@@ -134,8 +134,8 @@ static int edge_cb(p_ply_argument argument)
 
 
 bool readPlyFile(const QString& fileName,
-                 std::unique_ptr<TriMesh>& mesh,
-                 std::unique_ptr<LineSegments>& lines)
+                 std::shared_ptr<TriMesh>& mesh,
+                 std::shared_ptr<LineSegments>& lines)
 {
     // Read a triangulation from a .ply file
     typedef int (*ply_close_t)(p_ply);
@@ -182,19 +182,21 @@ bool readPlyFile(const QString& fileName,
         info.colors.clear();
     V3d offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
     if (info.faces.size() > 0)
-        mesh.reset(new TriMesh(offset, info.verts, info.colors, info.faces));
+        mesh.reset(new TriMesh(fileName, offset, info.verts, info.colors, info.faces));
     if (info.edges.size() > 0)
-        lines.reset(new LineSegments(offset, info.verts, info.colors, info.edges));
+        lines.reset(new LineSegments(fileName, offset, info.verts, info.colors, info.edges));
     return true;
 }
 
 
 //------------------------------------------------------------------------------
 // TriMesh implementation
-TriMesh::TriMesh(const V3d& offset, const std::vector<float>& vertices,
+TriMesh::TriMesh(QString fileName, const V3d& offset,
+                 const std::vector<float>& vertices,
                  const std::vector<float>& colors,
                  const std::vector<unsigned int>& faces)
-    : m_offset(offset),
+    : m_fileName(fileName),
+    m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
     m_verts(vertices),
     m_colors(colors),
@@ -301,10 +303,12 @@ void TriMesh::makeEdges(std::vector<unsigned int>& edges,
 //------------------------------------------------------------------------------
 // LineSegments implementation
 
-LineSegments::LineSegments(const V3d& offset, const std::vector<float>& vertices,
+LineSegments::LineSegments(QString fileName, const V3d& offset,
+                           const std::vector<float>& vertices,
                            const std::vector<float>& colors,
                            const std::vector<unsigned int>& edges)
-    : m_offset(offset),
+    : m_fileName(fileName),
+    m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
     m_verts(vertices),
     m_colors(colors),

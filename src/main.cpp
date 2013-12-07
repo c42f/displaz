@@ -39,7 +39,12 @@
 #include "config.h"
 #include "displazserver.h"
 
-QStringList g_initialFileNames;
+class PointArray;
+class TriMesh;
+class LineSegments;
+
+
+static QStringList g_initialFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
     for(int i = 0; i < argc; ++i)
@@ -117,6 +122,10 @@ int main(int argc, char *argv[])
 
     setupQFileSearchPaths();
 
+    qRegisterMetaType<std::shared_ptr<PointArray>>("std::shared_ptr<PointArray>");
+    qRegisterMetaType<std::shared_ptr<TriMesh>>("std::shared_ptr<TriMesh>");
+    qRegisterMetaType<std::shared_ptr<LineSegments>>("std::shared_ptr<LineSegments>");
+
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.
     QString socketName = DisplazServer::socketName(QString::fromStdString(serverName));
@@ -174,16 +183,11 @@ int main(int argc, char *argv[])
         QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray)),
                          &window, SLOT(runCommand(QByteArray)));
     }
-    window.captureStdout();
     window.pointView().setMaxPointCount(maxPointCount);
     if (!shaderName.empty())
         window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
-
-    // Open initial files only after event loop has started.  Use a small but
-    // nonzero timeout to give the GUI a chance to draw itself which makes
-    // things slightly less ugly.
-    QTimer::singleShot(200, &window, SLOT(openInitialFiles()));
+    window.pointView().loadFiles(g_initialFileNames);
 
     return app.exec();
 }

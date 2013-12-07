@@ -29,17 +29,15 @@
 
 #include "pointarray.h"
 
+#include "logger.h"
+
 #include "glutil.h"
 
-#include <QtGui/QMessageBox>
 #include <QtOpenGL/QGLShaderProgram>
 #include <QtCore/QTime>
 
 #include <unordered_map>
 #include <fstream>
-
-#include "tinyformat.h"
-
 
 #ifdef DISPLAZ_USE_PDAL
 
@@ -240,7 +238,10 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         totPoints = reader->getNumPoints();
         size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
         if(decimate > 1)
-            tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
+        {
+            g_logger.info("Decimating \"%s\" by factor of %d",
+                          fileName.toStdString(), decimate);
+        }
         m_npoints = (totPoints + decimate - 1) / decimate;
         const pdal::Bounds<double>& bbox = reader->getBounds();
         m_offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
@@ -344,8 +345,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 
         if(!lasReader)
         {
-            QMessageBox::critical(0, tr("Error"),
-                tr("Couldn't open file \"%1\"").arg(fileName));
+            g_logger.error("Couldn't open file \"%s\"", fileName);
             return false;
         }
 
@@ -354,7 +354,10 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         totPoints = lasReader->header.number_of_point_records;
         size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
         if(decimate > 1)
-            tfm::printf("Decimating \"%s\" by factor of %d\n", fileName.toStdString(), decimate);
+        {
+            g_logger.info("Decimating \"%s\" by factor of %d",
+                          fileName.toStdString(), decimate);
+        }
         m_npoints = (totPoints + decimate - 1) / decimate;
         m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
         // Attempt to place all data on the same vertical scale, but allow other
@@ -422,10 +425,8 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         while(lasReader->read_point());
         if (readCount < totPoints)
         {
-            QMessageBox::warning(0, tr("Warning"),
-                tr("Expected %1 points in file \"%2\", got %3")
-                .arg(totPoints).arg(fileName).arg(readCount)
-            );
+            g_logger.warning("Expected %d points in file \"%s\", got %d",
+                             totPoints, fileName, readCount);
             m_npoints = outP - m_P.get();
             totPoints = readCount;
         }
@@ -471,9 +472,9 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
     }
     emit pointsLoaded(100);
-    tfm::printf("Loaded %d of %d points from file %s in %.2f seconds\n",
-                m_npoints, totPoints, fileName.toStdString(),
-                loadTimer.elapsed()/1000.0);
+    g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
+                  m_npoints, totPoints, fileName.toStdString(),
+                  loadTimer.elapsed()/1000.0);
     if (totPoints == 0)
         return true;
 

@@ -43,8 +43,8 @@ class QProgressBar;
 
 class HelpDialog;
 class PointView;
-class StreamBufTextEditSink;
 class ShaderEditor;
+class LogViewer;
 
 
 //------------------------------------------------------------------------------
@@ -55,14 +55,11 @@ class PointViewerMainWindow : public QMainWindow
 
     public:
         PointViewerMainWindow();
-        ~PointViewerMainWindow();
 
         /// Hint at an appropriate size
         QSize sizeHint() const;
 
         PointView& pointView() { return *m_pointView; }
-
-        void captureStdout();
 
     public slots:
         void runCommand(const QByteArray& command);
@@ -82,9 +79,8 @@ class PointViewerMainWindow : public QMainWindow
         void aboutDialog();
         void setBackground(const QString& name);
         void chooseBackground();
-        void setLoadedFileNames(const QStringList& fileNames);
+        void updateTitle();
         void setProgressBarText(QString text);
-        void openInitialFiles();
 
     private:
         QColor backgroundColFromName(const QString& name) const;
@@ -94,18 +90,12 @@ class PointViewerMainWindow : public QMainWindow
         PointView* m_pointView;
         ShaderEditor* m_shaderEditor;
         HelpDialog* m_helpDialog;
-        QPlainTextEdit* m_logTextView;
+        LogViewer* m_logTextView;
 
         // Gui state
         QDir m_currFileDir;
         QString m_currShaderFileName;
-
-        // Stdout capture (uh, ok... ugh)
-        std::unique_ptr<StreamBufTextEditSink> m_guiStdoutBuf;
-        std::streambuf* m_oldBuf;
 };
 
-
-extern QStringList g_initialFileNames;
 
 #endif // DISPLAZ_MAINWINDOW_H_INCLUDED

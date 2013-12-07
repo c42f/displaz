@@ -31,6 +31,7 @@
 
 #include "tinyformat.h"
 #include "dragspinbox.h"
+#include "logger.h"
 
 #include <QtGui/QFormLayout>
 #include <QtGui/QComboBox>
@@ -103,8 +104,8 @@ bool Shader::compileSourceCode(const QByteArray& src)
             QStringList keyAndVal = pairList[i].split('=');
             if (keyAndVal.size() != 2)
             {
-                tfm::printf("Could not parse metadata \"%s\" for shader variable %s\n",
-                            pairList[i].toStdString(), param.name.data());
+                g_logger.warning("Could not parse metadata \"%s\" for shader variable %s",
+                                 pairList[i].toStdString(), param.name.data());
                 continue;
             }
             kvPairs[keyAndVal[0].trimmed()] = keyAndVal[1].trimmed();
@@ -256,28 +257,28 @@ bool ShaderProgram::setShader(QString src)
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
     if(!vertexShader->compileSourceCode(src.toAscii()))
     {
-        tfm::printf("Error compiling shader:\n%s\n",
-                    vertexShader->shader()->log().toStdString());
+        g_logger.error("Could not compile shader:\n%s",
+                       vertexShader->shader()->log().toStdString());
         return false;
     }
     if(!fragmentShader->compileSourceCode(src.toAscii()))
     {
-        tfm::printf("Error compiling shader:\n%s\n",
-                    fragmentShader->shader()->log().toStdString());
+        g_logger.error("Could not compile shader:\n%s",
+                       fragmentShader->shader()->log().toStdString());
         return false;
     }
     std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(m_context));
     if (!newProgram->addShader(vertexShader->shader()) ||
         !newProgram->addShader(fragmentShader->shader()))
     {
-        tfm::printf("Error adding shaders to program:\n%s\n",
-                    newProgram->log().toStdString());
+        g_logger.error("Could not add shaders to program:\n%s",
+                       newProgram->log().toStdString());
         return false;
     }
     if(!newProgram->link())
     {
-        tfm::printf("Error linking shaders:\n%s\n",
-                    newProgram->log().toStdString());
+        g_logger.error("Could not link shaders:\n%s",
+                       newProgram->log().toStdString());
         return false;
     }
     // New shaders compiled & linked ok; swap out the old program for the new

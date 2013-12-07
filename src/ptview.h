@@ -52,8 +52,11 @@ class LineSegments;
 class PointView : public QGLWidget
 {
     Q_OBJECT
-
     public:
+        typedef std::vector<std::shared_ptr<PointArray>> PointArrayVec;
+        typedef std::vector<std::shared_ptr<TriMesh>> MeshVec;
+        typedef std::vector<std::shared_ptr<LineSegments>> LineSegVec;
+
         PointView(QWidget *parent = NULL);
         ~PointView();
 
@@ -68,6 +71,10 @@ class PointView : public QGLWidget
 
         void setShaderParamsUIWidget(QWidget* widget);
 
+        const PointArrayVec& pointFiles() const { return m_points; }
+        const MeshVec&       meshFiles()  const { return m_meshes; }
+        const LineSegVec&    lineFiles()  const { return m_lines; }
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -80,12 +87,11 @@ class PointView : public QGLWidget
     signals:
         void fileLoadStarted();
         void fileLoadFinished();
-        /// Emitted each time a file is loaded.  Contains current list of files.
-        void pointFilesLoaded(QStringList files) const;
+        /// Emitted each time the loaded set of files changes
+        void filesChanged() const;
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
-        /// Emitted as progress is made loading points
-        void pointsLoaded(int percentLoaded) const;
+        void loadProgress(int progress);
 
     protected:
         // Qt OpenGL callbacks
@@ -104,13 +110,13 @@ class PointView : public QGLWidget
         void restartRender();
         void setupShaderParamUI();
 
+        void addPoints(std::shared_ptr<PointArray> points);
+        void addTriMesh(std::shared_ptr<TriMesh> mesh);
+        void addLineMesh(std::shared_ptr<LineSegments> lines);
+
     private:
-        typedef std::vector<std::unique_ptr<PointArray> > PointArrayVec;
-        typedef std::vector<std::unique_ptr<TriMesh> > MeshVec;
-        typedef std::vector<std::unique_ptr<LineSegments> > LineSegVec;
-        void loadPointFilesImpl(PointArrayVec& pointArrays,
-                                MeshVec& meshes, LineSegVec& lines,
-                                const QStringList& fileNames);
+        void loadPointFilesImpl(const QStringList& fileNames);
+        void newGeometryViewFixups();
 
         void drawCursor(const V3f& P) const;
         size_t drawPoints(const PointArrayVec& allPoints,

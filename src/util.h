@@ -112,13 +112,6 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
     return out;
 }
 
-/// Print QString to std stream
-inline std::ostream& operator<<(std::ostream& out, const QString& s)
-{
-    out << s.toStdString();
-    return out;
-}
-
 
 /// On windows, attach to the console of the parent process if possible.  On
 /// other platforms, do nothing.

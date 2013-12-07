@@ -27,10 +27,14 @@
 //
 // (This is the BSD 3-clause license)
 
+#ifndef DISPLAZ_MESH_H_INCLUDED
+#define DISPLAZ_MESH_H_INCLUDED
+
 #include <vector>
 #include <memory>
 
 #include <QtCore/QString>
+#include <QtCore/QMetaType>
 
 #include "util.h"
 
@@ -43,9 +47,12 @@ class TriMesh
     public:
         TriMesh() : m_offset(0), m_centroid(0) {}
 
-        TriMesh(const V3d& offset, const std::vector<float>& vertices,
+        TriMesh(QString fileName, const V3d& offset,
+                const std::vector<float>& vertices,
                 const std::vector<float>& colors,
                 const std::vector<unsigned int>& faces);
+
+        QString fileName() { return m_fileName; }
 
         /// Draw mesh using current OpenGL context
         void drawFaces(QGLShaderProgram& prog) const;
@@ -66,6 +73,7 @@ class TriMesh
         static void makeEdges(std::vector<unsigned int>& edges,
                               const std::vector<unsigned int>& faces);
 
+        QString m_fileName;
         V3d m_offset;
         V3d m_centroid;
         /// xyz triples
@@ -84,9 +92,12 @@ class TriMesh
 class LineSegments
 {
     public:
-        LineSegments(const V3d& offset, const std::vector<float>& vertices,
+        LineSegments(QString fileName, const V3d& offset,
+                     const std::vector<float>& vertices,
                      const std::vector<float>& colors,
                      const std::vector<unsigned int>& edges);
+
+        QString fileName() { return m_fileName; }
 
         void drawEdges(QGLShaderProgram& prog) const;
 
@@ -98,6 +109,7 @@ class LineSegments
                              double longitudinalScale, double* distance = 0) const;
 
     private:
+        QString m_fileName;
         V3d m_offset;
         V3d m_centroid;
         /// xyz triples
@@ -111,5 +123,12 @@ class LineSegments
 
 /// Read mesh or collection of line segments from the given .ply file
 bool readPlyFile(const QString& fileName,
-                 std::unique_ptr<TriMesh>& mesh,
-                 std::unique_ptr<LineSegments>& lines);
+                 std::shared_ptr<TriMesh>& mesh,
+                 std::shared_ptr<LineSegments>& lines);
+
+
+Q_DECLARE_METATYPE(std::shared_ptr<LineSegments>)
+Q_DECLARE_METATYPE(std::shared_ptr<TriMesh>)
+
+
+#endif // DISPLAZ_MESH_H_INCLUDED

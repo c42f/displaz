@@ -33,15 +33,18 @@
 
 #include "config.h"
 #include "glutil.h"
+#include "logger.h"
 #include "util.h"
 
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
+#include <QtCore/QThread>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
 #include <QtOpenGL/QGLFramebufferObject>
 //#include <QtOpenGL/QGLBuffer>
 
+#include "fileloader.h"
 #include "ptview.h"
 #include "mesh.h"
 #include "tinyformat.h"
@@ -136,81 +139,110 @@ void PointView::restartRender()
 }
 
 
-void PointView::loadPointFilesImpl(PointArrayVec& pointArrays,
-                                   MeshVec& meshes,
-                                   LineSegVec& lines,
-                                   const QStringList& fileNames)
+void PointView::addPoints(std::shared_ptr<PointArray> points)
 {
-    emit fileLoadStarted();
-    pointArrays.clear();
-    meshes.clear();
-    lines.clear();
-    size_t maxCount = fileNames.empty() ? 0 : m_maxPointCount / fileNames.size();
-    QStringList successfullyLoaded;
-    for(int i = 0; i < fileNames.size(); ++i)
+    m_points.push_back(points);
+    //m_maxPointsPerFrame = g_defaultPointRenderCount;
+    setupShaderParamUI(); // Ugh, file name list changed
+    newGeometryViewFixups();
+    emit filesChanged();
+}
+
+
+void PointView::addTriMesh(std::shared_ptr<TriMesh> mesh)
+{
+    m_meshes.push_back(mesh);
+    newGeometryViewFixups();
+    emit filesChanged();
+}
+
+
+void PointView::addLineMesh(std::shared_ptr<LineSegments> lines)
+{
+    m_lines.push_back(lines);
+    newGeometryViewFixups();
+    emit filesChanged();
+}
+
+
+/// Fix up the view when loading the first file
+///
+/// This does a few things
+/// * Set up the camera to point at the data
+/// * Fix the render offset to avoid floating point precision problems where
+///   possible
+void PointView::newGeometryViewFixups()
+{
+    if(!m_points.empty())
     {
-        const QString& fileName = fileNames[i];
-        if(fileName.endsWith(".ply"))
+        if (m_points.size() == 1)
         {
-            // Load data from ply format
-            std::unique_ptr<TriMesh> mesh;
-            std::unique_ptr<LineSegments> lineSegs;
-            if(readPlyFile(fileName, mesh, lineSegs))
-            {
-                if (mesh)
-                    meshes.push_back(std::move(mesh));
-                if (lineSegs)
-                    lines.push_back(std::move(lineSegs));
-            }
-        }
-        else
-        {
-            // Load point cloud
-            std::unique_ptr<PointArray> points(new PointArray());
-            connect(points.get(), SIGNAL(pointsLoaded(int)),
-                    this, SIGNAL(pointsLoaded(int)));
-            connect(points.get(), SIGNAL(loadStepStarted(QString)),
-                    this, SIGNAL(loadStepStarted(QString)));
-            if(points->loadPointFile(fileName, maxCount) && !points->empty())
-            {
-                pointArrays.push_back(std::move(points));
-                successfullyLoaded.push_back(fileName);
-                emit pointFilesLoaded(successfullyLoaded);
-            }
+            m_cursorPos = m_points[0]->centroid();
+            m_drawOffset = m_points[0]->offset();
+            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+            double diag = (m_points[0]->boundingBox().max -
+                        m_points[0]->boundingBox().min).length();
+            m_camera.setEyeToCenterDistance(diag*0.7);
         }
     }
-    emit fileLoadFinished();
-    setupShaderParamUI(); // may have changed file name list
-    m_maxPointsPerFrame = g_defaultPointRenderCount;
+    else if(!m_meshes.empty())
+    {
+        if (m_meshes.size() == 1)
+        {
+            m_cursorPos = m_meshes[0]->centroid();
+            m_drawOffset = m_meshes[0]->offset();
+            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+        }
+    }
+    else if(!m_lines.empty())
+    {
+        if (m_lines.size() == 1)
+        {
+            m_cursorPos = m_lines[0]->centroid();
+            m_drawOffset = m_lines[0]->offset();
+            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+        }
+    }
+    restartRender();
+}
+
+
+void PointView::loadPointFilesImpl(const QStringList& fileNames)
+{
+    emit fileLoadStarted();
+    size_t maxCount = fileNames.empty() ? 0 : m_maxPointCount / fileNames.size();
+
+    // Some subtleties regarding qt thread are discussed here
+    // http://mayaposch.wordpress.com/2011/11/01/how-to-really-truly-use-qthreads-the-full-explanation
+    //
+    // Main point: each QObject has a thread affinity which determines which
+    // thread its slots will execute on, when called via a connected signal.
+    QThread* thread = new QThread;
+    FileLoader* loader = new FileLoader(fileNames, maxCount);
+    loader->moveToThread(thread);
+    //connect(loader, SIGNAL(error(QString)), this, SLOT(errorString(QString)));
+    connect(thread, SIGNAL(started()), loader, SLOT(run()));
+    connect(loader, SIGNAL(finished()), thread, SLOT(quit()));
+    connect(loader, SIGNAL(finished()), loader, SLOT(deleteLater()));
+    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    connect(loader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
+    connect(loader, SIGNAL(loadStepStarted(QString)),
+            this, SIGNAL(loadStepStarted(QString)));
+    connect(loader, SIGNAL(progress(int)),
+            this, SIGNAL(loadProgress(int)));
+    connect(loader, SIGNAL(pointsLoaded(std::shared_ptr<PointArray>)),
+            this, SLOT(addPoints(std::shared_ptr<PointArray>)));
+    thread->start();
 }
 
 
 void PointView::loadFiles(const QStringList& fileNames)
 {
-    m_meshes.clear(); // FIXME - reloadFiles should reload meshes too
-    loadPointFilesImpl(m_points, m_meshes, m_lines, fileNames);
-    if(!m_points.empty())
-    {
-        m_cursorPos = m_points[0]->centroid();
-        m_drawOffset = m_points[0]->offset();
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        double diag = (m_points[0]->boundingBox().max -
-                       m_points[0]->boundingBox().min).length();
-        m_camera.setEyeToCenterDistance(diag*0.7);
-    }
-    else if(!m_meshes.empty())
-    {
-        m_cursorPos = m_meshes[0]->centroid();
-        m_drawOffset = m_meshes[0]->offset();
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-    }
-    else if(!m_lines.empty())
-    {
-        m_cursorPos = m_lines[0]->centroid();
-        m_drawOffset = m_lines[0]->offset();
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-    }
+    m_points.clear();
+    m_meshes.clear();
+    m_lines.clear();
     restartRender();
+    loadPointFilesImpl(fileNames);
 }
 
 
@@ -220,13 +252,10 @@ void PointView::reloadFiles()
     QStringList fileNames;
     for(size_t i = 0; i < m_points.size(); ++i)
         fileNames << m_points[i]->fileName();
-    loadPointFilesImpl(m_points, m_meshes, m_lines, fileNames);
-    if(!m_points.empty())
-    {
-        m_drawOffset = m_points[0]->offset();
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-    }
-    restartRender();
+    m_points.clear();
+    //m_meshes.clear(); FIXME - should reload these too.
+    //m_lines.clear();
+    loadPointFilesImpl(fileNames);
 }
 
 
@@ -373,7 +402,7 @@ void PointView::paintGL()
     // Measure frame time to update estimate for how many points we can
     // draw interactively
     glFinish();
-    if (m_drawPoints && !m_incrementalDraw)
+    if (m_drawPoints && totPoints > 0 && !m_incrementalDraw)
     {
         int frameTime = frameTimer.elapsed();
         // Aim for a frame time which is ok for desktop usage
@@ -384,6 +413,8 @@ void PointView::paintGL()
         double decayFactor = 0.7;
         m_maxPointsPerFrame = (size_t) ( decayFactor     * m_maxPointsPerFrame +
                                         (1-decayFactor) * predictedPointNumber );
+        // Prevent any insanity from this getting too small
+        m_maxPointsPerFrame = std::max(m_maxPointsPerFrame, (size_t)100);
     }
     m_incrementalFramebuffer->release();
     QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
@@ -683,8 +714,10 @@ void PointView::snapCursorAndCentre(double normalScaling)
         }
     }
     V3d posDiff = newPos - m_prevCursorSnap;
-    tfm::printf("Selected %.3f [diff with previous = %.3f m; %.3f]\n",
-                newPos, posDiff.length(), posDiff);
+    g_logger.info("Selected %.3f\n"
+                  "    [diff with previous: %.3f m;\n"
+                  "     %.3f]",
+                  newPos, posDiff.length(), posDiff);
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;
     m_camera.setCenter(exr2qt(newPos - m_drawOffset));

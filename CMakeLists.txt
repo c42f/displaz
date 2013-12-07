@@ -105,8 +105,10 @@ include_directories(BEFORE
 qt4_wrap_cpp(moc_srcs
     src/displazserver.h
     src/dragspinbox.h
+    src/fileloader.h
     src/helpdialog.h
     src/interactivecamera.h
+    src/logger.h
     src/mainwindow.h
     src/ptview.h
     src/pointarray.h
@@ -116,15 +118,16 @@ qt4_wrap_cpp(moc_srcs
 #qt4_add_resources(rcc_srcs package/resources.qrc)
 set(srcs
     ${moc_srcs}
+    src/glutil.cpp
+    src/logger.cpp
+    src/main.cpp
     src/mainwindow.cpp
+    src/mesh.cpp
     src/ptview.cpp
     src/pointarray.cpp
-    src/main.cpp
-    src/mesh.cpp
     src/shadereditor.cpp
     src/shader.cpp
     src/util.cpp
-    src/glutil.cpp
     thirdparty/argparse.cpp
     thirdparty/rply/rply.c
 )

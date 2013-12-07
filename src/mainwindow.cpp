@@ -34,6 +34,8 @@
 #include "ptview.h"
 #include "shadereditor.h"
 #include "shader.h"
+#include "mesh.h"
+#include "logger.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -51,26 +53,6 @@
 #include <QUrl>
 #include <QDropEvent>
 
-//------------------------------------------------------------------------------
-// Unbuffered std::streambuf implementation for output to a text edit widget
-class StreamBufTextEditSink : public std::streambuf
-{
-    public:
-        StreamBufTextEditSink(QPlainTextEdit* textEdit) : m_textEdit(textEdit) {}
-
-    protected:
-        int overflow(int c)
-        {
-            m_textEdit->moveCursor(QTextCursor::End);
-            m_textEdit->insertPlainText(QString((char)c));
-            m_textEdit->ensureCursorVisible();
-            return 0;
-        }
-
-    private:
-        QPlainTextEdit* m_textEdit;
-};
-
 
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
@@ -80,8 +62,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_pointView(0),
     m_shaderEditor(0),
     m_helpDialog(0),
-    m_logTextView(0),
-    m_oldBuf(0)
+    m_logTextView(0)
 {
     setWindowTitle("Displaz");
     setAcceptDrops(true);
@@ -180,8 +161,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawMeshes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
-    connect(m_pointView, SIGNAL(pointFilesLoaded(QStringList)),
-            this, SLOT(setLoadedFileNames(QStringList)));
+    connect(m_pointView, SIGNAL(filesChanged()),
+            this, SLOT(updateTitle()));
 
     //--------------------------------------------------
     // Docked widgets
@@ -217,16 +198,17 @@ PointViewerMainWindow::PointViewerMainWindow()
                          QDockWidget::DockWidgetClosable);
     logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     QWidget* logUI = new QWidget(logDock);
-    m_logTextView = new QPlainTextEdit(logUI);
+    m_logTextView = new LogViewer(logUI);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
+    m_logTextView->connectLogger(&g_logger); // connect to global logger
     m_progressBar = new QProgressBar(logUI);
     m_progressBar->setRange(0,100);
     m_progressBar->setValue(0);
     m_progressBar->hide();
     connect(m_pointView, SIGNAL(loadStepStarted(QString)),
             this, SLOT(setProgressBarText(QString)));
-    connect(m_pointView, SIGNAL(pointsLoaded(int)),
+    connect(m_pointView, SIGNAL(loadProgress(int)),
             m_progressBar, SLOT(setValue(int)));
     connect(m_pointView, SIGNAL(fileLoadStarted()),
             m_progressBar, SLOT(show()));
@@ -255,13 +237,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     //--------------------------------------------------
     // Final setup
     openShaderFile("shaders:points_default.glsl");
-}
-
-
-PointViewerMainWindow::~PointViewerMainWindow()
-{
-    if (m_oldBuf)
-        std::cout.rdbuf(m_oldBuf);
 }
 
 
@@ -306,13 +281,6 @@ QSize PointViewerMainWindow::sizeHint() const
     return QSize(800,600);
 }
 
-
-void PointViewerMainWindow::captureStdout()
-{
-    m_oldBuf = std::cout.rdbuf();
-    m_guiStdoutBuf.reset(new StreamBufTextEditSink(m_logTextView));
-    std::cout.rdbuf(m_guiStdoutBuf.get());
-}
 
 void PointViewerMainWindow::runCommand(const QByteArray& command)
 {
@@ -372,11 +340,8 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     }
     else
     {
-        QMessageBox::critical(0, tr("Error"),
-            tr("Couldn't open shader file \"%1\": %2")
-                .arg(shaderFileName)
-                .arg(shaderFile.errorString())
-        );
+        g_logger.error("Couldn't open shader file \"%s\": %s",
+                       shaderFileName, shaderFile.errorString());
     }
 }
 
@@ -414,11 +379,8 @@ void PointViewerMainWindow::saveShaderFile()
     }
     else
     {
-        QMessageBox::critical(0, tr("Error"),
-            tr("Couldn't open shader file \"%1\": %2")
-                .arg(shaderFileName)
-                .arg(shaderFile.errorString())
-        );
+        g_logger.error("Couldn't open shader file \"%s\": %s",
+                       shaderFileName, shaderFile.errorString());
     }
 }
 
@@ -466,15 +428,16 @@ void PointViewerMainWindow::chooseBackground()
 }
 
 
-void PointViewerMainWindow::setLoadedFileNames(const QStringList& fileNames)
+void PointViewerMainWindow::updateTitle()
 {
+    QStringList fileNames;
+    const PointView::PointArrayVec& points = m_pointView->pointFiles();
+    const PointView::MeshVec& meshes       = m_pointView->meshFiles();
+    const PointView::LineSegVec& lines     = m_pointView->lineFiles();
+    for (auto i = points.begin(); i != points.end(); ++i) fileNames << (*i)->fileName();
+    for (auto i = meshes.begin(); i != meshes.end(); ++i) fileNames << (*i)->fileName();
+    for (auto i = lines.begin(); i != lines.end(); ++i)   fileNames << (*i)->fileName();
     setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
 }
 
-
-void PointViewerMainWindow::openInitialFiles()
-{
-    if (!g_initialFileNames.empty())
-        m_pointView->loadFiles(g_initialFileNames);
-}
 

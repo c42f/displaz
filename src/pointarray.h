@@ -34,6 +34,7 @@
 #include <vector>
 
 #include <QtCore/QObject>
+#include <QtCore/QMetaType>
 
 #include "util.h"
 
@@ -129,6 +130,9 @@ class PointArray : public QObject
         std::unique_ptr<unsigned char[]> m_pointSourceId;
         std::unique_ptr<unsigned char[]> m_classification;
 };
+
+
+Q_DECLARE_METATYPE(std::shared_ptr<PointArray>)
 
 
 #endif // DISPLAZ_POINTARRAY_H_INCLUDED
