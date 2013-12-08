@@ -19,13 +19,16 @@ void LogViewer::connectLogger(Logger* logger)
 
 void LogViewer::appendLogMessage(int logLevel, QString msg)
 {
+    moveCursor(QTextCursor::End);
     switch (logLevel)
     {
         case Logger::Warning:
-            appendHtml("<b>WARNING</b>: " + msg);
+            appendHtml("<b>WARNING</b>: ");
+            insertPlainText(msg);
             break;
         case Logger::Error:
-            appendHtml("<b>ERROR</b>: " + msg);
+            appendHtml("<b>ERROR</b>: ");
+            insertPlainText(msg);
             break;
         case Logger::Info:
             appendPlainText(msg);
