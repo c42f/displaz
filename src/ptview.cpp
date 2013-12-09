@@ -110,10 +110,8 @@ PointView::PointView(QWidget *parent)
     // tradeoff is that this reduces the resolution of the z-buffer leading to
     // z-fighting in the distance.
     m_camera.setClipNear(1);
-    // Don't use signals/slots for handling view changes... this seems to
-    // introduce a bit of extra lag for slowly drawing scenes (?)
-    //connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
-    //connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
+    connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
+    connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
     makeCurrent();
     m_shaderProgram.reset(new ShaderProgram(context()));
@@ -135,7 +133,7 @@ PointView::~PointView() { }
 void PointView::restartRender()
 {
     m_incrementalDraw = false;
-    updateGL();
+    update();
 }
 
 
@@ -203,7 +201,6 @@ void PointView::newGeometryViewFixups()
             m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
         }
     }
-    restartRender();
 }
 
 
@@ -339,7 +336,6 @@ void PointView::resizeGL(int w, int h)
     //fboFmt.setTextureTarget();
     m_incrementalFramebuffer.reset(
         new QGLFramebufferObject(w, h, fboFmt));
-    restartRender();
 }
 
 
@@ -473,7 +469,6 @@ void PointView::mouseReleaseEvent(QMouseEvent* event)
         m_cursorPos = qt2exr(mat.inverted().map(QVector3D(event->x(), event->y(), z))) + m_drawOffset;
         snapCursorAndCentre(0.025);
     }
-    restartRender();
 }
 
 
@@ -493,7 +488,6 @@ void PointView::mouseMoveEvent(QMouseEvent* event)
     else
     {
         m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
-        restartRender();
     }
     m_prevMousePos = event->pos();
 }
@@ -503,7 +497,6 @@ void PointView::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
     m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
-    restartRender();
 }
 
 
@@ -513,7 +506,6 @@ void PointView::keyPressEvent(QKeyEvent *event)
     {
         // Centre camera on current cursor location
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        restartRender();
     }
     else if(event->key() == Qt::Key_S)
     {
@@ -721,7 +713,6 @@ void PointView::snapCursorAndCentre(double normalScaling)
     m_cursorPos = newPos;
     m_prevCursorSnap = newPos;
     m_camera.setCenter(exr2qt(newPos - m_drawOffset));
-    restartRender();
 }
 
 
