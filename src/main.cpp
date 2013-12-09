@@ -84,6 +84,7 @@ int main(int argc, char *argv[])
     bool printHelp = false;
     int maxPointCount = 200000000;
     std::string serverName;
+    double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
 
     std::string shaderName;
     bool useServer = true;
@@ -92,12 +93,17 @@ int main(int argc, char *argv[])
         "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
-        "--maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
-        "--noserver %!",  &useServer,     "Don't attempt to open files in existing window",
-        "--server %s",    &serverName,    "Name of displaz instance to message on startup",
-        "--shader %s",    &shaderName,    "Name of shader file to load on startup",
-        "--version",      &printVersion,  "Print version number",
-        "--help",         &printHelp,     "Print command line usage help",
+
+        "<SEPARATOR>", "\nInitial settings / remote commands:",
+        "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
+        "-noserver %!",  &useServer,     "Don't attempt to open files in existing window",
+        "-server %s",    &serverName,    "Name of displaz instance to message on startup",
+        "-shader %s",    &shaderName,    "Name of shader file to load on startup",
+        "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
+
+        "<SEPARATOR>", "\nAdditional information:",
+        "-version",      &printVersion,  "Print version number",
+        "-help",         &printHelp,     "Print command line usage help",
         NULL
     );
 
@@ -138,15 +144,7 @@ int main(int argc, char *argv[])
         if (socket.waitForConnected(100))
         {
             QByteArray command;
-            if (g_initialFileNames.empty())
-            {
-                std::cerr << "WARNING: Existing window found, but no remote "
-                             "command specified - exiting\n";
-                // Since we opened the connection, close it nicely by sending a
-                // zero-length message to say goodbye.
-                command = "";
-            }
-            else
+            if (!g_initialFileNames.empty())
             {
                 command = "OPEN_FILES";
                 for (int i = 0; i < g_initialFileNames.size(); ++i)
@@ -154,6 +152,21 @@ int main(int argc, char *argv[])
                     command += "\n";
                     command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
                 }
+            }
+            else if (yaw != -DBL_MAX)
+            {
+                command = "SET_VIEW_ANGLES\n" +
+                          QByteArray().setNum(yaw)   + "\n" +
+                          QByteArray().setNum(pitch) + "\n" +
+                          QByteArray().setNum(roll);
+            }
+            else
+            {
+                std::cerr << "WARNING: Existing window found, but no remote "
+                             "command specified - exiting\n";
+                // Since we opened the connection, close it nicely by sending a
+                // zero-length message to say goodbye.
+                command = "";
             }
             QDataStream stream(&socket);
             // Writes length as big endian uint32 followed by raw bytes

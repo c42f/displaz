@@ -287,15 +287,40 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
     QList<QByteArray> commandTokens = command.split('\n');
     if (commandTokens.empty())
         return;
-    if (commandTokens[0] != "OPEN_FILES")
+    if (commandTokens[0] == "OPEN_FILES")
     {
-        std::cout << "Unkown command " << command.data() << "\n";
-        return;
+        QStringList files;
+        for (int i = 1; i < commandTokens.size(); ++i)
+            files << QString(commandTokens[i]);
+        m_pointView->loadFiles(files);
     }
-    QStringList files;
-    for (int i = 1; i < commandTokens.size(); ++i)
-        files << QString(commandTokens[i]);
-    m_pointView->loadFiles(files);
+    else if (commandTokens[0] == "SET_VIEW_ANGLES")
+    {
+        if (commandTokens.size()-1 != 3)
+        {
+            tfm::format(std::cerr, "Expected three view angles, got %d\n",
+                        commandTokens.size()-1);
+            return;
+        }
+        bool yawOk = false, pitchOk = false, rollOk = false;
+        double yaw   = commandTokens[1].toDouble(&yawOk);
+        double pitch = commandTokens[2].toDouble(&pitchOk);
+        double roll  = commandTokens[3].toDouble(&rollOk);
+        if (!yawOk || !pitchOk || !rollOk)
+        {
+            std::cerr << "Could not parse Euler angles for view\n";
+            return;
+        }
+        m_pointView->camera().setRotation(
+            QQuaternion::fromAxisAndAngle(0,0,1, roll)  *
+            QQuaternion::fromAxisAndAngle(1,0,0, pitch-90) *
+            QQuaternion::fromAxisAndAngle(0,0,1, yaw)
+        );
+    }
+    else
+    {
+        std::cerr << "Unkown socket command \"" << command << "\"\n";
+    }
 }
 
 void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)

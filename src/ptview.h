@@ -75,6 +75,8 @@ class PointView : public QGLWidget
         const MeshVec&       meshFiles()  const { return m_meshes; }
         const LineSegVec&    lineFiles()  const { return m_lines; }
 
+        InteractiveCamera& camera() { return m_camera; }
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
