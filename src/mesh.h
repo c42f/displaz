@@ -63,6 +63,7 @@ class TriMesh
 
         const V3d& offset() const { return m_offset; }
         const V3d& centroid() const { return m_centroid; }
+        const Imath::Box3d& boundingBox() const { return m_bbox; }
         V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
 
     private:
@@ -76,6 +77,7 @@ class TriMesh
         QString m_fileName;
         V3d m_offset;
         V3d m_centroid;
+        Imath::Box3d m_bbox;
         /// xyz triples
         std::vector<float> m_verts;
         /// Per-vertex color
@@ -103,6 +105,8 @@ class LineSegments
 
         const V3d& offset() const { return m_offset; }
         const V3d& centroid() const { return m_centroid; }
+        const Imath::Box3d& boundingBox() const { return m_bbox; }
+
         V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
 
         size_t closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
@@ -112,6 +116,7 @@ class LineSegments
         QString m_fileName;
         V3d m_offset;
         V3d m_centroid;
+        Imath::Box3d m_bbox;
         /// xyz triples
         std::vector<float> m_verts;
         /// Per-vertex color

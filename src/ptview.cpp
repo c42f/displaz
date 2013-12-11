@@ -163,6 +163,20 @@ void PointView::addLineMesh(std::shared_ptr<LineSegments> lines)
 }
 
 
+// Utility for newGeometryViewFixups() - TODO: use a common geometry interface
+// to avoid this template mess.
+template<typename GeomT>
+void viewFixup(V3d& drawOffset, V3d& cursorPos, InteractiveCamera& camera,
+               const GeomT& geom)
+{
+    cursorPos = geom.centroid();
+    drawOffset = geom.offset();
+    camera.setCenter(exr2qt(cursorPos - drawOffset));
+    double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
+    camera.setEyeToCenterDistance(diag*0.7);
+}
+
+
 /// Fix up the view when loading the first file
 ///
 /// This does a few things
@@ -174,32 +188,17 @@ void PointView::newGeometryViewFixups()
     if(!m_points.empty())
     {
         if (m_points.size() == 1)
-        {
-            m_cursorPos = m_points[0]->centroid();
-            m_drawOffset = m_points[0]->offset();
-            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-            double diag = (m_points[0]->boundingBox().max -
-                        m_points[0]->boundingBox().min).length();
-            m_camera.setEyeToCenterDistance(diag*0.7);
-        }
+            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_points[0]);
     }
     else if(!m_meshes.empty())
     {
         if (m_meshes.size() == 1)
-        {
-            m_cursorPos = m_meshes[0]->centroid();
-            m_drawOffset = m_meshes[0]->offset();
-            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        }
+            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_meshes[0]);
     }
     else if(!m_lines.empty())
     {
         if (m_lines.size() == 1)
-        {
-            m_cursorPos = m_lines[0]->centroid();
-            m_drawOffset = m_lines[0]->offset();
-            m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        }
+            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_lines[0]);
     }
 }
 

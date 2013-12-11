@@ -40,16 +40,28 @@
 
 //------------------------------------------------------------------------------
 // utils
-V3d getCentroid(const V3d& offset, const std::vector<float>& vertices)
+static V3d getCentroid(const V3d& offset, const std::vector<float>& vertices)
 {
     V3d posSum(0);
     for (size_t i = 0; i < vertices.size(); i+=3)
         posSum += V3d(vertices[i], vertices[i+1], vertices[i+2]);
     if (vertices.size() > 0)
-        posSum = (3.0/vertices.size())*posSum;
+        posSum = 1.0/vertices.size() * posSum;
     return posSum + offset;
 }
 
+static Imath::Box3d getBoundingBox(const V3d& offset, const std::vector<float>& vertices)
+{
+    Imath::Box3d bbox;
+    for (size_t i = 0; i < vertices.size(); i+=3)
+        bbox.extendBy(V3d(vertices[i], vertices[i+1], vertices[i+2]));
+    if (!bbox.isEmpty())
+    {
+        bbox.min += offset;
+        bbox.max += offset;
+    }
+    return bbox;
+}
 
 //------------------------------------------------------------------------------
 // Stuff to load .ply files
@@ -198,6 +210,7 @@ TriMesh::TriMesh(QString fileName, const V3d& offset,
     : m_fileName(fileName),
     m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
+    m_bbox(getBoundingBox(offset, vertices)),
     m_verts(vertices),
     m_colors(colors),
     m_faces(faces)
@@ -310,6 +323,7 @@ LineSegments::LineSegments(QString fileName, const V3d& offset,
     : m_fileName(fileName),
     m_offset(offset),
     m_centroid(getCentroid(offset, vertices)),
+    m_bbox(getBoundingBox(offset, vertices)),
     m_verts(vertices),
     m_colors(colors),
     m_edges(edges)
