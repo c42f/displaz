@@ -229,6 +229,10 @@ void PointView::loadPointFilesImpl(const QStringList& fileNames)
             this, SIGNAL(loadProgress(int)));
     connect(loader, SIGNAL(pointsLoaded(std::shared_ptr<PointArray>)),
             this, SLOT(addPoints(std::shared_ptr<PointArray>)));
+    connect(loader, SIGNAL(triMeshLoaded(std::shared_ptr<TriMesh>)),
+            this, SLOT(addTriMesh(std::shared_ptr<TriMesh>)));
+    connect(loader, SIGNAL(lineMeshLoaded(std::shared_ptr<LineSegments>)),
+            this, SLOT(addLineMesh(std::shared_ptr<LineSegments>)));
     thread->start();
 }
 
