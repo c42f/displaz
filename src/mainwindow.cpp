@@ -317,6 +317,17 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
             QQuaternion::fromAxisAndAngle(0,0,1, yaw)
         );
     }
+    else if (commandTokens[0] == "SET_VIEW_RADIUS")
+    {
+        bool ok = false;
+        double viewRadius = commandTokens[1].toDouble(&ok);
+        if (!ok)
+        {
+            std::cerr << "Could not parse view radius";
+            return;
+        }
+        m_pointView->camera().setEyeToCenterDistance(viewRadius);
+    }
     else
     {
         std::cerr << "Unkown socket command \"" << command << "\"\n";

@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
     int maxPointCount = 200000000;
     std::string serverName;
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
+    double viewRadius = -DBL_MAX;
 
     std::string shaderName;
     bool useServer = true;
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
+        "-viewradius %F", &viewRadius, "Set distance to view point",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -159,6 +161,11 @@ int main(int argc, char *argv[])
                           QByteArray().setNum(yaw)   + "\n" +
                           QByteArray().setNum(pitch) + "\n" +
                           QByteArray().setNum(roll);
+            }
+            else if (viewRadius != -DBL_MAX)
+            {
+                command = "SET_VIEW_RADIUS\n" +
+                          QByteArray().setNum(viewRadius);
             }
             else
             {
