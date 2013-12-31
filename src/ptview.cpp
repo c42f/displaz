@@ -200,6 +200,7 @@ void PointView::newGeometryViewFixups()
         if (m_lines.size() == 1)
             viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_lines[0]);
     }
+    restartRender();
 }
 
 
