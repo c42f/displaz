@@ -467,12 +467,9 @@ void PointViewerMainWindow::chooseBackground()
 void PointViewerMainWindow::updateTitle()
 {
     QStringList fileNames;
-    const PointView::PointArrayVec& points = m_pointView->pointFiles();
-    const PointView::MeshVec& meshes       = m_pointView->meshFiles();
-    const PointView::LineSegVec& lines     = m_pointView->lineFiles();
-    for (auto i = points.begin(); i != points.end(); ++i) fileNames << (*i)->fileName();
-    for (auto i = meshes.begin(); i != meshes.end(); ++i) fileNames << (*i)->fileName();
-    for (auto i = lines.begin(); i != lines.end(); ++i)   fileNames << (*i)->fileName();
+    const PointView::GeometryVec& geoms = m_pointView->geometries();
+    for (auto i = geoms.begin(); i != geoms.end(); ++i)
+        fileNames << (*i)->fileName();
     setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
 }
 

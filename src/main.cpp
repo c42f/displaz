@@ -39,9 +39,7 @@
 #include "config.h"
 #include "displazserver.h"
 
-class PointArray;
-class TriMesh;
-class LineSegments;
+class Geometry;
 
 
 static QStringList g_initialFileNames;
@@ -130,9 +128,7 @@ int main(int argc, char *argv[])
 
     setupQFileSearchPaths();
 
-    qRegisterMetaType<std::shared_ptr<PointArray>>("std::shared_ptr<PointArray>");
-    qRegisterMetaType<std::shared_ptr<TriMesh>>("std::shared_ptr<TriMesh>");
-    qRegisterMetaType<std::shared_ptr<LineSegments>>("std::shared_ptr<LineSegments>");
+    qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
 
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.

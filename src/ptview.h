@@ -53,7 +53,7 @@ class PointView : public QGLWidget
 {
     Q_OBJECT
     public:
-        typedef std::vector<std::shared_ptr<PointArray>> PointArrayVec;
+        typedef std::vector<std::shared_ptr<Geometry>> GeometryVec;
         typedef std::vector<std::shared_ptr<TriMesh>> MeshVec;
         typedef std::vector<std::shared_ptr<LineSegments>> LineSegVec;
 
@@ -71,9 +71,7 @@ class PointView : public QGLWidget
 
         void setShaderParamsUIWidget(QWidget* widget);
 
-        const PointArrayVec& pointFiles() const { return m_points; }
-        const MeshVec&       meshFiles()  const { return m_meshes; }
-        const LineSegVec&    lineFiles()  const { return m_lines; }
+        const GeometryVec& geometries() const { return m_geometries; }
 
         InteractiveCamera& camera() { return m_camera; }
 
@@ -112,18 +110,16 @@ class PointView : public QGLWidget
         void restartRender();
         void setupShaderParamUI();
 
-        void addPoints(std::shared_ptr<PointArray> points);
-        void addTriMesh(std::shared_ptr<TriMesh> mesh);
-        void addLineMesh(std::shared_ptr<LineSegments> lines);
+        void addGeometry(std::shared_ptr<Geometry> geom);
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames);
         void newGeometryViewFixups();
 
         void drawCursor(const V3f& P) const;
-        size_t drawPoints(const PointArrayVec& allPoints,
+        size_t drawPoints(const GeometryVec& allPoints,
                           size_t numPointsToRender, bool incrementalDraw);
-        void drawMesh(const TriMesh& mesh, const V3d& drawOffset) const;
+        void drawMeshes(const GeometryVec& geoms) const;
 
         void snapCursorAndCentre(double normalScaling);
 
@@ -148,10 +144,8 @@ class PointView : public QGLWidget
         /// Shaders for polygonal geometry
         std::unique_ptr<ShaderProgram> m_meshFaceShader;
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
-        /// Point cloud data
-        PointArrayVec m_points;
-        MeshVec m_meshes;
-        LineSegVec m_lines;
+        /// Data sets
+        GeometryVec m_geometries;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Maximum desired number of points to load

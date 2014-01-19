@@ -45,6 +45,7 @@
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
 void drawBoundingBox(const Imath::Box3f& bbox, const Imath::C3f& col);
+void drawBoundingBox(const Imath::Box3d& bbox, const Imath::C3f& col);
 
 
 //----------------------------------------------------------------------

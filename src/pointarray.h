@@ -33,10 +33,7 @@
 #include <memory>
 #include <vector>
 
-#include <QtCore/QObject>
-#include <QtCore/QMetaType>
-
-#include "util.h"
+#include "geometry.h"
 
 class QGLShaderProgram;
 
@@ -44,7 +41,7 @@ struct OctreeNode;
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
-class PointArray : public QObject
+class PointArray : public Geometry
 {
     Q_OBJECT
 
@@ -52,75 +49,27 @@ class PointArray : public QObject
         PointArray();
         ~PointArray();
 
-        /// Load points from a file
-        bool loadPointFile(QString fileName, size_t maxPointCount);
+        // Overridden Geometry functions
+        virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        QString fileName() const { return m_fileName; }
+        virtual size_t drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
+                                  double quality, bool incrementalDraw) const;
+        virtual size_t pointCount() const { return m_npoints; }
+        virtual size_t simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const;
 
-        /// Return the number of points
-        size_t size() const { return m_npoints; }
-        /// Return true when there are zero points
-        bool empty() const { return m_npoints == 0; }
-
-        /// Return point position
-        ///
-        /// Note that this is stored relative to the offset() of the point
-        /// cloud to avoid loss of precision.
-        const V3f* P() const { return m_P.get(); }
-
-        V3d absoluteP(size_t idx) const { return V3d(m_P[idx]) + m_offset; }
-
-        /// Return index of "closest" point to the given position
-        ///
-        /// The distance is the euclidian distance where the normal direction
-        /// has been scaled by the amout normalDirectionScale.  Also return the
-        /// distance to the nearest point if the input distance parameter is
-        /// non-null.
-        size_t closestPoint(const V3d& pos, const V3f& N,
-                            double longitudinalScale, double* distance = 0) const;
-
-        /// Return the centroid of the position data
-        const V3d& centroid() const { return m_centroid; }
-
-        /// Get bounding box
-        const Imath::Box3d& boundingBox() const { return m_bbox; }
-
-        /// Get the offset which should be added to P to get absolute position
-        V3d offset() const { return m_offset; }
-
-        /// Compute the number of points which would be drawn at quality == 1
-        size_t simplifiedSize(const V3d& cameraPos, bool incrementalDraw);
-
-        /// Draw points using given openGL shader program
-        ///
-        /// Requires that prog is already bound and any necessary uniform
-        /// variables have been set.
-        ///
-        /// quality specifies the desired amount of simplification.
-        ///
-        /// Return total number of points actually drawn
-        size_t draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                    double quality, bool incrementalDraw) const;
+        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+                               double longitudinalScale, double* distance = 0) const;
 
         /// Draw a representation of the point hierarchy.
         ///
         /// Probably only useful for debugging.
         void drawTree() const;
 
-    signals:
-        /// Emitted at the start of a point loading step
-        void loadStepStarted(QString stepDescription);
-        /// Emitted as progress is made loading points
-        void pointsLoaded(int percentLoaded);
-
     private:
         friend struct ProgressFunc;
 
-        QString m_fileName;
         size_t m_npoints;
         V3d m_offset;
-        Imath::Box3d m_bbox;
-        V3d m_centroid;
         std::unique_ptr<OctreeNode> m_rootNode;
         std::unique_ptr<V3f[]> m_P;
         std::unique_ptr<float[]> m_intensity;
@@ -130,9 +79,6 @@ class PointArray : public QObject
         std::unique_ptr<unsigned char[]> m_pointSourceId;
         std::unique_ptr<unsigned char[]> m_classification;
 };
-
-
-Q_DECLARE_METATYPE(std::shared_ptr<PointArray>)
 
 
 #endif // DISPLAZ_POINTARRAY_H_INCLUDED

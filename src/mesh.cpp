@@ -145,9 +145,8 @@ static int edge_cb(p_ply_argument argument)
 }
 
 
-bool readPlyFile(const QString& fileName,
-                 std::shared_ptr<TriMesh>& mesh,
-                 std::shared_ptr<LineSegments>& lines)
+bool loadPlyFile(const QString& fileName,
+                 PlyLoadInfo& info)
 {
     // Read a triangulation from a .ply file
     typedef int (*ply_close_t)(p_ply);
@@ -155,7 +154,6 @@ bool readPlyFile(const QString& fileName,
             ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
-    PlyLoadInfo info;
     long nvertices = ply_set_read_cb(ply.get(), "vertex", "x", vertex_cb, &info, 0);
     if (ply_set_read_cb(ply.get(), "vertex", "y", vertex_cb, &info, 1) != nvertices ||
         ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
@@ -192,33 +190,32 @@ bool readPlyFile(const QString& fileName,
         return false;
     if (info.colors.size() != info.verts.size())
         info.colors.clear();
-    V3d offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
-    if (info.faces.size() > 0)
-        mesh.reset(new TriMesh(fileName, offset, info.verts, info.colors, info.faces));
-    if (info.edges.size() > 0)
-        lines.reset(new LineSegments(fileName, offset, info.verts, info.colors, info.edges));
     return true;
 }
 
 
 //------------------------------------------------------------------------------
 // TriMesh implementation
-TriMesh::TriMesh(QString fileName, const V3d& offset,
-                 const std::vector<float>& vertices,
-                 const std::vector<float>& colors,
-                 const std::vector<unsigned int>& faces)
-    : m_fileName(fileName),
-    m_offset(offset),
-    m_centroid(getCentroid(offset, vertices)),
-    m_bbox(getBoundingBox(offset, vertices)),
-    m_verts(vertices),
-    m_colors(colors),
-    m_faces(faces)
+bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
 {
-    makeSmoothNormals(m_normals, m_verts, m_faces);
-    makeEdges(m_edges, m_faces);
+    // maxVertexCount is ignored - not sure there's anything useful we can do
+    // to respect it when loading a mesh...
+    PlyLoadInfo info;
+    if (!loadPlyFile(fileName, info))
+        return false;
+    setFileName(fileName);
+    V3d offset = V3d(info.offset[0], info.offset[1], info.offset[2]);
+    setOffset(offset);
+    setCentroid(getCentroid(offset, info.verts));
+    setBoundingBox(getBoundingBox(offset, info.verts));
+    m_verts.swap(info.verts);
+    m_colors.swap(info.colors);
+    m_faces.swap(info.faces);
+    m_edges.swap(info.edges);
+    //makeSmoothNormals(m_normals, m_verts, m_faces);
+    //makeEdges(m_edges, m_faces);
+    return true;
 }
-
 
 void TriMesh::drawFaces(QGLShaderProgram& prog) const
 {
@@ -245,18 +242,29 @@ void TriMesh::drawEdges(QGLShaderProgram& prog) const
 {
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
+    if (m_colors.size() == m_verts.size())
+    {
+        prog.enableAttributeArray("color");
+        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
+    }
+    else
+        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
     glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
                    GL_UNSIGNED_INT, &m_edges[0]);
+    prog.disableAttributeArray("color");
     prog.disableAttributeArray("position");
 }
 
 
-size_t TriMesh::closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
-                              double longitudinalScale, double* distance) const
+V3d TriMesh::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+                        double longitudinalScale, double* distance) const
 {
-    return closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
-                             rayOrigin - m_offset, rayDirection,
-                             longitudinalScale, distance);
+    size_t idx = closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
+                                   rayOrigin - offset(), rayDirection,
+                                   longitudinalScale, distance);
+    if (m_verts.empty())
+        return V3d(0);
+    return V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
 }
 
 
@@ -312,46 +320,3 @@ void TriMesh::makeEdges(std::vector<unsigned int>& edges,
     }
 }
 
-
-//------------------------------------------------------------------------------
-// LineSegments implementation
-
-LineSegments::LineSegments(QString fileName, const V3d& offset,
-                           const std::vector<float>& vertices,
-                           const std::vector<float>& colors,
-                           const std::vector<unsigned int>& edges)
-    : m_fileName(fileName),
-    m_offset(offset),
-    m_centroid(getCentroid(offset, vertices)),
-    m_bbox(getBoundingBox(offset, vertices)),
-    m_verts(vertices),
-    m_colors(colors),
-    m_edges(edges)
-{ }
-
-
-void LineSegments::drawEdges(QGLShaderProgram& prog) const
-{
-    prog.enableAttributeArray("position");
-    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    if (m_colors.size() == m_verts.size())
-    {
-        prog.enableAttributeArray("color");
-        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
-    }
-    else
-        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
-                   GL_UNSIGNED_INT, &m_edges[0]);
-    prog.disableAttributeArray("color");
-    prog.disableAttributeArray("position");
-}
-
-
-size_t LineSegments::closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
-                                   double longitudinalScale, double* distance) const
-{
-    return closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
-                             rayOrigin - m_offset, rayDirection,
-                             longitudinalScale, distance);
-}

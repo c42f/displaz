@@ -93,7 +93,7 @@ PointView::PointView(QWidget *parent)
     m_drawPoints(true),
     m_drawMeshes(true),
     m_shaderProgram(),
-    m_points(),
+    m_geometries(),
     m_shaderParamsUI(0),
     m_maxPointCount(100000000),
     m_incrementalFrameTimer(0),
@@ -137,69 +137,20 @@ void PointView::restartRender()
 }
 
 
-void PointView::addPoints(std::shared_ptr<PointArray> points)
+void PointView::addGeometry(std::shared_ptr<Geometry> geom)
 {
-    m_points.push_back(points);
+    if (m_geometries.empty())
+    {
+        m_cursorPos = geom->centroid();
+        m_drawOffset = geom->offset();
+        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+        double diag = (geom->boundingBox().max - geom->boundingBox().min).length();
+        m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+    }
+    m_geometries.push_back(geom);
     //m_maxPointsPerFrame = g_defaultPointRenderCount;
-    setupShaderParamUI(); // Ugh, file name list changed
-    newGeometryViewFixups();
+    setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     emit filesChanged();
-}
-
-
-void PointView::addTriMesh(std::shared_ptr<TriMesh> mesh)
-{
-    m_meshes.push_back(mesh);
-    newGeometryViewFixups();
-    emit filesChanged();
-}
-
-
-void PointView::addLineMesh(std::shared_ptr<LineSegments> lines)
-{
-    m_lines.push_back(lines);
-    newGeometryViewFixups();
-    emit filesChanged();
-}
-
-
-// Utility for newGeometryViewFixups() - TODO: use a common geometry interface
-// to avoid this template mess.
-template<typename GeomT>
-void viewFixup(V3d& drawOffset, V3d& cursorPos, InteractiveCamera& camera,
-               const GeomT& geom)
-{
-    cursorPos = geom.centroid();
-    drawOffset = geom.offset();
-    camera.setCenter(exr2qt(cursorPos - drawOffset));
-    double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    camera.setEyeToCenterDistance(diag*0.7);
-}
-
-
-/// Fix up the view when loading the first file
-///
-/// This does a few things
-/// * Set up the camera to point at the data
-/// * Fix the render offset to avoid floating point precision problems where
-///   possible
-void PointView::newGeometryViewFixups()
-{
-    if(!m_points.empty())
-    {
-        if (m_points.size() == 1)
-            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_points[0]);
-    }
-    else if(!m_meshes.empty())
-    {
-        if (m_meshes.size() == 1)
-            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_meshes[0]);
-    }
-    else if(!m_lines.empty())
-    {
-        if (m_lines.size() == 1)
-            viewFixup(m_drawOffset, m_cursorPos, m_camera, *m_lines[0]);
-    }
     restartRender();
 }
 
@@ -225,23 +176,17 @@ void PointView::loadPointFilesImpl(const QStringList& fileNames)
     connect(loader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
     connect(loader, SIGNAL(loadStepStarted(QString)),
             this, SIGNAL(loadStepStarted(QString)));
-    connect(loader, SIGNAL(progress(int)),
+    connect(loader, SIGNAL(loadProgress(int)),
             this, SIGNAL(loadProgress(int)));
-    connect(loader, SIGNAL(pointsLoaded(std::shared_ptr<PointArray>)),
-            this, SLOT(addPoints(std::shared_ptr<PointArray>)));
-    connect(loader, SIGNAL(triMeshLoaded(std::shared_ptr<TriMesh>)),
-            this, SLOT(addTriMesh(std::shared_ptr<TriMesh>)));
-    connect(loader, SIGNAL(lineMeshLoaded(std::shared_ptr<LineSegments>)),
-            this, SLOT(addLineMesh(std::shared_ptr<LineSegments>)));
+    connect(loader, SIGNAL(geometryLoaded(std::shared_ptr<Geometry>)),
+            this, SLOT(addGeometry(std::shared_ptr<Geometry>)));
     thread->start();
 }
 
 
 void PointView::loadFiles(const QStringList& fileNames)
 {
-    m_points.clear();
-    m_meshes.clear();
-    m_lines.clear();
+    m_geometries.clear();
     restartRender();
     loadPointFilesImpl(fileNames);
 }
@@ -249,13 +194,12 @@ void PointView::loadFiles(const QStringList& fileNames)
 
 void PointView::reloadFiles()
 {
-    m_drawOffset = m_points[0]->offset();
+    m_drawOffset = m_geometries[0]->offset();
     QStringList fileNames;
-    for(size_t i = 0; i < m_points.size(); ++i)
-        fileNames << m_points[i]->fileName();
-    m_points.clear();
-    //m_meshes.clear(); FIXME - should reload these too.
-    //m_lines.clear();
+    // FIXME: Call reload() on geometries
+    for(size_t i = 0; i < m_geometries.size(); ++i)
+        fileNames << m_geometries[i]->fileName();
+    m_geometries.clear();
     loadPointFilesImpl(fileNames);
 }
 
@@ -274,8 +218,11 @@ void PointView::setupShaderParamUI()
         delete child;
     delete m_shaderParamsUI->layout();
     QStringList fileNames;
-    for(size_t i = 0; i < m_points.size(); ++i)
-        fileNames << QFileInfo(m_points[i]->fileName()).fileName();
+    for(size_t i = 0; i < m_geometries.size(); ++i)
+    {
+        if (m_geometries[i]->pointCount() > 0)
+            fileNames << QFileInfo(m_geometries[i]->fileName()).fileName();
+    }
     m_shaderProgram->setupParameterUI(m_shaderParamsUI, fileNames);
 }
 
@@ -365,38 +312,35 @@ void PointView::paintGL()
     if (!m_incrementalDraw)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw meshes and lines
-    if (m_drawMeshes && !m_meshes.empty() && !m_incrementalDraw)
+    // Draw bounding boxes
+    if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
-        for(size_t i = 0; i < m_meshes.size(); ++i)
-            drawMesh(*m_meshes[i], m_drawOffset);
-    }
-    if (m_drawMeshes && !m_lines.empty() && !m_incrementalDraw)
-    {
-        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-        glLineWidth(1);
-        meshEdgeShader.bind();
-        for(size_t i = 0; i < m_lines.size(); ++i)
+        for(size_t i = 0; i < m_geometries.size(); ++i)
         {
-            glPushMatrix();
-            V3d offset = m_lines[i]->offset() - m_drawOffset;
-            glTranslatef(offset.x, offset.y, offset.z);
-            m_lines[i]->drawEdges(meshEdgeShader);
-            glPopMatrix();
+            // Draw bounding box
+            Imath::Box3d bbox = m_geometries[i]->boundingBox();
+            bbox.min -= m_drawOffset;
+            bbox.max -= m_drawOffset;
+            drawBoundingBox(bbox, Imath::C3f(1));
         }
-        meshEdgeShader.release();
+    }
+
+    // Draw meshes and lines
+    if (m_drawMeshes && !m_incrementalDraw)
+    {
+        drawMeshes(m_geometries);
     }
 
     // Figure out how many points we should render
     size_t totPoints = 0;
-    for (size_t i = 0; i < m_points.size(); ++i)
-        totPoints += m_points[i]->size();
+    for (size_t i = 0; i < m_geometries.size(); ++i)
+        totPoints += m_geometries[i]->pointCount();
     size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
     if (m_drawPoints)
     {
         // Render points
-        totDrawn = drawPoints(m_points, numPointsToRender, m_incrementalDraw);
+        totDrawn = drawPoints(m_geometries, numPointsToRender, m_incrementalDraw);
     }
 
     // Measure frame time to update estimate for how many points we can
@@ -437,23 +381,36 @@ void PointView::paintGL()
 }
 
 
-void PointView::drawMesh(const TriMesh& mesh, const V3d& drawOffset) const
+void PointView::drawMeshes(const GeometryVec& geoms) const
 {
-    glPushMatrix();
-    V3d offset = mesh.offset() - drawOffset;
-    glTranslatef(offset.x, offset.y, offset.z);
+    // Draw faces
     QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
     meshFaceShader.bind();
     meshFaceShader.setUniformValue("lightDir_eye",
                 m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
-    mesh.drawFaces(meshFaceShader);
+    for (size_t i = 0; i < geoms.size(); ++i)
+    {
+        glPushMatrix();
+        V3d offset = geoms[i]->offset() - m_drawOffset;
+        glTranslatef(offset.x, offset.y, offset.z);
+        geoms[i]->drawFaces(meshFaceShader);
+        glPopMatrix();
+    }
     meshFaceShader.release();
-    //glLineWidth(1);
-    //QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-    //meshEdgeShader.bind();
-    //mesh.drawEdges(meshEdgeShader);
-    //meshEdgeShader.release();
-    glPopMatrix();
+
+    // Draw edges
+    QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+    glLineWidth(1);
+    meshEdgeShader.bind();
+    for(size_t i = 0; i < geoms.size(); ++i)
+    {
+        glPushMatrix();
+        V3d offset = geoms[i]->offset() - m_drawOffset;
+        glTranslatef(offset.x, offset.y, offset.z);
+        geoms[i]->drawEdges(meshEdgeShader);
+        glPopMatrix();
+    }
+    meshEdgeShader.release();
 }
 
 
@@ -595,35 +552,20 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 
 /// Draw point cloud
-size_t PointView::drawPoints(const PointArrayVec& allPoints,
+size_t PointView::drawPoints(const GeometryVec& geoms,
                              size_t numPointsToRender,
                              bool incrementalDraw)
 {
-    if (allPoints.empty())
+    if (geoms.empty())
         return 0;
-    for(size_t i = 0; i < allPoints.size(); ++i)
-    {
-        PointArray& points = *allPoints[i];
-        if(points.empty())
-            continue;
-        if(m_drawBoundingBoxes && !incrementalDraw)
-        {
-            // Draw bounding box
-            Imath::Box3f bbox;
-            bbox.min = points.boundingBox().min - m_drawOffset;
-            bbox.max = points.boundingBox().max - m_drawOffset;
-            drawBoundingBox(bbox, Imath::C3f(1));
-            //points.drawTree();
-        }
-    }
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     V3d globalCamPos = qt2exr(m_camera.position()) + m_drawOffset;
     double quality = 1;
     // Get total number of points we would draw at quality == 1
     size_t totSimplified = 0;
-    for(size_t i = 0; i < allPoints.size(); ++i)
-        totSimplified += allPoints[i]->simplifiedSize(globalCamPos,
+    for(size_t i = 0; i < geoms.size(); ++i)
+        totSimplified += geoms[i]->simplifiedPointCount(globalCamPos,
                                                         incrementalDraw);
     quality = double(numPointsToRender) / totSimplified;
     // Draw points
@@ -631,21 +573,21 @@ size_t PointView::drawPoints(const PointArrayVec& allPoints,
     prog.bind();
     m_shaderProgram->setUniforms();
     size_t totDrawn = 0;
-    for(size_t i = 0; i < allPoints.size(); ++i)
+    for(size_t i = 0; i < geoms.size(); ++i)
     {
-        PointArray& points = *allPoints[i];
-        if(points.empty())
+        Geometry& geom = *geoms[i];
+        if(geom.pointCount() == 0)
             continue;
         glPushMatrix();
-        V3d offset = points.offset() - m_drawOffset;
+        V3d offset = geom.offset() - m_drawOffset;
         glTranslatef(offset.x, offset.y, offset.z);
         //prog.setUniformValue("modelViewMatrix", ); // TODO
         //prog.setUniformValue("projectionMatrix", );
-        V3f relCursor = m_cursorPos - points.offset();
+        V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(i + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-        totDrawn += points.draw(prog, globalCamPos, quality, incrementalDraw);
+        totDrawn += geom.drawPoints(prog, globalCamPos, quality, incrementalDraw);
         glPopMatrix();
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -657,56 +599,22 @@ size_t PointView::drawPoints(const PointArrayVec& allPoints,
 /// Snap 3D cursor to closest point and centre the camera
 void PointView::snapCursorAndCentre(double normalScaling)
 {
-    if(m_points.empty() && m_lines.empty() && m_meshes.empty())
+    if(m_geometries.empty())
         return;
     V3f N = (qt2exr(m_camera.position()) + m_drawOffset -
              m_cursorPos).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
-    if (!m_points.empty())
+    // Snap cursor to position of closest point and center on it
+    for(size_t i = 0; i < m_geometries.size(); ++i)
     {
-        // Snap cursor to position of closest point and center on it
-        for(size_t i = 0; i < m_points.size(); ++i)
+        double dist = 0;
+        V3d p = m_geometries[i]->pickVertex(m_cursorPos, N,
+                                            normalScaling, &dist);
+        if(dist < nearestDist)
         {
-            if(m_points[i]->empty())
-                continue;
-            double dist = 0;
-            size_t idx = m_points[i]->closestPoint(m_cursorPos, N,
-                                                normalScaling, &dist);
-            if(dist < nearestDist)
-            {
-                nearestDist = dist;
-                newPos = m_points[i]->absoluteP(idx);
-            }
-        }
-    }
-    // FIXME: Remove this duplicate code!
-    if (!m_meshes.empty())
-    {
-        for(size_t i = 0; i < m_meshes.size(); ++i)
-        {
-            double dist = 0;
-            size_t idx = m_meshes[i]->closestVertex(m_cursorPos, N,
-                                                    normalScaling, &dist);
-            if(dist < nearestDist)
-            {
-                nearestDist = dist;
-                newPos = m_meshes[i]->vertex(idx);
-            }
-        }
-    }
-    if (!m_lines.empty())
-    {
-        for(size_t i = 0; i < m_lines.size(); ++i)
-        {
-            double dist = 0;
-            size_t idx = m_lines[i]->closestVertex(m_cursorPos, N,
-                                                   normalScaling, &dist);
-            if(dist < nearestDist)
-            {
-                nearestDist = dist;
-                newPos = m_lines[i]->vertex(idx);
-            }
+            newPos = p;
+            nearestDist = dist;
         }
     }
     V3d posDiff = newPos - m_prevCursorSnap;

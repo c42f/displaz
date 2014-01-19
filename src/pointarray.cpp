@@ -129,7 +129,7 @@ struct ProgressFunc
     void operator()(size_t additionalProcessed)
     {
         totProcessed += additionalProcessed;
-        emit points.pointsLoaded(100*totProcessed/points.size());
+        emit points.loadProgress(100*totProcessed/points.pointCount());
     }
 };
 
@@ -191,11 +191,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 //------------------------------------------------------------------------------
 // PointArray implementation
 PointArray::PointArray()
-    : m_fileName(),
-    m_npoints(0),
-    m_offset(0),
-    m_bbox(),
-    m_centroid(0)
+    : m_npoints(0)
 { }
 
 
@@ -215,14 +211,15 @@ void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
 }
 
 
-bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
+bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 {
     QTime loadTimer;
     loadTimer.start();
-    m_fileName = fileName;
+    setFileName(fileName);
     size_t totPoints = 0;
     V3d Psum(0);
-    m_bbox.makeEmpty();
+    Imath::Box3d bbox;
+    V3d offset(0);
     emit loadStepStarted("Reading file");
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
 #ifdef DISPLAZ_USE_PDAL
@@ -244,14 +241,14 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         }
         m_npoints = (totPoints + decimate - 1) / decimate;
         const pdal::Bounds<double>& bbox = reader->getBounds();
-        m_offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
-                       0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
-                       0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
+        offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
+                     0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
+                     0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
         // Attempt to place all data on the same vertical scale, but allow
         // other offsets if the magnitude of z is too large (and we would
         // therefore loose noticable precision by storing the data as floats)
-        if (fabs(m_offset.z) < 10000)
-            m_offset.z = 0;
+        if (fabs(offset.z) < 10000)
+            offset.z = 0;
         // Allocate all arrays
         m_P.reset(new V3f[m_npoints]);
         m_intensity.reset(new float[m_npoints]);
@@ -300,12 +297,12 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
                 V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
                             yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
                             zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
-                m_bbox.extendBy(P);
+                bbox.extendBy(P);
                 Psum += P;
                 if(readCount < nextStore)
                     continue;
                 // Store the point
-                *outP++ = P - m_offset;
+                *outP++ = P - offset;
                 *outIntens++   = buf.getField<uint16_t>(intensityDim, i);
                 *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
                 *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
@@ -330,7 +327,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
                         nextStore = totPoints;
                 }
             }
-            emit pointsLoaded(100*readCount/totPoints);
+            emit loadProgress(100*readCount/totPoints);
         }
     }
 #else
@@ -359,12 +356,12 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
                           fileName.toStdString(), decimate);
         }
         m_npoints = (totPoints + decimate - 1) / decimate;
-        m_offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
+        offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
         // Attempt to place all data on the same vertical scale, but allow other
         // offsets if the magnitude of z is too large (and we would therefore loose
         // noticable precision by storing the data as floats)
         if (fabs(lasReader->header.min_z) > 10000)
-            m_offset.z = lasReader->header.min_z;
+            offset.z = lasReader->header.min_z;
         m_P.reset(new V3f[m_npoints]);
         m_intensity.reset(new float[m_npoints]);
         m_returnNumber.reset(new unsigned char[m_npoints]);
@@ -392,16 +389,16 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             // Read a point from the las file
             ++readCount;
             if(readCount % 10000 == 0)
-                emit pointsLoaded(100*readCount/totPoints);
+                emit loadProgress(100*readCount/totPoints);
             V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
-            m_bbox.extendBy(P);
+            bbox.extendBy(P);
             Psum += P;
             //if (std::max(abs(P.x - 389661.571), (abs(P.y - 7281119.875))) < 500)
                 //tfm::format(dumpFile, "%.3f %.3f %.3f\n", P.x, P.y, P.z);
             if(readCount < nextStore)
                 continue;
             // Store the point
-            *outP++ = P - m_offset;
+            *outP++ = P - offset;
             // float intens = float(point.scan_angle_rank) / 40;
             *outIntens++ = point.intensity;
             *returnNumber++ = point.return_number;
@@ -453,7 +450,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
             points.push_back(p);
             ++readCount;
             if (readCount % 10000 == 0)
-                emit pointsLoaded(100*ftell(inFile)/numBytes);
+                emit loadProgress(100*ftell(inFile)/numBytes);
         }
         fclose(inFile);
         totPoints = points.size();
@@ -462,23 +459,25 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
         if (totPoints == 0 && numBytes != 0)
             return false;
         if (totPoints > 0)
-            m_offset = points[0];
+            offset = points[0];
         m_P.reset(new V3f[m_npoints]);
         for (size_t i = 0; i < m_npoints; ++i)
         {
-            m_P[i] = points[i] - m_offset;
-            m_bbox.extendBy(points[i]);
+            m_P[i] = points[i] - offset;
+            bbox.extendBy(points[i]);
             Psum += points[i];
         }
     }
-    emit pointsLoaded(100);
+    setBoundingBox(bbox);
+    setOffset(offset);
+    emit loadProgress(100);
     g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
                   m_npoints, totPoints, fileName.toStdString(),
                   loadTimer.elapsed()/1000.0);
     if (totPoints == 0)
         return true;
 
-    m_centroid = (1.0/totPoints) * Psum;
+    setCentroid((1.0/totPoints) * Psum);
 
     emit loadStepStarted("Sorting points");
     std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
@@ -487,7 +486,7 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
     // Expand the bound so that it's cubic.  Not exactly sure it's required
     // here, but cubic nodes sometimes work better the points are better
     // distributed for LoD, splitting is unbiased, etc.
-    Imath::Box3f rootBound(m_bbox.min - m_offset, m_bbox.max - m_offset);
+    Imath::Box3f rootBound(bbox.min - offset, bbox.max - offset);
     V3f diag = rootBound.size();
     float rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
     ProgressFunc progressFunc(*this);
@@ -505,17 +504,19 @@ bool PointArray::loadPointFile(QString fileName, size_t maxPointCount)
 }
 
 
-size_t PointArray::closestPoint(const V3d& pos, const V3f& N,
-                                double longitudinalScale,
-                                double* distance) const
+V3d PointArray::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+                           double longitudinalScale, double* distance) const
 {
-    return closestPointToRay(m_P.get(), m_npoints, pos - m_offset, N,
-                             longitudinalScale, distance);
+    size_t idx = closestPointToRay(m_P.get(), m_npoints, rayOrigin - offset(),
+                                   rayDirection, longitudinalScale, distance);
+    if (m_npoints == 0)
+        return V3d(0);
+    return V3d(m_P[idx]) + offset();
 }
 
 
-static size_t simplifiedSize(const OctreeNode* node, const V3f& cameraPos,
-                             double quality, bool incrementalDraw)
+static size_t simplifiedPointCount(const OctreeNode* node, const V3f& cameraPos,
+                                   double quality, bool incrementalDraw)
 {
     // Distance below which all points will be drawn for a node, at quality == 1
     // TODO: Auto-adjust this for various length scales?
@@ -543,16 +544,16 @@ static size_t simplifiedSize(const OctreeNode* node, const V3f& cameraPos,
     {
         OctreeNode* n = node->children[i];
         if (n)
-            ndraw += simplifiedSize(n, cameraPos, quality, incrementalDraw);
+            ndraw += simplifiedPointCount(n, cameraPos, quality, incrementalDraw);
     }
     return ndraw;
 }
 
 
-size_t PointArray::simplifiedSize(const V3d& cameraPos, bool incrementalDraw)
+size_t PointArray::simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const
 {
-    V3f relCamera = cameraPos - m_offset;
-    return ::simplifiedSize(m_rootNode.get(), relCamera, 1.0, incrementalDraw);
+    V3f relCamera = cameraPos - offset();
+    return ::simplifiedPointCount(m_rootNode.get(), relCamera, 1.0, incrementalDraw);
 }
 
 
@@ -588,8 +589,8 @@ void enableAttrOrSetDefault(QGLShaderProgram& prog, const char* attrName, const 
 }
 
 
-size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
-                        double quality, bool incrementalDraw) const
+size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
+                              double quality, bool incrementalDraw) const
 {
     prog.enableAttributeArray("position");
     enableAttrOrSetDefault(prog, "intensity",       m_intensity,       0.0f);
@@ -603,7 +604,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
     size_t totDrawn = 0;
-    V3f relCamera = cameraPos - m_offset;
+    V3f relCamera = cameraPos - offset();
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
@@ -625,7 +626,7 @@ size_t PointArray::draw(QGLShaderProgram& prog, const V3d& cameraPos,
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
-        ndraw = ::simplifiedSize(node, relCamera, quality, incrementalDraw);
+        ndraw = ::simplifiedPointCount(node, relCamera, quality, incrementalDraw);
         idx = node->nextBeginIndex;
         if (ndraw == 0)
             continue;

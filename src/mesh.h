@@ -36,37 +36,30 @@
 #include <QtCore/QString>
 #include <QtCore/QMetaType>
 
-#include "util.h"
+#include "geometry.h"
 
 class QGLShaderProgram;
 
 
-/// Mesh composed of triangles, in indexed format appropriate for OpenGL
-class TriMesh
+/// Mesh of triangles or line segment edges, in indexed format for OpenGL
+class TriMesh : public Geometry
 {
     public:
-        TriMesh() : m_offset(0), m_centroid(0) {}
+        virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        TriMesh(QString fileName, const V3d& offset,
-                const std::vector<float>& vertices,
-                const std::vector<float>& colors,
-                const std::vector<unsigned int>& faces);
+        virtual void drawFaces(QGLShaderProgram& prog) const;
+        virtual void drawEdges(QGLShaderProgram& prog) const;
 
-        QString fileName() { return m_fileName; }
+        virtual size_t pointCount() const { return 0; }
 
-        /// Draw mesh using current OpenGL context
-        void drawFaces(QGLShaderProgram& prog) const;
-        void drawEdges(QGLShaderProgram& prog) const;
+        virtual size_t simplifiedPointCount(const V3d& cameraPos,
+                                            bool incrementalDraw) const { return 0; }
 
-        size_t closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
-                             double longitudinalScale, double* distance = 0) const;
-
-        const V3d& offset() const { return m_offset; }
-        const V3d& centroid() const { return m_centroid; }
-        const Imath::Box3d& boundingBox() const { return m_bbox; }
-        V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
+        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+                               double longitudinalScale, double* distance = 0) const;
 
     private:
+
         static void makeSmoothNormals(std::vector<float>& normals,
                                       const std::vector<float>& verts,
                                       const std::vector<unsigned int>& faces);
@@ -74,10 +67,6 @@ class TriMesh
         static void makeEdges(std::vector<unsigned int>& edges,
                               const std::vector<unsigned int>& faces);
 
-        QString m_fileName;
-        V3d m_offset;
-        V3d m_centroid;
-        Imath::Box3d m_bbox;
         /// xyz triples
         std::vector<float> m_verts;
         /// Per-vertex color
@@ -88,52 +77,6 @@ class TriMesh
         std::vector<unsigned int> m_faces;
         std::vector<unsigned int> m_edges;
 };
-
-
-/// Line segment list, in indexed format appropriate for OpenGL
-class LineSegments
-{
-    public:
-        LineSegments(QString fileName, const V3d& offset,
-                     const std::vector<float>& vertices,
-                     const std::vector<float>& colors,
-                     const std::vector<unsigned int>& edges);
-
-        QString fileName() { return m_fileName; }
-
-        void drawEdges(QGLShaderProgram& prog) const;
-
-        const V3d& offset() const { return m_offset; }
-        const V3d& centroid() const { return m_centroid; }
-        const Imath::Box3d& boundingBox() const { return m_bbox; }
-
-        V3d vertex(size_t i) const { return m_offset + V3d(m_verts[3*i], m_verts[3*i+1], m_verts[3*i+2]); }
-
-        size_t closestVertex(const V3d& rayOrigin, const V3f& rayDirection,
-                             double longitudinalScale, double* distance = 0) const;
-
-    private:
-        QString m_fileName;
-        V3d m_offset;
-        V3d m_centroid;
-        Imath::Box3d m_bbox;
-        /// xyz triples
-        std::vector<float> m_verts;
-        /// Per-vertex color
-        std::vector<float> m_colors;
-        /// Pairs of indices into vertex array
-        std::vector<unsigned int> m_edges;
-};
-
-
-/// Read mesh or collection of line segments from the given .ply file
-bool readPlyFile(const QString& fileName,
-                 std::shared_ptr<TriMesh>& mesh,
-                 std::shared_ptr<LineSegments>& lines);
-
-
-Q_DECLARE_METATYPE(std::shared_ptr<LineSegments>)
-Q_DECLARE_METATYPE(std::shared_ptr<TriMesh>)
 
 
 #endif // DISPLAZ_MESH_H_INCLUDED

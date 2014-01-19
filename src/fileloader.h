@@ -6,8 +6,7 @@
 #include <QObject>
 #include <QStringList>
 
-#include "mesh.h"
-#include "pointarray.h"
+#include "geometry.h"
 
 /// Loader for data files supported by displaz
 ///
@@ -25,63 +24,38 @@ class FileLoader : public QObject
             m_maxPointsPerFile(maxPointsPerFile)
         { }
 
-    public slots:
-        /// Load all files provided to constructor
-        void run()
-        {
-            loadFiles(m_fileNames, m_maxPointsPerFile);
-        }
-
     signals:
         /// Signal emitted when a load step starts
         void loadStepStarted(QString description);
-        /// Emitted to report progress percent for current load step
-        void progress(int percent);
 
-        /// Emit successfully loaded point file
-        void pointsLoaded(std::shared_ptr<PointArray> lines);
-        /// Emit successfully loaded mesh file
-        void triMeshLoaded(std::shared_ptr<TriMesh> mesh);
-        /// Emit successfully loaded line file
-        void lineMeshLoaded(std::shared_ptr<LineSegments> lines);
+        /// Emitted to report progress percent for current load step
+        void loadProgress(int percent);
+
+        /// Emit successfully loaded geometries
+        void geometryLoaded(std::shared_ptr<Geometry> geom);
 
         /// Emitted when loading of all files is done
         void finished();
 
-    private:
-        void loadFiles(const QStringList& fileNames, size_t maxPointsPerFile)
+    public slots:
+        /// Load all files provided to constructor
+        void run()
         {
-            for(int i = 0; i < fileNames.size(); ++i)
+            for(int i = 0; i < m_fileNames.size(); ++i)
             {
-                const QString& fileName = fileNames[i];
-                if(fileName.endsWith(".ply"))
-                {
-                    // Load data from ply format
-                    std::shared_ptr<TriMesh> mesh;
-                    std::shared_ptr<LineSegments> lineSegs;
-                    if (readPlyFile(fileName, mesh, lineSegs))
-                    {
-                        if (mesh)
-                            emit triMeshLoaded(mesh);
-                        if (lineSegs)
-                            emit lineMeshLoaded(lineSegs);
-                    }
-                }
-                else
-                {
-                    // Load point cloud
-                    std::shared_ptr<PointArray> points(new PointArray());
-                    connect(points.get(), SIGNAL(pointsLoaded(int)),
-                            this, SIGNAL(progress(int)));
-                    connect(points.get(), SIGNAL(loadStepStarted(QString)),
-                            this, SIGNAL(loadStepStarted(QString)));
-                    if (points->loadPointFile(fileName, maxPointsPerFile) && !points->empty())
-                        emit pointsLoaded(points);
-                }
+                const QString& fileName = m_fileNames[i];
+                std::shared_ptr<Geometry> geom = Geometry::create(fileName);
+                connect(geom.get(), SIGNAL(loadProgress(int)),
+                        this, SIGNAL(loadProgress(int)));
+                connect(geom.get(), SIGNAL(loadStepStarted(QString)),
+                        this, SIGNAL(loadStepStarted(QString)));
+                if (geom->loadFile(fileName, m_maxPointsPerFile))
+                    emit geometryLoaded(geom);
             }
             emit finished();
         }
 
+    private:
         QStringList m_fileNames;
         size_t m_maxPointsPerFile;
 };

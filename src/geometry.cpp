@@ -27,47 +27,29 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "glutil.h"
+#include "geometry.h"
+#include "mesh.h"
+#include "pointarray.h"
+
+Geometry::Geometry()
+    : m_fileName(),
+    m_offset(0,0,0),
+    m_centroid(0,0,0),
+    m_bbox()
+{ }
 
 
-void drawBoundingBox(const Imath::Box3d& bbox,
-                     const Imath::C3f& col)
+std::shared_ptr<Geometry> Geometry::create(QString fileName)
 {
-    drawBoundingBox(Imath::Box3f(bbox.min, bbox.max), col);
+    if (fileName.endsWith(".ply"))
+        return std::shared_ptr<Geometry>(new TriMesh());
+    else
+        return std::shared_ptr<Geometry>(new PointArray());
 }
 
 
-void drawBoundingBox(const Imath::Box3f& bbox,
-                     const Imath::C3f& col)
+bool Geometry::reloadFile(size_t maxVertexCount)
 {
-    glEnable(GL_LINE_SMOOTH);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor3f(col.x, col.y, col.z);
-    glLineWidth(1);
-    GLfloat verts[] = {
-        bbox.min.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.min.y, bbox.max.z,
-        bbox.min.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.min.y, bbox.max.z
-    };
-    unsigned char inds[] = {
-        // rows: bottom, sides, top
-        0,1, 1,2, 2,3, 3,0,
-        0,4, 1,5, 2,6, 3,7,
-        4,5, 5,6, 6,7, 7,4
-    };
-    // TODO: Use shaders here
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, verts);
-    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
-                   GL_UNSIGNED_BYTE, inds);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisable(GL_BLEND);
-    glDisable(GL_LINE_SMOOTH);
+    return loadFile(m_fileName, maxVertexCount);
 }
 
