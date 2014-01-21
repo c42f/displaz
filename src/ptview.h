@@ -37,15 +37,13 @@
 #include <QtOpenGL/QGLWidget>
 
 #include "interactivecamera.h"
-#include "pointarray.h"
+#include "geometrycollection.h"
 
 class QGLShaderProgram;
 class QGLFramebufferObject;
 class QTimer;
 
 class ShaderProgram;
-class TriMesh;
-class LineSegments;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
@@ -53,45 +51,23 @@ class PointView : public QGLWidget
 {
     Q_OBJECT
     public:
-        typedef std::vector<std::shared_ptr<Geometry>> GeometryVec;
-        typedef std::vector<std::shared_ptr<TriMesh>> MeshVec;
-        typedef std::vector<std::shared_ptr<LineSegments>> LineSegVec;
-
-        PointView(QWidget *parent = NULL);
+        PointView(GeometryCollection* geometries, QWidget *parent = NULL);
         ~PointView();
-
-        /// Load geometry files from disk
-        void loadFiles(const QStringList& fileNames);
-
-        /// Reload current files from disk
-        void reloadFiles();
 
         /// Return shader used for displaying points
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
 
         void setShaderParamsUIWidget(QWidget* widget);
 
-        const GeometryVec& geometries() const { return m_geometries; }
-
         InteractiveCamera& camera() { return m_camera; }
 
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
-        void setMaxPointCount(size_t maxPointCount);
         void toggleDrawBoundingBoxes();
         void toggleDrawPoints();
         void toggleDrawMeshes();
         void toggleCameraMode();
-
-    signals:
-        void fileLoadStarted();
-        void fileLoadFinished();
-        /// Emitted each time the loaded set of files changes
-        void filesChanged() const;
-        /// Emitted at the start of a point loading step
-        void loadStepStarted(QString stepDescription);
-        void loadProgress(int progress);
 
     protected:
         // Qt OpenGL callbacks
@@ -110,16 +86,13 @@ class PointView : public QGLWidget
         void restartRender();
         void setupShaderParamUI();
 
-        void addGeometry(std::shared_ptr<Geometry> geom);
+        void fixForGeometryChange();
 
     private:
-        void loadPointFilesImpl(const QStringList& fileNames);
-        void newGeometryViewFixups();
-
         void drawCursor(const V3f& P) const;
-        size_t drawPoints(const GeometryVec& allPoints,
+        size_t drawPoints(const GeometryCollection::GeometryVec& allPoints,
                           size_t numPointsToRender, bool incrementalDraw);
-        void drawMeshes(const GeometryVec& geoms) const;
+        void drawMeshes(const GeometryCollection::GeometryVec& geoms) const;
 
         void snapCursorAndCentre(double normalScaling);
 
@@ -144,12 +117,10 @@ class PointView : public QGLWidget
         /// Shaders for polygonal geometry
         std::unique_ptr<ShaderProgram> m_meshFaceShader;
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
-        /// Data sets
-        GeometryVec m_geometries;
+        /// Collection of geometries
+        GeometryCollection* m_geometries;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
-        /// Maximum desired number of points to load
-        size_t m_maxPointCount;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
         std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;

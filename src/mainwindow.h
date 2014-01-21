@@ -45,6 +45,7 @@ class HelpDialog;
 class PointView;
 class ShaderEditor;
 class LogViewer;
+class GeometryCollection;
 
 
 //------------------------------------------------------------------------------
@@ -59,7 +60,7 @@ class PointViewerMainWindow : public QMainWindow
         /// Hint at an appropriate size
         QSize sizeHint() const;
 
-        PointView& pointView() { return *m_pointView; }
+        GeometryCollection& geometries() { return *m_geometries; }
 
     public slots:
         void runCommand(const QByteArray& command);
@@ -95,6 +96,9 @@ class PointViewerMainWindow : public QMainWindow
         // Gui state
         QDir m_currFileDir;
         QString m_currShaderFileName;
+
+        // Currently loaded geometry
+        GeometryCollection* m_geometries;
 };
 
 

@@ -107,6 +107,7 @@ qt4_wrap_cpp(moc_srcs
     src/dragspinbox.h
     src/fileloader.h
     src/geometry.h
+    src/geometrycollection.h
     src/helpdialog.h
     src/interactivecamera.h
     src/logger.h
@@ -120,6 +121,7 @@ qt4_wrap_cpp(moc_srcs
 set(srcs
     ${moc_srcs}
     src/geometry.cpp
+    src/geometrycollection.cpp
     src/glutil.cpp
     src/logger.cpp
     src/main.cpp

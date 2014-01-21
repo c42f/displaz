@@ -38,7 +38,6 @@
 
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
-#include <QtCore/QThread>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
 #include <QtOpenGL/QGLFramebufferObject>
@@ -80,7 +79,7 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
 static const size_t g_defaultPointRenderCount = 1000000;
 
 //------------------------------------------------------------------------------
-PointView::PointView(QWidget *parent)
+PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     : QGLWidget(parent),
     m_camera(false, false),
     m_prevMousePos(0,0),
@@ -93,13 +92,14 @@ PointView::PointView(QWidget *parent)
     m_drawPoints(true),
     m_drawMeshes(true),
     m_shaderProgram(),
-    m_geometries(),
+    m_geometries(geometries),
     m_shaderParamsUI(0),
-    m_maxPointCount(100000000),
     m_incrementalFrameTimer(0),
     m_incrementalDraw(false),
     m_maxPointsPerFrame(g_defaultPointRenderCount)
 {
+    connect(m_geometries, SIGNAL(layoutChanged()), this, SLOT(fixForGeometryChange()));
+
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
@@ -137,70 +137,20 @@ void PointView::restartRender()
 }
 
 
-void PointView::addGeometry(std::shared_ptr<Geometry> geom)
+void PointView::fixForGeometryChange()
 {
-    if (m_geometries.empty())
+    if (m_geometries->get().size() == 1)
     {
-        m_cursorPos = geom->centroid();
-        m_drawOffset = geom->offset();
+        const Geometry& geom = *m_geometries->get()[0];
+        m_cursorPos = geom.centroid();
+        m_drawOffset = geom.offset();
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        double diag = (geom->boundingBox().max - geom->boundingBox().min).length();
+        double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
         m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
     }
-    m_geometries.push_back(geom);
     //m_maxPointsPerFrame = g_defaultPointRenderCount;
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
-    emit filesChanged();
     restartRender();
-}
-
-
-void PointView::loadPointFilesImpl(const QStringList& fileNames)
-{
-    emit fileLoadStarted();
-    size_t maxCount = fileNames.empty() ? 0 : m_maxPointCount / fileNames.size();
-
-    // Some subtleties regarding qt thread are discussed here
-    // http://mayaposch.wordpress.com/2011/11/01/how-to-really-truly-use-qthreads-the-full-explanation
-    //
-    // Main point: each QObject has a thread affinity which determines which
-    // thread its slots will execute on, when called via a connected signal.
-    QThread* thread = new QThread;
-    FileLoader* loader = new FileLoader(fileNames, maxCount);
-    loader->moveToThread(thread);
-    //connect(loader, SIGNAL(error(QString)), this, SLOT(errorString(QString)));
-    connect(thread, SIGNAL(started()), loader, SLOT(run()));
-    connect(loader, SIGNAL(finished()), thread, SLOT(quit()));
-    connect(loader, SIGNAL(finished()), loader, SLOT(deleteLater()));
-    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-    connect(loader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
-    connect(loader, SIGNAL(loadStepStarted(QString)),
-            this, SIGNAL(loadStepStarted(QString)));
-    connect(loader, SIGNAL(loadProgress(int)),
-            this, SIGNAL(loadProgress(int)));
-    connect(loader, SIGNAL(geometryLoaded(std::shared_ptr<Geometry>)),
-            this, SLOT(addGeometry(std::shared_ptr<Geometry>)));
-    thread->start();
-}
-
-
-void PointView::loadFiles(const QStringList& fileNames)
-{
-    m_geometries.clear();
-    restartRender();
-    loadPointFilesImpl(fileNames);
-}
-
-
-void PointView::reloadFiles()
-{
-    m_drawOffset = m_geometries[0]->offset();
-    QStringList fileNames;
-    // FIXME: Call reload() on geometries
-    for(size_t i = 0; i < m_geometries.size(); ++i)
-        fileNames << m_geometries[i]->fileName();
-    m_geometries.clear();
-    loadPointFilesImpl(fileNames);
 }
 
 
@@ -218,10 +168,10 @@ void PointView::setupShaderParamUI()
         delete child;
     delete m_shaderParamsUI->layout();
     QStringList fileNames;
-    for(size_t i = 0; i < m_geometries.size(); ++i)
+    for(size_t i = 0; i < m_geometries->get().size(); ++i)
     {
-        if (m_geometries[i]->pointCount() > 0)
-            fileNames << QFileInfo(m_geometries[i]->fileName()).fileName();
+        if (m_geometries->get()[i]->pointCount() > 0)
+            fileNames << QFileInfo(m_geometries->get()[i]->fileName()).fileName();
     }
     m_shaderProgram->setupParameterUI(m_shaderParamsUI, fileNames);
 }
@@ -255,12 +205,6 @@ void PointView::toggleDrawMeshes()
 void PointView::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
-}
-
-
-void PointView::setMaxPointCount(size_t maxPointCount)
-{
-    m_maxPointCount = maxPointCount;
 }
 
 
@@ -312,13 +256,14 @@ void PointView::paintGL()
     if (!m_incrementalDraw)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     // Draw bounding boxes
     if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
-        for(size_t i = 0; i < m_geometries.size(); ++i)
+        for(size_t i = 0; i < geoms.size(); ++i)
         {
             // Draw bounding box
-            Imath::Box3d bbox = m_geometries[i]->boundingBox();
+            Imath::Box3d bbox = geoms[i]->boundingBox();
             bbox.min -= m_drawOffset;
             bbox.max -= m_drawOffset;
             drawBoundingBox(bbox, Imath::C3f(1));
@@ -328,19 +273,19 @@ void PointView::paintGL()
     // Draw meshes and lines
     if (m_drawMeshes && !m_incrementalDraw)
     {
-        drawMeshes(m_geometries);
+        drawMeshes(geoms);
     }
 
     // Figure out how many points we should render
     size_t totPoints = 0;
-    for (size_t i = 0; i < m_geometries.size(); ++i)
-        totPoints += m_geometries[i]->pointCount();
+    for (size_t i = 0; i < geoms.size(); ++i)
+        totPoints += geoms[i]->pointCount();
     size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
     if (m_drawPoints)
     {
         // Render points
-        totDrawn = drawPoints(m_geometries, numPointsToRender, m_incrementalDraw);
+        totDrawn = drawPoints(geoms, numPointsToRender, m_incrementalDraw);
     }
 
     // Measure frame time to update estimate for how many points we can
@@ -381,7 +326,7 @@ void PointView::paintGL()
 }
 
 
-void PointView::drawMeshes(const GeometryVec& geoms) const
+void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms) const
 {
     // Draw faces
     QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
@@ -552,7 +497,7 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 
 /// Draw point cloud
-size_t PointView::drawPoints(const GeometryVec& geoms,
+size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
                              size_t numPointsToRender,
                              bool incrementalDraw)
 {
@@ -599,17 +544,17 @@ size_t PointView::drawPoints(const GeometryVec& geoms,
 /// Snap 3D cursor to closest point and centre the camera
 void PointView::snapCursorAndCentre(double normalScaling)
 {
-    if(m_geometries.empty())
+    if(m_geometries->get().empty())
         return;
     V3f N = (qt2exr(m_camera.position()) + m_drawOffset -
              m_cursorPos).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
-    for(size_t i = 0; i < m_geometries.size(); ++i)
+    for(size_t i = 0; i < m_geometries->get().size(); ++i)
     {
         double dist = 0;
-        V3d p = m_geometries[i]->pickVertex(m_cursorPos, N,
+        V3d p = m_geometries->get()[i]->pickVertex(m_cursorPos, N,
                                             normalScaling, &dist);
         if(dist < nearestDist)
         {

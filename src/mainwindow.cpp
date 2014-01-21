@@ -36,6 +36,7 @@
 #include "shader.h"
 #include "mesh.h"
 #include "logger.h"
+#include "geometrycollection.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -62,8 +63,11 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_pointView(0),
     m_shaderEditor(0),
     m_helpDialog(0),
-    m_logTextView(0)
+    m_logTextView(0),
+    m_geometries(0)
 {
+    m_geometries = new GeometryCollection(this);
+
     setWindowTitle("Displaz");
     setAcceptDrops(true);
     m_helpDialog = new HelpDialog(this);
@@ -151,7 +155,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new PointView(this);
+    m_pointView = new PointView(m_geometries, this);
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
@@ -161,7 +165,7 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawMeshes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
-    connect(m_pointView, SIGNAL(filesChanged()),
+    connect(m_geometries, SIGNAL(layoutChanged()),
             this, SLOT(updateTitle()));
 
     //--------------------------------------------------
@@ -206,13 +210,13 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_progressBar->setRange(0,100);
     m_progressBar->setValue(0);
     m_progressBar->hide();
-    connect(m_pointView, SIGNAL(loadStepStarted(QString)),
+    connect(m_geometries, SIGNAL(loadStepStarted(QString)),
             this, SLOT(setProgressBarText(QString)));
-    connect(m_pointView, SIGNAL(loadProgress(int)),
+    connect(m_geometries, SIGNAL(loadProgress(int)),
             m_progressBar, SLOT(setValue(int)));
-    connect(m_pointView, SIGNAL(fileLoadStarted()),
+    connect(m_geometries, SIGNAL(fileLoadStarted()),
             m_progressBar, SLOT(show()));
-    connect(m_pointView, SIGNAL(fileLoadFinished()),
+    connect(m_geometries, SIGNAL(fileLoadFinished()),
             m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     logUILayout->setContentsMargins(2,2,2,2);
@@ -245,6 +249,7 @@ void PointViewerMainWindow::setProgressBarText(QString text)
     m_progressBar->setFormat(text + " (%p%)");
 }
 
+
 void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasUrls())
@@ -261,6 +266,7 @@ void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
     }
 }
 
+
 void PointViewerMainWindow::dropEvent(QDropEvent *event)
 {
     QList<QUrl> urls = event->mimeData()->urls();
@@ -272,7 +278,7 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
          if (urls[i].isLocalFile())
              droppedFiles << urls[i].toLocalFile();
     }
-    m_pointView->loadFiles(droppedFiles);
+    m_geometries->loadFiles(droppedFiles);
 }
 
 
@@ -292,7 +298,8 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
         QStringList files;
         for (int i = 1; i < commandTokens.size(); ++i)
             files << QString(commandTokens[i]);
-        m_pointView->loadFiles(files);
+        m_geometries->clear();
+        m_geometries->loadFiles(files);
     }
     else if (commandTokens[0] == "SET_VIEW_ANGLES")
     {
@@ -358,7 +365,8 @@ void PointViewerMainWindow::openFiles()
     );
     if (files.empty())
         return;
-    m_pointView->loadFiles(files);
+    m_geometries->clear();
+    m_geometries->loadFiles(files);
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
 }
@@ -423,7 +431,7 @@ void PointViewerMainWindow::saveShaderFile()
 
 void PointViewerMainWindow::reloadFiles()
 {
-    m_pointView->reloadFiles();
+    m_geometries->reloadFiles();
 }
 
 
@@ -467,7 +475,7 @@ void PointViewerMainWindow::chooseBackground()
 void PointViewerMainWindow::updateTitle()
 {
     QStringList fileNames;
-    const PointView::GeometryVec& geoms = m_pointView->geometries();
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (auto i = geoms.begin(); i != geoms.end(); ++i)
         fileNames << (*i)->fileName();
     setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));

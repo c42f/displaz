@@ -28,7 +28,7 @@
 // (This is the BSD 3-clause license)
 
 #include "mainwindow.h"
-#include "ptview.h"
+#include "geometrycollection.h"
 
 #include <QtCore/QDataStream>
 #include <QtCore/QTimer>
@@ -199,11 +199,11 @@ int main(int argc, char *argv[])
         QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray)),
                          &window, SLOT(runCommand(QByteArray)));
     }
-    window.pointView().setMaxPointCount(maxPointCount);
+    window.geometries().setMaxPointCount(maxPointCount);
     if (!shaderName.empty())
         window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
-    window.pointView().loadFiles(g_initialFileNames);
+    window.geometries().loadFiles(g_initialFileNames);
 
     return app.exec();
 }
