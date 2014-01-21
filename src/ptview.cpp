@@ -139,15 +139,8 @@ void PointView::restartRender()
 
 void PointView::fixForGeometryChange()
 {
-    if (m_geometries->get().size() == 1)
-    {
-        const Geometry& geom = *m_geometries->get()[0];
-        m_cursorPos = geom.centroid();
-        m_drawOffset = geom.offset();
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-        double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-        m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
-    }
+    if (m_geometries->rowCount() == 1)
+        centreOnGeometry(m_geometries->index(0,0));
     //m_maxPointsPerFrame = g_defaultPointRenderCount;
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
@@ -205,6 +198,17 @@ void PointView::toggleDrawMeshes()
 void PointView::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
+}
+
+
+void PointView::centreOnGeometry(const QModelIndex& index)
+{
+    const Geometry& geom = *m_geometries->get()[index.row()];
+    m_cursorPos = geom.centroid();
+    m_drawOffset = geom.offset();
+    m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
+    m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
 

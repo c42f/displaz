@@ -34,7 +34,8 @@
 #include <vector>
 #include <memory>
 
-#include <QtOpenGL/QGLWidget>
+#include <QGLWidget>
+#include <QModelIndex>
 
 #include "interactivecamera.h"
 #include "geometrycollection.h"
@@ -68,6 +69,8 @@ class PointView : public QGLWidget
         void toggleDrawPoints();
         void toggleDrawMeshes();
         void toggleCameraMode();
+        /// Centre on loaded geometry file at the given index
+        void centreOnGeometry(const QModelIndex& index);
 
     protected:
         // Qt OpenGL callbacks

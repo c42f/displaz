@@ -51,8 +51,9 @@
 #include <QtGui/QSplitter>
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
-#include <QUrl>
 #include <QDropEvent>
+#include <QListView>
+#include <QUrl>
 
 
 //------------------------------------------------------------------------------
@@ -225,11 +226,31 @@ PointViewerMainWindow::PointViewerMainWindow()
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     logDock->setWidget(logUI);
 
+    // Data set list UI
+    QDockWidget* dataSetDock = new QDockWidget(tr("Data Sets"), this);
+    dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
+                              QDockWidget::DockWidgetClosable |
+                              QDockWidget::DockWidgetFloatable);
+    dataSetDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    QWidget* dataSetUI = new QWidget(dataSetDock);
+    QListView* dataSetListView = new QListView(dataSetUI);
+    dataSetListView->setModel(m_geometries);
+    dataSetListView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    dataSetListView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    connect(dataSetListView, SIGNAL(doubleClicked(const QModelIndex&)),
+            m_pointView, SLOT(centreOnGeometry(const QModelIndex&)));
+    QGridLayout* dataSetUILayout = new QGridLayout(dataSetUI);
+    dataSetUILayout->setContentsMargins(2,2,2,2);
+    dataSetUILayout->addWidget(dataSetListView, 0, 0, 1, 1);
+    dataSetDock->setWidget(dataSetUI);
+
     // Set up docked widgets
     addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
     addDockWidget(Qt::LeftDockWidgetArea, shaderEditorDock);
     addDockWidget(Qt::RightDockWidgetArea, logDock);
-    //tabifyDockWidget(shaderParamsDock, shaderEditorDock);
+    addDockWidget(Qt::RightDockWidgetArea, dataSetDock);
+    tabifyDockWidget(logDock, dataSetDock);
+    logDock->raise();
     shaderEditorDock->setVisible(false);
 
     // Add dock widget toggles to view menu
@@ -237,6 +258,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
     viewMenu->addAction(shaderEditorDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
+    viewMenu->addAction(dataSetDock->toggleViewAction());
 
     //--------------------------------------------------
     // Final setup

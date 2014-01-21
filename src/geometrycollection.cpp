@@ -32,6 +32,33 @@
 
 #include <QtCore/QThread>
 
+void GeometryCollection::clear()
+{
+    emit beginRemoveRows(QModelIndex(), 0, m_geometries.size()-1);
+    m_geometries.clear();
+    emit endRemoveRows();
+    emit layoutChanged(); // FIXME ??
+}
+
+
+int GeometryCollection::rowCount(const QModelIndex & parent) const
+{
+    if (parent.isValid())
+        return 0;
+    return m_geometries.size();
+}
+
+
+QVariant GeometryCollection::data(const QModelIndex & index, int role) const
+{
+    if (!index.isValid())
+        return QVariant();
+    if (role != Qt::DisplayRole)
+        return QVariant();
+    return m_geometries[index.row()]->fileName();
+}
+
+
 void GeometryCollection::setMaxPointCount(size_t maxPointCount)
 {
     m_maxPointCount = maxPointCount;
@@ -50,15 +77,17 @@ void GeometryCollection::reloadFiles()
     // FIXME: Call reload() on geometries
     for(size_t i = 0; i < m_geometries.size(); ++i)
         fileNames << m_geometries[i]->fileName();
-    m_geometries.clear();
+    clear();
     loadPointFilesImpl(fileNames);
 }
 
 
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom)
 {
+    emit beginInsertRows(QModelIndex(), m_geometries.size(), m_geometries.size()+1);
     m_geometries.push_back(geom);
-    emit layoutChanged();
+    emit endInsertRows();
+    emit layoutChanged(); // FIXME??
 }
 
 

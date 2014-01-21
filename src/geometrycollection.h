@@ -32,20 +32,22 @@
 
 #include <vector>
 
+#include <QAbstractListModel>
+
 #include "geometry.h"
 
 
 /// Collection of loaded data sets for use with Qt's model view architecture
 ///
 /// Data sets can be points, lines or meshes.
-class GeometryCollection : public QObject
+class GeometryCollection : public QAbstractListModel
 {
     Q_OBJECT
     public:
         typedef std::vector<std::shared_ptr<Geometry>> GeometryVec;
 
         GeometryCollection(QObject * parent = 0)
-            : QObject(parent),
+            : QAbstractListModel(parent),
             m_maxPointCount(100000000)
         { }
 
@@ -53,7 +55,11 @@ class GeometryCollection : public QObject
         const GeometryVec& get() const { return m_geometries; }
 
         /// Remove all geometries from the list
-        void clear() { m_geometries.clear(); }
+        void clear();
+
+        // Following implemented from QAbstractListModel:
+        virtual int rowCount(const QModelIndex & parent = QModelIndex()) const;
+        virtual QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;
 
     public slots:
         /// Set maximum total desired number of points
@@ -74,8 +80,6 @@ class GeometryCollection : public QObject
         void fileLoadStarted();
         /// Emitted when files are finished loading
         void fileLoadFinished();
-        /// Emitted each time the set of geometry changes
-        void layoutChanged();
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
         /// Emitted when progress is made loading a file
