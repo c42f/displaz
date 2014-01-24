@@ -489,9 +489,12 @@ void PointViewerMainWindow::setBackground(const QString& name)
 
 void PointViewerMainWindow::chooseBackground()
 {
-    QColor col = QColorDialog::getColor(QColor(255,255,255), this, "background color");
-    if (col.isValid())
-        m_pointView->setBackground(col);
+    QColor originalColor = m_pointView->background();
+    QColorDialog chooser(originalColor, this);
+    connect(&chooser, SIGNAL(currentColorChanged(QColor)),
+            m_pointView, SLOT(setBackground(QColor)));
+    if (chooser.exec() == QDialog::Rejected)
+        m_pointView->setBackground(originalColor);
 }
 
 

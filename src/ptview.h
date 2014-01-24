@@ -62,6 +62,8 @@ class PointView : public QGLWidget
 
         InteractiveCamera& camera() { return m_camera; }
 
+        QColor background() const { return m_backgroundColor; }
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
