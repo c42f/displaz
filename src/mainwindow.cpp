@@ -37,6 +37,7 @@
 #include "mesh.h"
 #include "logger.h"
 #include "geometrycollection.h"
+#include "datasetui.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -52,7 +53,6 @@
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
 #include <QDropEvent>
-#include <QListView>
 #include <QUrl>
 
 
@@ -68,6 +68,10 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_geometries(0)
 {
     m_geometries = new GeometryCollection(this);
+    connect(m_geometries, SIGNAL(layoutChanged()), this, SLOT(updateTitle()));
+    connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(updateTitle()));
+    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(updateTitle()));
+    connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(updateTitle()));
 
     setWindowTitle("Displaz");
     setAcceptDrops(true);
@@ -166,8 +170,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawMeshes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
-    connect(m_geometries, SIGNAL(layoutChanged()),
-            this, SLOT(updateTitle()));
+    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
+            this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 
     //--------------------------------------------------
     // Docked widgets
@@ -220,7 +224,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     connect(m_geometries, SIGNAL(fileLoadFinished()),
             m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
-    logUILayout->setContentsMargins(2,2,2,2);
+    //logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
     logUILayout->addWidget(m_progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -232,17 +236,13 @@ PointViewerMainWindow::PointViewerMainWindow()
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
     dataSetDock->setAllowedAreas(Qt::AllDockWidgetAreas);
-    QWidget* dataSetUI = new QWidget(dataSetDock);
-    QListView* dataSetListView = new QListView(dataSetUI);
-    dataSetListView->setModel(m_geometries);
-    dataSetListView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    dataSetListView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    connect(dataSetListView, SIGNAL(doubleClicked(const QModelIndex&)),
-            m_pointView, SLOT(centreOnGeometry(const QModelIndex&)));
-    QGridLayout* dataSetUILayout = new QGridLayout(dataSetUI);
-    dataSetUILayout->setContentsMargins(2,2,2,2);
-    dataSetUILayout->addWidget(dataSetListView, 0, 0, 1, 1);
+    DataSetUI* dataSetUI = new DataSetUI(this);
     dataSetDock->setWidget(dataSetUI);
+    QAbstractItemView* dataSetOverview = dataSetUI->view();
+    dataSetOverview->setModel(m_geometries);
+    connect(dataSetOverview, SIGNAL(doubleClicked(const QModelIndex&)),
+            m_pointView, SLOT(centreOnGeometry(const QModelIndex&)));
+    m_pointView->setSelectionModel(dataSetOverview->selectionModel());
 
     // Set up docked widgets
     addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
@@ -269,6 +269,13 @@ PointViewerMainWindow::PointViewerMainWindow()
 void PointViewerMainWindow::setProgressBarText(QString text)
 {
     m_progressBar->setFormat(text + " (%p%)");
+}
+
+
+void PointViewerMainWindow::geometryRowsInserted(const QModelIndex& parent, int first, int last)
+{
+    QItemSelection range(m_geometries->index(first), m_geometries->index(last));
+    m_pointView->selectionModel()->select(range, QItemSelectionModel::Select);
 }
 
 
@@ -503,7 +510,7 @@ void PointViewerMainWindow::updateTitle()
     QStringList fileNames;
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (auto i = geoms.begin(); i != geoms.end(); ++i)
-        fileNames << (*i)->fileName();
+        fileNames << QFileInfo((*i)->fileName()).fileName();
     setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
 }
 

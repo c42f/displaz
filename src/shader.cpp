@@ -203,6 +203,7 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget,
                     if (names.contains("$FILE_LIST"))
                     {
                         // Replace instance(s) of $FILE_LIST with the actual file list
+                        // TODO: Decide whether to deprecate this functionality
                         QStringList inNames;
                         names.swap(inNames);
                         for (int i = 0; i < inNames.size(); ++i)

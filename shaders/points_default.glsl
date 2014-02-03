@@ -7,7 +7,6 @@
 
 uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
-uniform int selector = 0;          //# uiname=File Selector; enum=All Files|$FILE_LIST
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number
@@ -51,8 +50,6 @@ void main()
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
     modifiedPointRadius = pointRadius * trimScale * pointSizeLodMultiplier;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
-    if (selector > 0 && selector != fileNumber)
-        pointScreenSize = 0;
     markerShape = 1;
     // Compute vertex color
     if (colorMode == 0)

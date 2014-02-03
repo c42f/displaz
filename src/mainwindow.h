@@ -40,6 +40,7 @@ class QActionGroup;
 class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
+class QModelIndex;
 
 class HelpDialog;
 class PointView;
@@ -82,6 +83,7 @@ class PointViewerMainWindow : public QMainWindow
         void chooseBackground();
         void updateTitle();
         void setProgressBarText(QString text);
+        void geometryRowsInserted(const QModelIndex& parent, int first, int last);
 
     private:
         QColor backgroundColFromName(const QString& name) const;

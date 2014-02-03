@@ -28,16 +28,17 @@
 // (This is the BSD 3-clause license)
 
 #include "geometrycollection.h"
-#include "fileloader.h"
 
 #include <QtCore/QThread>
+
+#include "tinyformat.h"
+#include "fileloader.h"
 
 void GeometryCollection::clear()
 {
     emit beginRemoveRows(QModelIndex(), 0, m_geometries.size()-1);
     m_geometries.clear();
     emit endRemoveRows();
-    emit layoutChanged(); // FIXME ??
 }
 
 
@@ -53,9 +54,23 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
 {
     if (!index.isValid())
         return QVariant();
-    if (role != Qt::DisplayRole)
-        return QVariant();
-    return m_geometries[index.row()]->fileName();
+    if (role == Qt::DisplayRole)
+        return m_geometries[index.row()]->fileName();
+    return QVariant();
+}
+
+
+Qt::ItemFlags GeometryCollection::flags(const QModelIndex& index) const
+{
+    if (!index.isValid())
+        return 0;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+}
+
+
+bool GeometryCollection::setData(const QModelIndex & index, const QVariant & value, int role)
+{
+    return false;
 }
 
 
@@ -84,10 +99,9 @@ void GeometryCollection::reloadFiles()
 
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom)
 {
-    emit beginInsertRows(QModelIndex(), m_geometries.size(), m_geometries.size()+1);
+    emit beginInsertRows(QModelIndex(), m_geometries.size(), m_geometries.size());
     m_geometries.push_back(geom);
     emit endInsertRows();
-    emit layoutChanged(); // FIXME??
 }
 
 

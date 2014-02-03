@@ -42,6 +42,7 @@
 
 class QGLShaderProgram;
 class QGLFramebufferObject;
+class QItemSelectionModel;
 class QTimer;
 
 class ShaderProgram;
@@ -63,6 +64,11 @@ class PointView : public QGLWidget
         InteractiveCamera& camera() { return m_camera; }
 
         QColor background() const { return m_backgroundColor; }
+
+        /// Return current selection of loaded files
+        const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
+        QItemSelectionModel* selectionModel() { return m_selectionModel; }
+        void setSelectionModel(QItemSelectionModel* selectionModel);
 
     public slots:
         /// Set the backgroud color
@@ -91,11 +97,12 @@ class PointView : public QGLWidget
         void restartRender();
         void setupShaderParamUI();
 
-        void fixForGeometryChange();
+        void geometryChanged();
 
     private:
         void drawCursor(const V3f& P) const;
         size_t drawPoints(const GeometryCollection::GeometryVec& allPoints,
+                          const QModelIndexList& selection,
                           size_t numPointsToRender, bool incrementalDraw);
         void drawMeshes(const GeometryCollection::GeometryVec& geoms) const;
 
@@ -124,6 +131,7 @@ class PointView : public QGLWidget
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
         /// Collection of geometries
         GeometryCollection* m_geometries;
+        QItemSelectionModel* m_selectionModel;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame

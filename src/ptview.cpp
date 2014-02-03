@@ -40,6 +40,7 @@
 #include <QtCore/QTime>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QLayout>
+#include <QItemSelectionModel>
 #include <QtOpenGL/QGLFramebufferObject>
 //#include <QtOpenGL/QGLBuffer>
 
@@ -93,12 +94,19 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     m_drawMeshes(true),
     m_shaderProgram(),
     m_geometries(geometries),
+    m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
     m_incrementalDraw(false),
     m_maxPointsPerFrame(g_defaultPointRenderCount)
 {
-    connect(m_geometries, SIGNAL(layoutChanged()), this, SLOT(fixForGeometryChange()));
+    connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
+    //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
+    connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(geometryChanged()));
+    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryChanged()));
+    connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(geometryChanged()));
+
+    setSelectionModel(new QItemSelectionModel(m_geometries, this));
 
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -127,6 +135,7 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
+
 PointView::~PointView() { }
 
 
@@ -137,10 +146,10 @@ void PointView::restartRender()
 }
 
 
-void PointView::fixForGeometryChange()
+void PointView::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
-        centreOnGeometry(m_geometries->index(0,0));
+        centreOnGeometry(m_geometries->index(0));
     //m_maxPointsPerFrame = g_defaultPointRenderCount;
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
@@ -167,6 +176,25 @@ void PointView::setupShaderParamUI()
             fileNames << QFileInfo(m_geometries->get()[i]->fileName()).fileName();
     }
     m_shaderProgram->setupParameterUI(m_shaderParamsUI, fileNames);
+}
+
+
+void PointView::setSelectionModel(QItemSelectionModel* selectionModel)
+{
+    assert(selectionModel);
+    if (selectionModel->model() != m_geometries)
+    {
+        assert(0 && "Attempt to set incompatible selection model");
+        return;
+    }
+    if (m_selectionModel)
+    {
+        disconnect(m_selectionModel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
+                   this, SLOT(restartRender()));
+    }
+    m_selectionModel = selectionModel;
+    connect(m_selectionModel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
+            this, SLOT(restartRender()));
 }
 
 
@@ -261,13 +289,15 @@ void PointView::paintGL()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    QModelIndexList sel = m_selectionModel->selectedRows();
+
     // Draw bounding boxes
     if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
-        for(size_t i = 0; i < geoms.size(); ++i)
+        for(int i = 0; i < sel.size(); ++i)
         {
             // Draw bounding box
-            Imath::Box3d bbox = geoms[i]->boundingBox();
+            Imath::Box3d bbox = geoms[sel[i].row()]->boundingBox();
             bbox.min -= m_drawOffset;
             bbox.max -= m_drawOffset;
             drawBoundingBox(bbox, Imath::C3f(1));
@@ -282,14 +312,14 @@ void PointView::paintGL()
 
     // Figure out how many points we should render
     size_t totPoints = 0;
-    for (size_t i = 0; i < geoms.size(); ++i)
-        totPoints += geoms[i]->pointCount();
+    for (int i = 0; i < sel.size(); ++i)
+        totPoints += geoms[sel[i].row()]->pointCount();
     size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
     if (m_drawPoints)
     {
         // Render points
-        totDrawn = drawPoints(geoms, numPointsToRender, m_incrementalDraw);
+        totDrawn = drawPoints(geoms, sel, numPointsToRender, m_incrementalDraw);
     }
 
     // Measure frame time to update estimate for how many points we can
@@ -502,10 +532,11 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 /// Draw point cloud
 size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
+                             const QModelIndexList& selection,
                              size_t numPointsToRender,
                              bool incrementalDraw)
 {
-    if (geoms.empty())
+    if (selection.empty())
         return 0;
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -513,18 +544,18 @@ size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
     double quality = 1;
     // Get total number of points we would draw at quality == 1
     size_t totSimplified = 0;
-    for(size_t i = 0; i < geoms.size(); ++i)
-        totSimplified += geoms[i]->simplifiedPointCount(globalCamPos,
-                                                        incrementalDraw);
+    for(int i = 0; i < selection.size(); ++i)
+        totSimplified += geoms[selection[i].row()]->simplifiedPointCount(globalCamPos,
+                                                                         incrementalDraw);
     quality = double(numPointsToRender) / totSimplified;
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
     size_t totDrawn = 0;
-    for(size_t i = 0; i < geoms.size(); ++i)
+    for(int i = 0; i < selection.size(); ++i)
     {
-        Geometry& geom = *geoms[i];
+        Geometry& geom = *geoms[selection[i].row()];
         if(geom.pointCount() == 0)
             continue;
         glPushMatrix();

@@ -103,6 +103,7 @@ include_directories(BEFORE
 )
 
 qt4_wrap_cpp(moc_srcs
+    src/datasetui.h
     src/displazserver.h
     src/dragspinbox.h
     src/fileloader.h
@@ -120,6 +121,7 @@ qt4_wrap_cpp(moc_srcs
 #qt4_add_resources(rcc_srcs package/resources.qrc)
 set(srcs
     ${moc_srcs}
+    src/datasetui.cpp
     src/geometry.cpp
     src/geometrycollection.cpp
     src/glutil.cpp
