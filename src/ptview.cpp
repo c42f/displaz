@@ -555,7 +555,8 @@ size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
     size_t totDrawn = 0;
     for(int i = 0; i < selection.size(); ++i)
     {
-        Geometry& geom = *geoms[selection[i].row()];
+        int geomIdx = selection[i].row();
+        Geometry& geom = *geoms[geomIdx];
         if(geom.pointCount() == 0)
             continue;
         glPushMatrix();
@@ -565,7 +566,7 @@ size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
         //prog.setUniformValue("projectionMatrix", );
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
-        prog.setUniformValue("fileNumber", (GLint)(i + 1));
+        prog.setUniformValue("fileNumber", (GLint)(geomIdx + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
         totDrawn += geom.drawPoints(prog, globalCamPos, quality, incrementalDraw);
         glPopMatrix();
