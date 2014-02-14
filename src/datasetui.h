@@ -28,7 +28,10 @@
 // (This is the BSD 3-clause license)
 
 #include <QListView>
+#include <QKeyEvent>
+#include <QWheelEvent>
 
+#include <iostream>
 
 /// User interface for overview of loaded data sets
 ///
@@ -51,5 +54,23 @@ class DataSetUI : public QWidget
 
     private:
         QListView* m_listView;
+};
+
+
+//------------------------------------------------------------------------------
+/// List view for data sets with additional mouse and keyboard controls:
+///
+/// * Pressing delete removes the currently selected elements
+/// * Mouse wheel scrolls the current selection rather than the scroll area
+class DataSetListView : public QListView
+{
+    Q_OBJECT
+    public:
+        DataSetListView(QWidget* parent = 0)
+            : QListView(parent)
+        { }
+
+        virtual void keyPressEvent(QKeyEvent* event);
+        virtual void wheelEvent(QWheelEvent* event);
 };
 

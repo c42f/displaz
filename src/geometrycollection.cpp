@@ -74,6 +74,20 @@ bool GeometryCollection::setData(const QModelIndex & index, const QVariant & val
 }
 
 
+bool GeometryCollection::removeRows(int row, int count, const QModelIndex& parent)
+{
+    if (parent.isValid())
+        return false;
+    if (row < 0 || row+count > (int)m_geometries.size())
+        return false;
+    emit beginRemoveRows(QModelIndex(), row, row+count-1);
+    m_geometries.erase(m_geometries.begin() + row,
+                       m_geometries.begin() + row + count);
+    emit endRemoveRows();
+    return true;
+}
+
+
 void GeometryCollection::setMaxPointCount(size_t maxPointCount)
 {
     m_maxPointCount = maxPointCount;

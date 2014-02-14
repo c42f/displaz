@@ -65,6 +65,9 @@ class GeometryCollection : public QAbstractListModel
         virtual bool setData(const QModelIndex & index, const QVariant & value,
                              int role = Qt::EditRole);
 
+        virtual bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex());
+
+
     public slots:
         /// Set maximum total desired number of points
         ///

@@ -35,12 +35,15 @@
 #include <QLabel>
 
 
+//------------------------------------------------------------------------------
+// DataSetUI implementation
+
 DataSetUI::DataSetUI(QWidget* parent)
     : QWidget(parent),
     m_listView(0)
 {
     // Main view is a list of data sets by name
-    m_listView = new QListView(this);
+    m_listView = new DataSetListView(this);
     m_listView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_listView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     // Some UI for manipulating the current selection more conveniently than is
@@ -102,4 +105,39 @@ void DataSetUI::selectionInvert()
         QItemSelectionModel::Toggle
     );
 }
+
+
+//------------------------------------------------------------------------------
+// DataSetListView implementation
+
+void DataSetListView::keyPressEvent(QKeyEvent* event)
+{
+    if(event->key() == Qt::Key_Delete)
+    {
+        QModelIndexList sel = selectionModel()->selectedRows();
+        for (int i = sel.size()-1; i >= 0; --i)
+            model()->removeRows(sel[i].row(), 1);
+    }
+    else
+    {
+        QListView::keyPressEvent(event);
+    }
+}
+
+
+void DataSetListView::wheelEvent(QWheelEvent* event)
+{
+    int row = 0;
+    if (selectionModel()->currentIndex().isValid())
+        row = selectionModel()->currentIndex().row();
+    row += (event->delta() < 0) ? 1 : -1;
+    if (row < 0)
+        row = 0;
+    if (row >= model()->rowCount())
+        row = model()->rowCount() - 1;
+    QModelIndex newIndex = model()->index(row, 0);
+    selectionModel()->select(newIndex, QItemSelectionModel::ClearAndSelect);
+    selectionModel()->setCurrentIndex(newIndex, QItemSelectionModel::Current);
+}
+
 
