@@ -27,12 +27,12 @@
 //
 // (This is the BSD 3-clause license)
 
+#include "glutil.h"
 #include "ptview.h"
 #include "mainwindow.h"
 #include "shader.h"
 
 #include "config.h"
-#include "glutil.h"
 #include "logger.h"
 #include "util.h"
 
@@ -42,6 +42,7 @@
 #include <QtGui/QLayout>
 #include <QItemSelectionModel>
 #include <QtOpenGL/QGLFramebufferObject>
+#include <QMessageBox>
 //#include <QtOpenGL/QGLBuffer>
 
 #include "fileloader.h"
@@ -92,6 +93,7 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     m_drawBoundingBoxes(true),
     m_drawPoints(true),
     m_drawMeshes(true),
+    m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
@@ -242,6 +244,12 @@ void PointView::centreOnGeometry(const QModelIndex& index)
 
 void PointView::initializeGL()
 {
+    if (glewInit() != GLEW_OK)
+    {
+        g_logger.error("%s", "Failed to initialize GLEW");
+        m_badOpenGL = true;
+        return;
+    }
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
@@ -251,6 +259,8 @@ void PointView::initializeGL()
 
 void PointView::resizeGL(int w, int h)
 {
+    if (m_badOpenGL)
+        return;
     // Draw on full window
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
@@ -268,6 +278,8 @@ void PointView::resizeGL(int w, int h)
 
 void PointView::paintGL()
 {
+    if (m_badOpenGL)
+        return;
     QTime frameTimer;
     frameTimer.start();
 

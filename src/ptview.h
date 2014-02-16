@@ -124,6 +124,8 @@ class PointView : public QGLWidget
         bool m_drawBoundingBoxes;
         bool m_drawPoints;
         bool m_drawMeshes;
+        /// If true, OpenGL initialization didn't work properly
+        bool m_badOpenGL;
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Shaders for polygonal geometry

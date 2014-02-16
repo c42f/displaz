@@ -28,7 +28,7 @@
 // (This is the BSD 3-clause license)
 
 #include "glutil.h"
-
+#include "tinyformat.h"
 
 void drawBoundingBox(const Imath::Box3d& bbox,
                      const Imath::C3f& col)
@@ -69,5 +69,84 @@ void drawBoundingBox(const Imath::Box3f& bbox,
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
+}
+
+
+/// Get information about openGL type
+bool getGlTypeInfo(int type, const char*& name, int& rows, int& cols)
+{
+    switch(type)
+    {
+        case GL_FLOAT:             rows = 1; cols = 1; name = "GL_FLOAT";             break;
+        case GL_FLOAT_VEC2:        rows = 2; cols = 1; name = "GL_FLOAT_VEC2";        break;
+        case GL_FLOAT_VEC3:        rows = 3; cols = 1; name = "GL_FLOAT_VEC3";        break;
+        case GL_FLOAT_VEC4:        rows = 4; cols = 1; name = "GL_FLOAT_VEC4";        break;
+        case GL_FLOAT_MAT2:        rows = 2; cols = 2; name = "GL_FLOAT_MAT2";        break;
+        case GL_FLOAT_MAT3:        rows = 3; cols = 3; name = "GL_FLOAT_MAT3";        break;
+        case GL_FLOAT_MAT4:        rows = 4; cols = 4; name = "GL_FLOAT_MAT4";        break;
+        case GL_FLOAT_MAT2x3:      rows = 2; cols = 3; name = "GL_FLOAT_MAT2x3";      break;
+        case GL_FLOAT_MAT2x4:      rows = 2; cols = 4; name = "GL_FLOAT_MAT2x4";      break;
+        case GL_FLOAT_MAT3x2:      rows = 3; cols = 2; name = "GL_FLOAT_MAT3x2";      break;
+        case GL_FLOAT_MAT3x4:      rows = 3; cols = 4; name = "GL_FLOAT_MAT3x4";      break;
+        case GL_FLOAT_MAT4x2:      rows = 4; cols = 2; name = "GL_FLOAT_MAT4x2";      break;
+        case GL_FLOAT_MAT4x3:      rows = 4; cols = 3; name = "GL_FLOAT_MAT4x3";      break;
+        case GL_INT:               rows = 1; cols = 1; name = "GL_INT";               break;
+        case GL_INT_VEC2:          rows = 2; cols = 1; name = "GL_INT_VEC2";          break;
+        case GL_INT_VEC3:          rows = 3; cols = 1; name = "GL_INT_VEC3";          break;
+        case GL_INT_VEC4:          rows = 4; cols = 1; name = "GL_INT_VEC4";          break;
+        case GL_UNSIGNED_INT:      rows = 1; cols = 1; name = "GL_UNSIGNED_INT";      break;
+        case GL_UNSIGNED_INT_VEC2: rows = 2; cols = 1; name = "GL_UNSIGNED_INT_VEC2"; break;
+        case GL_UNSIGNED_INT_VEC3: rows = 3; cols = 1; name = "GL_UNSIGNED_INT_VEC3"; break;
+        case GL_UNSIGNED_INT_VEC4: rows = 4; cols = 1; name = "GL_UNSIGNED_INT_VEC4"; break;
+        case GL_DOUBLE:            rows = 1; cols = 1; name = "GL_DOUBLE";            break;
+        default:  return false; break;
+    }
+    return true;
+}
+
+
+std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog)
+{
+    std::vector<ShaderAttribute> attrs;
+    GLint numActiveAttrs = 0;
+    glGetProgramiv(prog, GL_ACTIVE_ATTRIBUTES, &numActiveAttrs);
+    GLint maxAttrLength = 0;
+    glGetProgramiv(prog, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxAttrLength);
+    std::vector<GLchar> nameData(maxAttrLength);
+    for (int attrIdx = 0; attrIdx < numActiveAttrs; ++attrIdx)
+    {
+        GLint arraySize = 0;
+        GLenum type = 0;
+        GLsizei nameLength = 0;
+        glGetActiveAttrib(prog, attrIdx, nameData.size(),
+                          &nameLength, &arraySize, &type, &nameData[0]);
+        const char* typeName = 0;
+        int rows = 1;
+        int cols = 1;
+        getGlTypeInfo(type, typeName, rows, cols);
+        ShaderAttribute attr;
+        attr.type = type;
+        attr.count = arraySize;
+        attr.name = std::string(&nameData[0], nameLength);
+        attr.rows = rows;
+        attr.cols = cols;
+        attrs.push_back(attr);
+    }
+    return attrs;
+}
+
+
+void printActiveShaderAttributes(GLuint prog)
+{
+    std::vector<ShaderAttribute> attrs = activeShaderAttributes(prog);
+    for (size_t attrIdx = 0; attrIdx < attrs.size(); ++attrIdx)
+    {
+        const ShaderAttribute& attr = attrs[attrIdx];
+        const char* typeName = 0;
+        int rows = 1;
+        int cols = 1;
+        getGlTypeInfo(attr.type, typeName, rows, cols);
+        tfm::printf("   %s[%d] %s\n", typeName, attr.count, attr.name);
+    }
 }
 

@@ -191,24 +191,13 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 //------------------------------------------------------------------------------
 // PointArray implementation
 PointArray::PointArray()
-    : m_npoints(0)
+    : m_npoints(0),
+    m_P(0)
 { }
 
 
 PointArray::~PointArray()
 { }
-
-
-template<typename T>
-void reorderArray(std::unique_ptr<T[]>& data, const size_t* inds, size_t size)
-{
-    if (!data)
-        return;
-    std::unique_ptr<T[]> tmpData(new T[size]);
-    for (size_t i = 0; i < size; ++i)
-        tmpData[i] = data[inds[i]];
-    data.swap(tmpData);
-}
 
 
 bool PointArray::loadFile(QString fileName, size_t maxPointCount)
@@ -250,22 +239,27 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         if (fabs(offset.z) < 10000)
             offset.z = 0;
         // Allocate all arrays
-        m_P.reset(new V3f[m_npoints]);
-        m_intensity.reset(new float[m_npoints]);
-        m_returnNumber.reset(new unsigned char[m_npoints]);
-        m_numberOfReturns.reset(new unsigned char[m_npoints]);
-        m_pointSourceId.reset(new unsigned char[m_npoints]);
-        m_classification.reset(new unsigned char[m_npoints]);
-        if (hasColor)
-            m_color.reset(new C3f[m_npoints]);
+        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", m_npoints));
+        m_P = (V3f*)m_fields[0].as<float>();
         // Output iterators for the output arrays
-        V3f* outP = m_P.get();
-        float* outIntens = m_intensity.get();
-        unsigned char* returnNumber = m_returnNumber.get();
-        unsigned char* numReturns = m_numberOfReturns.get();
-        unsigned char* pointSourceId = m_pointSourceId.get();
-        unsigned char* classification = m_classification.get();
-        V3f* outCol = m_color.get();
+        V3f* position           = m_P;
+        float*   intensity      = m_fields[1].as<float>();
+        uint8_t* returnNumber   = m_fields[2].as<uint8_t>();
+        uint8_t* numReturns     = m_fields[3].as<uint8_t>();
+        uint8_t* pointSourceId  = m_fields[4].as<uint8_t>();
+        uint8_t* classification = m_fields[5].as<uint8_t>();
+        uint16_t* color = 0;
+        if (hasColor)
+        {
+            m_fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
+                                              "color", m_npoints));
+            color = m_fields.back().as<uint16_t>();
+        }
         // Read big chunks of points at a time
         pdal::PointBuffer buf(schema);
         // Cache dimensions for fast access to buffer
@@ -302,8 +296,8 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
                 if(readCount < nextStore)
                     continue;
                 // Store the point
-                *outP++ = P - offset;
-                *outIntens++   = buf.getField<uint16_t>(intensityDim, i);
+                *position++ = P - offset;
+                *intensity++   = buf.getField<uint16_t>(intensityDim, i);
                 *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
                 *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
                 *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
@@ -311,10 +305,9 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
                 // Extract point RGB
                 if (hasColor)
                 {
-                    *outCol++ = (1.0f/USHRT_MAX) *
-                                C3f(rDim->applyScaling(buf.getField<uint16_t>(*rDim, i)),
-                                    gDim->applyScaling(buf.getField<uint16_t>(*gDim, i)),
-                                    bDim->applyScaling(buf.getField<uint16_t>(*bDim, i)));
+                    *color++ = buf.getField<uint16_t>(*rDim, i);
+                    *color++ = buf.getField<uint16_t>(*gDim, i);
+                    *color++ = buf.getField<uint16_t>(*bDim, i);
                 }
                 // Figure out which point will be the next stored point.
                 nextDecimateBlock += decimate;
@@ -362,28 +355,33 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         // noticable precision by storing the data as floats)
         if (fabs(lasReader->header.min_z) > 10000)
             offset.z = lasReader->header.min_z;
-        m_P.reset(new V3f[m_npoints]);
-        m_intensity.reset(new float[m_npoints]);
-        m_returnNumber.reset(new unsigned char[m_npoints]);
-        m_numberOfReturns.reset(new unsigned char[m_npoints]);
-        m_pointSourceId.reset(new unsigned char[m_npoints]);
-        m_classification.reset(new unsigned char[m_npoints]);
+        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", m_npoints));
+        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", m_npoints));
+        m_P = (V3f*)m_fields[0].as<float>();
         // Iterate over all points & pull in the data.
-        V3f* outP = m_P.get();
-        float* outIntens = m_intensity.get();
-        unsigned char* returnNumber = m_returnNumber.get();
-        unsigned char* numReturns = m_numberOfReturns.get();
-        unsigned char* pointSourceId = m_pointSourceId.get();
-        unsigned char* classification = m_classification.get();
+        V3f* position           = m_P;
+        float*   intensity      = m_fields[1].as<float>();
+        uint8_t* returnNumber   = m_fields[2].as<uint8_t>();
+        uint8_t* numReturns     = m_fields[3].as<uint8_t>();
+        uint8_t* pointSourceId  = m_fields[4].as<uint8_t>();
+        uint8_t* classification = m_fields[5].as<uint8_t>();
         size_t readCount = 0;
         size_t nextDecimateBlock = 1;
         size_t nextStore = 1;
         if (!lasReader->read_point())
             return false;
         const LASpoint& point = lasReader->point;
+        uint16_t* color = 0;
         if (point.have_rgb)
-            m_color.reset(new C3f[m_npoints]);
-        V3f* outCol = m_color.get();
+        {
+            m_fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
+                                              "color", m_npoints));
+            color = m_fields.back().as<uint16_t>();
+        }
         do
         {
             // Read a point from the las file
@@ -398,16 +396,20 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             if(readCount < nextStore)
                 continue;
             // Store the point
-            *outP++ = P - offset;
+            *position++ = P - offset;
             // float intens = float(point.scan_angle_rank) / 40;
-            *outIntens++ = point.intensity;
+            *intensity++ = point.intensity;
             *returnNumber++ = point.return_number;
             *numReturns++ = point.number_of_returns_of_given_pulse;
             *pointSourceId++ = point.point_source_ID;
             *classification++ = point.classification;
             // Extract point RGB
-            if (outCol)
-                *outCol++ = (1.0f/USHRT_MAX) * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
+            if (color)
+            {
+                *color++ = point.rgb[0];
+                *color++ = point.rgb[1];
+                *color++ = point.rgb[2];
+            }
             // Figure out which point will be the next stored point.
             nextDecimateBlock += decimate;
             nextStore = nextDecimateBlock;
@@ -424,7 +426,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         {
             g_logger.warning("Expected %d points in file \"%s\", got %d",
                              totPoints, fileName, readCount);
-            m_npoints = outP - m_P.get();
+            m_npoints = position - m_P;
             totPoints = readCount;
         }
         lasReader->close();
@@ -460,7 +462,8 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             return false;
         if (totPoints > 0)
             offset = points[0];
-        m_P.reset(new V3f[m_npoints]);
+        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
+        m_P = (V3f*)m_fields[0].as<float>();
         for (size_t i = 0; i < m_npoints; ++i)
         {
             m_P[i] = points[i] - offset;
@@ -493,13 +496,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     m_rootNode.reset(makeTree(0, &inds[0], 0, m_npoints, &m_P[0],
                               rootBound.center(), rootRadius, progressFunc));
 
-    reorderArray(m_P, inds.get(), m_npoints);
-    reorderArray(m_color, inds.get(), m_npoints);
-    reorderArray(m_intensity, inds.get(), m_npoints);
-    reorderArray(m_returnNumber, inds.get(), m_npoints);
-    reorderArray(m_numberOfReturns, inds.get(), m_npoints);
-    reorderArray(m_pointSourceId, inds.get(), m_npoints);
-    reorderArray(m_classification, inds.get(), m_npoints);
+    emit loadStepStarted("Reordering fields");
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        m_fields[i].reorder(inds.get(), m_npoints);
+        emit loadProgress(100*i/(m_fields.size()+1));
+    }
+    m_P = (V3f*)m_fields[0].as<float>();
+
     return true;
 }
 
@@ -507,7 +511,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 V3d PointArray::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
                            double longitudinalScale, double* distance) const
 {
-    size_t idx = closestPointToRay(m_P.get(), m_npoints, rayOrigin - offset(),
+    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
                                    rayDirection, longitudinalScale, distance);
     if (m_npoints == 0)
         return V3d(0);
@@ -577,28 +581,43 @@ void PointArray::drawTree() const
 }
 
 
-namespace {
-template<typename T, typename ArrayT>
-void enableAttrOrSetDefault(QGLShaderProgram& prog, const char* attrName, const ArrayT& nonNull, const T& defaultValue)
-{
-    if (nonNull)
-        prog.enableAttributeArray(attrName);
-    else
-        prog.setAttributeValue(attrName, defaultValue);
-}
-}
-
-
 size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
                               double quality, bool incrementalDraw) const
 {
-    prog.enableAttributeArray("position");
-    enableAttrOrSetDefault(prog, "intensity",       m_intensity,       0.0f);
-    enableAttrOrSetDefault(prog, "returnNumber",     m_returnNumber,     0.0f);
-    enableAttrOrSetDefault(prog, "numberOfReturns", m_numberOfReturns, 0.0f);
-    enableAttrOrSetDefault(prog, "pointSourceId",   m_pointSourceId,   0.0f);
-    enableAttrOrSetDefault(prog, "classification",  m_classification,  0.0f);
-    enableAttrOrSetDefault(prog, "color",           m_color,  QColor(0,0,0));
+    std::vector<ShaderAttribute> activeAttrs = activeShaderAttributes(prog.programId());
+    // Figure out shader locations for each point field
+    // TODO: attributeLocation() forces the OpenGL usage here to be
+    // synchronous.  Does this matter?  (Alternative: bind them ourselves.)
+    std::vector<int> fieldShaderLocations(m_fields.size(), -1);
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        fieldShaderLocations[i] = prog.attributeLocation(m_fields[i].name.c_str());
+        // FIXME: Ensure compatibility between point field and shader field
+    }
+    // Map from shader attributes to associated fields
+    std::vector<int> shaderAttrFieldInds(activeAttrs.size(), -1);
+    for (size_t j = 0; j < activeAttrs.size(); ++j)
+    {
+        for (size_t i = 0; i < m_fields.size(); ++i)
+            if (activeAttrs[j].name == m_fields[i].name)
+                shaderAttrFieldInds[j] = i;
+    }
+    // Zero out active attributes which don't have associated fields
+    GLfloat zeros[16] = {0};
+    for (size_t j = 0; j < activeAttrs.size(); ++j)
+    {
+        if (shaderAttrFieldInds[j] < 0)
+        {
+            prog.setAttributeValue(j, zeros, activeAttrs[j].rows,
+                                   activeAttrs[j].cols);
+        }
+    }
+    // Enable attributes which have associated fields
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        if (fieldShaderLocations[i] >= 0)
+            prog.enableAttributeArray(fieldShaderLocations[i]);
+    }
 
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
@@ -637,13 +656,12 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         // radii are scaled up to keep the total area covered by the points
         // constant.
         //lodMultiplier = sqrt(double(node->size())/ndraw);
-        prog.setAttributeArray("position",  (const GLfloat*)(m_P.get() + idx), 3);
-        if (m_intensity)       prog.setAttributeArray("intensity", m_intensity.get() + idx,           1);
-        if (m_returnNumber)     prog.setAttributeArray("returnNumber",     GL_UNSIGNED_BYTE, m_returnNumber.get()     + idx, 1);
-        if (m_numberOfReturns) prog.setAttributeArray("numberOfReturns", GL_UNSIGNED_BYTE, m_numberOfReturns.get() + idx, 1);
-        if (m_pointSourceId)   prog.setAttributeArray("pointSourceId",   GL_UNSIGNED_BYTE, m_pointSourceId.get()   + idx, 1);
-        if (m_classification)  prog.setAttributeArray("classification",  GL_UNSIGNED_BYTE, m_classification.get()  + idx, 1);
-        if (m_color)           prog.setAttributeArray("color", (const GLfloat*)(m_color.get() + idx), 3);
+        for (size_t i = 0; i < m_fields.size(); ++i)
+        {
+            prog.setAttributeArray(fieldShaderLocations[i], glBaseType(m_fields[i].type),
+                                   m_fields[i].data.get() + idx*m_fields[i].type.size(),
+                                   m_fields[i].type.count);
+        }
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
         node->nextBeginIndex += ndraw;
@@ -653,13 +671,11 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
 
     // Disable all attribute arrays - leaving these enabled seems to screw with
     // the OpenGL fixed function pipeline in unusual ways.
-    prog.disableAttributeArray("position");
-    prog.disableAttributeArray("intensity");
-    prog.disableAttributeArray("returnNumber");
-    prog.disableAttributeArray("numberOfReturns");
-    prog.disableAttributeArray("pointSourceId");
-    prog.disableAttributeArray("classification");
-    prog.disableAttributeArray("color");
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        if (fieldShaderLocations[i] >= 0)
+            prog.disableAttributeArray(fieldShaderLocations[i]);
+    }
     return totDrawn;
 }
 

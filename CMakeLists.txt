@@ -33,6 +33,8 @@ else()
     set(DISPLAZ_DOC_DIR "share/doc/displaz")
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 #------------------------------------------------------------------------------
 # Find third party dependencies
 
@@ -79,6 +81,7 @@ else()
     endif()
 endif()
 
+find_package(GLEW)
 find_package(OpenGL REQUIRED)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
@@ -97,6 +100,7 @@ endif()
 
 include_directories(BEFORE
     thirdparty
+    ${GLEW_INCLUDE_DIR}
     ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
     ${THIRDPARTY_INSTALL_DIR}/include
@@ -131,6 +135,7 @@ set(srcs
     src/mesh.cpp
     src/ptview.cpp
     src/pointarray.cpp
+    src/pointfield.cpp
     src/shadereditor.cpp
     src/shader.cpp
     src/util.cpp
@@ -171,7 +176,7 @@ add_dependencies(displaz ${external_builds})
 
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY}
+    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
 )
 if (DISPLAZ_USE_PDAL)
     target_link_libraries (displaz ${PDAL_LIBRARIES})

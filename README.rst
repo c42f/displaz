@@ -103,6 +103,7 @@ third party projects are gratefully acknowledged:
 * LASLib - http://www.cs.unc.edu/~isenburg/lastools
 * ilmbase - http://www.openexr.com
 * rply - http://www.impa.br/~diego/software/rply
+* GLEW - http://glew.sourceforge.net/
 * Small pieces from OpenImageIO - http://openimageio.org
 
 
@@ -113,6 +114,7 @@ Before building, you need the following
 
 * cmake >= 2.8
 * Qt >= 4.7
+* GLEW >= 1.5.2 (or so)
 * Python docutils (optional - required to build the html documentation)
 
 The additional third party libraries are downloaded and built automatically by

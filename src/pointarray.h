@@ -30,14 +30,17 @@
 #ifndef DISPLAZ_POINTARRAY_H_INCLUDED
 #define DISPLAZ_POINTARRAY_H_INCLUDED
 
+#include <cassert>
 #include <memory>
 #include <vector>
 
 #include "geometry.h"
+#include "pointfield.h"
 
 class QGLShaderProgram;
 
 struct OctreeNode;
+
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
@@ -68,16 +71,14 @@ class PointArray : public Geometry
     private:
         friend struct ProgressFunc;
 
+        /// Total number of points
         size_t m_npoints;
-        V3d m_offset;
+        /// Spatial hierarchy
         std::unique_ptr<OctreeNode> m_rootNode;
-        std::unique_ptr<V3f[]> m_P;
-        std::unique_ptr<float[]> m_intensity;
-        std::unique_ptr<C3f[]> m_color;
-        std::unique_ptr<unsigned char[]> m_returnNumber;
-        std::unique_ptr<unsigned char[]> m_numberOfReturns;
-        std::unique_ptr<unsigned char[]> m_pointSourceId;
-        std::unique_ptr<unsigned char[]> m_classification;
+        /// Point data field storage
+        std::vector<PointFieldData> m_fields;
+        /// A position field is required.  Alias for convenience:
+        V3f* m_P;
 };
 
 

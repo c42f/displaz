@@ -27,18 +27,10 @@
 //
 // (This is the BSD 3-clause license)
 
+#ifndef GLUTIL_H_INCLUDED
+#define GLUTIL_H_INCLUDED
 
-//#define GL_GLEXT_PROTOTYPES
-// Hack: define gl flags which are normally done by GLEW...
-// perhaps should bring glew back as a dependency...
-#ifndef GL_VERTEX_PROGRAM_POINT_SIZE
-#   define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
-#endif
-#ifndef GL_POINT_SPRITE
-#   define GL_POINT_SPRITE 0x8861
-#endif
-
-#include <QtOpenGL/qgl.h>
+#include <GL/glew.h>
 
 #include "util.h"
 
@@ -79,4 +71,30 @@ inline void glLoadMatrix(const Imath::M44f& m)
     glLoadMatrixf((GLfloat*)m[0]);
 }
 
+//------------------------------------------------------------------------------
+// Shader utilities
 
+/// Metadata for an OpenGL shader input attribute
+///
+/// A compiled shader can be queried for metadata about shader attributes.
+/// This allows us to do various things, such as set sensible default values
+/// when points don't have a desired attribute.
+struct ShaderAttribute
+{
+    int type;         /// Attribute type as returned by glGetActiveAttrib()
+    int count;        /// Number of elements in array
+    int rows;         /// Number of rows for vectors/matrices
+    int cols;         /// Number of columns for matrices (1 otherwise)
+    std::string name; /// Name of attribute
+};
+
+
+/// Get list of all active attributes on the given shader program
+std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog);
+
+
+/// Debug: print full list of active shader attributes for the given shader program
+void printActiveShaderAttributes(GLuint prog);
+
+
+#endif // GLUTIL_H_INCLUDED

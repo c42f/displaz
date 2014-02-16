@@ -31,7 +31,7 @@
 
 #include <memory>
 
-#include <QtOpenGL/qgl.h>
+#include "glutil.h"
 #include <QtOpenGL/QGLShaderProgram>
 
 #include "tinyformat.h"
