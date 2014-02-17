@@ -69,6 +69,16 @@ class PointArray : public Geometry
         void drawTree() const;
 
     private:
+        bool loadLas(QString fileName, size_t maxPointCount,
+                     std::vector<PointFieldData>& fields, V3d& offset,
+                     size_t& npoints, size_t& totPoints,
+                     Imath::Box3d& bbox, V3d& centroid);
+
+        bool loadText(QString fileName, size_t maxPointCount,
+                      std::vector<PointFieldData>& fields, V3d& offset,
+                      size_t& npoints, size_t& totPoints,
+                      Imath::Box3d& bbox, V3d& centroid);
+
         friend struct ProgressFunc;
 
         /// Total number of points
@@ -78,6 +88,7 @@ class PointArray : public Geometry
         /// Point data field storage
         std::vector<PointFieldData> m_fields;
         /// A position field is required.  Alias for convenience:
+        int m_positionFieldIdx;
         V3f* m_P;
 };
 

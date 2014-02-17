@@ -192,6 +192,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 // PointArray implementation
 PointArray::PointArray()
     : m_npoints(0),
+    m_positionFieldIdx(-1),
     m_P(0)
 { }
 
@@ -200,215 +201,107 @@ PointArray::~PointArray()
 { }
 
 
-bool PointArray::loadFile(QString fileName, size_t maxPointCount)
+bool PointArray::loadLas(QString fileName, size_t maxPointCount,
+                         std::vector<PointFieldData>& fields, V3d& offset,
+                         size_t& npoints, size_t& totPoints,
+                         Imath::Box3d& bbox, V3d& centroid)
 {
-    QTime loadTimer;
-    loadTimer.start();
-    setFileName(fileName);
-    size_t totPoints = 0;
     V3d Psum(0);
-    Imath::Box3d bbox;
-    V3d offset(0);
-    emit loadStepStarted("Reading file");
-    if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
 #ifdef DISPLAZ_USE_PDAL
-    {
-        // Open file
-        std::unique_ptr<pdal::Stage> reader(
-            new pdal::drivers::las::Reader(fileName.toAscii().constData()));
-        reader->initialize();
-        const pdal::Schema& schema = reader->getSchema();
-        bool hasColor = bool(schema.getDimensionOptional("Red"));
+    // Open file
+    std::unique_ptr<pdal::Stage> reader(
+        new pdal::drivers::las::Reader(fileName.toAscii().constData()));
+    reader->initialize();
+    const pdal::Schema& schema = reader->getSchema();
+    bool hasColor = bool(schema.getDimensionOptional("Red"));
 
-        // Figure out how much to decimate the point cloud.
-        totPoints = reader->getNumPoints();
-        size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
-        if(decimate > 1)
-        {
-            g_logger.info("Decimating \"%s\" by factor of %d",
-                          fileName.toStdString(), decimate);
-        }
-        m_npoints = (totPoints + decimate - 1) / decimate;
-        const pdal::Bounds<double>& bbox = reader->getBounds();
-        offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
-                     0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
-                     0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
-        // Attempt to place all data on the same vertical scale, but allow
-        // other offsets if the magnitude of z is too large (and we would
-        // therefore loose noticable precision by storing the data as floats)
-        if (fabs(offset.z) < 10000)
-            offset.z = 0;
-        // Allocate all arrays
-        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", m_npoints));
-        m_P = (V3f*)m_fields[0].as<float>();
-        // Output iterators for the output arrays
-        V3f* position           = m_P;
-        float*   intensity      = m_fields[1].as<float>();
-        uint8_t* returnNumber   = m_fields[2].as<uint8_t>();
-        uint8_t* numReturns     = m_fields[3].as<uint8_t>();
-        uint8_t* pointSourceId  = m_fields[4].as<uint8_t>();
-        uint8_t* classification = m_fields[5].as<uint8_t>();
-        uint16_t* color = 0;
-        if (hasColor)
-        {
-            m_fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
-                                              "color", m_npoints));
-            color = m_fields.back().as<uint16_t>();
-        }
-        // Read big chunks of points at a time
-        pdal::PointBuffer buf(schema);
-        // Cache dimensions for fast access to buffer
-        const pdal::Dimension& xDim = schema.getDimension("X");
-        const pdal::Dimension& yDim = schema.getDimension("Y");
-        const pdal::Dimension& zDim = schema.getDimension("Z");
-        const pdal::Dimension *rDim = 0, *gDim = 0, *bDim = 0;
-        if (hasColor)
-        {
-            rDim = &schema.getDimension("Red");
-            gDim = &schema.getDimension("Green");
-            bDim = &schema.getDimension("Blue");
-        }
-        const pdal::Dimension& intensityDim       = schema.getDimension("Intensity");
-        const pdal::Dimension& returnNumberDim    = schema.getDimension("ReturnNumber");
-        const pdal::Dimension& numberOfReturnsDim = schema.getDimension("NumberOfReturns");
-        const pdal::Dimension& pointSourceIdDim   = schema.getDimension("PointSourceId");
-        const pdal::Dimension& classificationDim  = schema.getDimension("Classification");
-        std::unique_ptr<pdal::StageSequentialIterator> chunkIter(
-                reader->createSequentialIterator(buf));
-        size_t readCount = 0;
-        size_t nextDecimateBlock = 1;
-        size_t nextStore = 1;
-        while (size_t numRead = chunkIter->read(buf))
-        {
-            for (size_t i = 0; i < numRead; ++i)
-            {
-                ++readCount;
-                V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
-                            yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
-                            zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
-                bbox.extendBy(P);
-                Psum += P;
-                if(readCount < nextStore)
-                    continue;
-                // Store the point
-                *position++ = P - offset;
-                *intensity++   = buf.getField<uint16_t>(intensityDim, i);
-                *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
-                *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
-                *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
-                *classification++ = buf.getField<uint8_t>(classificationDim, i);
-                // Extract point RGB
-                if (hasColor)
-                {
-                    *color++ = buf.getField<uint16_t>(*rDim, i);
-                    *color++ = buf.getField<uint16_t>(*gDim, i);
-                    *color++ = buf.getField<uint16_t>(*bDim, i);
-                }
-                // Figure out which point will be the next stored point.
-                nextDecimateBlock += decimate;
-                nextStore = nextDecimateBlock;
-                if(decimate > 1)
-                {
-                    // Randomize selected point within block to avoid repeated patterns
-                    nextStore += (qrand() % decimate);
-                    if(nextDecimateBlock <= totPoints && nextStore > totPoints)
-                        nextStore = totPoints;
-                }
-            }
-            emit loadProgress(100*readCount/totPoints);
-        }
+    // Figure out how much to decimate the point cloud.
+    totPoints = reader->getNumPoints();
+    size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
+    if(decimate > 1)
+    {
+        g_logger.info("Decimating \"%s\" by factor of %d",
+                      fileName.toStdString(), decimate);
     }
-#else
+    npoints = (totPoints + decimate - 1) / decimate;
+    const pdal::Bounds<double>& bbox = reader->getBounds();
+    offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
+                 0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
+                 0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
+    // Attempt to place all data on the same vertical scale, but allow
+    // other offsets if the magnitude of z is too large (and we would
+    // therefore loose noticable precision by storing the data as floats)
+    if (fabs(offset.z) < 10000)
+        offset.z = 0;
+    // Allocate all arrays
+    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", npoints));
+    // Output iterators for the output arrays
+    V3f* position           = (V3f*)fields[0].as<float>();
+    float*   intensity      = fields[1].as<float>();
+    uint8_t* returnNumber   = fields[2].as<uint8_t>();
+    uint8_t* numReturns     = fields[3].as<uint8_t>();
+    uint8_t* pointSourceId  = fields[4].as<uint8_t>();
+    uint8_t* classification = fields[5].as<uint8_t>();
+    uint16_t* color = 0;
+    if (hasColor)
     {
-        LASreadOpener lasReadOpener;
-#ifdef _WIN32
-        // Hack: liblas doesn't like forward slashes as path separators on windows
-        fileName = fileName.replace('/', '\\');
-#endif
-        lasReadOpener.set_file_name(fileName.toAscii().constData());
-        std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
-
-        if(!lasReader)
+        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
+                                        "color", npoints));
+        color = fields.back().as<uint16_t>();
+    }
+    // Read big chunks of points at a time
+    pdal::PointBuffer buf(schema);
+    // Cache dimensions for fast access to buffer
+    const pdal::Dimension& xDim = schema.getDimension("X");
+    const pdal::Dimension& yDim = schema.getDimension("Y");
+    const pdal::Dimension& zDim = schema.getDimension("Z");
+    const pdal::Dimension *rDim = 0, *gDim = 0, *bDim = 0;
+    if (hasColor)
+    {
+        rDim = &schema.getDimension("Red");
+        gDim = &schema.getDimension("Green");
+        bDim = &schema.getDimension("Blue");
+    }
+    const pdal::Dimension& intensityDim       = schema.getDimension("Intensity");
+    const pdal::Dimension& returnNumberDim    = schema.getDimension("ReturnNumber");
+    const pdal::Dimension& numberOfReturnsDim = schema.getDimension("NumberOfReturns");
+    const pdal::Dimension& pointSourceIdDim   = schema.getDimension("PointSourceId");
+    const pdal::Dimension& classificationDim  = schema.getDimension("Classification");
+    std::unique_ptr<pdal::StageSequentialIterator> chunkIter(
+            reader->createSequentialIterator(buf));
+    size_t readCount = 0;
+    size_t nextDecimateBlock = 1;
+    size_t nextStore = 1;
+    while (size_t numRead = chunkIter->read(buf))
+    {
+        for (size_t i = 0; i < numRead; ++i)
         {
-            g_logger.error("Couldn't open file \"%s\"", fileName);
-            return false;
-        }
-
-        //std::ofstream dumpFile("points.txt");
-        // Figure out how much to decimate the point cloud.
-        totPoints = lasReader->header.number_of_point_records;
-        size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
-        if(decimate > 1)
-        {
-            g_logger.info("Decimating \"%s\" by factor of %d",
-                          fileName.toStdString(), decimate);
-        }
-        m_npoints = (totPoints + decimate - 1) / decimate;
-        offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
-        // Attempt to place all data on the same vertical scale, but allow other
-        // offsets if the magnitude of z is too large (and we would therefore loose
-        // noticable precision by storing the data as floats)
-        if (fabs(lasReader->header.min_z) > 10000)
-            offset.z = lasReader->header.min_z;
-        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", m_npoints));
-        m_fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", m_npoints));
-        m_P = (V3f*)m_fields[0].as<float>();
-        // Iterate over all points & pull in the data.
-        V3f* position           = m_P;
-        float*   intensity      = m_fields[1].as<float>();
-        uint8_t* returnNumber   = m_fields[2].as<uint8_t>();
-        uint8_t* numReturns     = m_fields[3].as<uint8_t>();
-        uint8_t* pointSourceId  = m_fields[4].as<uint8_t>();
-        uint8_t* classification = m_fields[5].as<uint8_t>();
-        size_t readCount = 0;
-        size_t nextDecimateBlock = 1;
-        size_t nextStore = 1;
-        if (!lasReader->read_point())
-            return false;
-        const LASpoint& point = lasReader->point;
-        uint16_t* color = 0;
-        if (point.have_rgb)
-        {
-            m_fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
-                                              "color", m_npoints));
-            color = m_fields.back().as<uint16_t>();
-        }
-        do
-        {
-            // Read a point from the las file
             ++readCount;
-            if(readCount % 10000 == 0)
-                emit loadProgress(100*readCount/totPoints);
-            V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
+            V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
+                        yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
+                        zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
             bbox.extendBy(P);
             Psum += P;
-            //if (std::max(abs(P.x - 389661.571), (abs(P.y - 7281119.875))) < 500)
-                //tfm::format(dumpFile, "%.3f %.3f %.3f\n", P.x, P.y, P.z);
             if(readCount < nextStore)
                 continue;
             // Store the point
             *position++ = P - offset;
-            // float intens = float(point.scan_angle_rank) / 40;
-            *intensity++ = point.intensity;
-            *returnNumber++ = point.return_number;
-            *numReturns++ = point.number_of_returns_of_given_pulse;
-            *pointSourceId++ = point.point_source_ID;
-            *classification++ = point.classification;
+            *intensity++   = buf.getField<uint16_t>(intensityDim, i);
+            *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
+            *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
+            *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
+            *classification++ = buf.getField<uint8_t>(classificationDim, i);
             // Extract point RGB
-            if (color)
+            if (hasColor)
             {
-                *color++ = point.rgb[0];
-                *color++ = point.rgb[1];
-                *color++ = point.rgb[2];
+                *color++ = buf.getField<uint16_t>(*rDim, i);
+                *color++ = buf.getField<uint16_t>(*gDim, i);
+                *color++ = buf.getField<uint16_t>(*bDim, i);
             }
             // Figure out which point will be the next stored point.
             nextDecimateBlock += decimate;
@@ -421,67 +314,223 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
                     nextStore = totPoints;
             }
         }
-        while(lasReader->read_point());
-        if (readCount < totPoints)
-        {
-            g_logger.warning("Expected %d points in file \"%s\", got %d",
-                             totPoints, fileName, readCount);
-            m_npoints = position - m_P;
-            totPoints = readCount;
-        }
-        lasReader->close();
+        emit loadProgress(100*readCount/totPoints);
     }
+#else
+    LASreadOpener lasReadOpener;
+#ifdef _WIN32
+    // Hack: liblas doesn't like forward slashes as path separators on windows
+    fileName = fileName.replace('/', '\\');
 #endif
+    lasReadOpener.set_file_name(fileName.toAscii().constData());
+    std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
+
+    if(!lasReader)
+    {
+        g_logger.error("Couldn't open file \"%s\"", fileName);
+        return false;
+    }
+
+    //std::ofstream dumpFile("points.txt");
+    // Figure out how much to decimate the point cloud.
+    totPoints = lasReader->header.number_of_point_records;
+    size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
+    if(decimate > 1)
+    {
+        g_logger.info("Decimating \"%s\" by factor of %d",
+                        fileName.toStdString(), decimate);
+    }
+    npoints = (totPoints + decimate - 1) / decimate;
+    offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
+    // Attempt to place all data on the same vertical scale, but allow other
+    // offsets if the magnitude of z is too large (and we would therefore loose
+    // noticable precision by storing the data as floats)
+    if (fabs(lasReader->header.min_z) > 10000)
+        offset.z = lasReader->header.min_z;
+    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", npoints));
+    fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", npoints));
+    // Iterate over all points & pull in the data.
+    V3f* position           = (V3f*)fields[0].as<float>();
+    float*   intensity      = fields[1].as<float>();
+    uint8_t* returnNumber   = fields[2].as<uint8_t>();
+    uint8_t* numReturns     = fields[3].as<uint8_t>();
+    uint8_t* pointSourceId  = fields[4].as<uint8_t>();
+    uint8_t* classification = fields[5].as<uint8_t>();
+    size_t readCount = 0;
+    size_t nextDecimateBlock = 1;
+    size_t nextStore = 1;
+    if (!lasReader->read_point())
+        return false;
+    const LASpoint& point = lasReader->point;
+    uint16_t* color = 0;
+    if (point.have_rgb)
+    {
+        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
+                                          "color", npoints));
+        color = fields.back().as<uint16_t>();
+    }
+    do
+    {
+        // Read a point from the las file
+        ++readCount;
+        if(readCount % 10000 == 0)
+            emit loadProgress(100*readCount/totPoints);
+        V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
+        bbox.extendBy(P);
+        Psum += P;
+        //if (std::max(abs(P.x - 389661.571), (abs(P.y - 7281119.875))) < 500)
+            //tfm::format(dumpFile, "%.3f %.3f %.3f\n", P.x, P.y, P.z);
+        if(readCount < nextStore)
+            continue;
+        // Store the point
+        *position++ = P - offset;
+        // float intens = float(point.scan_angle_rank) / 40;
+        *intensity++ = point.intensity;
+        *returnNumber++ = point.return_number;
+        *numReturns++ = point.number_of_returns_of_given_pulse;
+        *pointSourceId++ = point.point_source_ID;
+        *classification++ = point.classification;
+        // Extract point RGB
+        if (color)
+        {
+            *color++ = point.rgb[0];
+            *color++ = point.rgb[1];
+            *color++ = point.rgb[2];
+        }
+        // Figure out which point will be the next stored point.
+        nextDecimateBlock += decimate;
+        nextStore = nextDecimateBlock;
+        if(decimate > 1)
+        {
+            // Randomize selected point within block to avoid repeated patterns
+            nextStore += (qrand() % decimate);
+            if(nextDecimateBlock <= totPoints && nextStore > totPoints)
+                nextStore = totPoints;
+        }
+    }
+    while(lasReader->read_point());
+    if (readCount < totPoints)
+    {
+        g_logger.warning("Expected %d points in file \"%s\", got %d",
+                         totPoints, fileName, readCount);
+        npoints = position - (V3f*)fields[0].as<float>();
+        totPoints = readCount;
+    }
+    lasReader->close();
+#endif
+    if (totPoints > 0)
+        centroid = (1.0/totPoints)*Psum;
+    return true;
+}
+
+
+
+/// Load point cloud in text format, assuming fields XYZ
+bool PointArray::loadText(QString fileName, size_t maxPointCount,
+                          std::vector<PointFieldData>& fields, V3d& offset,
+                          size_t& npoints, size_t& totPoints,
+                          Imath::Box3d& bbox, V3d& centroid)
+{
+    V3d Psum(0);
+    // Use C file IO here, since it's about 40% faster than C++ streams for
+    // large text files (tested on linux x86_64, gcc 4.6.3).
+    FILE* inFile = fopen(fileName.toUtf8(), "r");
+    if (!inFile)
+        return false;
+    fseek(inFile, 0, SEEK_END);
+    const size_t numBytes = ftell(inFile);
+    fseek(inFile, 0, SEEK_SET);
+    std::vector<Imath::V3d> points;
+    Imath::V3d p;
+    size_t readCount = 0;
+    // Read three doubles; "%*[^\n]" discards up to just before end of line
+    while (fscanf(inFile, " %lf %lf %lf%*[^\n]", &p.x, &p.y, &p.z) == 3)
+    {
+        points.push_back(p);
+        ++readCount;
+        if (readCount % 10000 == 0)
+            emit loadProgress(100*ftell(inFile)/numBytes);
+    }
+    fclose(inFile);
+    totPoints = points.size();
+    npoints = points.size();
+    // Zero points + nonzero bytes => bad text file
+    if (totPoints == 0 && numBytes != 0)
+        return false;
+    if (totPoints > 0)
+        offset = points[0];
+    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    V3f* position = (V3f*)fields[0].as<float>();
+    for (size_t i = 0; i < npoints; ++i)
+    {
+        position[i] = points[i] - offset;
+        bbox.extendBy(points[i]);
+        Psum += points[i];
+    }
+    if (npoints > 0)
+        centroid = (1.0/npoints)*Psum;
+    return true;
+}
+
+
+bool PointArray::loadFile(QString fileName, size_t maxPointCount)
+{
+    QTime loadTimer;
+    loadTimer.start();
+    setFileName(fileName);
+    // Read file into point data fields.  Use very basic file type detection
+    // based on extension.
+    size_t totPoints = 0;
+    Imath::Box3d bbox;
+    V3d offset(0);
+    V3d centroid(0);
+    emit loadStepStarted("Reading file");
+    if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
+    {
+        if (!loadLas(fileName, maxPointCount, m_fields, offset,
+                     m_npoints, totPoints, bbox, centroid))
+        {
+            return false;
+        }
+    }
     else
     {
-        // Assume text, xyz format
-        // Use C file IO here, since it's about 40% faster than C++ streams for
-        // large text files (tested on linux x86_64, gcc 4.6.3).
-        FILE* inFile = fopen(fileName.toUtf8(), "r");
-        if (!inFile)
-            return false;
-        fseek(inFile, 0, SEEK_END);
-        const size_t numBytes = ftell(inFile);
-        fseek(inFile, 0, SEEK_SET);
-        std::vector<Imath::V3d> points;
-        Imath::V3d p;
-        size_t readCount = 0;
-        // Read three doubles; "%*[^\n]" discards up to just before end of line
-        while (fscanf(inFile, " %lf %lf %lf%*[^\n]", &p.x, &p.y, &p.z) == 3)
+        if (!loadText(fileName, maxPointCount, m_fields, offset,
+                      m_npoints, totPoints, bbox, centroid))
         {
-            points.push_back(p);
-            ++readCount;
-            if (readCount % 10000 == 0)
-                emit loadProgress(100*ftell(inFile)/numBytes);
-        }
-        fclose(inFile);
-        totPoints = points.size();
-        m_npoints = points.size();
-        // Zero points + nonzero bytes => bad text file
-        if (totPoints == 0 && numBytes != 0)
             return false;
-        if (totPoints > 0)
-            offset = points[0];
-        m_fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", m_npoints));
-        m_P = (V3f*)m_fields[0].as<float>();
-        for (size_t i = 0; i < m_npoints; ++i)
-        {
-            m_P[i] = points[i] - offset;
-            bbox.extendBy(points[i]);
-            Psum += points[i];
         }
     }
+    // Search for position field
+    m_positionFieldIdx = -1;
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        if (m_fields[i].name == "position" && m_fields[i].type.count == 3)
+        {
+            m_positionFieldIdx = i;
+            break;
+        }
+    }
+    if (m_positionFieldIdx == -1)
+    {
+        g_logger.error("No position field found in file %s", fileName);
+        return false;
+    }
+    m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
     setBoundingBox(bbox);
     setOffset(offset);
+    setCentroid(centroid);
     emit loadProgress(100);
     g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
-                  m_npoints, totPoints, fileName.toStdString(),
-                  loadTimer.elapsed()/1000.0);
+                  m_npoints, totPoints, fileName, loadTimer.elapsed()/1000.0);
     if (totPoints == 0)
         return true;
 
-    setCentroid((1.0/totPoints) * Psum);
-
+    // Sort points into octree order
     emit loadStepStarted("Sorting points");
     std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
     for (size_t i = 0; i < m_npoints; ++i)
@@ -495,14 +544,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     ProgressFunc progressFunc(*this);
     m_rootNode.reset(makeTree(0, &inds[0], 0, m_npoints, &m_P[0],
                               rootBound.center(), rootRadius, progressFunc));
-
+    // Reorder point fields into octree order
     emit loadStepStarted("Reordering fields");
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         m_fields[i].reorder(inds.get(), m_npoints);
         emit loadProgress(100*i/(m_fields.size()+1));
     }
-    m_P = (V3f*)m_fields[0].as<float>();
+    m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
 
     return true;
 }
