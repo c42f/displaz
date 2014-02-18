@@ -39,6 +39,8 @@
 #include <unordered_map>
 #include <fstream>
 
+#include "rply/rply.h"
+
 #ifdef DISPLAZ_USE_PDAL
 
 // OpenEXR unfortunately #defines restrict, which clashes with PDAL's use of
@@ -477,6 +479,205 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 }
 
 
+class PlyFieldLoader
+{
+    public:
+        PlyFieldLoader(PointFieldData& field)
+            : m_field(field),
+            m_pointIndex(0),
+            m_componentReadCount(0),
+            m_isPositionField(field.name == "position")
+        { }
+
+        static int rplyCallback(p_ply_argument argument)
+        {
+            void* pinfo = 0;
+            long idata = 0;
+            ply_get_argument_user_data(argument, &pinfo, &idata);
+            double value = ply_get_argument_value(argument);
+            return ((PlyFieldLoader*)pinfo)->writeValue(idata, value);
+        }
+
+        int writeValue(int componentIndex, double value)
+        {
+            if (m_isPositionField)
+            {
+                // Remove fixed offset using first value read.
+                if (m_pointIndex == 0)
+                    m_offset[componentIndex] = value;
+                value -= m_offset[componentIndex];
+            }
+            // Set data value depending on type
+            size_t idx = m_pointIndex*m_field.type.count + componentIndex;
+            switch(m_field.type.type)
+            {
+                case PointFieldType::Int:
+                    switch(m_field.type.elsize)
+                    {
+                        case 1: m_field.as<int8_t>()[idx]  = (int8_t)value;  break;
+                        case 2: m_field.as<int16_t>()[idx] = (int16_t)value; break;
+                        case 4: m_field.as<int32_t>()[idx] = (int32_t)value; break;
+                    }
+                    break;
+                case PointFieldType::Uint:
+                    switch(m_field.type.elsize)
+                    {
+                        case 1: m_field.as<uint8_t>()[idx]  = (uint8_t)value;  break;
+                        case 2: m_field.as<uint16_t>()[idx] = (uint16_t)value; break;
+                        case 4: m_field.as<uint32_t>()[idx] = (uint32_t)value; break;
+                    }
+                    break;
+                case PointFieldType::Float:
+                    switch(m_field.type.elsize)
+                    {
+                        case 4: m_field.as<float>()[idx] = (float)value;   break;
+                        case 8: m_field.as<double>()[idx] = (double)value; break;
+                    }
+                    break;
+                default:
+                    assert(0 && "Unknown type encountered");
+            }
+            // Keep track of which point we're on
+            ++m_componentReadCount;
+            if (m_componentReadCount == m_field.type.count)
+            {
+                ++m_pointIndex;
+                m_componentReadCount = 0;
+            }
+            return 1;
+        }
+
+        V3d offset() const { return V3d(m_offset[0], m_offset[1], m_offset[2]); }
+
+    private:
+        PointFieldData& m_field;
+        size_t m_pointIndex;
+        int m_componentReadCount;
+        bool m_isPositionField;
+        double m_offset[3];
+};
+
+
+void plyTypeToPointFieldType(e_ply_type& plyType, PointFieldType::Type& type, int& elsize)
+{
+    switch(plyType)
+    {
+        case PLY_INT8:    case PLY_CHAR:   type = PointFieldType::Int;   elsize = 1; break;
+        case PLY_INT16:   case PLY_SHORT:  type = PointFieldType::Int;   elsize = 2; break;
+        case PLY_INT32:   case PLY_INT:    type = PointFieldType::Int;   elsize = 4; break;
+        case PLY_UINT8:   case PLY_UCHAR:  type = PointFieldType::Uint;  elsize = 1; break;
+        case PLY_UINT16:  case PLY_USHORT: type = PointFieldType::Uint;  elsize = 2; break;
+        case PLY_UIN32:   case PLY_UINT:   type = PointFieldType::Uint;  elsize = 4; break;
+        case PLY_FLOAT32: case PLY_FLOAT:  type = PointFieldType::Float; elsize = 4; break;
+        case PLY_FLOAT64: case PLY_DOUBLE: type = PointFieldType::Float; elsize = 8; break;
+        default: assert(0 && "Unknown ply type");
+    }
+}
+
+/// Load ascii version of the point cloud library PCD format
+bool PointArray::loadPly(QString fileName, size_t maxPointCount,
+                         std::vector<PointFieldData>& fields, V3d& offset,
+                         size_t& npoints, size_t& totPoints,
+                         Imath::Box3d& bbox, V3d& centroid)
+{
+    typedef int (*ply_close_t)(p_ply);
+    std::unique_ptr<t_ply_, ply_close_t> ply(
+            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
+    if (!ply || !ply_read_header(ply.get()))
+        return false;
+    // Parse out header data using
+    p_ply_element elem = ply_get_next_element(ply.get(), NULL);
+    p_ply_element vertexElement = NULL;
+    while (elem)
+    {
+        const char* name = 0;
+        long ninstances = 0;
+        if (ply_get_element_info(elem, &name, &ninstances))
+        {
+            if (strcmp(name, "vertex") == 0)
+            {
+                npoints = ninstances;
+                vertexElement = elem;
+            }
+            tfm::printf("element %s, ninstances = %d\n", name, ninstances);
+        }
+        elem = ply_get_next_element(ply.get(), elem);
+    }
+    if (!vertexElement)
+    {
+        g_logger.error("No vertex element found in %s", fileName);
+        return false;
+    }
+    totPoints = npoints;
+    // Create fields from header.  Position is always required; other fields
+    // are created as they are seen.
+    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    PlyFieldLoader positionLoader(fields[0]);
+    bool positionFound = false;
+    p_ply_property prop = ply_get_next_property(vertexElement, NULL);
+    while (prop)
+    {
+        const char* name = 0;
+        e_ply_type propType;
+        if (ply_get_property_info(prop, &name, &propType, NULL, NULL))
+        {
+            if (propType == PLY_LIST)
+                g_logger.warning("Ignoring list property %s in file %s", name, fileName);
+            else
+            {
+                // Special cases for position components
+                if (strcmp(name, "x") == 0)
+                {
+                    ply_set_read_cb(ply.get(), "vertex", name,
+                                    &PlyFieldLoader::rplyCallback,
+                                    &positionLoader, 0);
+                    positionFound = true;
+                }
+                else if (strcmp(name, "y") == 0)
+                {
+                    ply_set_read_cb(ply.get(), "vertex", name,
+                                    &PlyFieldLoader::rplyCallback,
+                                    &positionLoader, 1);
+                    positionFound = true;
+                }
+                else if (strcmp(name, "z") == 0)
+                {
+                    ply_set_read_cb(ply.get(), "vertex", name,
+                                    &PlyFieldLoader::rplyCallback,
+                                    &positionLoader, 2);
+                    positionFound = true;
+                }
+                PointFieldType::Type baseType = PointFieldType::Unknown;
+                int elsize = 0;
+                plyTypeToPointFieldType(propType, baseType, elsize);
+                PointFieldType type(baseType, elsize, 1);
+                tfm::printf("     %s: %s\n", name, type);
+            }
+        }
+        prop = ply_get_next_property(vertexElement, prop);
+    }
+    if (!positionFound)
+        return false;
+    if (!ply_read(ply.get()))
+        return false;
+    offset = positionLoader.offset();
+    // Compute bounding box and centroid
+    const V3f* P = (V3f*)fields[0].as<float>();
+    V3d Psum(0);
+    for (size_t i = 0; i < npoints; ++i)
+    {
+        Psum += P[i];
+        bbox.extendBy(P[i]);
+    }
+    if (npoints > 0)
+        centroid = (1.0/npoints) * Psum;
+    centroid += offset;
+    bbox.min += offset;
+    bbox.max += offset;
+    return true;
+}
+
+
 bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 {
     QTime loadTimer;
@@ -492,6 +693,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
     {
         if (!loadLas(fileName, maxPointCount, m_fields, offset,
+                     m_npoints, totPoints, bbox, centroid))
+        {
+            return false;
+        }
+    }
+    else if (fileName.endsWith(".ply"))
+    {
+        if (!loadPly(fileName, maxPointCount, m_fields, offset,
                      m_npoints, totPoints, bbox, centroid))
         {
             return false;

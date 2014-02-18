@@ -79,6 +79,11 @@ class PointArray : public Geometry
                       size_t& npoints, size_t& totPoints,
                       Imath::Box3d& bbox, V3d& centroid);
 
+        bool loadPly(QString fileName, size_t maxPointCount,
+                     std::vector<PointFieldData>& fields, V3d& offset,
+                     size_t& npoints, size_t& totPoints,
+                     Imath::Box3d& bbox, V3d& centroid);
+
         friend struct ProgressFunc;
 
         /// Total number of points
