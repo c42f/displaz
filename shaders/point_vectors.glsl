@@ -18,6 +18,8 @@ uniform vec3 cursorPos = vec3(0);
 uniform int fileNumber = 0;
 in float intensity;
 in vec3 position;
+in vec3 normal;
+in vec3 color;
 
 flat out float pointScreenSize;
 flat out vec3 pointColor;
@@ -45,7 +47,8 @@ void main()
     // Remove aspect ratio - fragment coord system will be square.
     float aspect = gl_ProjectionMatrix[1][1]/gl_ProjectionMatrix[0][0];
     dProj = mat2x2(aspect, 0, 0, 1) * dProj;
-    vec3 pc = normalize(position - cursorPos);
+    vec3 pc = normalize(normal);
+    //vec3 pc = normalize(position - cursorPos);
     vec3 pc1 = normalize(cross(pc, vec3(0,0,1)));
     vec3 eigs[3] = vec3[3](pc, pc1, cross(pc, pc1));
     for (int i = 0; i < 3; ++i)
@@ -62,14 +65,14 @@ void main()
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
     gl_PointSize = pointScreenSize;
-    pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+    pointColor = color;
 }
 
 
 //------------------------------------------------------------------------------
 #elif defined(FRAGMENT_SHADER)
 
-uniform float markerWidth = 0.3;
+uniform float markerWidth = 0.3;  // # uiname=Marker Width; min=0.01; max=1
 
 flat in float pointScreenSize;
 flat in vec3 pointColor;
@@ -105,7 +108,7 @@ void main()
                 abs(dot(eigNormal[1],p))*(1-w)*pointScreenSize < lineRad;
         bool inE3 = r*(1-w) < max(0.5*eigLen[2], 2/pointScreenSize) &&
                 abs(dot(eigNormal[2],p))*(1-w)*pointScreenSize < lineRad;
-        if (!inE1 && !inE2 && !inE3)
+        if (!inE1)// && !inE2 && !inE3)
             discard;
     }
     fragColor = vec4(pointColor, 1);
