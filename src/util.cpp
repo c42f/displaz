@@ -93,6 +93,7 @@ void attachToParentConsole()
 #endif
 }
 
+
 std::string currentUserUid()
 {
 #   ifdef _WIN32
@@ -102,5 +103,16 @@ std::string currentUserUid()
 #   else
     return tfm::format("%d", ::getuid());
 #   endif
+}
+
+
+bool iequals(const std::string& a, const std::string& b)
+{
+    if (a.size() != b.size())
+        return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (tolower(a[i]) != tolower(b[i]))
+            return false;
+    return true;
 }
 

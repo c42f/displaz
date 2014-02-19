@@ -37,7 +37,9 @@
 
 #include <iostream>
 
-#include <QString>
+
+//------------------------------------------------------------------------------
+// Math utils
 
 using Imath::V3d;
 using Imath::V3f;
@@ -113,6 +115,9 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 }
 
 
+//------------------------------------------------------------------------------
+// System utils
+
 /// On windows, attach to the console of the parent process if possible.  On
 /// other platforms, do nothing.
 ///
@@ -131,6 +136,13 @@ void attachToParentConsole();
 /// id, which isn't quite the same thing but should work as a unique id on the
 /// machine.
 std::string currentUserUid();
+
+
+//------------------------------------------------------------------------------
+// String utils
+
+/// Case-insensitive comparison of two strings for equality
+bool iequals(const std::string& a, const std::string& b);
 
 
 #endif // UTIL_H_INCLUDED
