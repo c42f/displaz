@@ -44,6 +44,11 @@
 ///   "position"  - float[3]
 ///   "color"     - uint16_t[3]
 ///
+/// Aggregates of more than one element may have different interpretations -
+/// they may be arrays of numbers, vectors, colours, etc.  Such differences are
+/// captured by the semantics field, which allows us to properly present the
+/// types to the OpenGL shader.
+///
 /// This kind of class comes up in pretty much any rendering API.  For example,
 /// OpenImageIO's TypeDesc (descended from gelato).  See also commonalities
 /// with PCL's PCD header data.
@@ -56,20 +61,35 @@ struct PointFieldType
         Uint,
         Unknown
     };
-    Type type;  // Element type
-    int elsize; // Element size in bytes
-    int count;  // Number of elements
 
-    PointFieldType() : type(Unknown), elsize(0), count(0) {}
+    enum Semantics
+    {
+        Array,
+        Vector,
+        // Normal, // Required to support nonrigid transforms
+        Color
+    };
 
-    PointFieldType(Type type, int elsize, int count = 1)
-        : type(type), elsize(elsize), count(count) {}
+    Type type;  /// Element type
+    int elsize; /// Element size in bytes
+    int count;  /// Number of elements
+    Semantics semantics;  /// Interpretation for aggregates
+
+    PointFieldType() : type(Unknown), elsize(0), count(0), semantics(Array) {}
+
+    PointFieldType(Type type, int elsize, int count = 1, Semantics semantics = Array)
+        : type(type), elsize(elsize), count(count), semantics(semantics) {}
 
     /// Named constructors for common types
-    static PointFieldType vec3float32() { return PointFieldType(Float, 4, 3); }
+    static PointFieldType vec3float32() { return PointFieldType(Float, 4, 3, Vector); }
     static PointFieldType float32() { return PointFieldType(Float, 4, 1); }
     static PointFieldType uint16()  { return PointFieldType(Uint, 2, 1); }
     static PointFieldType uint8()   { return PointFieldType(Uint, 1, 1); }
+
+    /// Return number of vector elements in the aggregate
+    int vectorSize() const { return (semantics == Array) ? 1 : count; }
+    /// Return number of array elements in the aggregate
+    int arraySize()  const { return (semantics == Array) ? count : 1; }
 
     /// Get number of bytes required to store the field for a single point
     int size() const { return elsize*count; }
@@ -123,6 +143,11 @@ struct PointFieldData
 
     /// Reorder the data according to the given indexing array
     void reorder(const size_t* inds, size_t npoints);
+
+    std::string glslName() const
+    {
+        return (type.arraySize() > 1) ? name + "[0]" : name;
+    }
 };
 
 

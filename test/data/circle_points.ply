@@ -11,8 +11,8 @@ property float nz
 property uint8 red
 property uint8 green
 property uint8 blue
-property float a0
-property float a1
+property float a[0]
+property float a[1]
 end_header
  0.00000000e+00  1.00000000e+00 0    1.00000000e+00 -0.00000000e+00 1     0 255  0   0.00000000e+00 1.00000000e+00
  3.24699469e-01  9.45817242e-01 0    9.45817242e-01 -3.24699469e-01 1    26 229  0   1.05429745e-01 8.94570255e-01

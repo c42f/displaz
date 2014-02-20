@@ -605,6 +605,7 @@ struct PlyPointField
 {
     std::string displazName;
     int componentIndex;
+    PointFieldType::Semantics semantics;
     std::string plyName;
     e_ply_type plyType;
 };
@@ -614,7 +615,9 @@ bool displazFieldComparison(const PlyPointField& a, const PlyPointField& b)
 {
     if (a.displazName != b.displazName)
         return a.displazName < b.displazName;
-    return a.componentIndex < b.componentIndex;
+    if (a.componentIndex != b.componentIndex)
+        return a.componentIndex < b.componentIndex;
+    return a.semantics < b.semantics;
 }
 
 
@@ -624,19 +627,21 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
     // List of some fields which might be found in a .ply file and mappings to
     // displaz field groups.  Note that there's no standard!
     PlyPointField standardFields[] = {
-        {"position",  0,  "x",      PLY_FLOAT},
-        {"position",  1,  "y",      PLY_FLOAT},
-        {"position",  2,  "z",      PLY_FLOAT},
-        {"color",     0,  "red",    PLY_UINT8},
-        {"color",     1,  "green",  PLY_UINT8},
-        {"color",     2,  "blue",   PLY_UINT8},
-        {"color",     0,  "r",      PLY_UINT8},
-        {"color",     1,  "g",      PLY_UINT8},
-        {"color",     2,  "b",      PLY_UINT8},
-        {"normal",    0,  "nx",     PLY_FLOAT},
-        {"normal",    1,  "ny",     PLY_FLOAT},
-        {"normal",    2,  "nz",     PLY_FLOAT},
+        {"position",  0,  PointFieldType::Vector,  "x",      PLY_FLOAT},
+        {"position",  1,  PointFieldType::Vector,  "y",      PLY_FLOAT},
+        {"position",  2,  PointFieldType::Vector,  "z",      PLY_FLOAT},
+        {"color",     0,  PointFieldType::Color ,  "red",    PLY_UINT8},
+        {"color",     1,  PointFieldType::Color ,  "green",  PLY_UINT8},
+        {"color",     2,  PointFieldType::Color ,  "blue",   PLY_UINT8},
+        {"color",     0,  PointFieldType::Color ,  "r",      PLY_UINT8},
+        {"color",     1,  PointFieldType::Color ,  "g",      PLY_UINT8},
+        {"color",     2,  PointFieldType::Color ,  "b",      PLY_UINT8},
+        {"normal",    0,  PointFieldType::Vector,  "nx",     PLY_FLOAT},
+        {"normal",    1,  PointFieldType::Vector,  "ny",     PLY_FLOAT},
+        {"normal",    2,  PointFieldType::Vector,  "nz",     PLY_FLOAT},
     };
+    QRegExp vec3ComponentPattern("(.*)_?([xyz])");
+    QRegExp arrayComponentPattern("(.*)\\[([0-9]+)\\]");
     size_t numStandardFields = sizeof(standardFields)/sizeof(standardFields[0]);
     std::vector<PlyPointField> fieldInfo;
     for (p_ply_property prop = ply_get_next_property(vertexElement, NULL);
@@ -665,7 +670,24 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
         }
         if (!isStandardField)
         {
-            fieldInfo.push_back((PlyPointField){propName, 0, propName, propType});
+            // Try to guess whether this is one of several components - if so,
+            // it will be turned into an array type (such as a vector)
+            std::string displazName = propName;
+            int index = 0;
+            PointFieldType::Semantics semantics = PointFieldType::Array;
+            if (vec3ComponentPattern.exactMatch(propName))
+            {
+                displazName = vec3ComponentPattern.cap(1).toStdString();
+                index = vec3ComponentPattern.cap(2)[0].toAscii() - 'x';
+                semantics = PointFieldType::Vector;
+            }
+            else if(arrayComponentPattern.exactMatch(propName))
+            {
+                displazName = arrayComponentPattern.cap(1).toStdString();
+                index = arrayComponentPattern.cap(2).toInt();
+            }
+            fieldInfo.push_back((PlyPointField){displazName, index, semantics,
+                                                propName, propType});
         }
     }
     std::sort(fieldInfo.begin(), fieldInfo.end(), &displazFieldComparison);
@@ -706,13 +728,19 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
     for (size_t i = 0; i < fieldInfo.size(); )
     {
         const std::string& fieldName = fieldInfo[i].displazName;
+        PointFieldType::Semantics semantics = fieldInfo[i].semantics;
         PointFieldType::Type baseType = PointFieldType::Unknown;
         int elsize = 0;
         plyTypeToPointFieldType(fieldInfo[i].plyType, baseType, elsize);
         size_t eltBegin = i;
-        // TODO: Vector component detection?
-        while (i < fieldInfo.size() && fieldInfo[i].displazName == fieldName)
+        int maxComponentIndex = 0;
+        while (i < fieldInfo.size() && fieldInfo[i].displazName == fieldName &&
+               fieldInfo[i].semantics == semantics)
+        {
+            maxComponentIndex = std::max(maxComponentIndex,
+                                         fieldInfo[i].componentIndex);
             ++i;
+        }
         size_t eltEnd = i;
         PlyFieldLoader* loader = 0;
         if (fieldName == "position")
@@ -722,7 +750,8 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
         }
         else
         {
-            PointFieldType type(baseType, elsize, eltEnd - eltBegin);
+            PointFieldType type(baseType, elsize, maxComponentIndex+1, semantics);
+            //tfm::printf("%s: type %s\n", fieldName, type);
             fields.push_back(PointFieldData(type, fieldName, npoints));
             fieldLoaders.push_back(PlyFieldLoader(fields.back()));
             loader = &fieldLoaders.back();
@@ -925,6 +954,7 @@ void PointArray::drawTree() const
 size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
                               double quality, bool incrementalDraw) const
 {
+    //printActiveShaderAttributes(prog.programId());
     std::vector<ShaderAttribute> activeAttrs = activeShaderAttributes(prog.programId());
     // Figure out shader locations for each point field
     // TODO: attributeLocation() forces the OpenGL usage here to be
@@ -932,8 +962,9 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     std::vector<int> fieldShaderLocations(m_fields.size(), -1);
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        fieldShaderLocations[i] = prog.attributeLocation(m_fields[i].name.c_str());
+        fieldShaderLocations[i] = prog.attributeLocation(m_fields[i].glslName().c_str());
         // FIXME: Ensure compatibility between point field and shader field
+        // FIXME: Arrays don't work properly if not all elements are active :(
     }
     // Map from shader attributes to associated fields
     std::vector<int> shaderAttrFieldInds(activeAttrs.size(), -1);
@@ -957,7 +988,11 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         if (fieldShaderLocations[i] >= 0)
-            prog.enableAttributeArray(fieldShaderLocations[i]);
+        {
+            int arraySize = m_fields[i].type.arraySize();
+            for (int j = 0; j < arraySize; ++j)
+                prog.enableAttributeArray(fieldShaderLocations[i] + j);
+        }
     }
 
     // Draw points in each bucket, with total number drawn depending on how far
@@ -999,9 +1034,15 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         //lodMultiplier = sqrt(double(node->size())/ndraw);
         for (size_t i = 0; i < m_fields.size(); ++i)
         {
-            prog.setAttributeArray(fieldShaderLocations[i], glBaseType(m_fields[i].type),
-                                   m_fields[i].data.get() + idx*m_fields[i].type.size(),
-                                   m_fields[i].type.count);
+            int arraySize = m_fields[i].type.arraySize();
+            int vecSize = m_fields[i].type.vectorSize();
+            for (int j = 0; j < arraySize; ++j)
+            {
+                char* data = m_fields[i].data.get() + idx*m_fields[i].type.size() +
+                             j*m_fields[i].type.elsize;
+                prog.setAttributeArray(fieldShaderLocations[i] + j, glBaseType(m_fields[i].type),
+                                       data, vecSize, m_fields[i].type.size());
+            }
         }
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, ndraw);
@@ -1015,7 +1056,11 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         if (fieldShaderLocations[i] >= 0)
-            prog.disableAttributeArray(fieldShaderLocations[i]);
+        {
+            int arraySize = m_fields[i].type.arraySize();
+            for (int j = 0; j < arraySize; ++j)
+                prog.disableAttributeArray(fieldShaderLocations[i] + j);
+        }
     }
     return totDrawn;
 }
