@@ -841,7 +841,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         m_fields[i].reorder(inds.get(), m_npoints);
-        emit loadProgress(100*i/(m_fields.size()+1));
+        emit loadProgress(100*(i+1)/m_fields.size());
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
 

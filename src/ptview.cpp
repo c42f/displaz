@@ -91,8 +91,6 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
-    m_drawPoints(true),
-    m_drawMeshes(true),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
@@ -213,18 +211,6 @@ void PointView::toggleDrawBoundingBoxes()
     restartRender();
 }
 
-void PointView::toggleDrawPoints()
-{
-    m_drawPoints = !m_drawPoints;
-    restartRender();
-}
-
-void PointView::toggleDrawMeshes()
-{
-    m_drawMeshes = !m_drawMeshes;
-    restartRender();
-}
-
 void PointView::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
@@ -317,9 +303,9 @@ void PointView::paintGL()
     }
 
     // Draw meshes and lines
-    if (m_drawMeshes && !m_incrementalDraw)
+    if (!m_incrementalDraw)
     {
-        drawMeshes(geoms);
+        drawMeshes(geoms, sel);
     }
 
     // Figure out how many points we should render
@@ -328,16 +314,13 @@ void PointView::paintGL()
         totPoints += geoms[sel[i].row()]->pointCount();
     size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
-    if (m_drawPoints)
-    {
-        // Render points
-        totDrawn = drawPoints(geoms, sel, numPointsToRender, m_incrementalDraw);
-    }
+    // Render points
+    totDrawn = drawPoints(geoms, sel, numPointsToRender, m_incrementalDraw);
 
     // Measure frame time to update estimate for how many points we can
     // draw interactively
     glFinish();
-    if (m_drawPoints && totPoints > 0 && !m_incrementalDraw)
+    if (totPoints > 0 && !m_incrementalDraw)
     {
         int frameTime = frameTimer.elapsed();
         // Aim for a frame time which is ok for desktop usage
@@ -361,30 +344,28 @@ void PointView::paintGL()
     drawCursor(m_cursorPos - m_drawOffset);
 
     // Set up timer to draw a high quality frame if necessary
-    if (m_drawPoints)
-    {
-        if (totDrawn == 0)
-            m_incrementalFrameTimer->stop();
-        else
-            m_incrementalFrameTimer->start(10);
-        m_incrementalDraw = true;
-    }
+    if (totDrawn == 0)
+        m_incrementalFrameTimer->stop();
+    else
+        m_incrementalFrameTimer->start(10);
+    m_incrementalDraw = true;
 }
 
 
-void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms) const
+void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms,
+                           const QModelIndexList& sel) const
 {
     // Draw faces
     QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
     meshFaceShader.bind();
     meshFaceShader.setUniformValue("lightDir_eye",
                 m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
-    for (size_t i = 0; i < geoms.size(); ++i)
+    for (int i = 0; i < sel.size(); ++i)
     {
         glPushMatrix();
-        V3d offset = geoms[i]->offset() - m_drawOffset;
+        V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
         glTranslatef(offset.x, offset.y, offset.z);
-        geoms[i]->drawFaces(meshFaceShader);
+        geoms[sel[i].row()]->drawFaces(meshFaceShader);
         glPopMatrix();
     }
     meshFaceShader.release();
@@ -393,12 +374,12 @@ void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms) const
     QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
     glLineWidth(1);
     meshEdgeShader.bind();
-    for(size_t i = 0; i < geoms.size(); ++i)
+    for(int i = 0; i < sel.size(); ++i)
     {
         glPushMatrix();
-        V3d offset = geoms[i]->offset() - m_drawOffset;
+        V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
         glTranslatef(offset.x, offset.y, offset.z);
-        geoms[i]->drawEdges(meshEdgeShader);
+        geoms[sel[i].row()]->drawEdges(meshEdgeShader);
         glPopMatrix();
     }
     meshEdgeShader.release();
