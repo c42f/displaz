@@ -679,8 +679,7 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          size_t& npoints, size_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
-    typedef int (*ply_close_t)(p_ply);
-    std::unique_ptr<t_ply_, ply_close_t> ply(
+    std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
             ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
