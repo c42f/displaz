@@ -252,7 +252,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint16_t* color = 0;
     if (hasColor)
     {
-        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
+        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3,PointFieldType::Color),
                                         "color", npoints));
         color = fields.back().as<uint16_t>();
     }
@@ -371,8 +371,8 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint16_t* color = 0;
     if (point.have_rgb)
     {
-        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3),
-                                          "color", npoints));
+        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3,PointFieldType::Color),
+                                        "color", npoints));
         color = fields.back().as<uint16_t>();
     }
     do
