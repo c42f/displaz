@@ -966,23 +966,12 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         // FIXME: Ensure compatibility between point field and shader field
         // FIXME: Arrays don't work properly if not all elements are active :(
     }
-    // Map from shader attributes to associated fields
-    std::vector<int> shaderAttrFieldInds(activeAttrs.size(), -1);
-    for (size_t j = 0; j < activeAttrs.size(); ++j)
-    {
-        for (size_t i = 0; i < m_fields.size(); ++i)
-            if (activeAttrs[j].name == m_fields[i].name)
-                shaderAttrFieldInds[j] = i;
-    }
-    // Zero out active attributes which don't have associated fields
+    // Zero out active attributes in case they don't have associated fields
     GLfloat zeros[16] = {0};
-    for (size_t j = 0; j < activeAttrs.size(); ++j)
+    for (size_t i = 0; i < activeAttrs.size(); ++i)
     {
-        if (shaderAttrFieldInds[j] < 0)
-        {
-            prog.setAttributeValue(j, zeros, activeAttrs[j].rows,
-                                   activeAttrs[j].cols);
-        }
+        prog.setAttributeValue(i, zeros, activeAttrs[i].rows,
+                               activeAttrs[i].cols);
     }
     // Enable attributes which have associated fields
     for (size_t i = 0; i < m_fields.size(); ++i)
