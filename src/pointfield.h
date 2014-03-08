@@ -90,6 +90,8 @@ struct PointFieldType
     int vectorSize() const { return (semantics == Array) ? 1 : count; }
     /// Return number of array elements in the aggregate
     int arraySize()  const { return (semantics == Array) ? count : 1; }
+    /// Return true when the type represents a nontrivial array
+    bool isArray() const { return (semantics == Array) && (count > 1); }
 
     /// Get number of bytes required to store the field for a single point
     int size() const { return elsize*count; }
@@ -143,11 +145,6 @@ struct PointFieldData
 
     /// Reorder the data according to the given indexing array
     void reorder(const size_t* inds, size_t npoints);
-
-    std::string glslName() const
-    {
-        return (type.arraySize() > 1) ? name + "[0]" : name;
-    }
 };
 
 
