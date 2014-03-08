@@ -962,8 +962,12 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     std::vector<int> fieldShaderLocations;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        // FIXME: Ensure compatibility between point field and shader field
         const PointFieldData& field = m_fields[i];
+        // Could ensure compatibility between point field and shader field
+        // (type, number of components etc).  It's fairly convenient to not be
+        // too strict about this however - it seems that the GL driver will
+        // just discard any excess components passed.
+        // TODO: At least make this a warning somehow
         if (field.type.isArray())
         {
             for (int j = 0; j < field.type.count; ++j)
