@@ -133,9 +133,10 @@ set(srcs
     src/main.cpp
     src/mainwindow.cpp
     src/mesh.cpp
-    src/ptview.cpp
+    src/ply_io.cpp
     src/pointarray.cpp
     src/pointfield.cpp
+    src/ptview.cpp
     src/shadereditor.cpp
     src/shader.cpp
     src/util.cpp

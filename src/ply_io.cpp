@@ -1,0 +1,318 @@
+// Copyright (C) 2012, Chris J. Foster and the other authors and contributors
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither the name of the software's owners nor the names of its
+//   contributors may be used to endorse or promote products derived from this
+//   software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//
+// (This is the BSD 3-clause license)
+
+#include "ply_io.h"
+
+
+/// Callback handler for reading ply data into a point field using rply
+class PlyFieldLoader
+{
+    public:
+        PlyFieldLoader(PointFieldData& field)
+            : m_field(&field),
+            m_pointIndex(0),
+            m_componentReadCount(0),
+            m_isPositionField(field.name == "position")
+        { }
+
+        /// rply callback to accept a single element of a point field
+        static int rplyCallback(p_ply_argument argument)
+        {
+            void* pinfo = 0;
+            long idata = 0;
+            ply_get_argument_user_data(argument, &pinfo, &idata);
+            double value = ply_get_argument_value(argument);
+            return ((PlyFieldLoader*)pinfo)->writeValue(idata, value);
+        }
+
+        /// Accept a single element of a point field from the ply file
+        int writeValue(int componentIndex, double value)
+        {
+            if (m_isPositionField)
+            {
+                // Remove fixed offset using first value read.
+                if (m_pointIndex == 0)
+                    m_offset[componentIndex] = value;
+                value -= m_offset[componentIndex];
+            }
+            // Set data value depending on type
+            size_t idx = m_pointIndex*m_field->type.count + componentIndex;
+            switch(m_field->type.type)
+            {
+                case PointFieldType::Int:
+                    switch(m_field->type.elsize)
+                    {
+                        case 1: m_field->as<int8_t>()[idx]  = (int8_t)value;  break;
+                        case 2: m_field->as<int16_t>()[idx] = (int16_t)value; break;
+                        case 4: m_field->as<int32_t>()[idx] = (int32_t)value; break;
+                    }
+                    break;
+                case PointFieldType::Uint:
+                    switch(m_field->type.elsize)
+                    {
+                        case 1: m_field->as<uint8_t>()[idx]  = (uint8_t)value;  break;
+                        case 2: m_field->as<uint16_t>()[idx] = (uint16_t)value; break;
+                        case 4: m_field->as<uint32_t>()[idx] = (uint32_t)value; break;
+                    }
+                    break;
+                case PointFieldType::Float:
+                    switch(m_field->type.elsize)
+                    {
+                        case 4: m_field->as<float>()[idx] = (float)value;   break;
+                        case 8: m_field->as<double>()[idx] = (double)value; break;
+                    }
+                    break;
+                default:
+                    assert(0 && "Unknown type encountered");
+            }
+            // Keep track of which point we're on
+            ++m_componentReadCount;
+            if (m_componentReadCount == m_field->type.count)
+            {
+                ++m_pointIndex;
+                m_componentReadCount = 0;
+            }
+            return 1;
+        }
+
+        V3d offset() const { return V3d(m_offset[0], m_offset[1], m_offset[2]); }
+
+    private:
+        PointFieldData* m_field;
+        size_t m_pointIndex;
+        int m_componentReadCount;
+        bool m_isPositionField;
+        double m_offset[3];
+};
+
+
+/// Get PointFieldType type info from associated rply type
+void plyTypeToPointFieldType(e_ply_type& plyType, PointFieldType::Type& type, int& elsize)
+{
+    switch(plyType)
+    {
+        case PLY_INT8:    case PLY_CHAR:   type = PointFieldType::Int;   elsize = 1; break;
+        case PLY_INT16:   case PLY_SHORT:  type = PointFieldType::Int;   elsize = 2; break;
+        case PLY_INT32:   case PLY_INT:    type = PointFieldType::Int;   elsize = 4; break;
+        case PLY_UINT8:   case PLY_UCHAR:  type = PointFieldType::Uint;  elsize = 1; break;
+        case PLY_UINT16:  case PLY_USHORT: type = PointFieldType::Uint;  elsize = 2; break;
+        case PLY_UIN32:   case PLY_UINT:   type = PointFieldType::Uint;  elsize = 4; break;
+        case PLY_FLOAT32: case PLY_FLOAT:  type = PointFieldType::Float; elsize = 4; break;
+        case PLY_FLOAT64: case PLY_DOUBLE: type = PointFieldType::Float; elsize = 8; break;
+        default: assert(0 && "Unknown ply type");
+    }
+}
+
+
+/// Find "vertex" element in ply file
+p_ply_element findVertexElement(p_ply ply, size_t& npoints)
+{
+    for (p_ply_element elem = ply_get_next_element(ply, NULL);
+         elem != NULL; elem = ply_get_next_element(ply, elem))
+    {
+        const char* name = 0;
+        long ninstances = 0;
+        if (!ply_get_element_info(elem, &name, &ninstances))
+            continue;
+        //tfm::printf("element %s, ninstances = %d\n", name, ninstances);
+        if (strcmp(name, "vertex") == 0)
+        {
+            npoints = ninstances;
+            return elem;
+        }
+    }
+    return NULL;
+}
+
+
+/// Mapping from ply field names to internal (name,index)
+struct PlyPointField
+{
+    std::string displazName;
+    int componentIndex;
+    PointFieldType::Semantics semantics;
+    std::string plyName;
+    e_ply_type plyType;
+};
+
+/// Order PlyPointField by displaz field name and component index
+bool displazFieldComparison(const PlyPointField& a, const PlyPointField& b)
+{
+    if (a.displazName != b.displazName)
+        return a.displazName < b.displazName;
+    if (a.componentIndex != b.componentIndex)
+        return a.componentIndex < b.componentIndex;
+    return a.semantics < b.semantics;
+}
+
+
+/// Parse ply point properties, and recognize standard names
+static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElement)
+{
+    // List of some fields which might be found in a .ply file and mappings to
+    // displaz field groups.  Note that there's no standard!
+    PlyPointField standardFields[] = {
+        {"position",  0,  PointFieldType::Vector,  "x",      PLY_FLOAT},
+        {"position",  1,  PointFieldType::Vector,  "y",      PLY_FLOAT},
+        {"position",  2,  PointFieldType::Vector,  "z",      PLY_FLOAT},
+        {"color",     0,  PointFieldType::Color ,  "red",    PLY_UINT8},
+        {"color",     1,  PointFieldType::Color ,  "green",  PLY_UINT8},
+        {"color",     2,  PointFieldType::Color ,  "blue",   PLY_UINT8},
+        {"color",     0,  PointFieldType::Color ,  "r",      PLY_UINT8},
+        {"color",     1,  PointFieldType::Color ,  "g",      PLY_UINT8},
+        {"color",     2,  PointFieldType::Color ,  "b",      PLY_UINT8},
+        {"normal",    0,  PointFieldType::Vector,  "nx",     PLY_FLOAT},
+        {"normal",    1,  PointFieldType::Vector,  "ny",     PLY_FLOAT},
+        {"normal",    2,  PointFieldType::Vector,  "nz",     PLY_FLOAT},
+    };
+    QRegExp vec3ComponentPattern("(.*)_?([xyz])");
+    QRegExp arrayComponentPattern("(.*)\\[([0-9]+)\\]");
+    size_t numStandardFields = sizeof(standardFields)/sizeof(standardFields[0]);
+    std::vector<PlyPointField> fieldInfo;
+    for (p_ply_property prop = ply_get_next_property(vertexElement, NULL);
+         prop != NULL; prop = ply_get_next_property(vertexElement, prop))
+    {
+        const char* propName = 0;
+        e_ply_type propType;
+        if (!ply_get_property_info(prop, &propName, &propType, NULL, NULL))
+            continue;
+        if (propType == PLY_LIST)
+        {
+            g_logger.warning("Ignoring list property %s in ply file", propName);
+            continue;
+        }
+        bool isStandardField = false;
+        for (size_t i = 0; i < numStandardFields; ++i)
+        {
+            if (iequals(standardFields[i].plyName, propName))
+            {
+                fieldInfo.push_back(standardFields[i]);
+                fieldInfo.back().plyType = propType;
+                fieldInfo.back().plyName = propName; // ensure correct string case
+                isStandardField = true;
+                break;
+            }
+        }
+        if (!isStandardField)
+        {
+            // Try to guess whether this is one of several components - if so,
+            // it will be turned into an array type (such as a vector)
+            std::string displazName = propName;
+            int index = 0;
+            PointFieldType::Semantics semantics = PointFieldType::Array;
+            if (vec3ComponentPattern.exactMatch(propName))
+            {
+                displazName = vec3ComponentPattern.cap(1).toStdString();
+                index = vec3ComponentPattern.cap(2)[0].toAscii() - 'x';
+                semantics = PointFieldType::Vector;
+            }
+            else if(arrayComponentPattern.exactMatch(propName))
+            {
+                displazName = arrayComponentPattern.cap(1).toStdString();
+                index = arrayComponentPattern.cap(2).toInt();
+            }
+            fieldInfo.push_back((PlyPointField){displazName, index, semantics,
+                                                propName, propType});
+        }
+    }
+    std::sort(fieldInfo.begin(), fieldInfo.end(), &displazFieldComparison);
+    return fieldInfo;
+}
+
+
+
+
+bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexElement,
+                             std::vector<PointFieldData>& fields, V3d& offset,
+                             size_t npoints)
+{
+    // Create displaz PointFieldData for each property of the "vertex" element
+    std::vector<PlyPointField> fieldInfo = parsePlyPointFields(vertexElement);
+    std::vector<PlyFieldLoader> fieldLoaders;
+    // Hack: use reserve to avoid iterator invalidation in push_back()
+    fields.reserve(fieldInfo.size());
+    fieldLoaders.reserve(fieldInfo.size());
+    // Always add position field
+    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    fieldLoaders.push_back(PlyFieldLoader(fields[0]));
+    bool hasPosition = false;
+    // Add all other fields, and connect fields to rply callbacks
+    for (size_t i = 0; i < fieldInfo.size(); )
+    {
+        const std::string& fieldName = fieldInfo[i].displazName;
+        PointFieldType::Semantics semantics = fieldInfo[i].semantics;
+        PointFieldType::Type baseType = PointFieldType::Unknown;
+        int elsize = 0;
+        plyTypeToPointFieldType(fieldInfo[i].plyType, baseType, elsize);
+        size_t eltBegin = i;
+        int maxComponentIndex = 0;
+        while (i < fieldInfo.size() && fieldInfo[i].displazName == fieldName &&
+               fieldInfo[i].semantics == semantics)
+        {
+            maxComponentIndex = std::max(maxComponentIndex,
+                                         fieldInfo[i].componentIndex);
+            ++i;
+        }
+        size_t eltEnd = i;
+        PlyFieldLoader* loader = 0;
+        if (fieldName == "position")
+        {
+            hasPosition = true;
+            loader = &fieldLoaders[0];
+        }
+        else
+        {
+            PointFieldType type(baseType, elsize, maxComponentIndex+1, semantics);
+            //tfm::printf("%s: type %s\n", fieldName, type);
+            fields.push_back(PointFieldData(type, fieldName, npoints));
+            fieldLoaders.push_back(PlyFieldLoader(fields.back()));
+            loader = &fieldLoaders.back();
+        }
+        for (size_t j = eltBegin; j < eltEnd; ++j)
+        {
+            ply_set_read_cb(ply, "vertex", fieldInfo[j].plyName.c_str(),
+                            &PlyFieldLoader::rplyCallback,
+                            loader, fieldInfo[j].componentIndex);
+        }
+    }
+    if (!hasPosition)
+    {
+        g_logger.error("No position property found in file %s", fileName);
+        return false;
+    }
+
+    // All setup is done; read ply file using the callbacks
+    if (!ply_read(ply))
+        return false;
+
+    offset = fieldLoaders[0].offset();
+    return true;
+}
+
+
