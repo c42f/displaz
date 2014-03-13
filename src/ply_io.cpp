@@ -29,6 +29,8 @@
 
 #include "ply_io.h"
 
+//------------------------------------------------------------------------------
+// Utilities for interfacing with rply
 
 /// Callback handler for reading ply data into a point field using rply
 class PlyFieldLoader
@@ -130,6 +132,9 @@ void plyTypeToPointFieldType(e_ply_type& plyType, PointFieldType::Type& type, in
 }
 
 
+//------------------------------------------------------------------------------
+// Utilities for loading point fields from the "vertex" element
+
 /// Find "vertex" element in ply file
 p_ply_element findVertexElement(p_ply ply, size_t& npoints)
 {
@@ -160,16 +165,6 @@ struct PlyPointField
     std::string plyName;
     e_ply_type plyType;
 };
-
-/// Order PlyPointField by displaz field name and component index
-bool displazFieldComparison(const PlyPointField& a, const PlyPointField& b)
-{
-    if (a.displazName != b.displazName)
-        return a.displazName < b.displazName;
-    if (a.componentIndex != b.componentIndex)
-        return a.componentIndex < b.componentIndex;
-    return a.semantics < b.semantics;
-}
 
 
 /// Parse ply point properties, and recognize standard names
@@ -241,11 +236,19 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
                                                 propName, propType});
         }
     }
-    std::sort(fieldInfo.begin(), fieldInfo.end(), &displazFieldComparison);
     return fieldInfo;
 }
 
 
+/// Order PlyPointField by displaz field name and component index
+bool displazFieldComparison(const PlyPointField& a, const PlyPointField& b)
+{
+    if (a.displazName != b.displazName)
+        return a.displazName < b.displazName;
+    if (a.componentIndex != b.componentIndex)
+        return a.componentIndex < b.componentIndex;
+    return a.semantics < b.semantics;
+}
 
 
 bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexElement,
@@ -254,6 +257,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
 {
     // Create displaz PointFieldData for each property of the "vertex" element
     std::vector<PlyPointField> fieldInfo = parsePlyPointFields(vertexElement);
+    std::sort(fieldInfo.begin(), fieldInfo.end(), &displazFieldComparison);
     std::vector<PlyFieldLoader> fieldLoaders;
     // Hack: use reserve to avoid iterator invalidation in push_back()
     fields.reserve(fieldInfo.size());
@@ -305,6 +309,140 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
     {
         g_logger.error("No position property found in file %s", fileName);
         return false;
+    }
+
+    // All setup is done; read ply file using the callbacks
+    if (!ply_read(ply))
+        return false;
+
+    offset = fieldLoaders[0].offset();
+    return true;
+}
+
+
+//------------------------------------------------------------------------------
+// Utilities for loading ply in "displaz-native" format
+
+/// Find all elements with name "vertex_*"
+///
+/// The position element will always be in vertexElements[0] if present.
+bool findVertexElements(std::vector<p_ply_element>& vertexElements,
+                        p_ply ply, size_t& npoints)
+{
+    int64_t np = -1;
+    int positionIndex = -1;
+    for (p_ply_element elem = ply_get_next_element(ply, NULL);
+         elem != NULL; elem = ply_get_next_element(ply, elem))
+    {
+        const char* name = 0;
+        long ninstances = 0;
+        if (!ply_get_element_info(elem, &name, &ninstances))
+            continue;
+        if (strncmp(name, "vertex_", 7) == 0)
+        {
+            if (np == -1)
+                np = ninstances;
+            if (np != ninstances)
+            {
+                g_logger.error("%s","Inconsistent number of points in \"vertex_*\" fields");
+                return false;
+            }
+            vertexElements.push_back(elem);
+        }
+        if (strcmp(name, "vertex_position") == 0)
+            positionIndex = vertexElements.size()-1;
+    }
+    if (positionIndex == -1)
+    {
+        g_logger.error("%s", "No vertex position found in ply file");
+        return false;
+    }
+    if (positionIndex != 0)
+        std::swap(vertexElements[0], vertexElements[positionIndex]);
+    npoints = np;
+    return true;
+}
+
+
+bool loadDisplazNativePly(QString fileName, p_ply ply,
+                          std::vector<PointFieldData>& fields, V3d& offset,
+                          size_t& npoints)
+{
+    std::vector<p_ply_element> vertexElements;
+    if (!findVertexElements(vertexElements, ply, npoints))
+        return false;
+
+    // Map each vertex element to the associated displaz type
+    std::vector<PlyFieldLoader> fieldLoaders;
+    // Reserve to avoid reallocs which invalidate pointers to elements.
+    fields.reserve(vertexElements.size());
+    fieldLoaders.reserve(vertexElements.size());
+    for (auto elem = vertexElements.begin(); elem != vertexElements.end(); ++elem)
+    {
+        const char* elemName = 0;
+        ply_get_element_info(*elem, &elemName, 0);
+        assert(elemName);
+
+        // Figure out type of current element.  All properties of the element
+        // should have the same type.
+        PointFieldType::Type baseType = PointFieldType::Unknown;
+        int elsize = 0;
+        p_ply_property firstProp = ply_get_next_property(*elem, NULL);
+        e_ply_type firstPropType = PLY_LIST;
+        const char* firstPropName = 0;
+        ply_get_property_info(firstProp, &firstPropName, &firstPropType, NULL, NULL);
+        plyTypeToPointFieldType(firstPropType, baseType, elsize);
+
+        // Determine semantics from first property.  Displaz-native storage
+        // doesn't care about the rest of the property names (or perhaps it
+        // should be super strict?)
+        PointFieldType::Semantics semantics;
+        if (strcmp(firstPropName, "x") == 0)
+            semantics = PointFieldType::Vector;
+        else if (strcmp(firstPropName, "r") == 0)
+            semantics = PointFieldType::Color;
+        else if (strcmp(firstPropName, "0") == 0)
+            semantics = PointFieldType::Array;
+        else
+            return false;
+        // Count properties
+        int numProps = 0;
+        for (p_ply_property prop = ply_get_next_property(*elem, NULL);
+             prop != NULL; prop = ply_get_next_property(*elem, prop))
+        {
+            numProps += 1;
+        }
+
+        std::string fieldName = elemName + 7; // Strip off "vertex_" prefix
+        if (fieldName == "position")
+        {
+            if (numProps != 3)
+            {
+                g_logger.error("position field must have three elements, found %d", numProps);
+                return false;
+            }
+            // Force "vector float[3]" for position
+            semantics = PointFieldType::Vector;
+            elsize = 4;
+            baseType = PointFieldType::Float;
+        }
+
+        // Create loader callback object
+        PointFieldType type(baseType, elsize, numProps, semantics);
+        fields.push_back(PointFieldData(type, fieldName, npoints));
+        fieldLoaders.push_back(PlyFieldLoader(fields.back()));
+        // Connect callbacks for each property
+        int propIdx = 0;
+        for (p_ply_property prop = ply_get_next_property(*elem, NULL);
+             prop != NULL; prop = ply_get_next_property(*elem, prop))
+        {
+            e_ply_type propType;
+            const char* propName = 0;
+            ply_get_property_info(prop, &propName, &propType, NULL, NULL);
+            ply_set_read_cb(ply, elemName, propName, &PlyFieldLoader::rplyCallback,
+                            &fieldLoaders.back(), propIdx);
+            propIdx += 1;
+        }
     }
 
     // All setup is done; read ply file using the callbacks

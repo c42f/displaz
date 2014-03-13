@@ -491,14 +491,17 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
         return false;
     // Parse out header data
     p_ply_element vertexElement = findVertexElement(ply.get(), npoints);
-    if (!vertexElement)
+    if (vertexElement)
     {
-        g_logger.error("No vertex element found in %s", fileName);
-        return false;
+        if (!loadPlyVertexProperties(fileName, ply.get(), vertexElement, fields, offset, npoints))
+            return false;
+    }
+    else
+    {
+        if (!loadDisplazNativePly(fileName, ply.get(), fields, offset, npoints))
+            return false;
     }
     totPoints = npoints;
-
-    loadPlyVertexProperties(fileName, ply.get(), vertexElement, fields, offset, npoints);
 
     // Compute bounding box and centroid
     const V3f* P = (V3f*)fields[0].as<float>();

@@ -49,8 +49,9 @@ p_ply_element findVertexElement(p_ply ply, size_t& npoints);
 
 /// Load properties of ply "vertex" element
 ///
-/// Properties of the vertex element are mapped into displaz point fields as
-/// follows:
+/// Having all fields as a jumbled mix of properties on the "vertex" element is
+/// a common way to store point clouds in ply format.  Properties of the vertex
+/// element are mapped into displaz point fields as follows:
 ///
 /// The following standard properties are recognized:
 ///
@@ -68,6 +69,46 @@ p_ply_element findVertexElement(p_ply ply, size_t& npoints);
 bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexElement,
                              std::vector<PointFieldData>& fields, V3d& offset,
                              size_t npoints);
+
+/// Load native displaz ply format
+///
+/// This has a fairly rigid and specific layout which is designed to be
+/// unambiguous, and to be simple and efficient for binary serialization.
+/// Each ply element should be named as "vertex_<field_name>"; the vertex_
+/// prefix is stripped off by displaz during parsing.  The semantics of the
+/// field are determined by the names of the first property: "x" implies a
+/// vector, "r" a color, and "0" an array.
+///
+/// Example header elements:
+///
+///   element vertex_position 20
+///   property float x
+///   property float y
+///   property float z
+///   element vertex_mycolor 20
+///   property uint8 r
+///   property uint8 g
+///   property uint8 b
+///   element vertex_myarray 20
+///   property float 0
+///   property float 1
+///
+/// will be parsed as
+///
+///   vector float[3] position
+///   color uint8_t[3] mycolor
+///   array float[2] myarray
+///
+///
+/// Parameters:
+///   fileName - ply file name
+///   ply - open ply file
+///   fields - returned point fields.  fields[0] will contain position
+///   offset - offset to be applied to position field
+///   npoints - total number of points
+bool loadDisplazNativePly(QString fileName, p_ply ply,
+                          std::vector<PointFieldData>& fields, V3d& offset,
+                          size_t& npoints);
 
 
 #endif // DISPLAZ_PLY_IO_INCLUDED
