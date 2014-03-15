@@ -232,8 +232,8 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
                 displazName = arrayComponentPattern.cap(1).toStdString();
                 index = arrayComponentPattern.cap(2).toInt();
             }
-            fieldInfo.push_back((PlyPointField){displazName, index, semantics,
-                                                propName, propType});
+            PlyPointField field = {displazName, index, semantics, propName, propType};
+            fieldInfo.push_back(field);
         }
     }
     return fieldInfo;
@@ -350,7 +350,7 @@ bool findVertexElements(std::vector<p_ply_element>& vertexElements,
             vertexElements.push_back(elem);
         }
         if (strcmp(name, "vertex_position") == 0)
-            positionIndex = vertexElements.size()-1;
+            positionIndex = (int)vertexElements.size()-1;
     }
     if (positionIndex == -1)
     {

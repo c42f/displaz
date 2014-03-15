@@ -118,7 +118,7 @@ std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog)
         GLint arraySize = 0;
         GLenum type = 0;
         GLsizei nameLength = 0;
-        glGetActiveAttrib(prog, attrIdx, nameData.size(),
+        glGetActiveAttrib(prog, attrIdx, (GLsizei)nameData.size(),
                           &nameLength, &arraySize, &type, &nameData[0]);
         const char* typeName = 0;
         int rows = 1;

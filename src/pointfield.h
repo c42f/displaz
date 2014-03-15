@@ -145,6 +145,11 @@ struct PointFieldData
         return reinterpret_cast<T*>(data.get());
     }
 
+    // Horrible hack: explicitly implement move constructor.  Required to
+    // appease MSVC 2012 (broken move semantics for unique_ptr?)
+    PointFieldData(PointFieldData&& f)
+        : type(f.type), name(f.name), data(f.data.release()), size(f.size)
+    { }
 };
 
 

@@ -36,7 +36,7 @@
 
 void GeometryCollection::clear()
 {
-    emit beginRemoveRows(QModelIndex(), 0, m_geometries.size()-1);
+    emit beginRemoveRows(QModelIndex(), 0, (int)m_geometries.size()-1);
     m_geometries.clear();
     emit endRemoveRows();
 }
@@ -46,7 +46,7 @@ int GeometryCollection::rowCount(const QModelIndex & parent) const
 {
     if (parent.isValid())
         return 0;
-    return m_geometries.size();
+    return (int)m_geometries.size();
 }
 
 
@@ -113,7 +113,8 @@ void GeometryCollection::reloadFiles()
 
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom)
 {
-    emit beginInsertRows(QModelIndex(), m_geometries.size(), m_geometries.size());
+    emit beginInsertRows(QModelIndex(), (int)m_geometries.size(),
+                         (int)m_geometries.size());
     m_geometries.push_back(geom);
     emit endInsertRows();
 }
