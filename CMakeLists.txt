@@ -22,6 +22,7 @@ if (WIN32)
 endif()
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
+option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
@@ -48,36 +49,40 @@ if (DISPLAZ_BUILD_EXTERNAL)
     set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
     set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
     set(external_builds ilmbase laslib)
-    set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-    set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
+    if (DISPLAZ_USE_LAS)
+        set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
+        set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif()
     add_subdirectory(thirdparty/external)
 else()
-    # Find a library to read .las or .laz
-    if (DISPLAZ_USE_PDAL)
-        find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
-        find_library (PDAL_LIBRARIES NAMES pdal)
-        if (PDAL_LIBRARIES AND PDAL_INCLUDES)
-            set (PDAL_FOUND TRUE)
-        endif()
-
-        if (PDAL_FOUND)
-            find_package (Boost 1.48)
-            if (NOT Boost_FOUND)
-                message (SEND_ERROR "Boost headers are required when compiling with PDAL")
+    if (DISPLAZ_USE_LAS)
+        # Find a library to read .las or .laz
+        if (DISPLAZ_USE_PDAL)
+            find_path (PDAL_INCLUDES NAMES pdal/pdal_defines.h)
+            find_library (PDAL_LIBRARIES NAMES pdal)
+            if (PDAL_LIBRARIES AND PDAL_INCLUDES)
+                set (PDAL_FOUND TRUE)
             endif()
-            list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
-        endif()
-    else()
-        # laslib support
-        find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
-        find_library (LASLIB_LIBRARIES NAMES laslib)
-        if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
-            set (LASLIB_FOUND TRUE)
-        endif()
-    endif()
 
-    if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
-        message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
+            if (PDAL_FOUND)
+                find_package (Boost 1.48)
+                if (NOT Boost_FOUND)
+                    message (SEND_ERROR "Boost headers are required when compiling with PDAL")
+                endif()
+                list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
+            endif()
+        else()
+            # laslib support
+            find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
+            find_library (LASLIB_LIBRARIES NAMES laslib)
+            if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
+                set (LASLIB_FOUND TRUE)
+            endif()
+        endif()
+
+        if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
+            message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
+        endif()
     endif()
 
     # Find IlmBase
@@ -103,11 +108,14 @@ if(NOT QT_FOUND)
     message(SEND_ERROR "Qt 4 not found")
 endif()
 
-if(DISPLAZ_USE_PDAL)
-    add_definitions(-DDISPLAZ_USE_PDAL)
-    include_directories(${PDAL_INCLUDES})
-else()
-    include_directories(${LASLIB_INCLUDES})
+if (DISPLAZ_USE_LAS)
+    add_definitions(-DDISPLAZ_USE_LAS)
+    if(DISPLAZ_USE_PDAL)
+        add_definitions(-DDISPLAZ_USE_PDAL)
+        include_directories(${PDAL_INCLUDES})
+    else()
+        include_directories(${LASLIB_INCLUDES})
+    endif()
 endif()
 
 #------------------------------------------------------------------------------
@@ -147,6 +155,7 @@ set(srcs
     src/mainwindow.cpp
     src/mesh.cpp
     src/ply_io.cpp
+    src/las_io.cpp
     src/pointarray.cpp
     src/pointfield.cpp
     src/ptview.cpp
@@ -186,16 +195,20 @@ include_directories(${CMAKE_BINARY_DIR})
 
 add_executable(displaz WIN32 ${srcs})
 
-add_dependencies(displaz ${external_builds})
+if (DISPLAZ_BUILD_EXTERNAL)
+    add_dependencies(displaz ${external_builds})
+endif()
 
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
 )
-if (DISPLAZ_USE_PDAL)
-    target_link_libraries (displaz ${PDAL_LIBRARIES})
-else()
-    target_link_libraries (displaz ${LASLIB_LIBRARIES})
+if (DISPLAZ_USE_LAS)
+    if (DISPLAZ_USE_PDAL)
+        target_link_libraries (displaz ${PDAL_LIBRARIES})
+    else()
+        target_link_libraries (displaz ${LASLIB_LIBRARIES})
+    endif()
 endif()
 
 
@@ -249,7 +262,9 @@ endif()
 if (DISPLAZ_USE_TESTS)
     enable_testing()
     add_executable(util_test src/util_test.cpp)
-    add_dependencies(util_test ${external_builds})
+    if (DISPLAZ_BUILD_EXTERNAL)
+        add_dependencies(util_test ${external_builds})
+    endif()
     add_test(util_test util_test)
 endif()
 

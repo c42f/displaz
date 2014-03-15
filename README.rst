@@ -113,7 +113,7 @@ Building
 Before building, you need the following
 
 * cmake >= 2.8
-* Qt >= 4.7
+* Qt >= 4.7 (however Qt 5.0 and greater is not supported yet)
 * GLEW >= 1.5.2 (or so)
 * Python docutils (optional - required to build the html documentation)
 

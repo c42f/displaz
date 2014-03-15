@@ -33,6 +33,7 @@ ExternalProject_Add(
     DOWNLOAD_DIR "${download_dir}"
 )
 
+if (DISPLAZ_USE_LAS)
 ExternalProject_Add(
     laslib
     URL http://www.cs.unc.edu/~isenburg/lastools/download/lastools.zip
@@ -49,7 +50,7 @@ ExternalProject_Add_Step(laslib patchdeps
     DEPENDERS patch
     DEPENDS laslib-CMakeLists.txt lastools-131105-build.patch
 )
-
+endif()
 
 # Don't build Qt here, because it's massive and available elsewhere on various
 # platforms.  However, a nice win64 binary distribution of Qt < 5.0 isn't
