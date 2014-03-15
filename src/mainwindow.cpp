@@ -394,18 +394,20 @@ void PointViewerMainWindow::openFiles()
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
 {
     QFile shaderFile(shaderFileName);
-    if (shaderFile.open(QIODevice::ReadOnly))
+    if (!shaderFile.open(QIODevice::ReadOnly))
     {
-        m_currShaderFileName = shaderFile.fileName();
-        QByteArray src = shaderFile.readAll();
-        m_shaderEditor->setPlainText(src);
-        m_pointView->shaderProgram().setShader(src);
+        shaderFile.setFileName("shaders:" + shaderFileName);
+        if (!shaderFile.open(QIODevice::ReadOnly))
+        {
+            g_logger.error("Couldn't open shader file \"%s\": %s",
+                        shaderFileName, shaderFile.errorString());
+            return;
+        }
     }
-    else
-    {
-        g_logger.error("Couldn't open shader file \"%s\": %s",
-                       shaderFileName, shaderFile.errorString());
-    }
+    m_currShaderFileName = shaderFile.fileName();
+    QByteArray src = shaderFile.readAll();
+    m_shaderEditor->setPlainText(src);
+    m_pointView->shaderProgram().setShader(src);
 }
 
 
