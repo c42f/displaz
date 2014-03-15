@@ -54,7 +54,7 @@ static int storeFileName (int argc, const char *argv[])
 /// Set up search paths to our application directory for Qt's file search
 /// mechanism.
 ///
-/// This allows us to use "shaders:points_default.glsl" as a path to a shader
+/// This allows us to use "shaders:las_points.glsl" as a path to a shader
 /// in the rest of the code, regardless of the system-specific details of how
 /// the install directories are laid out.
 static void setupQFileSearchPaths()

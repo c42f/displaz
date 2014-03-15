@@ -122,7 +122,6 @@ qt4_wrap_cpp(moc_srcs
     src/shadereditor.h
     src/shader.h
 )
-#qt4_add_resources(rcc_srcs package/resources.qrc)
 set(srcs
     ${moc_srcs}
     src/datasetui.cpp

@@ -252,7 +252,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Final setup
-    openShaderFile("shaders:points_default.glsl");
+    openShaderFile("shaders:las_points.glsl");
 }
 
 

@@ -1,7 +1,0 @@
-<!DOCTYPE RCC><RCC version="1.0">
-<qresource>
-    <file>../shaders/points_default.glsl</file>
-    <file>../shaders/meshface.glsl</file>
-    <file>../shaders/meshedge.glsl</file>
-</qresource>
-</RCC>
