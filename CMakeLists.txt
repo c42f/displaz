@@ -16,10 +16,16 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
+set(defaultEmbedGlew FALSE)
+if (WIN32)
+    set(defaultEmbedGlew TRUE)
+endif()
+
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
+option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" ${defaultEmbedGlew})
 
 # Install directory for binaries
 # (It would seem sensible to avoid a bin directory on windows, but in practise
@@ -81,7 +87,15 @@ else()
     endif()
 endif()
 
-find_package(GLEW)
+if (DISPLAZ_EMBED_GLEW)
+    add_definitions(-DGLEW_STATIC)
+    add_library(embeddedGLEW STATIC thirdparty/glew/glew.c)
+    set(GLEW_INCLUDE_DIR thirdparty/glew)
+    set(GLEW_LIBRARIES embeddedGLEW)
+else()
+    find_package(GLEW)
+endif()
+
 find_package(OpenGL REQUIRED)
 find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
