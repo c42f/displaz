@@ -125,38 +125,43 @@ void doReorder(char* dest, const char* src, const size_t* inds, size_t size, int
     }
 }
 
-void PointFieldData::reorder(const size_t* inds, size_t size)
+void reorder(PointFieldData& field, const size_t* inds, size_t indsSize)
 {
-    int typeSize = type.size();
-    std::unique_ptr<char[]> tmpData(new char[size*typeSize]);
+    size_t size = field.size;
+    if (size == 1)
+        return;
+    assert(size == indsSize);
+    int typeSize = field.type.size();
+    std::unique_ptr<char[]> newData(new char[size*typeSize]);
+    const char* prevData = field.data.get();
     // Various options to do the reordering in larger chunks than a single byte at a time.
     switch (typeSize)
     {
-        case 1:  doReorder<uint8_t,  1>(tmpData.get(), data.get(), inds, size); break;
-        case 2:  doReorder<uint16_t, 1>(tmpData.get(), data.get(), inds, size); break;
-        case 3:  doReorder<uint8_t,  3>(tmpData.get(), data.get(), inds, size); break;
-        case 4:  doReorder<uint32_t, 1>(tmpData.get(), data.get(), inds, size); break;
-        case 6:  doReorder<uint16_t, 3>(tmpData.get(), data.get(), inds, size); break;
-        case 8:  doReorder<uint64_t, 1>(tmpData.get(), data.get(), inds, size); break;
-        case 12: doReorder<uint32_t, 3>(tmpData.get(), data.get(), inds, size); break;
+        case 1:  doReorder<uint8_t,  1>(newData.get(), prevData, inds, size); break;
+        case 2:  doReorder<uint16_t, 1>(newData.get(), prevData, inds, size); break;
+        case 3:  doReorder<uint8_t,  3>(newData.get(), prevData, inds, size); break;
+        case 4:  doReorder<uint32_t, 1>(newData.get(), prevData, inds, size); break;
+        case 6:  doReorder<uint16_t, 3>(newData.get(), prevData, inds, size); break;
+        case 8:  doReorder<uint64_t, 1>(newData.get(), prevData, inds, size); break;
+        case 12: doReorder<uint32_t, 3>(newData.get(), prevData, inds, size); break;
         default:
             switch (typeSize % 8)
             {
                 case 0:
-                    doReorder<uint64_t>(tmpData.get(), data.get(), inds, size, typeSize/8);
+                    doReorder<uint64_t>(newData.get(), prevData, inds, size, typeSize/8);
                     break;
                 case 4:
-                    doReorder<uint32_t>(tmpData.get(), data.get(), inds, size, typeSize/4);
+                    doReorder<uint32_t>(newData.get(), prevData, inds, size, typeSize/4);
                     break;
                 case 2: case 6:
-                    doReorder<uint16_t>(tmpData.get(), data.get(), inds, size, typeSize/2);
+                    doReorder<uint16_t>(newData.get(), prevData, inds, size, typeSize/2);
                     break;
                 default:
-                    doReorder<uint8_t>(tmpData.get(),  data.get(), inds, size, typeSize);
+                    doReorder<uint8_t>(newData.get(),  prevData, inds, size, typeSize);
                     break;
             }
     }
-    data.swap(tmpData);
+    field.data.swap(newData);
 }
 
 

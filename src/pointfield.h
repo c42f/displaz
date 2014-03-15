@@ -128,11 +128,13 @@ struct PointFieldData
     PointFieldType type;          /// Field type
     std::string name;             /// Name of the field
     std::unique_ptr<char[]> data; /// Storage array for values in the point field
+    size_t size;                  /// Number of elements in array
 
-    PointFieldData(const PointFieldType& type, const std::string& name, size_t npoints)
+    PointFieldData(const PointFieldType& type, const std::string& name, size_t size)
         : type(type),
         name(name),
-        data(new char[npoints*type.size()])
+        data(new char[size*type.size()]),
+        size(size)
     { }
 
     /// Get pointer to the underlying data as array of the base type
@@ -143,9 +145,11 @@ struct PointFieldData
         return reinterpret_cast<T*>(data.get());
     }
 
-    /// Reorder the data according to the given indexing array
-    void reorder(const size_t* inds, size_t npoints);
 };
+
+
+/// Reorder point field data according to the given indexing array
+void reorder(PointFieldData& field, const size_t* inds, size_t indsSize);
 
 
 std::ostream& operator<<(std::ostream& out, const PointFieldData& ftype);
