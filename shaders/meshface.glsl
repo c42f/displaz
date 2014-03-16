@@ -1,5 +1,9 @@
 #version 130
 
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewProjectionMatrix;
+
 #if defined(VERTEX_SHADER)
 uniform vec3 color = vec3(1.0);
 
@@ -9,8 +13,8 @@ out vec3 position_eye;
 
 void main()
 {
-    gl_Position = gl_ModelViewProjectionMatrix * vec4(position,1.0);
-    position_eye = (gl_ModelViewMatrix * vec4(position,1.0)).xyz;
+    gl_Position = modelViewProjectionMatrix * vec4(position,1.0);
+    position_eye = (modelViewMatrix * vec4(position,1.0)).xyz;
     //gl_FrontColor = vec4(color*abs(dot(normal, lightDir)), 1.0);
 }
 

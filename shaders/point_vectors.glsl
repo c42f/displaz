@@ -1,6 +1,10 @@
 #version 130
 
 
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewProjectionMatrix;
+
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
@@ -35,17 +39,17 @@ float tonemap(float x, float exposure, float contrast)
 
 void main()
 {
-    vec4 p = gl_ModelViewProjectionMatrix * vec4(position,1.0);
+    vec4 p = modelViewProjectionMatrix * vec4(position,1.0);
     gl_Position = p;
     float wInv = 1.0/p.w;
     // Compute differential of the projection Proj(v) = (A*v).xy / (A*v).w
     // restricted to the xy plane.  dProj given here has a factor of wInv
     // removed so that the resulting eigLen is correct for the point coordinate
     // system (pointScreenSize is effectively absorbing the factor of wInv).
-    mat3x2 dProj = mat3x2(gl_ModelViewProjectionMatrix) -
-                   outerProduct(wInv*p.xy, gl_ModelViewProjectionMatrixTranspose[3].xyz);
+    mat3x2 dProj = mat3x2(modelViewProjectionMatrix) -
+                   outerProduct(wInv*p.xy, transpose(modelViewProjectionMatrix)[3].xyz);
     // Remove aspect ratio - fragment coord system will be square.
-    float aspect = gl_ProjectionMatrix[1][1]/gl_ProjectionMatrix[0][0];
+    float aspect = projectionMatrix[1][1]/projectionMatrix[0][0];
     dProj = mat2x2(aspect, 0, 0, 1) * dProj;
     vec3 pc = normalize(normal);
     //vec3 pc = normalize(position - cursorPos);

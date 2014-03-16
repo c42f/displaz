@@ -46,6 +46,7 @@ class QItemSelectionModel;
 class QTimer;
 
 class ShaderProgram;
+class TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
@@ -101,10 +102,12 @@ class PointView : public QGLWidget
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
         void drawCursor(const V3f& P) const;
-        size_t drawPoints(const GeometryCollection::GeometryVec& allPoints,
+        size_t drawPoints(const TransformState& transState,
+                          const GeometryCollection::GeometryVec& allPoints,
                           const QModelIndexList& selection,
                           size_t numPointsToRender, bool incrementalDraw);
-        void drawMeshes(const GeometryCollection::GeometryVec& geoms,
+        void drawMeshes(const TransformState& transState,
+                        const GeometryCollection::GeometryVec& geoms,
                         const QModelIndexList& sel) const;
 
         void snapCursorAndCentre(double normalScaling);

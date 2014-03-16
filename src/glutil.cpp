@@ -30,16 +30,57 @@
 #include "glutil.h"
 #include "tinyformat.h"
 
-void drawBoundingBox(const Imath::Box3d& bbox,
-                     const Imath::C3f& col)
+TransformState TransformState::translate(const Imath::V3f& offset) const
 {
-    drawBoundingBox(Imath::Box3f(bbox.min, bbox.max), col);
+    TransformState res(*this);
+    res.modelViewMatrix =  M44f().setTranslation(offset) * modelViewMatrix;
+    return res;
 }
 
 
-void drawBoundingBox(const Imath::Box3f& bbox,
+static void setUniform(GLuint prog, const char* name, const M44f& mat)
+{
+    GLint loc = glGetUniformLocation(prog, name);
+    if (loc == -1)
+        return;
+    glUniformMatrix4fv(loc, 1, GL_FALSE, &mat[0][0]);
+}
+
+
+void TransformState::setUniforms(GLuint prog) const
+{
+    setUniform(prog, "projectionMatrix", projMatrix);
+    setUniform(prog, "modelViewMatrix", modelViewMatrix);
+    M44f mvproj = modelViewMatrix * projMatrix;
+    setUniform(prog, "modelViewProjectionMatrix", mvproj);
+}
+
+
+void TransformState::load() const
+{
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrix(projMatrix);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrix(modelViewMatrix);
+}
+
+
+//------------------------------------------------------------------------------
+
+void drawBoundingBox(const TransformState& transState,
+                     const Imath::Box3d& bbox,
                      const Imath::C3f& col)
 {
+    transState.load();
+    drawBoundingBox(transState, Imath::Box3f(bbox.min, bbox.max), col);
+}
+
+
+void drawBoundingBox(const TransformState& transState,
+                     const Imath::Box3f& bbox,
+                     const Imath::C3f& col)
+{
+    transState.load();
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

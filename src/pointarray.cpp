@@ -397,23 +397,23 @@ size_t PointArray::simplifiedPointCount(const V3d& cameraPos, bool incrementalDr
 }
 
 
-static void drawTree(const OctreeNode* node)
+static void drawTree(const TransformState& transState, const OctreeNode* node)
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->radius),
                         node->center + Imath::V3f(node->radius));
-    drawBoundingBox(bbox, Imath::C3f(1));
-    drawBoundingBox(node->bbox, Imath::C3f(1,0,0));
+    drawBoundingBox(transState, bbox, Imath::C3f(1));
+    drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0));
     for (int i = 0; i < 8; ++i)
     {
         OctreeNode* n = node->children[i];
         if (n)
-            drawTree(n);
+            drawTree(transState, n);
     }
 }
 
-void PointArray::drawTree() const
+void PointArray::drawTree(const TransformState& transState) const
 {
-    ::drawTree(m_rootNode.get());
+    ::drawTree(transState, m_rootNode.get());
 }
 
 

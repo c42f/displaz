@@ -1,10 +1,13 @@
 #version 130
 
 
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewProjectionMatrix;
+
 
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
-
 
 uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
@@ -47,7 +50,7 @@ float tonemap(float x, float exposure, float contrast)
 
 void main()
 {
-    vec4 p0 = gl_ModelViewMatrix * vec4(position,1.0);
+    vec4 p0 = modelViewMatrix * vec4(position,1.0);
     // Here we do our own cylindrical projection inside the vertex shader.
     // This is the right projection if you're standing at the centre of a
     // circularly curved screen.
@@ -70,11 +73,11 @@ void main()
     // again in the unwanted perspective divide.
     //
     float hfovScale = hfov*0.008726646259971648;
-    float vfov = hfovScale * gl_ProjectionMatrix[0][0] / gl_ProjectionMatrix[1][1];
+    float vfov = hfovScale * projectionMatrix[0][0] / projectionMatrix[1][1];
     float xzlen = length(p0.xz);
     float theta = atan(-p0.x/p0.z);
-    float projZ = (gl_ProjectionMatrix[2][2]*p0.z + gl_ProjectionMatrix[2][3]) /
-                  (gl_ProjectionMatrix[3][2]*p0.z);
+    float projZ = (projectionMatrix[2][2]*p0.z + projectionMatrix[2][3]) /
+                  (projectionMatrix[3][2]*p0.z);
     vec4 p = vec4(
         xzlen * theta / hfovScale,
         p0.y / atan(vfov),
@@ -183,7 +186,7 @@ void main()
             float r = length(p);
             if (r > 1)
                 discard;
-            gl_FragDepth += gl_ProjectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
+            gl_FragDepth += projectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
                             // TODO: Why is the factor of 0.5 required here?
                             * 0.5*modifiedPointRadius*sqrt(1-r*r);
         }

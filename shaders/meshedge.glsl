@@ -1,25 +1,34 @@
 #version 130
 
+
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewProjectionMatrix;
+
 #if defined(VERTEX_SHADER)
 uniform float zoffset = 1e-3;
 
 in vec3 position;
 in vec3 color;
 
+out vec4 col;
+
 void main()
 {
-    gl_Position = gl_ModelViewProjectionMatrix * vec4(position,1.0);
+    gl_Position = modelViewProjectionMatrix * vec4(position,1.0);
     gl_Position.z -= zoffset;
-    gl_FrontColor = vec4(color, 1.0);
+    col = vec4(color, 1.0);
 }
 
 
 //------------------------------------------------------------------------------
 #elif defined(FRAGMENT_SHADER)
+in vec4 col;
+
 out vec4 fragColor;
 
 void main()
 {
-    fragColor = gl_Color;
+    fragColor = col;
 }
 #endif

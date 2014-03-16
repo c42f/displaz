@@ -40,7 +40,7 @@
 class QGLShaderProgram;
 
 struct OctreeNode;
-
+struct TransformState;
 
 //------------------------------------------------------------------------------
 /// Container for points to be displayed in the PointView interface
@@ -66,7 +66,7 @@ class PointArray : public Geometry
         /// Draw a representation of the point hierarchy.
         ///
         /// Probably only useful for debugging.
-        void drawTree() const;
+        void drawTree(const TransformState& transState) const;
 
     private:
         bool loadLas(QString fileName, size_t maxPointCount,

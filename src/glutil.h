@@ -36,10 +36,40 @@
 
 #include "util.h"
 
+//------------------------------------------------------------------------------
+/// Utility to handle transformation state
+struct TransformState
+{
+    M44f projMatrix;
+    M44f modelViewMatrix;
+
+    TransformState(const M44f& projMatrix, const M44f& modelViewMatrix)
+        : projMatrix(projMatrix), modelViewMatrix(modelViewMatrix) {}
+
+    /// Translate model by given offset
+    TransformState translate(const Imath::V3f& offset) const;
+
+    /// Load matrix uniforms onto the currently bound shader program:
+    ///
+    ///   "projectionMatrix"
+    ///   "modelViewMatrix"
+    ///   "modelViewProjectionMatrix"
+    ///
+    void setUniforms(GLuint prog) const;
+
+    /// Load matrices into traditional openGL transform stack
+    ///
+    /// Should be removed eventually!
+    void load() const;
+};
+
+
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
-void drawBoundingBox(const Imath::Box3f& bbox, const Imath::C3f& col);
-void drawBoundingBox(const Imath::Box3d& bbox, const Imath::C3f& col);
+void drawBoundingBox(const TransformState& transState,
+                     const Imath::Box3f& bbox, const Imath::C3f& col);
+void drawBoundingBox(const TransformState& transState,
+                     const Imath::Box3d& bbox, const Imath::C3f& col);
 
 
 //----------------------------------------------------------------------
@@ -72,6 +102,7 @@ inline void glLoadMatrix(const Imath::M44f& m)
 {
     glLoadMatrixf((GLfloat*)m[0]);
 }
+
 
 //------------------------------------------------------------------------------
 // Shader utilities

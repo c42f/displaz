@@ -285,13 +285,11 @@ void PointView::paintGL()
     frameTimer.start();
 
     m_incrementalFramebuffer->bind();
+
     //--------------------------------------------------
     // Draw main scene
-    // Set camera projection
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrix(qt2exr(m_camera.projectionMatrix()));
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrix(qt2exr(m_camera.viewMatrix()));
+    TransformState transState(qt2exr(m_camera.projectionMatrix()),
+                              qt2exr(m_camera.viewMatrix()));
 
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -313,14 +311,14 @@ void PointView::paintGL()
             Imath::Box3d bbox = geoms[sel[i].row()]->boundingBox();
             bbox.min -= m_drawOffset;
             bbox.max -= m_drawOffset;
-            drawBoundingBox(bbox, Imath::C3f(1));
+            drawBoundingBox(transState, bbox, Imath::C3f(1));
         }
     }
 
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
-        drawMeshes(geoms, sel);
+        drawMeshes(transState, geoms, sel);
     }
 
     // Figure out how many points we should render
@@ -330,7 +328,7 @@ void PointView::paintGL()
     size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
     size_t totDrawn = 0;
     // Render points
-    totDrawn = drawPoints(geoms, sel, numPointsToRender, m_incrementalDraw);
+    totDrawn = drawPoints(transState, geoms, sel, numPointsToRender, m_incrementalDraw);
 
     // Measure frame time to update estimate for how many points we can
     // draw interactively
@@ -368,7 +366,8 @@ void PointView::paintGL()
 }
 
 
-void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms,
+void PointView::drawMeshes(const TransformState& transState,
+                           const GeometryCollection::GeometryVec& geoms,
                            const QModelIndexList& sel) const
 {
     // Draw faces
@@ -378,11 +377,9 @@ void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms,
                 m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
     for (int i = 0; i < sel.size(); ++i)
     {
-        glPushMatrix();
         V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-        glTranslatef(offset.x, offset.y, offset.z);
+        transState.translate(offset).setUniforms(meshFaceShader.programId());
         geoms[sel[i].row()]->drawFaces(meshFaceShader);
-        glPopMatrix();
     }
     meshFaceShader.release();
 
@@ -392,11 +389,9 @@ void PointView::drawMeshes(const GeometryCollection::GeometryVec& geoms,
     meshEdgeShader.bind();
     for(int i = 0; i < sel.size(); ++i)
     {
-        glPushMatrix();
         V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-        glTranslatef(offset.x, offset.y, offset.z);
+        transState.translate(offset).setUniforms(meshEdgeShader.programId());
         geoms[sel[i].row()]->drawEdges(meshEdgeShader);
-        glPopMatrix();
     }
     meshEdgeShader.release();
 }
@@ -540,7 +535,8 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 
 /// Draw point cloud
-size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
+size_t PointView::drawPoints(const TransformState& transState,
+                             const GeometryCollection::GeometryVec& geoms,
                              const QModelIndexList& selection,
                              size_t numPointsToRender,
                              bool incrementalDraw)
@@ -568,17 +564,14 @@ size_t PointView::drawPoints(const GeometryCollection::GeometryVec& geoms,
         Geometry& geom = *geoms[geomIdx];
         if(geom.pointCount() == 0)
             continue;
-        glPushMatrix();
         V3d offset = geom.offset() - m_drawOffset;
-        glTranslatef(offset.x, offset.y, offset.z);
-        //prog.setUniformValue("modelViewMatrix", ); // TODO
-        //prog.setUniformValue("projectionMatrix", );
+        //tfm::printf("offset = %.3f\n", offset);
+        transState.translate(offset).setUniforms(prog.programId());
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(geomIdx + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
         totDrawn += geom.drawPoints(prog, globalCamPos, quality, incrementalDraw);
-        glPopMatrix();
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     prog.release();
