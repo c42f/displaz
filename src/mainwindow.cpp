@@ -323,13 +323,18 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
     QList<QByteArray> commandTokens = command.split('\n');
     if (commandTokens.empty())
         return;
-    if (commandTokens[0] == "OPEN_FILES")
+    if (commandTokens[0] == "OPEN_FILES" || commandTokens[0] == "ADD_FILES")
     {
         QStringList files;
         for (int i = 1; i < commandTokens.size(); ++i)
             files << QString(commandTokens[i]);
-        m_geometries->clear();
+        if (commandTokens[0] == "OPEN_FILES")
+            m_geometries->clear();
         m_geometries->loadFiles(files);
+    }
+    else if (commandTokens[0] == "CLEAR_FILES")
+    {
+        m_geometries->clear();
     }
     else if (commandTokens[0] == "SET_VIEW_ANGLES")
     {

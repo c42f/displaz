@@ -88,6 +88,9 @@ int main(int argc, char *argv[])
     std::string shaderName;
     bool useServer = true;
 
+    bool clearFiles = false;
+    bool addFiles = false;
+
     ap.options(
         "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
@@ -99,7 +102,9 @@ int main(int argc, char *argv[])
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
-        "-viewradius %F", &viewRadius, "Set distance to view point",
+        "-viewradius %F", &viewRadius,   "Set distance to view point",
+        "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
+        "-add",          &addFiles,      "Remote: add files to currently open set",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -144,12 +149,16 @@ int main(int argc, char *argv[])
             QByteArray command;
             if (!g_initialFileNames.empty())
             {
-                command = "OPEN_FILES";
+                command = addFiles ? "ADD_FILES" : "OPEN_FILES";
                 for (int i = 0; i < g_initialFileNames.size(); ++i)
                 {
                     command += "\n";
                     command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
                 }
+            }
+            else if (clearFiles)
+            {
+                command = "CLEAR_FILES";
             }
             else if (yaw != -DBL_MAX)
             {
