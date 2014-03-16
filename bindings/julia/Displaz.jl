@@ -1,6 +1,8 @@
 module Displaz
 
-export plot
+# Quick and nasty matlab-like plotting interface
+export plot, clf, hold
+
 
 # Convert julia array into a type name and type appropriate for putting in the
 # ply header
@@ -33,6 +35,7 @@ function ply_property_name(semantic, idx)
     end
 end
 
+# Write a set of points to displaz-native ply format
 function write_ply_points(fileName, nvertices, fields)
     convertedFields = [ply_type_convert(value) for (_,__,value) in fields]
     open(fileName, "w") do fid
@@ -64,38 +67,75 @@ end
 #                           :color     => (color_semantic,3),
 #                           :marksize  => (array_semantic,1),
 #                           :markshape => (array_semantic,1)]
-#
-#const color_names = ["r" => [1.0  0   0],
-#                     "g" => [0.0  0.8 0],
-#                     "b" => [0.0  0   0.8],
-#                     "c" => [0.0  1  1],
-#                     "m" => [1.0  0  1],
-#                     "y" => [1.0  1  0],
-#                     "k" => [0.0  0  0],
-#                     "w" => [1.0  1  1]]
-#
-#interpret_color(color) = color
-#interpret_color(c::String) = color_names[c]
+
+const color_names = ['r' => [1.0  0   0],
+                     'g' => [0.0  0.8 0],
+                     'b' => [0.0  0   0.8],
+                     'c' => [0.0  1  1],
+                     'm' => [1.0  0  1],
+                     'y' => [1.0  1  0],
+                     'k' => [0.0  0  0],
+                     'w' => [1.0  1  1]]
+
+interpret_color(color) = color
+interpret_color(s::String) = length(s) == 1 ? interpret_color(s[1]) : error("Unknown color abbreviation $s")
+interpret_color(c::Char) = color_names[c]
+
+
+# True if plots are to be plotted over the previous data, false to clear before
+# plotting new data sets.
+_hold = false
 
 
 # Basic 3D plotting function for points
-function plot(position; color=[1.0 1.0 1.0]) # TODO , markersize=[0.1], markershape=[1])
+function plot(position; color=[1 1 1], markersize=[0.1], markershape=[1])
+    color = interpret_color(color)
     size(position, 2) == 3 || error("position must be a Nx3 array")
     size(color, 2)    == 3 || error("color must be a Nx3 array")
     nvertices = size(position, 1)
+    # FIXME in displaz itself.  This waste shouldn't be required.
     if size(color,1) == 1
-        # FIXME in displaz itself.  This waste shouldn't be required.
         color = repmat(color, nvertices, 1)
     end
+    if size(markersize,1) == 1
+        markersize = repmat(markersize, nvertices, 1)
+    end
+    if size(markershape,1) == 1
+        markershape = repmat(markershape, nvertices, 1)
+    end
+    # Ensure all fields are floats for now, to avoid surprising scaling in the
+    # shader
+    color = float32(color)
+    markersize = float32(markersize)
+    markershape = float32(markershape)
     size(color,1) == nvertices || error("color must have same number of rows as position array")
     fileName = "_julia_tmp.ply"
     write_ply_points(fileName, nvertices, (
                      (:position, vector_semantic, position),
-                     (:color, color_semantic, color)
+                     (:color, color_semantic, color),
+                     (:markersize, array_semantic, markersize),
+                     (:markershape, array_semantic, markershape),
                      ))
     #@async run(`displaz $fileName`)
-    @async run(`displaz -shader generic_points.glsl $fileName`)
+    holdStr = _hold ? "-add" : ""
+    @async run(`displaz $holdStr -shader generic_points.glsl $fileName`)
     nothing
+end
+
+
+function clf()
+    @async run(`displaz -clear`)
+    nothing
+end
+
+
+function hold()
+    global _hold
+    _hold = !_hold
+end
+function hold(h)
+    global _hold
+    _hold = bool(h)
 end
 
 

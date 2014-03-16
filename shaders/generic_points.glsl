@@ -42,12 +42,12 @@ float tonemap(float x, float exposure, float contrast)
 void main()
 {
     vec4 p = modelViewProjectionMatrix * vec4(position,1.0);
-    float r = length(position.xy - cursorPos.xy);
-    float trimFalloffLen = min(5, trimRadius/2);
-    float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = pointRadius * trimScale;
+    float r = length(position - cursorPos);
+    modifiedPointRadius = pointRadius * step(r, trimRadius);
+    if (markersize != 0) // Default == 0 for in attributes.  TODO: this isn't good in this case - what to do about it?
+        modifiedPointRadius *= markersize;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
-    markerShapeInt = int(255*markershape); // Ick, guess at uint8
+    markerShapeInt = int(markershape); // Ick
     // Compute vertex color
     if (colorMode == 0)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
