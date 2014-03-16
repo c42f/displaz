@@ -74,6 +74,7 @@ class PointView : public QGLWidget
         /// Set the backgroud color
         void setBackground(QColor col);
         void toggleDrawBoundingBoxes();
+        void toggleDrawCursor();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centreOnGeometry(const QModelIndex& index);
@@ -121,6 +122,7 @@ class PointView : public QGLWidget
         QColor m_backgroundColor;
         /// Option to draw bounding boxes of point clouds
         bool m_drawBoundingBoxes;
+        bool m_drawCursor;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds

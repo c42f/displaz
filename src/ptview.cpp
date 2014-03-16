@@ -91,6 +91,7 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
     m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
+    m_drawCursor(true),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
@@ -208,6 +209,12 @@ void PointView::setBackground(QColor col)
 void PointView::toggleDrawBoundingBoxes()
 {
     m_drawBoundingBoxes = !m_drawBoundingBoxes;
+    restartRender();
+}
+
+void PointView::toggleDrawCursor()
+{
+    m_drawCursor = !m_drawCursor;
     restartRender();
 }
 
@@ -341,7 +348,8 @@ void PointView::paintGL()
                                           GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw overlay stuff, including cursor position.
-    drawCursor(m_cursorPos - m_drawOffset);
+    if (m_drawCursor)
+        drawCursor(m_cursorPos - m_drawOffset);
 
     // Set up timer to draw a high quality frame if necessary
     if (totDrawn == 0)
