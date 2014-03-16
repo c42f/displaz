@@ -161,6 +161,9 @@ class ShaderProgram : public QObject
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
 
+        /// Reset the context
+        void setContext(const QGLContext* context);
+
         /// Read shader source from given file and call setShader()
         bool setShaderFromSourceFile(QString fileName);
 

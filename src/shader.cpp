@@ -388,6 +388,13 @@ void ShaderProgram::setUniforms()
 }
 
 
+void ShaderProgram::setContext(const QGLContext* context)
+{
+    m_context = context;
+    setShader(shaderSource());
+}
+
+
 QByteArray ShaderProgram::shaderSource() const
 {
     if (!m_vertexShader)

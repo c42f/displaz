@@ -99,6 +99,12 @@ PointViewerMainWindow::PointViewerMainWindow()
     connect(saveShaderAct, SIGNAL(triggered()), this, SLOT(saveShaderFile()));
 
     fileMenu->addSeparator();
+    QAction* screenShotAct = fileMenu->addAction(tr("Scree&nshot"));
+    screenShotAct->setStatusTip(tr("Save screen shot of 3D window"));
+    screenShotAct->setShortcut(Qt::Key_F9);
+    connect(screenShotAct, SIGNAL(triggered()), this, SLOT(screenShot()));
+
+    fileMenu->addSeparator();
     QAction* quitAct = fileMenu->addAction(tr("&Quit"));
     quitAct->setStatusTip(tr("Exit the application"));
     quitAct->setShortcuts(QKeySequence::Quit);
@@ -464,6 +470,30 @@ void PointViewerMainWindow::reloadFiles()
 void PointViewerMainWindow::helpDialog()
 {
     m_helpDialog->show();
+}
+
+
+void PointViewerMainWindow::screenShot()
+{
+    // Hack: do the grab first, before the widget is covered by the save
+    // dialog.
+    //
+    // Grabbing the desktop directly using grabWindow() isn't great, but makes
+    // this much simpler to implement.  (Other option: use
+    // m_pointView->renderPixmap() and turn off incremental rendering.)
+    QPoint tl = m_pointView->mapToGlobal(QPoint(0,0));
+    QPixmap sshot = QPixmap::grabWindow(QApplication::desktop()->winId(),
+                                        tl.x(), tl.y(),
+                                        m_pointView->width(), m_pointView->height());
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        tr("Save screen shot"),
+        QDir::currentPath(),
+        tr("Image files (*.tif,*.png,*.jpg);;All files(*)")
+    );
+    if (fileName.isNull())
+        return;
+    sshot.save(fileName);
 }
 
 

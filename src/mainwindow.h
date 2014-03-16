@@ -77,6 +77,7 @@ class PointViewerMainWindow : public QMainWindow
         void openShaderFile();
         void saveShaderFile();
         void reloadFiles();
+        void screenShot();
         void helpDialog();
         void aboutDialog();
         void setBackground(const QString& name);

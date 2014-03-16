@@ -243,10 +243,12 @@ void PointView::initializeGL()
         m_badOpenGL = true;
         return;
     }
+    m_shaderProgram->setContext(context());
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
+    m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
 }
 
 
@@ -257,6 +259,12 @@ void PointView::resizeGL(int w, int h)
     // Draw on full window
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
+    m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
+}
+
+
+std::unique_ptr<QGLFramebufferObject> PointView::allocIncrementalFramebuffer(int w, int h) const
+{
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
     const QGLFormat fmt = context()->format();
@@ -264,7 +272,7 @@ void PointView::resizeGL(int w, int h)
     fboFmt.setAttachment(QGLFramebufferObject::Depth);
     fboFmt.setSamples(fmt.samples());
     //fboFmt.setTextureTarget();
-    m_incrementalFramebuffer.reset(
+    return std::unique_ptr<QGLFramebufferObject>(
         new QGLFramebufferObject(w, h, fboFmt));
 }
 
