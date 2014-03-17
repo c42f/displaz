@@ -94,9 +94,9 @@ void GeometryCollection::setMaxPointCount(size_t maxPointCount)
 }
 
 
-void GeometryCollection::loadFiles(const QStringList& fileNames)
+void GeometryCollection::loadFiles(const QStringList& fileNames, bool rmTemp)
 {
-    loadPointFilesImpl(fileNames);
+    loadPointFilesImpl(fileNames, rmTemp);
 }
 
 
@@ -107,7 +107,7 @@ void GeometryCollection::reloadFiles()
     for(size_t i = 0; i < m_geometries.size(); ++i)
         fileNames << m_geometries[i]->fileName();
     clear();
-    loadPointFilesImpl(fileNames);
+    loadPointFilesImpl(fileNames, false);
 }
 
 
@@ -120,7 +120,7 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom)
 }
 
 
-void GeometryCollection::loadPointFilesImpl(const QStringList& fileNames)
+void GeometryCollection::loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad)
 {
     emit fileLoadStarted();
     size_t maxCount = fileNames.empty() ? 0 : m_maxPointCount / fileNames.size();
@@ -131,7 +131,7 @@ void GeometryCollection::loadPointFilesImpl(const QStringList& fileNames)
     // Main point: each QObject has a thread affinity which determines which
     // thread its slots will execute on, when called via a connected signal.
     QThread* thread = new QThread;
-    FileLoader* loader = new FileLoader(fileNames, maxCount);
+    FileLoader* loader = new FileLoader(fileNames, maxCount, removeAfterLoad);
     loader->moveToThread(thread);
     //connect(loader, SIGNAL(error(QString)), this, SLOT(errorString(QString)));
     connect(thread, SIGNAL(started()), loader, SLOT(run()));

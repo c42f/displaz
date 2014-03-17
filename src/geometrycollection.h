@@ -77,7 +77,9 @@ class GeometryCollection : public QAbstractListModel
         void setMaxPointCount(size_t maxPointCount);
 
         /// Append given file list to the current set of geometries
-        void loadFiles(const QStringList& fileNames);
+        ///
+        /// If removeAfterLoad is true, *delete* the files after loading.
+        void loadFiles(const QStringList& fileNames, bool removeAfterLoad = false);
 
         /// Reload all currently loaded files from disk
         void reloadFiles();
@@ -96,7 +98,7 @@ class GeometryCollection : public QAbstractListModel
         void addGeometry(std::shared_ptr<Geometry> geom);
 
     private:
-        void loadPointFilesImpl(const QStringList& fileNames);
+        void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);
 
         /// Maximum desired number of points to load
         size_t m_maxPointCount;

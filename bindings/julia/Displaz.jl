@@ -109,22 +109,23 @@ function plot(position; color=[1 1 1], markersize=[0.1], markershape=[1])
     markersize = float32(markersize)
     markershape = float32(markershape)
     size(color,1) == nvertices || error("color must have same number of rows as position array")
-    fileName = "_julia_tmp.ply"
+    #fileName = "_julia_tmp.ply"
+    fileName = tempname()*".ply"
     write_ply_points(fileName, nvertices, (
                      (:position, vector_semantic, position),
                      (:color, color_semantic, color),
                      (:markersize, array_semantic, markersize),
                      (:markershape, array_semantic, markershape),
                      ))
-    #@async run(`displaz $fileName`)
     holdStr = _hold ? "-add" : ""
-    @async run(`displaz $holdStr -shader generic_points.glsl $fileName`)
+    @async run(`displaz $holdStr -shader generic_points.glsl -rmtemp $fileName`)
+    #print("displaz $holdStr -shader generic_points.glsl -rmtemp $fileName\n")
     nothing
 end
 
 
 function clf()
-    @async run(`displaz -clear`)
+    @async run(`displaz -shader generic_points.glsl -clear`)
     nothing
 end
 

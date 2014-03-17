@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include <QFile>
 #include <QObject>
 #include <QStringList>
 
@@ -18,10 +19,11 @@ class FileLoader : public QObject
     Q_OBJECT
     public:
         FileLoader(QStringList fileNames, size_t maxPointsPerFile,
-                   QObject* parent = 0)
+                   bool removeAfterLoad, QObject* parent = 0)
             : QObject(parent),
             m_fileNames(fileNames),
-            m_maxPointsPerFile(maxPointsPerFile)
+            m_maxPointsPerFile(maxPointsPerFile),
+            m_removeAfterLoad(removeAfterLoad)
         { }
 
     signals:
@@ -50,7 +52,11 @@ class FileLoader : public QObject
                 connect(geom.get(), SIGNAL(loadStepStarted(QString)),
                         this, SIGNAL(loadStepStarted(QString)));
                 if (geom->loadFile(fileName, m_maxPointsPerFile))
+                {
                     emit geometryLoaded(geom);
+                    if (m_removeAfterLoad)
+                        QFile::remove(fileName);
+                }
             }
             emit finished();
         }
@@ -58,6 +64,7 @@ class FileLoader : public QObject
     private:
         QStringList m_fileNames;
         size_t m_maxPointsPerFile;
+        bool m_removeAfterLoad;
 };
 
 

@@ -325,12 +325,19 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
         return;
     if (commandTokens[0] == "OPEN_FILES" || commandTokens[0] == "ADD_FILES")
     {
+        bool rmTemp = false;
+        int firstFileIdx = 1;
+        if (commandTokens[1] == "RMTEMP")
+        {
+            rmTemp = true;
+            firstFileIdx = 2;
+        }
         QStringList files;
-        for (int i = 1; i < commandTokens.size(); ++i)
+        for (int i = firstFileIdx; i < commandTokens.size(); ++i)
             files << QString(commandTokens[i]);
         if (commandTokens[0] == "OPEN_FILES")
             m_geometries->clear();
-        m_geometries->loadFiles(files);
+        m_geometries->loadFiles(files, rmTemp);
     }
     else if (commandTokens[0] == "CLEAR_FILES")
     {

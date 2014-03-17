@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 
     bool clearFiles = false;
     bool addFiles = false;
+    bool rmTemp = false;
 
     ap.options(
         "displaz - A lidar point cloud viewer\n"
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
         "-add",          &addFiles,      "Remote: add files to currently open set",
+        "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -150,6 +152,8 @@ int main(int argc, char *argv[])
             if (!g_initialFileNames.empty())
             {
                 command = addFiles ? "ADD_FILES" : "OPEN_FILES";
+                if (rmTemp)
+                    command += "\nRMTEMP";
                 for (int i = 0; i < g_initialFileNames.size(); ++i)
                 {
                     command += "\n";
@@ -212,7 +216,7 @@ int main(int argc, char *argv[])
     if (!shaderName.empty())
         window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
-    window.geometries().loadFiles(g_initialFileNames);
+    window.geometries().loadFiles(g_initialFileNames, rmTemp);
 
     return app.exec();
 }
