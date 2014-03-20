@@ -35,6 +35,13 @@
 #include <QLabel>
 
 
+static void reduceMinSize(QPushButton* button)
+{
+    QSize size = button->minimumSize();
+    size.setWidth(10);
+    button->setMinimumSize(size);
+}
+
 //------------------------------------------------------------------------------
 // DataSetUI implementation
 
@@ -48,17 +55,19 @@ DataSetUI::DataSetUI(QWidget* parent)
     m_listView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     // Some UI for manipulating the current selection more conveniently than is
     // available by default:
-    QLabel* label = new QLabel(tr("Select:"), this);
-    QPushButton* selAllButton = new QPushButton(tr("All"),this);
-    QPushButton* selNoneButton = new QPushButton(tr("None"),this);
-    QPushButton* selInvertButton = new QPushButton(tr("Invert"),this);
-    connect(selAllButton, SIGNAL(clicked()),
-            this, SLOT(selectAll()));
-    connect(selNoneButton, SIGNAL(clicked()),
-            this, SLOT(selectNone()));
-    connect(selInvertButton, SIGNAL(clicked()),
-            this, SLOT(selectionInvert()));
     QWidget* buttons = new QWidget(this);
+    QLabel* label = new QLabel(tr("Select:"), buttons);
+    QPushButton* selAllButton    = new QPushButton(tr("All"),buttons);
+    QPushButton* selNoneButton   = new QPushButton(tr("None"),buttons);
+    QPushButton* selInvertButton = new QPushButton(tr("Invert"),buttons);
+    // Reduce min size so that buttons don't imply a large minimum width for
+    // the whole data set UI
+    reduceMinSize(selAllButton);
+    reduceMinSize(selNoneButton);
+    reduceMinSize(selInvertButton);
+    connect(selAllButton,    SIGNAL(clicked()), this, SLOT(selectAll()));
+    connect(selNoneButton,   SIGNAL(clicked()), this, SLOT(selectNone()));
+    connect(selInvertButton, SIGNAL(clicked()), this, SLOT(selectionInvert()));
     QHBoxLayout* buttonLayout = new QHBoxLayout(buttons);
     buttonLayout->addWidget(label);
     buttonLayout->addWidget(selAllButton);
