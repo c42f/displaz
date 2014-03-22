@@ -28,19 +28,13 @@ option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" ${defaultEmbedGlew})
 
-# Install directory for binaries
-# (It would seem sensible to avoid a bin directory on windows, but in practise
-# the NSIS installer expects binaries to be there.)
-set(DISPLAZ_BIN_DIR "bin")
-if (WIN32)
-    set(DISPLAZ_SHADER_DIR "shaders")
-    set(DISPLAZ_DOC_DIR "doc")
-else()
-    set(DISPLAZ_SHADER_DIR "share/displaz/shaders")
-    set(DISPLAZ_DOC_DIR "share/doc/displaz")
-endif()
 
+#------------------------------------------------------------------------------
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
+if (DISPLAZ_USE_TESTS)
+    enable_testing()
+endif()
 
 #------------------------------------------------------------------------------
 # Find third party dependencies
@@ -48,7 +42,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 if (DISPLAZ_BUILD_EXTERNAL)
     set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
     set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-    set(external_builds ilmbase laslib)
+    set(externalBuilds ilmbase laslib)
     if (DISPLAZ_USE_LAS)
         set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
         set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -118,118 +112,29 @@ if (DISPLAZ_USE_LAS)
     endif()
 endif()
 
+
 #------------------------------------------------------------------------------
-
-include_directories(BEFORE
-    thirdparty
-    ${GLEW_INCLUDE_DIR}
-    ${QT_INCLUDES}
-    ${OPENGL_INCLUDE_DIR}
-    ${THIRDPARTY_INSTALL_DIR}/include
-)
-
-qt4_wrap_cpp(moc_srcs
-    src/datasetui.h
-    src/displazserver.h
-    src/dragspinbox.h
-    src/fileloader.h
-    src/geometry.h
-    src/geometrycollection.h
-    src/helpdialog.h
-    src/interactivecamera.h
-    src/logger.h
-    src/mainwindow.h
-    src/view3d.h
-    src/pointarray.h
-    src/shadereditor.h
-    src/shader.h
-)
-set(srcs
-    ${moc_srcs}
-    src/datasetui.cpp
-    src/geometry.cpp
-    src/geomfield.cpp
-    src/geometrycollection.cpp
-    src/glutil.cpp
-    src/logger.cpp
-    src/main.cpp
-    src/mainwindow.cpp
-    src/mesh.cpp
-    src/ply_io.cpp
-    src/las_io.cpp
-    src/pointarray.cpp
-    src/typespec.cpp
-    src/view3d.cpp
-    src/shadereditor.cpp
-    src/shader.cpp
-    src/util.cpp
-    thirdparty/argparse.cpp
-    thirdparty/rply/rply.c
-)
-if(WIN32)
-    list(APPEND srcs package/windows_resources.rc)
-endif()
-
-if(WIN32)
-    add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
-endif()
-
-# Create config.h
-find_package(Git)
-set(displazVersion "0.2")
-if (GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe
-                    OUTPUT_VARIABLE displazVersionGit
-                    RESULT_VARIABLE gitDescribeResult)
-    if (gitDescribeResult STREQUAL "0")
-        string(STRIP "${displazVersionGit}" displazVersion)
-        # For better or worse, I've been tagging as v0.1 - strip off the "v"
-        string(REGEX REPLACE "^v" "" displazVersion "${displazVersion}")
-    endif()
+# Install directory for binaries
+# (It would seem sensible to avoid a bin directory on windows, but in practise
+# the NSIS installer expects binaries to be there.)
+set(DISPLAZ_BIN_DIR "bin")
+if (WIN32)
+    set(DISPLAZ_SHADER_DIR "shaders")
+    set(DISPLAZ_DOC_DIR "doc")
 else()
-    message(WARNING "Git not found - assuming hardcoded version ${displazVersion}")
-endif()
-set(DISPLAZ_VERSION_STRING "${displazVersion}")
-configure_file(src/config.h.in.cmake config.h @ONLY)
-include_directories(${CMAKE_BINARY_DIR})
-
-
-add_executable(displaz WIN32 ${srcs})
-
-if (DISPLAZ_BUILD_EXTERNAL)
-    add_dependencies(displaz ${external_builds})
-endif()
-
-target_link_libraries(displaz
-    ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
-)
-if (DISPLAZ_USE_LAS)
-    if (DISPLAZ_USE_PDAL)
-        target_link_libraries (displaz ${PDAL_LIBRARIES})
-    else()
-        target_link_libraries (displaz ${LASLIB_LIBRARIES})
-    endif()
+    set(DISPLAZ_SHADER_DIR "share/displaz/shaders")
+    set(DISPLAZ_DOC_DIR "share/doc/displaz")
 endif()
 
 
-if(WIN32)
-    target_link_libraries(displaz
-        ${QT_QTMAIN_LIBRARY}
-    )
-    if(DISPLAZ_STATIC)
-        # These extra libraries are needed on windows when linking against a
-        # static Qt-4.8.? which has been built with the default options.
-        target_link_libraries(displaz
-            imm32.lib Ws2_32.lib Winmm.lib
-        )
-    endif()
-endif()
+#------------------------------------------------------------------------------
+# Build sources
+add_subdirectory(src)
 
 
-install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
+#------------------------------------------------------------------------------
+# Create install tree
 install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
-
 install(DIRECTORY thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
 
 if(WIN32)
@@ -255,18 +160,6 @@ if (RST2HTML)
 else()
     message(WARNING "rst2html not found - documentation will be installed as text!")
     install(FILES README.rst DESTINATION "${DISPLAZ_DOC_DIR}")
-endif()
-
-
-#------------------------------------------------------------------------------
-# Tests
-if (DISPLAZ_USE_TESTS)
-    enable_testing()
-    add_executable(util_test src/util_test.cpp)
-    if (DISPLAZ_BUILD_EXTERNAL)
-        add_dependencies(util_test ${external_builds})
-    endif()
-    add_test(util_test util_test)
 endif()
 
 
