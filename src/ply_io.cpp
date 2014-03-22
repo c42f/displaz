@@ -36,7 +36,7 @@
 class PlyFieldLoader
 {
     public:
-        PlyFieldLoader(PointFieldData& field)
+        PlyFieldLoader(GeomField& field)
             : m_field(&field),
             m_pointIndex(0),
             m_componentReadCount(0),
@@ -106,7 +106,7 @@ class PlyFieldLoader
         V3d offset() const { return V3d(m_offset[0], m_offset[1], m_offset[2]); }
 
     private:
-        PointFieldData* m_field;
+        GeomField* m_field;
         size_t m_pointIndex;
         int m_componentReadCount;
         bool m_isPositionField;
@@ -252,10 +252,10 @@ bool displazFieldComparison(const PlyPointField& a, const PlyPointField& b)
 
 
 bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexElement,
-                             std::vector<PointFieldData>& fields, V3d& offset,
+                             std::vector<GeomField>& fields, V3d& offset,
                              size_t npoints)
 {
-    // Create displaz PointFieldData for each property of the "vertex" element
+    // Create displaz GeomField for each property of the "vertex" element
     std::vector<PlyPointField> fieldInfo = parsePlyPointFields(vertexElement);
     std::sort(fieldInfo.begin(), fieldInfo.end(), &displazFieldComparison);
     std::vector<PlyFieldLoader> fieldLoaders;
@@ -263,7 +263,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
     fields.reserve(fieldInfo.size());
     fieldLoaders.reserve(fieldInfo.size());
     // Always add position field
-    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
+    fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     fieldLoaders.push_back(PlyFieldLoader(fields[0]));
     bool hasPosition = false;
     // Add all other fields, and connect fields to rply callbacks
@@ -294,7 +294,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
         {
             TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics);
             //tfm::printf("%s: type %s\n", fieldName, type);
-            fields.push_back(PointFieldData(type, fieldName, npoints));
+            fields.push_back(GeomField(type, fieldName, npoints));
             fieldLoaders.push_back(PlyFieldLoader(fields.back()));
             loader = &fieldLoaders.back();
         }
@@ -365,7 +365,7 @@ bool findVertexElements(std::vector<p_ply_element>& vertexElements,
 
 
 bool loadDisplazNativePly(QString fileName, p_ply ply,
-                          std::vector<PointFieldData>& fields, V3d& offset,
+                          std::vector<GeomField>& fields, V3d& offset,
                           size_t& npoints)
 {
     std::vector<p_ply_element> vertexElements;
@@ -429,7 +429,7 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
 
         // Create loader callback object
         TypeSpec type(baseType, elsize, numProps, semantics);
-        fields.push_back(PointFieldData(type, fieldName, npoints));
+        fields.push_back(GeomField(type, fieldName, npoints));
         fieldLoaders.push_back(PlyFieldLoader(fields.back()));
         // Connect callbacks for each property
         int propIdx = 0;

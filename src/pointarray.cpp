@@ -169,7 +169,7 @@ PointArray::~PointArray()
 
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
-                          std::vector<PointFieldData>& fields, V3d& offset,
+                          std::vector<GeomField>& fields, V3d& offset,
                           size_t& npoints, size_t& totPoints,
                           Imath::Box3d& bbox, V3d& centroid)
 {
@@ -201,7 +201,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
         return false;
     if (totPoints > 0)
         offset = points[0];
-    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
+    fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     V3f* position = (V3f*)fields[0].as<float>();
     for (size_t i = 0; i < npoints; ++i)
     {
@@ -217,7 +217,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
-                         std::vector<PointFieldData>& fields, V3d& offset,
+                         std::vector<GeomField>& fields, V3d& offset,
                          size_t& npoints, size_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
@@ -428,7 +428,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     std::vector<int> fieldShaderLocations;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        const PointFieldData& field = m_fields[i];
+        const GeomField& field = m_fields[i];
         // Could ensure compatibility between point field and shader field
         // (type, number of components etc).  It's fairly convenient to not be
         // too strict about this however - it seems that the GL driver will

@@ -36,6 +36,7 @@
 
 #include "geometry.h"
 #include "typespec.h"
+#include "geomfield.h"
 
 class QGLShaderProgram;
 
@@ -70,17 +71,17 @@ class PointArray : public Geometry
 
     private:
         bool loadLas(QString fileName, size_t maxPointCount,
-                     std::vector<PointFieldData>& fields, V3d& offset,
+                     std::vector<GeomField>& fields, V3d& offset,
                      size_t& npoints, size_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
         bool loadText(QString fileName, size_t maxPointCount,
-                      std::vector<PointFieldData>& fields, V3d& offset,
+                      std::vector<GeomField>& fields, V3d& offset,
                       size_t& npoints, size_t& totPoints,
                       Imath::Box3d& bbox, V3d& centroid);
 
         bool loadPly(QString fileName, size_t maxPointCount,
-                     std::vector<PointFieldData>& fields, V3d& offset,
+                     std::vector<GeomField>& fields, V3d& offset,
                      size_t& npoints, size_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
@@ -91,7 +92,7 @@ class PointArray : public Geometry
         /// Spatial hierarchy
         std::unique_ptr<OctreeNode> m_rootNode;
         /// Point data field storage
-        std::vector<PointFieldData> m_fields;
+        std::vector<GeomField> m_fields;
         /// A position field is required.  Alias for convenience:
         int m_positionFieldIdx;
         V3f* m_P;

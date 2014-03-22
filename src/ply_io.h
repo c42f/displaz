@@ -37,6 +37,7 @@
 #include <QRegExp>
 
 #include "typespec.h"
+#include "geomfield.h"
 #include "util.h"
 #include "logger.h"
 
@@ -67,7 +68,7 @@ p_ply_element findVertexElement(p_ply ply, size_t& npoints);
 ///   prop_x, prop_y, prop_z  -> 3-element vector per point with name "prop"
 ///
 bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexElement,
-                             std::vector<PointFieldData>& fields, V3d& offset,
+                             std::vector<GeomField>& fields, V3d& offset,
                              size_t npoints);
 
 /// Load native displaz ply format
@@ -107,7 +108,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
 ///   offset - offset to be applied to position field
 ///   npoints - total number of points
 bool loadDisplazNativePly(QString fileName, p_ply ply,
-                          std::vector<PointFieldData>& fields, V3d& offset,
+                          std::vector<GeomField>& fields, V3d& offset,
                           size_t& npoints);
 
 

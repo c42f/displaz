@@ -148,6 +148,7 @@ set(srcs
     ${moc_srcs}
     src/datasetui.cpp
     src/geometry.cpp
+    src/geomfield.cpp
     src/geometrycollection.cpp
     src/glutil.cpp
     src/logger.cpp

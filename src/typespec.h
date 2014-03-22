@@ -27,15 +27,15 @@
 //
 // (This is the BSD 3-clause license)
 
-#ifndef DISPLAZ_POINTFIELD_H_INCLUDED
-#define DISPLAZ_POINTFIELD_H_INCLUDED
+#ifndef DISPLAZ_TYPESPEC_H_INCLUDED
+#define DISPLAZ_TYPESPEC_H_INCLUDED
 
 #include <cassert>
 #include <string>
 #include <iostream>
 #include <memory>
 
-/// Type description for data fields stored on points
+/// Type description for data fields stored on geometry
 ///
 /// Each point field is a fixed-length array of data elements made up from
 /// simple numeric types.  For example, we might have
@@ -66,7 +66,7 @@ struct TypeSpec
     {
         Array,
         Vector,
-        // Normal, // Required to support nonrigid transforms
+        // Point, Normal // Required if we supported nonrigid transforms
         Color
     };
 
@@ -109,55 +109,4 @@ int glBaseType(const TypeSpec& spec);
 std::ostream& operator<<(std::ostream& out, const TypeSpec& spec);
 
 
-//------------------------------------------------------------------------------
-/// Storage array for point data field
-///
-/// The data is stored as a packed contiguous array of the base type, with each
-/// point having type.count elements.  The name of the field is also included.
-/// Here are some standard names used in displaz:
-///
-///   "position"        - location in 3D space
-///   "color"           - RGB color data
-///   "returnNumber"    - Return index (1-based) in pulse
-///   "numberOfReturns" - Total number of returns in pulse
-///   "pointSourceId"   - Identifier for source of aquisition
-///   "classification"  - Object type and other data
-///
-struct PointFieldData
-{
-    TypeSpec spec;                /// Field type
-    std::string name;             /// Name of the field
-    std::unique_ptr<char[]> data; /// Storage array for values in the point field
-    size_t size;                  /// Number of elements in array
-
-    PointFieldData(const TypeSpec& spec, const std::string& name, size_t size)
-        : spec(spec),
-        name(name),
-        data(new char[size*spec.size()]),
-        size(size)
-    { }
-
-    /// Get pointer to the underlying data as array of the base spec
-    template<typename T>
-    T* as()
-    {
-        assert(sizeof(T) == spec.elsize);
-        return reinterpret_cast<T*>(data.get());
-    }
-
-    // Horrible hack: explicitly implement move constructor.  Required to
-    // appease MSVC 2012 (broken move semantics for unique_ptr?)
-    PointFieldData(PointFieldData&& f)
-        : spec(f.spec), name(f.name), data(f.data.release()), size(f.size)
-    { }
-};
-
-
-/// Reorder point field data according to the given indexing array
-void reorder(PointFieldData& field, const size_t* inds, size_t indsSize);
-
-
-std::ostream& operator<<(std::ostream& out, const PointFieldData& field);
-
-
-#endif // DISPLAZ_POINTFIELD_H_INCLUDED
+#endif // DISPLAZ_TYPESPEC_H_INCLUDED
