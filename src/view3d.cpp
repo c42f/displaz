@@ -28,13 +28,7 @@
 // (This is the BSD 3-clause license)
 
 #include "glutil.h"
-#include "ptview.h"
-#include "mainwindow.h"
-#include "shader.h"
-
-#include "config.h"
-#include "logger.h"
-#include "util.h"
+#include "view3d.h"
 
 #include <QtCore/QTimer>
 #include <QtCore/QTime>
@@ -45,10 +39,14 @@
 #include <QMessageBox>
 //#include <QtOpenGL/QGLBuffer>
 
+#include "config.h"
 #include "fileloader.h"
-#include "ptview.h"
+#include "logger.h"
+#include "mainwindow.h"
 #include "mesh.h"
+#include "shader.h"
 #include "tinyformat.h"
+#include "util.h"
 
 
 //----------------------------------------------------------------------
@@ -81,7 +79,7 @@ inline Imath::M44f qt2exr(const QMatrix4x4& m)
 static const size_t g_defaultPointRenderCount = 1000000;
 
 //------------------------------------------------------------------------------
-PointView::PointView(GeometryCollection* geometries, QWidget *parent)
+View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     : QGLWidget(parent),
     m_camera(false, false),
     m_prevMousePos(0,0),
@@ -137,17 +135,17 @@ PointView::PointView(GeometryCollection* geometries, QWidget *parent)
 }
 
 
-PointView::~PointView() { }
+View3D::~View3D() { }
 
 
-void PointView::restartRender()
+void View3D::restartRender()
 {
     m_incrementalDraw = false;
     update();
 }
 
 
-void PointView::geometryChanged()
+void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
         centreOnGeometry(m_geometries->index(0));
@@ -157,13 +155,13 @@ void PointView::geometryChanged()
 }
 
 
-void PointView::setShaderParamsUIWidget(QWidget* widget)
+void View3D::setShaderParamsUIWidget(QWidget* widget)
 {
     m_shaderParamsUI = widget;
 }
 
 
-void PointView::setupShaderParamUI()
+void View3D::setupShaderParamUI()
 {
     if (!m_shaderProgram || !m_shaderParamsUI)
         return;
@@ -180,7 +178,7 @@ void PointView::setupShaderParamUI()
 }
 
 
-void PointView::setSelectionModel(QItemSelectionModel* selectionModel)
+void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
 {
     assert(selectionModel);
     if (selectionModel->model() != m_geometries)
@@ -199,32 +197,32 @@ void PointView::setSelectionModel(QItemSelectionModel* selectionModel)
 }
 
 
-void PointView::setBackground(QColor col)
+void View3D::setBackground(QColor col)
 {
     m_backgroundColor = col;
     restartRender();
 }
 
 
-void PointView::toggleDrawBoundingBoxes()
+void View3D::toggleDrawBoundingBoxes()
 {
     m_drawBoundingBoxes = !m_drawBoundingBoxes;
     restartRender();
 }
 
-void PointView::toggleDrawCursor()
+void View3D::toggleDrawCursor()
 {
     m_drawCursor = !m_drawCursor;
     restartRender();
 }
 
-void PointView::toggleCameraMode()
+void View3D::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
 }
 
 
-void PointView::centreOnGeometry(const QModelIndex& index)
+void View3D::centreOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
@@ -235,7 +233,7 @@ void PointView::centreOnGeometry(const QModelIndex& index)
 }
 
 
-void PointView::initializeGL()
+void View3D::initializeGL()
 {
     if (glewInit() != GLEW_OK)
     {
@@ -252,7 +250,7 @@ void PointView::initializeGL()
 }
 
 
-void PointView::resizeGL(int w, int h)
+void View3D::resizeGL(int w, int h)
 {
     if (m_badOpenGL)
         return;
@@ -263,7 +261,7 @@ void PointView::resizeGL(int w, int h)
 }
 
 
-std::unique_ptr<QGLFramebufferObject> PointView::allocIncrementalFramebuffer(int w, int h) const
+std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
 {
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
@@ -277,7 +275,7 @@ std::unique_ptr<QGLFramebufferObject> PointView::allocIncrementalFramebuffer(int
 }
 
 
-void PointView::paintGL()
+void View3D::paintGL()
 {
     if (m_badOpenGL)
         return;
@@ -366,7 +364,7 @@ void PointView::paintGL()
 }
 
 
-void PointView::drawMeshes(const TransformState& transState,
+void View3D::drawMeshes(const TransformState& transState,
                            const GeometryCollection::GeometryVec& geoms,
                            const QModelIndexList& sel) const
 {
@@ -397,14 +395,14 @@ void PointView::drawMeshes(const TransformState& transState,
 }
 
 
-void PointView::mousePressEvent(QMouseEvent* event)
+void View3D::mousePressEvent(QMouseEvent* event)
 {
     m_mouseButton = event->button();
     m_prevMousePos = event->pos();
 }
 
 
-void PointView::mouseReleaseEvent(QMouseEvent* event)
+void View3D::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MidButton)
     {
@@ -416,7 +414,7 @@ void PointView::mouseReleaseEvent(QMouseEvent* event)
 }
 
 
-void PointView::mouseMoveEvent(QMouseEvent* event)
+void View3D::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_mouseButton == Qt::MidButton)
         return;
@@ -437,14 +435,14 @@ void PointView::mouseMoveEvent(QMouseEvent* event)
 }
 
 
-void PointView::wheelEvent(QWheelEvent* event)
+void View3D::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
     m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
 }
 
 
-void PointView::keyPressEvent(QKeyEvent *event)
+void View3D::keyPressEvent(QKeyEvent *event)
 {
     if(event->key() == Qt::Key_C)
     {
@@ -461,7 +459,7 @@ void PointView::keyPressEvent(QKeyEvent *event)
 
 
 /// Draw the 3D cursor
-void PointView::drawCursor(const V3f& cursorPos) const
+void View3D::drawCursor(const V3f& cursorPos) const
 {
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
@@ -535,7 +533,7 @@ void PointView::drawCursor(const V3f& cursorPos) const
 
 
 /// Draw point cloud
-size_t PointView::drawPoints(const TransformState& transState,
+size_t View3D::drawPoints(const TransformState& transState,
                              const GeometryCollection::GeometryVec& geoms,
                              const QModelIndexList& selection,
                              size_t numPointsToRender,
@@ -580,7 +578,7 @@ size_t PointView::drawPoints(const TransformState& transState,
 
 
 /// Snap 3D cursor to closest point and centre the camera
-void PointView::snapCursorAndCentre(double normalScaling)
+void View3D::snapCursorAndCentre(double normalScaling)
 {
     if(m_geometries->get().empty())
         return;

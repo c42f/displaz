@@ -44,7 +44,7 @@ struct OctreeNode;
 struct TransformState;
 
 //------------------------------------------------------------------------------
-/// Container for points to be displayed in the PointView interface
+/// Container for points to be displayed in the View3D interface
 class PointArray : public Geometry
 {
     Q_OBJECT

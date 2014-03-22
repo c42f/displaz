@@ -30,14 +30,14 @@
 #include "mainwindow.h"
 
 #include "config.h"
+#include "datasetui.h"
+#include "geometrycollection.h"
 #include "helpdialog.h"
-#include "ptview.h"
+#include "logger.h"
+#include "mesh.h"
 #include "shadereditor.h"
 #include "shader.h"
-#include "mesh.h"
-#include "logger.h"
-#include "geometrycollection.h"
-#include "datasetui.h"
+#include "view3d.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtGui/QApplication>
@@ -163,7 +163,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new PointView(m_geometries, this);
+    m_pointView = new View3D(m_geometries, this);
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));

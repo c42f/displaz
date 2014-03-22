@@ -43,7 +43,7 @@ class QProgressBar;
 class QModelIndex;
 
 class HelpDialog;
-class PointView;
+class View3D;
 class ShaderEditor;
 class LogViewer;
 class GeometryCollection;
@@ -91,7 +91,7 @@ class PointViewerMainWindow : public QMainWindow
 
         // Gui objects
         QProgressBar* m_progressBar;
-        PointView* m_pointView;
+        View3D* m_pointView;
         ShaderEditor* m_shaderEditor;
         HelpDialog* m_helpDialog;
         LogViewer* m_logTextView;

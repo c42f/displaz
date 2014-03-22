@@ -50,12 +50,12 @@ class TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
-class PointView : public QGLWidget
+class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
-        PointView(GeometryCollection* geometries, QWidget *parent = NULL);
-        ~PointView();
+        View3D(GeometryCollection* geometries, QWidget *parent = NULL);
+        ~View3D();
 
         /// Return shader used for displaying points
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }

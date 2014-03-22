@@ -139,7 +139,7 @@ qt4_wrap_cpp(moc_srcs
     src/interactivecamera.h
     src/logger.h
     src/mainwindow.h
-    src/ptview.h
+    src/view3d.h
     src/pointarray.h
     src/shadereditor.h
     src/shader.h
@@ -159,7 +159,7 @@ set(srcs
     src/las_io.cpp
     src/pointarray.cpp
     src/typespec.cpp
-    src/ptview.cpp
+    src/view3d.cpp
     src/shadereditor.cpp
     src/shader.cpp
     src/util.cpp
