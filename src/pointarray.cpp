@@ -201,7 +201,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
         return false;
     if (totPoints > 0)
         offset = points[0];
-    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
     V3f* position = (V3f*)fields[0].as<float>();
     for (size_t i = 0; i < npoints; ++i)
     {
@@ -296,7 +296,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     m_positionFieldIdx = -1;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        if (m_fields[i].name == "position" && m_fields[i].type.count == 3)
+        if (m_fields[i].name == "position" && m_fields[i].spec.count == 3)
         {
             m_positionFieldIdx = i;
             break;
@@ -434,9 +434,9 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         // too strict about this however - it seems that the GL driver will
         // just discard any excess components passed.
         // TODO: At least make this a warning somehow
-        if (field.type.isArray())
+        if (field.spec.isArray())
         {
-            for (int j = 0; j < field.type.count; ++j)
+            for (int j = 0; j < field.spec.count; ++j)
             {
                 std::string name = tfm::format("%s[%d]", field.name, j);
                 fieldShaderLocations.push_back(prog.attributeLocation(name.c_str()));
@@ -496,19 +496,19 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         // radii are scaled up to keep the total area covered by the points
         // constant.
         //lodMultiplier = sqrt(double(node->size())/ndraw);
-        for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].type.arraySize(), ++i)
+        for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
-            int arraySize = m_fields[i].type.arraySize();
-            int vecSize = m_fields[i].type.vectorSize();
+            int arraySize = m_fields[i].spec.arraySize();
+            int vecSize = m_fields[i].spec.vectorSize();
             for (int j = 0; j < arraySize; ++j)
             {
                 int loc = fieldShaderLocations[k+j];
                 if (loc < 0)
                     continue;
-                char* data = m_fields[i].data.get() + idx*m_fields[i].type.size() +
-                             j*m_fields[i].type.elsize;
-                prog.setAttributeArray(loc, glBaseType(m_fields[i].type),
-                                       data, vecSize, m_fields[i].type.size());
+                char* data = m_fields[i].data.get() + idx*m_fields[i].spec.size() +
+                             j*m_fields[i].spec.elsize;
+                prog.setAttributeArray(loc, glBaseType(m_fields[i].spec),
+                                       data, vecSize, m_fields[i].spec.size());
             }
         }
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);

@@ -157,7 +157,7 @@ set(srcs
     src/ply_io.cpp
     src/las_io.cpp
     src/pointarray.cpp
-    src/pointfield.cpp
+    src/typespec.cpp
     src/ptview.cpp
     src/shadereditor.cpp
     src/shader.cpp

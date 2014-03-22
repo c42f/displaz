@@ -119,12 +119,12 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     if (fabs(offset.z) < 10000)
         offset.z = 0;
     // Allocate all arrays
-    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
-    fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", npoints));
+    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(TypeSpec::float32(), "intensity", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "returnNumber", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "numberOfReturns", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "pointSourceId", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "classification", npoints));
     // Output iterators for the output arrays
     V3f* position           = (V3f*)fields[0].as<float>();
     float*   intensity      = fields[1].as<float>();
@@ -135,7 +135,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint16_t* color = 0;
     if (hasColor)
     {
-        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3,PointFieldType::Color),
+        fields.push_back(PointFieldData(TypeSpec(TypeSpec::Uint,2,3,TypeSpec::Color),
                                         "color", npoints));
         color = fields.back().as<uint16_t>();
     }
@@ -232,12 +232,12 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     // noticable precision by storing the data as floats)
     if (fabs(lasReader->header.min_z) > 10000)
         offset.z = lasReader->header.min_z;
-    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
-    fields.push_back(PointFieldData(PointFieldType::float32(), "intensity", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "returnNumber", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "numberOfReturns", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "pointSourceId", npoints));
-    fields.push_back(PointFieldData(PointFieldType::uint8(), "classification", npoints));
+    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(TypeSpec::float32(), "intensity", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "returnNumber", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "numberOfReturns", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "pointSourceId", npoints));
+    fields.push_back(PointFieldData(TypeSpec::uint8(), "classification", npoints));
     // Iterate over all points & pull in the data.
     V3f* position           = (V3f*)fields[0].as<float>();
     float*   intensity      = fields[1].as<float>();
@@ -254,7 +254,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint16_t* color = 0;
     if (point.have_rgb)
     {
-        fields.push_back(PointFieldData(PointFieldType(PointFieldType::Uint,2,3,PointFieldType::Color),
+        fields.push_back(PointFieldData(TypeSpec(TypeSpec::Uint,2,3,TypeSpec::Color),
                                         "color", npoints));
         color = fields.back().as<uint16_t>();
     }

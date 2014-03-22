@@ -64,27 +64,27 @@ class PlyFieldLoader
                 value -= m_offset[componentIndex];
             }
             // Set data value depending on type
-            size_t idx = m_pointIndex*m_field->type.count + componentIndex;
-            switch(m_field->type.type)
+            size_t idx = m_pointIndex*m_field->spec.count + componentIndex;
+            switch(m_field->spec.type)
             {
-                case PointFieldType::Int:
-                    switch(m_field->type.elsize)
+                case TypeSpec::Int:
+                    switch(m_field->spec.elsize)
                     {
                         case 1: m_field->as<int8_t>()[idx]  = (int8_t)value;  break;
                         case 2: m_field->as<int16_t>()[idx] = (int16_t)value; break;
                         case 4: m_field->as<int32_t>()[idx] = (int32_t)value; break;
                     }
                     break;
-                case PointFieldType::Uint:
-                    switch(m_field->type.elsize)
+                case TypeSpec::Uint:
+                    switch(m_field->spec.elsize)
                     {
                         case 1: m_field->as<uint8_t>()[idx]  = (uint8_t)value;  break;
                         case 2: m_field->as<uint16_t>()[idx] = (uint16_t)value; break;
                         case 4: m_field->as<uint32_t>()[idx] = (uint32_t)value; break;
                     }
                     break;
-                case PointFieldType::Float:
-                    switch(m_field->type.elsize)
+                case TypeSpec::Float:
+                    switch(m_field->spec.elsize)
                     {
                         case 4: m_field->as<float>()[idx] = (float)value;   break;
                         case 8: m_field->as<double>()[idx] = (double)value; break;
@@ -95,7 +95,7 @@ class PlyFieldLoader
             }
             // Keep track of which point we're on
             ++m_componentReadCount;
-            if (m_componentReadCount == m_field->type.count)
+            if (m_componentReadCount == m_field->spec.count)
             {
                 ++m_pointIndex;
                 m_componentReadCount = 0;
@@ -114,19 +114,19 @@ class PlyFieldLoader
 };
 
 
-/// Get PointFieldType type info from associated rply type
-void plyTypeToPointFieldType(e_ply_type& plyType, PointFieldType::Type& type, int& elsize)
+/// Get TypeSpec type info from associated rply type
+void plyTypeToPointFieldType(e_ply_type& plyType, TypeSpec::Type& type, int& elsize)
 {
     switch(plyType)
     {
-        case PLY_INT8:    case PLY_CHAR:   type = PointFieldType::Int;   elsize = 1; break;
-        case PLY_INT16:   case PLY_SHORT:  type = PointFieldType::Int;   elsize = 2; break;
-        case PLY_INT32:   case PLY_INT:    type = PointFieldType::Int;   elsize = 4; break;
-        case PLY_UINT8:   case PLY_UCHAR:  type = PointFieldType::Uint;  elsize = 1; break;
-        case PLY_UINT16:  case PLY_USHORT: type = PointFieldType::Uint;  elsize = 2; break;
-        case PLY_UIN32:   case PLY_UINT:   type = PointFieldType::Uint;  elsize = 4; break;
-        case PLY_FLOAT32: case PLY_FLOAT:  type = PointFieldType::Float; elsize = 4; break;
-        case PLY_FLOAT64: case PLY_DOUBLE: type = PointFieldType::Float; elsize = 8; break;
+        case PLY_INT8:    case PLY_CHAR:   type = TypeSpec::Int;   elsize = 1; break;
+        case PLY_INT16:   case PLY_SHORT:  type = TypeSpec::Int;   elsize = 2; break;
+        case PLY_INT32:   case PLY_INT:    type = TypeSpec::Int;   elsize = 4; break;
+        case PLY_UINT8:   case PLY_UCHAR:  type = TypeSpec::Uint;  elsize = 1; break;
+        case PLY_UINT16:  case PLY_USHORT: type = TypeSpec::Uint;  elsize = 2; break;
+        case PLY_UIN32:   case PLY_UINT:   type = TypeSpec::Uint;  elsize = 4; break;
+        case PLY_FLOAT32: case PLY_FLOAT:  type = TypeSpec::Float; elsize = 4; break;
+        case PLY_FLOAT64: case PLY_DOUBLE: type = TypeSpec::Float; elsize = 8; break;
         default: assert(0 && "Unknown ply type");
     }
 }
@@ -161,7 +161,7 @@ struct PlyPointField
 {
     std::string displazName;
     int componentIndex;
-    PointFieldType::Semantics semantics;
+    TypeSpec::Semantics semantics;
     std::string plyName;
     e_ply_type plyType;
 };
@@ -173,18 +173,18 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
     // List of some fields which might be found in a .ply file and mappings to
     // displaz field groups.  Note that there's no standard!
     PlyPointField standardFields[] = {
-        {"position",  0,  PointFieldType::Vector,  "x",      PLY_FLOAT},
-        {"position",  1,  PointFieldType::Vector,  "y",      PLY_FLOAT},
-        {"position",  2,  PointFieldType::Vector,  "z",      PLY_FLOAT},
-        {"color",     0,  PointFieldType::Color ,  "red",    PLY_UINT8},
-        {"color",     1,  PointFieldType::Color ,  "green",  PLY_UINT8},
-        {"color",     2,  PointFieldType::Color ,  "blue",   PLY_UINT8},
-        {"color",     0,  PointFieldType::Color ,  "r",      PLY_UINT8},
-        {"color",     1,  PointFieldType::Color ,  "g",      PLY_UINT8},
-        {"color",     2,  PointFieldType::Color ,  "b",      PLY_UINT8},
-        {"normal",    0,  PointFieldType::Vector,  "nx",     PLY_FLOAT},
-        {"normal",    1,  PointFieldType::Vector,  "ny",     PLY_FLOAT},
-        {"normal",    2,  PointFieldType::Vector,  "nz",     PLY_FLOAT},
+        {"position",  0,  TypeSpec::Vector,  "x",      PLY_FLOAT},
+        {"position",  1,  TypeSpec::Vector,  "y",      PLY_FLOAT},
+        {"position",  2,  TypeSpec::Vector,  "z",      PLY_FLOAT},
+        {"color",     0,  TypeSpec::Color ,  "red",    PLY_UINT8},
+        {"color",     1,  TypeSpec::Color ,  "green",  PLY_UINT8},
+        {"color",     2,  TypeSpec::Color ,  "blue",   PLY_UINT8},
+        {"color",     0,  TypeSpec::Color ,  "r",      PLY_UINT8},
+        {"color",     1,  TypeSpec::Color ,  "g",      PLY_UINT8},
+        {"color",     2,  TypeSpec::Color ,  "b",      PLY_UINT8},
+        {"normal",    0,  TypeSpec::Vector,  "nx",     PLY_FLOAT},
+        {"normal",    1,  TypeSpec::Vector,  "ny",     PLY_FLOAT},
+        {"normal",    2,  TypeSpec::Vector,  "nz",     PLY_FLOAT},
     };
     QRegExp vec3ComponentPattern("(.*)_?([xyz])");
     QRegExp arrayComponentPattern("(.*)\\[([0-9]+)\\]");
@@ -220,12 +220,12 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
             // it will be turned into an array type (such as a vector)
             std::string displazName = propName;
             int index = 0;
-            PointFieldType::Semantics semantics = PointFieldType::Array;
+            TypeSpec::Semantics semantics = TypeSpec::Array;
             if (vec3ComponentPattern.exactMatch(propName))
             {
                 displazName = vec3ComponentPattern.cap(1).toStdString();
                 index = vec3ComponentPattern.cap(2)[0].toAscii() - 'x';
-                semantics = PointFieldType::Vector;
+                semantics = TypeSpec::Vector;
             }
             else if(arrayComponentPattern.exactMatch(propName))
             {
@@ -263,15 +263,15 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
     fields.reserve(fieldInfo.size());
     fieldLoaders.reserve(fieldInfo.size());
     // Always add position field
-    fields.push_back(PointFieldData(PointFieldType::vec3float32(), "position", npoints));
+    fields.push_back(PointFieldData(TypeSpec::vec3float32(), "position", npoints));
     fieldLoaders.push_back(PlyFieldLoader(fields[0]));
     bool hasPosition = false;
     // Add all other fields, and connect fields to rply callbacks
     for (size_t i = 0; i < fieldInfo.size(); )
     {
         const std::string& fieldName = fieldInfo[i].displazName;
-        PointFieldType::Semantics semantics = fieldInfo[i].semantics;
-        PointFieldType::Type baseType = PointFieldType::Unknown;
+        TypeSpec::Semantics semantics = fieldInfo[i].semantics;
+        TypeSpec::Type baseType = TypeSpec::Unknown;
         int elsize = 0;
         plyTypeToPointFieldType(fieldInfo[i].plyType, baseType, elsize);
         size_t eltBegin = i;
@@ -292,7 +292,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
         }
         else
         {
-            PointFieldType type(baseType, elsize, maxComponentIndex+1, semantics);
+            TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics);
             //tfm::printf("%s: type %s\n", fieldName, type);
             fields.push_back(PointFieldData(type, fieldName, npoints));
             fieldLoaders.push_back(PlyFieldLoader(fields.back()));
@@ -385,7 +385,7 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
 
         // Figure out type of current element.  All properties of the element
         // should have the same type.
-        PointFieldType::Type baseType = PointFieldType::Unknown;
+        TypeSpec::Type baseType = TypeSpec::Unknown;
         int elsize = 0;
         p_ply_property firstProp = ply_get_next_property(*elem, NULL);
         e_ply_type firstPropType = PLY_LIST;
@@ -396,13 +396,13 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
         // Determine semantics from first property.  Displaz-native storage
         // doesn't care about the rest of the property names (or perhaps it
         // should be super strict?)
-        PointFieldType::Semantics semantics;
+        TypeSpec::Semantics semantics;
         if (strcmp(firstPropName, "x") == 0)
-            semantics = PointFieldType::Vector;
+            semantics = TypeSpec::Vector;
         else if (strcmp(firstPropName, "r") == 0)
-            semantics = PointFieldType::Color;
+            semantics = TypeSpec::Color;
         else if (strcmp(firstPropName, "0") == 0)
-            semantics = PointFieldType::Array;
+            semantics = TypeSpec::Array;
         else
             return false;
         // Count properties
@@ -422,13 +422,13 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
                 return false;
             }
             // Force "vector float[3]" for position
-            semantics = PointFieldType::Vector;
+            semantics = TypeSpec::Vector;
             elsize = 4;
-            baseType = PointFieldType::Float;
+            baseType = TypeSpec::Float;
         }
 
         // Create loader callback object
-        PointFieldType type(baseType, elsize, numProps, semantics);
+        TypeSpec type(baseType, elsize, numProps, semantics);
         fields.push_back(PointFieldData(type, fieldName, npoints));
         fieldLoaders.push_back(PlyFieldLoader(fields.back()));
         // Connect callbacks for each property

@@ -27,66 +27,66 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "pointfield.h"
+#include "typespec.h"
 #include "glutil.h"
 
 #include <tinyformat.h>
 
 //------------------------------------------------------------------------------
-// PointFieldType functions
+// TypeSpec functions
 
-int glBaseType(const PointFieldType& ftype)
+int glBaseType(const TypeSpec& spec)
 {
-    switch (ftype.type)
+    switch (spec.type)
     {
-        case PointFieldType::Float:
-            if (ftype.elsize == 2) return GL_HALF_FLOAT;
-            if (ftype.elsize == 4) return GL_FLOAT;
-            if (ftype.elsize == 8) return GL_DOUBLE;
+        case TypeSpec::Float:
+            if (spec.elsize == 2) return GL_HALF_FLOAT;
+            if (spec.elsize == 4) return GL_FLOAT;
+            if (spec.elsize == 8) return GL_DOUBLE;
             break;
-        case PointFieldType::Int:
-            if (ftype.elsize == 1) return GL_BYTE;
-            if (ftype.elsize == 2) return GL_SHORT;
-            if (ftype.elsize == 4) return GL_INT;
+        case TypeSpec::Int:
+            if (spec.elsize == 1) return GL_BYTE;
+            if (spec.elsize == 2) return GL_SHORT;
+            if (spec.elsize == 4) return GL_INT;
             break;
-        case PointFieldType::Uint:
-            if (ftype.elsize == 1) return GL_UNSIGNED_BYTE;
-            if (ftype.elsize == 2) return GL_UNSIGNED_SHORT;
-            if (ftype.elsize == 4) return GL_UNSIGNED_INT;
+        case TypeSpec::Uint:
+            if (spec.elsize == 1) return GL_UNSIGNED_BYTE;
+            if (spec.elsize == 2) return GL_UNSIGNED_SHORT;
+            if (spec.elsize == 4) return GL_UNSIGNED_INT;
             break;
         default:
             break;
     }
-    assert(0 && "Unable to convert PointFieldType -> GL type");
+    assert(0 && "Unable to convert TypeSpec -> GL type");
     return GL_BYTE;
 }
 
 
 
-std::ostream& operator<<(std::ostream& out, const PointFieldType& ftype)
+std::ostream& operator<<(std::ostream& out, const TypeSpec& spec)
 {
-    if (ftype.type == PointFieldType::Float)
+    if (spec.type == TypeSpec::Float)
     {
         const char* baseTypeStr = "";
-        switch (ftype.elsize)
+        switch (spec.elsize)
         {
             case 2: baseTypeStr = "half";   break;
             case 4: baseTypeStr = "float";  break;
             case 8: baseTypeStr = "double"; break;
             default: baseTypeStr = "?"; assert(0); break;
         }
-        tfm::format(out, "%s[%d]", baseTypeStr, ftype.count);
+        tfm::format(out, "%s[%d]", baseTypeStr, spec.count);
         return out;
     }
     const char* baseTypeStr = "";
-    switch (ftype.type)
+    switch (spec.type)
     {
-        case PointFieldType::Int:     baseTypeStr = "int";     break;
-        case PointFieldType::Uint:    baseTypeStr = "uint";    break;
-        case PointFieldType::Unknown: baseTypeStr = "unknown"; break;
+        case TypeSpec::Int:     baseTypeStr = "int";     break;
+        case TypeSpec::Uint:    baseTypeStr = "uint";    break;
+        case TypeSpec::Unknown: baseTypeStr = "unknown"; break;
         default: assert(0);
     }
-    tfm::format(out, "%s%d_t[%d]", baseTypeStr, 8*ftype.elsize, ftype.count);
+    tfm::format(out, "%s%d_t[%d]", baseTypeStr, 8*spec.elsize, spec.count);
     return out;
 }
 
@@ -96,7 +96,7 @@ std::ostream& operator<<(std::ostream& out, const PointFieldType& ftype)
 
 std::ostream& operator<<(std::ostream& out, const PointFieldData& field)
 {
-    tfm::format(out, "%s %s", field.type, field.name);
+    tfm::format(out, "%s %s", field.spec, field.name);
     return out;
 }
 
@@ -131,7 +131,7 @@ void reorder(PointFieldData& field, const size_t* inds, size_t indsSize)
     if (size == 1)
         return;
     assert(size == indsSize);
-    int typeSize = field.type.size();
+    int typeSize = field.spec.size();
     std::unique_ptr<char[]> newData(new char[size*typeSize]);
     const char* prevData = field.data.get();
     // Various options to do the reordering in larger chunks than a single byte at a time.

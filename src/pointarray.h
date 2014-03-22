@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "geometry.h"
-#include "pointfield.h"
+#include "typespec.h"
 
 class QGLShaderProgram;
 

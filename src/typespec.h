@@ -50,9 +50,9 @@
 /// types to the OpenGL shader.
 ///
 /// This kind of class comes up in pretty much any rendering API.  For example,
-/// OpenImageIO's TypeDesc (descended from gelato).  See also commonalities
-/// with PCL's PCD header data.
-struct PointFieldType
+/// OpenImageIO's TypeDesc (descended from gelato), the Aqsis Ri::TypeSpec /
+/// PrimVarToken machinary, etc.
+struct TypeSpec
 {
     enum Type
     {
@@ -75,16 +75,16 @@ struct PointFieldType
     int count;  /// Number of elements
     Semantics semantics;  /// Interpretation for aggregates
 
-    PointFieldType() : type(Unknown), elsize(0), count(0), semantics(Array) {}
+    TypeSpec() : type(Unknown), elsize(0), count(0), semantics(Array) {}
 
-    PointFieldType(Type type, int elsize, int count = 1, Semantics semantics = Array)
+    TypeSpec(Type type, int elsize, int count = 1, Semantics semantics = Array)
         : type(type), elsize(elsize), count(count), semantics(semantics) {}
 
     /// Named constructors for common types
-    static PointFieldType vec3float32() { return PointFieldType(Float, 4, 3, Vector); }
-    static PointFieldType float32() { return PointFieldType(Float, 4, 1); }
-    static PointFieldType uint16()  { return PointFieldType(Uint, 2, 1); }
-    static PointFieldType uint8()   { return PointFieldType(Uint, 1, 1); }
+    static TypeSpec vec3float32() { return TypeSpec(Float, 4, 3, Vector); }
+    static TypeSpec float32() { return TypeSpec(Float, 4, 1); }
+    static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1); }
+    static TypeSpec uint8()   { return TypeSpec(Uint, 1, 1); }
 
     /// Return number of vector elements in the aggregate
     int vectorSize() const { return (semantics == Array) ? 1 : count; }
@@ -102,11 +102,11 @@ struct PointFieldType
 /// Get associated OpenGL base type for given point field type
 ///
 /// Useful for passing point fields to OpenGL shaders
-int glBaseType(const PointFieldType& ftype);
+int glBaseType(const TypeSpec& spec);
 
 
 /// Print readable representation of type on stream
-std::ostream& operator<<(std::ostream& out, const PointFieldType& ftype);
+std::ostream& operator<<(std::ostream& out, const TypeSpec& spec);
 
 
 //------------------------------------------------------------------------------
@@ -125,30 +125,30 @@ std::ostream& operator<<(std::ostream& out, const PointFieldType& ftype);
 ///
 struct PointFieldData
 {
-    PointFieldType type;          /// Field type
+    TypeSpec spec;                /// Field type
     std::string name;             /// Name of the field
     std::unique_ptr<char[]> data; /// Storage array for values in the point field
     size_t size;                  /// Number of elements in array
 
-    PointFieldData(const PointFieldType& type, const std::string& name, size_t size)
-        : type(type),
+    PointFieldData(const TypeSpec& spec, const std::string& name, size_t size)
+        : spec(spec),
         name(name),
-        data(new char[size*type.size()]),
+        data(new char[size*spec.size()]),
         size(size)
     { }
 
-    /// Get pointer to the underlying data as array of the base type
+    /// Get pointer to the underlying data as array of the base spec
     template<typename T>
     T* as()
     {
-        assert(sizeof(T) == type.elsize);
+        assert(sizeof(T) == spec.elsize);
         return reinterpret_cast<T*>(data.get());
     }
 
     // Horrible hack: explicitly implement move constructor.  Required to
     // appease MSVC 2012 (broken move semantics for unique_ptr?)
     PointFieldData(PointFieldData&& f)
-        : type(f.type), name(f.name), data(f.data.release()), size(f.size)
+        : spec(f.spec), name(f.name), data(f.data.release()), size(f.size)
     { }
 };
 
@@ -157,7 +157,7 @@ struct PointFieldData
 void reorder(PointFieldData& field, const size_t* inds, size_t indsSize);
 
 
-std::ostream& operator<<(std::ostream& out, const PointFieldData& ftype);
+std::ostream& operator<<(std::ostream& out, const PointFieldData& field);
 
 
 #endif // DISPLAZ_POINTFIELD_H_INCLUDED

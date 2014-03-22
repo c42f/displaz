@@ -36,7 +36,7 @@
 
 #include <QRegExp>
 
-#include "pointfield.h"
+#include "typespec.h"
 #include "util.h"
 #include "logger.h"
 
