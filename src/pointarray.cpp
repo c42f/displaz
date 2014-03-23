@@ -425,25 +425,22 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     // Figure out shader locations for each point field
     // TODO: attributeLocation() forces the OpenGL usage here to be
     // synchronous.  Does this matter?  (Alternative: bind them ourselves.)
-    std::vector<int> fieldShaderLocations;
+    std::vector<const ShaderAttribute*> attributes;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         const GeomField& field = m_fields[i];
-        // Could ensure compatibility between point field and shader field
-        // (type, number of components etc).  It's fairly convenient to not be
-        // too strict about this however - it seems that the GL driver will
-        // just discard any excess components passed.
-        // TODO: At least make this a warning somehow
         if (field.spec.isArray())
         {
             for (int j = 0; j < field.spec.count; ++j)
             {
                 std::string name = tfm::format("%s[%d]", field.name, j);
-                fieldShaderLocations.push_back(prog.attributeLocation(name.c_str()));
+                attributes.push_back(findAttr(name, activeAttrs));
             }
         }
         else
-            fieldShaderLocations.push_back(prog.attributeLocation(field.name.c_str()));
+        {
+            attributes.push_back(findAttr(field.name, activeAttrs));
+        }
     }
     // Zero out active attributes in case they don't have associated fields
     GLfloat zeros[16] = {0};
@@ -453,10 +450,10 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
                                activeAttrs[i].cols);
     }
     // Enable attributes which have associated fields
-    for (size_t i = 0; i < fieldShaderLocations.size(); ++i)
+    for (size_t i = 0; i < attributes.size(); ++i)
     {
-        if (fieldShaderLocations[i] >= 0)
-            prog.enableAttributeArray(fieldShaderLocations[i]);
+        if (attributes[i])
+            prog.enableAttributeArray(attributes[i]->location);
     }
 
     // Draw points in each bucket, with total number drawn depending on how far
@@ -498,17 +495,27 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         //lodMultiplier = sqrt(double(node->size())/ndraw);
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
-            int arraySize = m_fields[i].spec.arraySize();
-            int vecSize = m_fields[i].spec.vectorSize();
+            const GeomField& field = m_fields[i];
+            int arraySize = field.spec.arraySize();
+            int vecSize = field.spec.vectorSize();
             for (int j = 0; j < arraySize; ++j)
             {
-                int loc = fieldShaderLocations[k+j];
-                if (loc < 0)
+                const ShaderAttribute* attr = attributes[k+j];
+                if (!attr)
                     continue;
-                char* data = m_fields[i].data.get() + idx*m_fields[i].spec.size() +
-                             j*m_fields[i].spec.elsize;
-                prog.setAttributeArray(loc, glBaseType(m_fields[i].spec),
-                                       data, vecSize, m_fields[i].spec.size());
+                char* data = field.data.get() + idx*field.spec.size() +
+                             j*field.spec.elsize;
+                if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
+                {
+                    glVertexAttribIPointer(attr->location, vecSize,
+                                           glBaseType(field.spec), 0, data);
+                }
+                else
+                {
+                    glVertexAttribPointer(attr->location, vecSize,
+                                          glBaseType(field.spec),
+                                          field.spec.fixedPoint, 0, data);
+                }
             }
         }
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
@@ -520,10 +527,10 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
 
     // Disable all attribute arrays - leaving these enabled seems to screw with
     // the OpenGL fixed function pipeline in unusual ways.
-    for (size_t i = 0; i < fieldShaderLocations.size(); ++i)
+    for (size_t i = 0; i < attributes.size(); ++i)
     {
-        if (fieldShaderLocations[i] >= 0)
-            prog.disableAttributeArray(fieldShaderLocations[i]);
+        if (attributes[i])
+            prog.disableAttributeArray(attributes[i]->location);
     }
     return totDrawn;
 }

@@ -70,19 +70,31 @@ struct TypeSpec
         Color
     };
 
-    Type type;  /// Element type
-    int elsize; /// Element size in bytes
-    int count;  /// Number of elements
+    Type type;       /// Element type
+    int elsize;      /// Element size in bytes
+    int count;       /// Number of elements
     Semantics semantics;  /// Interpretation for aggregates
+    bool fixedPoint; /// For Int,Uint: indicates fixed point scaling by
+                     /// max value of the underlying integer type
 
-    TypeSpec() : type(Unknown), elsize(0), count(0), semantics(Array) {}
+    TypeSpec() : type(Unknown), elsize(0), count(0), semantics(Array), fixedPoint(true) {}
 
-    TypeSpec(Type type, int elsize, int count = 1, Semantics semantics = Array)
-        : type(type), elsize(elsize), count(count), semantics(semantics) {}
+    TypeSpec(Type type, int elsize, int count = 1,
+             Semantics semantics = Array, bool fixedPoint = true)
+        : type(type),
+        elsize(elsize),
+        count(count),
+        semantics(semantics),
+        fixedPoint(fixedPoint)
+    {}
 
     /// Named constructors for common types
     static TypeSpec vec3float32() { return TypeSpec(Float, 4, 3, Vector); }
     static TypeSpec float32() { return TypeSpec(Float, 4, 1); }
+    // Non-scaled integers
+    static TypeSpec uint16_i()  { return TypeSpec(Uint, 2, 1, Array, false); }
+    static TypeSpec uint8_i()   { return TypeSpec(Uint, 1, 1, Array, false); }
+    // Scaled fixed point integers
     static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1); }
     static TypeSpec uint8()   { return TypeSpec(Uint, 1, 1); }
 

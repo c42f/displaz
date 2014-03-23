@@ -120,14 +120,14 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         offset.z = 0;
     // Allocate all arrays
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
-    fields.push_back(GeomField(TypeSpec::float32(), "intensity", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "returnNumber", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "numberOfReturns", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "pointSourceId", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "classification", npoints));
+    fields.push_back(GeomField(TypeSpec::uint16_i(), "intensity", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "returnNumber", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "numberOfReturns", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "pointSourceId", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "classification", npoints));
     // Output iterators for the output arrays
     V3f* position           = (V3f*)fields[0].as<float>();
-    float*   intensity      = fields[1].as<float>();
+    uint16_t* intensity     = fields[1].as<uint16_t>();
     uint8_t* returnNumber   = fields[2].as<uint8_t>();
     uint8_t* numReturns     = fields[3].as<uint8_t>();
     uint8_t* pointSourceId  = fields[4].as<uint8_t>();
@@ -233,14 +233,14 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     if (fabs(lasReader->header.min_z) > 10000)
         offset.z = lasReader->header.min_z;
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
-    fields.push_back(GeomField(TypeSpec::float32(), "intensity", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "returnNumber", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "numberOfReturns", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "pointSourceId", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8(), "classification", npoints));
+    fields.push_back(GeomField(TypeSpec::uint16_i(), "intensity", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "returnNumber", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "numberOfReturns", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "pointSourceId", npoints));
+    fields.push_back(GeomField(TypeSpec::uint8_i(), "classification", npoints));
     // Iterate over all points & pull in the data.
     V3f* position           = (V3f*)fields[0].as<float>();
-    float*   intensity      = fields[1].as<float>();
+    uint16_t* intensity     = fields[1].as<uint16_t>();
     uint8_t* returnNumber   = fields[2].as<uint8_t>();
     uint8_t* numReturns     = fields[3].as<uint8_t>();
     uint8_t* pointSourceId  = fields[4].as<uint8_t>();
@@ -267,8 +267,6 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
         bbox.extendBy(P);
         Psum += P;
-        //if (std::max(abs(P.x - 389661.571), (abs(P.y - 7281119.875))) < 500)
-            //tfm::format(dumpFile, "%.3f %.3f %.3f\n", P.x, P.y, P.z);
         if(readCount < nextStore)
             continue;
         // Store the point

@@ -25,12 +25,12 @@ in vec3 position;
 in vec3 color;
 in float intensity;
 in float markersize;
-in float markershape; // TODO: Don't load as a float!
+in int markershape;
 
 flat out float modifiedPointRadius;
 flat out float pointScreenSize;
 flat out vec3 pointColor;
-flat out int markerShapeInt;
+flat out int markerShape2;
 
 float tonemap(float x, float exposure, float contrast)
 {
@@ -47,19 +47,19 @@ void main()
     if (markersize != 0) // Default == 0 for in attributes.  TODO: this isn't good in this case - what to do about it?
         modifiedPointRadius *= markersize;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
-    markerShapeInt = int(markershape); // Ick
+    markerShape2 = markershape;
     // Compute vertex color
     if (colorMode == 0)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 1)
         pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
     // Ensure zero size points are discarded.  The actual minimum point size is
-    // hardware and driver dependent, so set the markerShapeInt to discarded for
+    // hardware and driver dependent, so set the markerShape2 to discarded for
     // good measure.
     if (pointScreenSize <= 0)
     {
         pointScreenSize = 0;
-        markerShapeInt = -1;
+        markerShape2 = -1;
     }
     gl_PointSize = pointScreenSize;
     gl_Position = p;
@@ -74,7 +74,7 @@ uniform float markerWidth = 0.3;
 flat in float modifiedPointRadius;
 flat in float pointScreenSize;
 flat in vec3 pointColor;
-flat in int markerShapeInt;
+flat in int markerShape2;
 
 out vec4 fragColor;
 
@@ -85,11 +85,11 @@ const float sqrt2 = 1.414213562;
 
 void main()
 {
-    if (markerShapeInt < 0) // markerShapeInt == -1: discarded.
+    if (markerShape2 < 0) // markerShape2 == -1: discarded.
         discard;
-    // (markerShapeInt == 1: Square shape)
+    // (markerShape2 == 1: Square shape)
     gl_FragDepth = gl_FragCoord.z;
-    if (markerShapeInt != 1 && pointScreenSize > pointScreenSizeLimit)
+    if (markerShape2 != 1 && pointScreenSize > pointScreenSizeLimit)
     {
         float w = markerWidth;
         if (pointScreenSize < 2*pointScreenSizeLimit)
@@ -98,7 +98,7 @@ void main()
             w = mix(1, w, pointScreenSize/pointScreenSizeLimit - 1);
         }
         vec2 p = 2*(gl_PointCoord - 0.5);
-        if (markerShapeInt == 0) // shape: .
+        if (markerShape2 == 0) // shape: .
         {
             float r = length(p);
             if (r > 1)
@@ -107,19 +107,19 @@ void main()
                             // TODO: Why is the factor of 0.5 required here?
                             * 0.5*modifiedPointRadius*sqrt(1-r*r);
         }
-        else if (markerShapeInt == 2) // shape: o
+        else if (markerShape2 == 2) // shape: o
         {
             float r = length(p);
             if (r > 1 || r < 1 - w)
                 discard;
         }
-        else if (markerShapeInt == 3) // shape: x
+        else if (markerShape2 == 3) // shape: x
         {
             w *= 0.5*sqrt2;
             if (abs(p.x + p.y) > w && abs(p.x - p.y) > w)
                 discard;
         }
-        else if (markerShapeInt == 4) // shape: +
+        else if (markerShape2 == 4) // shape: +
         {
             w *= 0.5;
             if (abs(p.x) > w && abs(p.y) > w)

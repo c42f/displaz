@@ -30,11 +30,10 @@ uniform int fileNumber = 0;
 in float intensity;
 in vec3 position;
 in vec3 color;
-// FIXME: Should avoid turning these two into floats!
-in float returnNumber;
-in float numberOfReturns;
-in float pointSourceId;
-in float classification;
+in int returnNumber;
+in int numberOfReturns;
+in int pointSourceId;
+in int classification;
 
 flat out float modifiedPointRadius;
 flat out float pointScreenSize;
@@ -97,35 +96,27 @@ void main()
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)
-        pointColor = returnNumber*51.0*exposure * vec3(1);
+        pointColor = 0.2*returnNumber*exposure * vec3(1);
     else if (colorMode == 3)
-        pointColor = numberOfReturns*51.0*exposure * vec3(1);
+        pointColor = 0.2*numberOfReturns*exposure * vec3(1);
     else if (colorMode == 4)
     {
-        int id = int(pointSourceId*255);
-        if (id == 1)
-        {
-           pointColor = vec3(1,1,0);
-           markerShape = 2;
-        }
-        else
-        {
-           pointColor = vec3(1,0,1);
-           markerShape = 3;
-        }
+        markerShape = (pointSourceId+1) % 5;
+        vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
+                             vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
+        pointColor = cols[(pointSourceId+3) % 7];
     }
     else if (colorMode == 5)
     {
         // Default coloring: greyscale
         pointColor = vec3(exposure*classification);
         // Some special colors for standard ASPRS classification numbers
-        int cl = int(classification*255);
-        if (cl == 2)      pointColor = vec3(0.33, 0.18, 0.0); // ground
-        else if (cl == 3) pointColor = vec3(0.25, 0.49, 0.0); // low vegetation
-        else if (cl == 4) pointColor = vec3(0.36, 0.7,  0.0); // medium vegetation
-        else if (cl == 5) pointColor = vec3(0.52, 1.0,  0.0); // high vegetation
-        else if (cl == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
-        else if (cl == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
+        if (classification == 2)      pointColor = vec3(0.33, 0.18, 0.0); // ground
+        else if (classification == 3) pointColor = vec3(0.25, 0.49, 0.0); // low vegetation
+        else if (classification == 4) pointColor = vec3(0.36, 0.7,  0.0); // medium vegetation
+        else if (classification == 5) pointColor = vec3(0.52, 1.0,  0.0); // high vegetation
+        else if (classification == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
+        else if (classification == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
     }
     else if (colorMode == 6)
     {

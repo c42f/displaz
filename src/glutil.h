@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "util.h"
+#include "typespec.h"
 
 //------------------------------------------------------------------------------
 /// Utility to handle transformation state
@@ -114,11 +115,13 @@ inline void glLoadMatrix(const Imath::M44f& m)
 /// when points don't have a desired attribute.
 struct ShaderAttribute
 {
-    int type;         /// Attribute type as returned by glGetActiveAttrib()
-    int count;        /// Number of elements in array
-    int rows;         /// Number of rows for vectors/matrices
-    int cols;         /// Number of columns for matrices (1 otherwise)
     std::string name; /// Name of attribute
+    int type;     /// Attribute type as returned by glGetActiveAttrib()
+    int count;    /// Number of elements in array
+    int rows;     /// Number of rows for vectors/matrices
+    int cols;     /// Number of columns for matrices (1 otherwise)
+    int location; /// Location for use with glVertexAttribPointer
+    TypeSpec::Type baseType; /// Associated displaz base type
 };
 
 
@@ -128,6 +131,10 @@ std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog);
 
 /// Debug: print full list of active shader attributes for the given shader program
 void printActiveShaderAttributes(GLuint prog);
+
+
+const ShaderAttribute* findAttr(const std::string& name,
+                                const std::vector<ShaderAttribute>& attrs);
 
 
 #endif // GLUTIL_H_INCLUDED

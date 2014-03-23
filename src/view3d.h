@@ -27,8 +27,8 @@
 //
 // (This is the BSD 3-clause license)
 
-#ifndef DISPLAZ_PTVIEW_H_INCLUDED
-#define DISPLAZ_PTVIEW_H_INCLUDED
+#ifndef DISPLAZ_VIEW3D_H_INCLUDED
+#define DISPLAZ_VIEW3D_H_INCLUDED
 
 #include <cmath>
 #include <vector>
@@ -149,6 +149,6 @@ class View3D : public QGLWidget
 
 
 
-#endif // DISPLAZ_PTVIEW_H_INCLUDED
+#endif // DISPLAZ_VIEW3D_H_INCLUDED
 
 // vi: set et:

@@ -114,32 +114,32 @@ void drawBoundingBox(const TransformState& transState,
 
 
 /// Get information about openGL type
-bool getGlTypeInfo(int type, const char*& name, int& rows, int& cols)
+bool getGlTypeInfo(int type, const char*& name, int& rows, int& cols, TypeSpec::Type& tbase)
 {
     switch(type)
     {
-        case GL_FLOAT:             rows = 1; cols = 1; name = "GL_FLOAT";             break;
-        case GL_FLOAT_VEC2:        rows = 2; cols = 1; name = "GL_FLOAT_VEC2";        break;
-        case GL_FLOAT_VEC3:        rows = 3; cols = 1; name = "GL_FLOAT_VEC3";        break;
-        case GL_FLOAT_VEC4:        rows = 4; cols = 1; name = "GL_FLOAT_VEC4";        break;
-        case GL_FLOAT_MAT2:        rows = 2; cols = 2; name = "GL_FLOAT_MAT2";        break;
-        case GL_FLOAT_MAT3:        rows = 3; cols = 3; name = "GL_FLOAT_MAT3";        break;
-        case GL_FLOAT_MAT4:        rows = 4; cols = 4; name = "GL_FLOAT_MAT4";        break;
-        case GL_FLOAT_MAT2x3:      rows = 2; cols = 3; name = "GL_FLOAT_MAT2x3";      break;
-        case GL_FLOAT_MAT2x4:      rows = 2; cols = 4; name = "GL_FLOAT_MAT2x4";      break;
-        case GL_FLOAT_MAT3x2:      rows = 3; cols = 2; name = "GL_FLOAT_MAT3x2";      break;
-        case GL_FLOAT_MAT3x4:      rows = 3; cols = 4; name = "GL_FLOAT_MAT3x4";      break;
-        case GL_FLOAT_MAT4x2:      rows = 4; cols = 2; name = "GL_FLOAT_MAT4x2";      break;
-        case GL_FLOAT_MAT4x3:      rows = 4; cols = 3; name = "GL_FLOAT_MAT4x3";      break;
-        case GL_INT:               rows = 1; cols = 1; name = "GL_INT";               break;
-        case GL_INT_VEC2:          rows = 2; cols = 1; name = "GL_INT_VEC2";          break;
-        case GL_INT_VEC3:          rows = 3; cols = 1; name = "GL_INT_VEC3";          break;
-        case GL_INT_VEC4:          rows = 4; cols = 1; name = "GL_INT_VEC4";          break;
-        case GL_UNSIGNED_INT:      rows = 1; cols = 1; name = "GL_UNSIGNED_INT";      break;
-        case GL_UNSIGNED_INT_VEC2: rows = 2; cols = 1; name = "GL_UNSIGNED_INT_VEC2"; break;
-        case GL_UNSIGNED_INT_VEC3: rows = 3; cols = 1; name = "GL_UNSIGNED_INT_VEC3"; break;
-        case GL_UNSIGNED_INT_VEC4: rows = 4; cols = 1; name = "GL_UNSIGNED_INT_VEC4"; break;
-        case GL_DOUBLE:            rows = 1; cols = 1; name = "GL_DOUBLE";            break;
+        case GL_FLOAT:             rows = 1; cols = 1; tbase = TypeSpec::Float; name = "GL_FLOAT";             break;
+        case GL_FLOAT_VEC2:        rows = 2; cols = 1; tbase = TypeSpec::Float; name = "GL_FLOAT_VEC2";        break;
+        case GL_FLOAT_VEC3:        rows = 3; cols = 1; tbase = TypeSpec::Float; name = "GL_FLOAT_VEC3";        break;
+        case GL_FLOAT_VEC4:        rows = 4; cols = 1; tbase = TypeSpec::Float; name = "GL_FLOAT_VEC4";        break;
+        case GL_FLOAT_MAT2:        rows = 2; cols = 2; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT2";        break;
+        case GL_FLOAT_MAT3:        rows = 3; cols = 3; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT3";        break;
+        case GL_FLOAT_MAT4:        rows = 4; cols = 4; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT4";        break;
+        case GL_FLOAT_MAT2x3:      rows = 2; cols = 3; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT2x3";      break;
+        case GL_FLOAT_MAT2x4:      rows = 2; cols = 4; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT2x4";      break;
+        case GL_FLOAT_MAT3x2:      rows = 3; cols = 2; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT3x2";      break;
+        case GL_FLOAT_MAT3x4:      rows = 3; cols = 4; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT3x4";      break;
+        case GL_FLOAT_MAT4x2:      rows = 4; cols = 2; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT4x2";      break;
+        case GL_FLOAT_MAT4x3:      rows = 4; cols = 3; tbase = TypeSpec::Float; name = "GL_FLOAT_MAT4x3";      break;
+        case GL_INT:               rows = 1; cols = 1; tbase = TypeSpec::Int;   name = "GL_INT";               break;
+        case GL_INT_VEC2:          rows = 2; cols = 1; tbase = TypeSpec::Int;   name = "GL_INT_VEC2";          break;
+        case GL_INT_VEC3:          rows = 3; cols = 1; tbase = TypeSpec::Int;   name = "GL_INT_VEC3";          break;
+        case GL_INT_VEC4:          rows = 4; cols = 1; tbase = TypeSpec::Int;   name = "GL_INT_VEC4";          break;
+        case GL_UNSIGNED_INT:      rows = 1; cols = 1; tbase = TypeSpec::Uint;  name = "GL_UNSIGNED_INT";      break;
+        case GL_UNSIGNED_INT_VEC2: rows = 2; cols = 1; tbase = TypeSpec::Uint;  name = "GL_UNSIGNED_INT_VEC2"; break;
+        case GL_UNSIGNED_INT_VEC3: rows = 3; cols = 1; tbase = TypeSpec::Uint;  name = "GL_UNSIGNED_INT_VEC3"; break;
+        case GL_UNSIGNED_INT_VEC4: rows = 4; cols = 1; tbase = TypeSpec::Uint;  name = "GL_UNSIGNED_INT_VEC4"; break;
+        case GL_DOUBLE:            rows = 1; cols = 1; tbase = TypeSpec::Float; name = "GL_DOUBLE";            break;
         default:  return false; break;
     }
     return true;
@@ -164,17 +164,40 @@ std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog)
         const char* typeName = 0;
         int rows = 1;
         int cols = 1;
-        getGlTypeInfo(type, typeName, rows, cols);
+        TypeSpec::Type tbase;
+        getGlTypeInfo(type, typeName, rows, cols, tbase);
         ShaderAttribute attr;
         attr.type = type;
         attr.count = arraySize;
-        attr.name = std::string(&nameData[0], nameLength);
+        attr.name = std::string(nameData.data(), nameLength);
         attr.rows = rows;
         attr.cols = cols;
+        attr.baseType = tbase;
+        attr.location = glGetAttribLocation(prog, attr.name.c_str());
         attrs.push_back(attr);
     }
     return attrs;
 }
+
+
+const ShaderAttribute* findAttr(const std::string& name,
+                                const std::vector<ShaderAttribute>& attrs)
+{
+    for (size_t j = 0; j < attrs.size(); ++j)
+    {
+        if (attrs[j].name == name)
+        {
+            // Could ensure compatibility between point field and shader field
+            // (type, number of components etc).  It's fairly convenient to not be
+            // too strict about this however - it seems that the GL driver will
+            // just discard any excess components passed.
+            // TODO: At least make this a warning somehow
+            return &attrs[j];
+        }
+    }
+    return nullptr;
+}
+
 
 
 void printActiveShaderAttributes(GLuint prog)
@@ -186,7 +209,8 @@ void printActiveShaderAttributes(GLuint prog)
         const char* typeName = 0;
         int rows = 1;
         int cols = 1;
-        getGlTypeInfo(attr.type, typeName, rows, cols);
+        TypeSpec::Type tbase;
+        getGlTypeInfo(attr.type, typeName, rows, cols, tbase);
         tfm::printf("   %s[%d] %s\n", typeName, attr.count, attr.name);
     }
 }
