@@ -534,10 +534,10 @@ void View3D::drawCursor(const V3f& cursorPos) const
 
 /// Draw point cloud
 size_t View3D::drawPoints(const TransformState& transState,
-                             const GeometryCollection::GeometryVec& geoms,
-                             const QModelIndexList& selection,
-                             size_t numPointsToRender,
-                             bool incrementalDraw)
+                          const GeometryCollection::GeometryVec& geoms,
+                          const QModelIndexList& selection,
+                          size_t numPointsToRender,
+                          bool incrementalDraw)
 {
     if (selection.empty())
         return 0;
@@ -587,11 +587,13 @@ void View3D::snapCursorAndCentre(double normalScaling)
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
-    for(size_t i = 0; i < m_geometries->get().size(); ++i)
+    QModelIndexList sel = m_selectionModel->selectedRows();
+    for(int i = 0; i < sel.size(); ++i)
     {
+        int geomIdx = sel[i].row();
         double dist = 0;
-        V3d p = m_geometries->get()[i]->pickVertex(m_cursorPos, N,
-                                            normalScaling, &dist);
+        V3d p = m_geometries->get()[geomIdx]->pickVertex(m_cursorPos, N,
+                                                         normalScaling, &dist);
         if(dist < nearestDist)
         {
             newPos = p;
