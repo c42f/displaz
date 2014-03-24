@@ -274,7 +274,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         // float intens = float(point.scan_angle_rank) / 40;
         *intensity++ = point.intensity;
         *returnNumber++ = point.return_number;
+#       if LAS_TOOLS_VERSION >= 140315
+        *numReturns++ = point.number_of_returns;
+#       else
         *numReturns++ = point.number_of_returns_of_given_pulse;
+#       endif
         *pointSourceId++ = point.point_source_ID;
         *classification++ = point.classification;
         // Extract point RGB
