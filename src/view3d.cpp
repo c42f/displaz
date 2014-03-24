@@ -353,7 +353,7 @@ void View3D::paintGL()
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
-        drawCursor(m_cursorPos - m_drawOffset);
+        drawCursor(transState, m_cursorPos - m_drawOffset);
 
     // Set up timer to draw a high quality frame if necessary
     if (totDrawn == 0)
@@ -459,8 +459,9 @@ void View3D::keyPressEvent(QKeyEvent *event)
 
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const V3f& cursorPos) const
+void View3D::drawCursor(const TransformState& transState, const V3f& cursorPos) const
 {
+    transState.load();
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
     glPointSize(1);

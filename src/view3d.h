@@ -101,7 +101,7 @@ class View3D : public QGLWidget
 
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
-        void drawCursor(const V3f& P) const;
+        void drawCursor(const TransformState& transState, const V3f& P) const;
         size_t drawPoints(const TransformState& transState,
                           const GeometryCollection::GeometryVec& allPoints,
                           const QModelIndexList& selection,
