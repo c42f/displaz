@@ -115,6 +115,30 @@ int displaz_write_ply(const char* fileName, size_t npoints,
 }
 
 
+/// Launch a displaz process in the background to open a file
+///
+/// options are any extra command line options in a string.  If null, options
+/// is set to "-add".
+int launch_displaz(const char* fileName, const char* options)
+{
+    if (!options)
+        options = "-add";
+    char cmd[1024];
+    // TODO: Make displaz itself do the fork & launch in the background
+    // internally for consistency between first time startup and sending data
+    // via the socket?
+#ifdef _WIN32
+    // needs testing
+    _snprintf(cmd, 1024, "start /b displaz %s %s", options, fileName);
+#else
+    snprintf(cmd, 1024, "displaz %s %s &", options, fileName);
+#endif
+    cmd[1023] = '\0';
+    //printf("%s\n", cmd);
+    return system(cmd);
+}
+
+
 /// Start displaz to display the given set of points
 ///
 /// npoints - Number of points in each of position, color and normal
@@ -136,14 +160,7 @@ int displaz_points(size_t npoints, double* position, float* color, float* normal
     if (!displaz_fwrite_ply(ply, npoints, position, color, normal))
         return 1;
     fclose(ply);
-    char cmd[1024];
-#ifdef _WIN32
-    // needs testing
-    _snprintf(cmd, 1024, "start /b displaz -add -rmtemp %s", fileName);
-#else
-    snprintf(cmd, 1024, "displaz -add -rmtemp %s &", fileName);
-#endif
-    //printf("%s\n", cmd);
-    return system(cmd);
+    return launch_displaz(fileName, "-add -rmtemp");
 }
+
 
