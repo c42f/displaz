@@ -49,7 +49,7 @@ set(srcs
     ../thirdparty/rply/rply.c
 )
 if(WIN32)
-    list(APPEND srcs package/windows_resources.rc)
+    list(APPEND srcs ../package/windows_resources.rc)
 endif()
 
 if(WIN32)

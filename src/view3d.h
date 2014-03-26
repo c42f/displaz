@@ -46,7 +46,7 @@ class QItemSelectionModel;
 class QTimer;
 
 class ShaderProgram;
-class TransformState;
+struct TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds

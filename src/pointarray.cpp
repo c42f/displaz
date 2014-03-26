@@ -95,7 +95,7 @@ struct ProgressFunc
     void operator()(size_t additionalProcessed)
     {
         totProcessed += additionalProcessed;
-        emit points.loadProgress(100*totProcessed/points.pointCount());
+        emit points.loadProgress(int(100*totProcessed/points.pointCount()));
     }
 };
 
@@ -191,7 +191,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
         points.push_back(p);
         ++readCount;
         if (readCount % 10000 == 0)
-            emit loadProgress(100*ftell(inFile)/numBytes);
+            emit loadProgress(int(100*ftell(inFile)/numBytes));
     }
     fclose(inFile);
     totPoints = points.size();
@@ -298,7 +298,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     {
         if (m_fields[i].name == "position" && m_fields[i].spec.count == 3)
         {
-            m_positionFieldIdx = i;
+            m_positionFieldIdx = (int)i;
             break;
         }
     }
@@ -336,7 +336,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         reorder(m_fields[i], inds.get(), m_npoints);
-        emit loadProgress(100*(i+1)/m_fields.size());
+        emit loadProgress(int(100*(i+1)/m_fields.size()));
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
 
@@ -446,7 +446,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     GLfloat zeros[16] = {0};
     for (size_t i = 0; i < activeAttrs.size(); ++i)
     {
-        prog.setAttributeValue(i, zeros, activeAttrs[i].rows,
+        prog.setAttributeValue((int)i, zeros, activeAttrs[i].rows,
                                activeAttrs[i].cols);
     }
     // Enable attributes which have associated fields
@@ -519,7 +519,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
             }
         }
         prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
-        glDrawArrays(GL_POINTS, 0, ndraw);
+        glDrawArrays(GL_POINTS, 0, (GLsizei)ndraw);
         node->nextBeginIndex += ndraw;
         totDrawn += ndraw;
     }
