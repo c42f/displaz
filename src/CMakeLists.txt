@@ -101,6 +101,14 @@ endif()
 # Install
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 
+if(WIN32)
+    # Install required qt libraries
+    install(CODE "
+        include(BundleUtilities)
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
+    ")
+endif()
+
 
 #------------------------------------------------------------------------------
 # Tests

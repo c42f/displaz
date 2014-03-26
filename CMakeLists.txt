@@ -152,17 +152,9 @@ add_subdirectory(src)
 
 
 #------------------------------------------------------------------------------
-# Create install tree
+# Create remainder of install tree
 install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
 install(DIRECTORY thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
-
-if(WIN32)
-    # Install required qt libraries
-    install(CODE "
-        include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
-    ")
-endif()
 
 
 #------------------------------------------------------------------------------
