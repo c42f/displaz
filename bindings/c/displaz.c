@@ -29,6 +29,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+
 
 int is_little_endian()
 {
@@ -42,19 +44,10 @@ int is_little_endian()
 }
 
 
-/// Very simplistic C interface to write displaz native ply format
-///
-/// npoints - Number of points in each of position, color and normal
-/// position - Array of length 3*npoints containing position data.  Storage
-///            order is [x1 y1 z1 x2 y2 z2 ...]
-/// color - Array of length 3*npoints containing color data.  May be null
-/// normal - Array of length 3*npoints containing normal data.  May be null
-int displaz_write_ply(const char* fileName, size_t npoints,
-                      double* position, float* color, float* normal)
+/// Like displaz_write_ply, but takes a FILE stream
+int displaz_fwrite_ply(FILE* ply, size_t npoints,
+                       double* position, float* color, float* normal)
 {
-    FILE* ply = fopen(fileName, "w");
-    if (!ply)
-        return 0;
     fprintf(ply,
         "ply\n"
         "format binary_%s_endian 1.0\n"
@@ -100,5 +93,57 @@ int displaz_write_ply(const char* fileName, size_t npoints,
             return 0;
     }
     return 1;
+}
+
+
+/// Very simplistic C interface to write displaz native ply format
+///
+/// npoints - Number of points in each of position, color and normal
+/// position - Array of length 3*npoints containing position data.  Storage
+///            order is [x1 y1 z1 x2 y2 z2 ...]
+/// color - Array of length 3*npoints containing color data.  May be null
+/// normal - Array of length 3*npoints containing normal data.  May be null
+int displaz_write_ply(const char* fileName, size_t npoints,
+                      double* position, float* color, float* normal)
+{
+    FILE* ply = fopen(fileName, "w");
+    if (!ply)
+        return 0;
+    int ret = displaz_fwrite_ply(ply, npoints, position, color, normal);
+    fclose(ply);
+    return ret;
+}
+
+
+/// Start displaz to display the given set of points
+///
+/// npoints - Number of points in each of position, color and normal
+/// position - Array of length 3*npoints containing position data.  Storage
+///            order is [x1 y1 z1 x2 y2 z2 ...]
+/// color - Array of length 3*npoints containing color data.  May be null
+/// normal - Array of length 3*npoints containing normal data.  May be null
+int displaz_points(size_t npoints, double* position, float* color, float* normal)
+{
+#ifdef _WIN32
+#warning "TODO: Implement proper temporary file name support"
+    char fileName[] = "_displaz_temp.ply";
+    FILE* ply = fopen(fileName, "wb");
+#else
+    char fileName[] = "/tmp/displaz_c_XXXXXX.ply";
+    int plyfd = mkstemps(fileName, 4);
+    FILE* ply = fdopen(plyfd, "wb");
+#endif
+    if (!displaz_fwrite_ply(ply, npoints, position, color, normal))
+        return 1;
+    fclose(ply);
+    char cmd[1024];
+#ifdef _WIN32
+    // needs testing
+    _snprintf(cmd, 1024, "start /b displaz -add -rmtemp %s", fileName);
+#else
+    snprintf(cmd, 1024, "displaz -add -rmtemp %s &", fileName);
+#endif
+    //printf("%s\n", cmd);
+    return system(cmd);
 }
 
