@@ -136,17 +136,22 @@ void DataSetListView::keyPressEvent(QKeyEvent* event)
 
 void DataSetListView::wheelEvent(QWheelEvent* event)
 {
-    int row = 0;
-    if (selectionModel()->currentIndex().isValid())
-        row = selectionModel()->currentIndex().row();
-    row += (event->delta() < 0) ? 1 : -1;
-    if (row < 0)
-        row = 0;
-    if (row >= model()->rowCount())
-        row = model()->rowCount() - 1;
-    QModelIndex newIndex = model()->index(row, 0);
-    selectionModel()->select(newIndex, QItemSelectionModel::ClearAndSelect);
-    selectionModel()->setCurrentIndex(newIndex, QItemSelectionModel::Current);
+    if (event->modifiers() & Qt::ControlModifier)
+    {
+        int row = 0;
+        if (selectionModel()->currentIndex().isValid())
+            row = selectionModel()->currentIndex().row();
+        row += (event->delta() < 0) ? 1 : -1;
+        if (row < 0)
+            row = 0;
+        if (row >= model()->rowCount())
+            row = model()->rowCount() - 1;
+        QModelIndex newIndex = model()->index(row, 0);
+        selectionModel()->select(newIndex, QItemSelectionModel::ClearAndSelect);
+        selectionModel()->setCurrentIndex(newIndex, QItemSelectionModel::Current);
+    }
+    else
+        QListView::wheelEvent(event);
 }
 
 
