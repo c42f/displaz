@@ -501,7 +501,7 @@ void PointViewerMainWindow::screenShot()
         this,
         tr("Save screen shot"),
         QDir::currentPath(),
-        tr("Image files (*.tif,*.png,*.jpg);;All files(*)")
+        tr("Image files (*.tif *.png *.jpg);;All files(*)")
     );
     if (fileName.isNull())
         return;
