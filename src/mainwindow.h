@@ -74,6 +74,7 @@ class PointViewerMainWindow : public QMainWindow
 
     private slots:
         void openFiles();
+        void addFiles();
         void openShaderFile();
         void saveShaderFile();
         void reloadFiles();

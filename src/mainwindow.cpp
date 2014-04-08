@@ -82,9 +82,13 @@ PointViewerMainWindow::PointViewerMainWindow()
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     QAction* openAct = fileMenu->addAction(tr("&Open"));
-    openAct->setToolTip(tr("Open a point cloud file"));
+    openAct->setToolTip(tr("Open a data set"));
     openAct->setShortcuts(QKeySequence::Open);
     connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
+    QAction* addAct = fileMenu->addAction(tr("&Add"));
+    addAct->setToolTip(tr("Add a data set"));
+    addAct->setShortcuts(QKeySequence::Open);
+    connect(addAct, SIGNAL(triggered()), this, SLOT(addFiles()));
     QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
     reloadAct->setStatusTip(tr("Reload point files from disk"));
     reloadAct->setShortcut(Qt::Key_F5);
@@ -92,10 +96,10 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     fileMenu->addSeparator();
     QAction* openShaderAct = fileMenu->addAction(tr("Open &Shader"));
-    openAct->setToolTip(tr("Open a shader file"));
+    openShaderAct->setToolTip(tr("Open a shader file"));
     connect(openShaderAct, SIGNAL(triggered()), this, SLOT(openShaderFile()));
     QAction* saveShaderAct = fileMenu->addAction(tr("Sa&ve Shader"));
-    openAct->setToolTip(tr("Save current shader file"));
+    saveShaderAct->setToolTip(tr("Save current shader file"));
     connect(saveShaderAct, SIGNAL(triggered()), this, SLOT(saveShaderFile()));
 
     fileMenu->addSeparator();
@@ -401,13 +405,31 @@ void PointViewerMainWindow::openFiles()
         this,
         tr("Open point clouds or meshes"),
         m_currFileDir.path(),
-        tr("Point cloud files (*.las *.laz *.txt);;Mesh files (*.ply);;All files (*)"),
+        tr("Data sets (*.las *.laz *.txt *.ply);;All files (*)"),
         0,
         QFileDialog::ReadOnly
     );
     if (files.empty())
         return;
     m_geometries->clear();
+    m_geometries->loadFiles(files);
+    m_currFileDir = QFileInfo(files[0]).dir();
+    m_currFileDir.makeAbsolute();
+}
+
+
+void PointViewerMainWindow::addFiles()
+{
+    QStringList files = QFileDialog::getOpenFileNames(
+        this,
+        tr("Add point clouds or meshes"),
+        m_currFileDir.path(),
+        tr("Data sets (*.las *.laz *.txt *.ply);;All files (*)"),
+        0,
+        QFileDialog::ReadOnly
+    );
+    if (files.empty())
+        return;
     m_geometries->loadFiles(files);
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
