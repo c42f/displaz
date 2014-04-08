@@ -315,7 +315,10 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
                   m_npoints, totPoints, fileName, loadTimer.elapsed()/1000.0);
     if (totPoints == 0)
+    {
+        m_rootNode.reset(new OctreeNode(V3f(0), 1));
         return true;
+    }
 
     // Sort points into octree order
     emit loadStepStarted("Sorting points");
