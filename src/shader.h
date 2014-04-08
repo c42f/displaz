@@ -170,6 +170,9 @@ class ShaderProgram : public QObject
         /// Get shader source code
         QByteArray shaderSource() const;
 
+        /// Return true if shader program is ready to use
+        bool isValid() const { return static_cast<bool>(m_shaderProgram); }
+
     public slots:
         /// Set, compile and link shader source.
         ///

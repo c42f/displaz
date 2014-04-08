@@ -365,33 +365,39 @@ void View3D::paintGL()
 
 
 void View3D::drawMeshes(const TransformState& transState,
-                           const GeometryCollection::GeometryVec& geoms,
-                           const QModelIndexList& sel) const
+                        const GeometryCollection::GeometryVec& geoms,
+                        const QModelIndexList& sel) const
 {
     // Draw faces
-    QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
-    meshFaceShader.bind();
-    meshFaceShader.setUniformValue("lightDir_eye",
-                m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
-    for (int i = 0; i < sel.size(); ++i)
+    if (m_meshFaceShader->isValid())
     {
-        V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-        transState.translate(offset).setUniforms(meshFaceShader.programId());
-        geoms[sel[i].row()]->drawFaces(meshFaceShader);
+        QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+        meshFaceShader.bind();
+        meshFaceShader.setUniformValue("lightDir_eye",
+                    m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
+        for (int i = 0; i < sel.size(); ++i)
+        {
+            V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
+            transState.translate(offset).setUniforms(meshFaceShader.programId());
+            geoms[sel[i].row()]->drawFaces(meshFaceShader);
+        }
+        meshFaceShader.release();
     }
-    meshFaceShader.release();
 
     // Draw edges
-    QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-    glLineWidth(1);
-    meshEdgeShader.bind();
-    for(int i = 0; i < sel.size(); ++i)
+    if (m_meshEdgeShader->isValid())
     {
-        V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-        transState.translate(offset).setUniforms(meshEdgeShader.programId());
-        geoms[sel[i].row()]->drawEdges(meshEdgeShader);
+        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+        glLineWidth(1);
+        meshEdgeShader.bind();
+        for(int i = 0; i < sel.size(); ++i)
+        {
+            V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
+            transState.translate(offset).setUniforms(meshEdgeShader.programId());
+            geoms[sel[i].row()]->drawEdges(meshEdgeShader);
+        }
+        meshEdgeShader.release();
     }
-    meshEdgeShader.release();
 }
 
 
@@ -541,6 +547,8 @@ size_t View3D::drawPoints(const TransformState& transState,
                           bool incrementalDraw)
 {
     if (selection.empty())
+        return 0;
+    if (!m_shaderProgram->isValid())
         return 0;
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
