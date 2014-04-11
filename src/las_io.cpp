@@ -160,6 +160,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     std::unique_ptr<pdal::StageSequentialIterator> chunkIter(
             reader->createSequentialIterator(buf));
     size_t readCount = 0;
+    size_t storeCount = 0;
     size_t nextDecimateBlock = 1;
     size_t nextStore = 1;
     while (size_t numRead = chunkIter->read(buf))
@@ -174,6 +175,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
             Psum += P;
             if(readCount < nextStore)
                 continue;
+            ++storeCount;
             // Store the point
             *position++ = P - offset;
             *intensity++   = buf.getField<uint16_t>(intensityDim, i);
@@ -246,6 +248,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint8_t* pointSourceId  = fields[4].as<uint8_t>();
     uint8_t* classification = fields[5].as<uint8_t>();
     size_t readCount = 0;
+    size_t storeCount = 0;
     size_t nextDecimateBlock = 1;
     size_t nextStore = 1;
     if (!lasReader->read_point())
@@ -269,6 +272,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         Psum += P;
         if(readCount < nextStore)
             continue;
+        ++storeCount;
         // Store the point
         *position++ = P - offset;
         // float intens = float(point.scan_angle_rank) / 40;
@@ -300,15 +304,19 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         }
     }
     while(lasReader->read_point());
+    lasReader->close();
+#endif
     if (readCount < totPoints)
     {
         g_logger.warning("Expected %d points in file \"%s\", got %d",
                          totPoints, fileName, readCount);
-        npoints = position - (V3f*)fields[0].as<float>();
+        npoints = storeCount;
+        // Shrink all fields to fit - these will have wasted space at the end,
+        // but that will be fixed during reordering.
+        for (size_t i = 0; i < fields.size(); ++i)
+            fields[i].size = npoints;
         totPoints = readCount;
     }
-    lasReader->close();
-#endif
     if (totPoints > 0)
         centroid = (1.0/totPoints)*Psum;
     return true;
