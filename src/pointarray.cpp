@@ -79,6 +79,12 @@ struct OctreeNode
             children[i] = 0;
     }
 
+    ~OctreeNode()
+    {
+        for (int i = 0; i < 8; ++i)
+            delete children[i];
+    }
+
     size_t size() const { return endIndex - beginIndex; }
 
     bool isLeaf() const { return beginIndex != endIndex; }
