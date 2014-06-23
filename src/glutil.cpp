@@ -164,7 +164,7 @@ std::vector<ShaderAttribute> activeShaderAttributes(GLuint prog)
         const char* typeName = 0;
         int rows = 1;
         int cols = 1;
-        TypeSpec::Type tbase;
+        TypeSpec::Type tbase = TypeSpec::Unknown;
         getGlTypeInfo(type, typeName, rows, cols, tbase);
         ShaderAttribute attr;
         attr.type = type;
@@ -209,7 +209,7 @@ void printActiveShaderAttributes(GLuint prog)
         const char* typeName = 0;
         int rows = 1;
         int cols = 1;
-        TypeSpec::Type tbase;
+        TypeSpec::Type tbase = TypeSpec::Unknown;
         getGlTypeInfo(attr.type, typeName, rows, cols, tbase);
         tfm::printf("   %s[%d] %s\n", typeName, attr.count, attr.name);
     }
