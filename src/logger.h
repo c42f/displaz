@@ -25,25 +25,30 @@ class Logger : public QObject
 #       define DISPLAZ_MAKE_LOG_FUNCS(n)                                   \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
-        void info(const char* fmt, TINYFORMAT_VARARGS(n))           \
+        void info(const char* fmt, TINYFORMAT_VARARGS(n))                  \
         {                                                                  \
             log(Info, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));    \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
-        void warning(const char* fmt, TINYFORMAT_VARARGS(n))        \
+        void warning(const char* fmt, TINYFORMAT_VARARGS(n))               \
         {                                                                  \
             log(Warning, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n))); \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
-        void error(const char* fmt, TINYFORMAT_VARARGS(n))          \
+        void error(const char* fmt, TINYFORMAT_VARARGS(n))                 \
         {                                                                  \
             log(Error, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));   \
         }
 
         TINYFORMAT_FOREACH_ARGNUM(DISPLAZ_MAKE_LOG_FUNCS)
 #       undef DISPLAZ_MAKE_LOG_FUNCS
+
+        // 0-arg versions
+        void info   (const char* fmt) { log(Info, tfm::format(fmt)); }
+        void warning(const char* fmt) { log(Warning, tfm::format(fmt)); }
+        void error  (const char* fmt) { log(Error, tfm::format(fmt)); }
 
         /// Log message at the given log level
         virtual void log(LogLevel level, const std::string& msg)

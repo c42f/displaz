@@ -344,13 +344,17 @@ bool findVertexElements(std::vector<p_ply_element>& vertexElements,
                 np = ninstances;
             if (np != ninstances)
             {
-                g_logger.error("%s","Inconsistent number of points in \"vertex_*\" fields");
+                g_logger.error("Inconsistent number of points in \"vertex_*\" fields");
                 return false;
             }
             vertexElements.push_back(elem);
+            if (strcmp(name, "vertex_position") == 0)
+                positionIndex = (int)vertexElements.size()-1;
         }
-        if (strcmp(name, "vertex_position") == 0)
-            positionIndex = (int)vertexElements.size()-1;
+        else
+        {
+            g_logger.warning("Ignoring unrecogized ply element: %s", name);
+        }
     }
     if (positionIndex == -1)
     {
@@ -404,7 +408,10 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
         else if (strcmp(firstPropName, "0") == 0)
             semantics = TypeSpec::Array;
         else
+        {
+            g_logger.error("Could not determine vector semantics for property %s.%s: expected property name x, r or 0", elemName, firstPropName);
             return false;
+        }
         // Count properties
         int numProps = 0;
         for (p_ply_property prop = ply_get_next_property(*elem, NULL);
@@ -443,11 +450,15 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
                             &fieldLoaders.back(), propIdx);
             propIdx += 1;
         }
+        g_logger.info("%s: %s %s", fileName, type, fieldName);
     }
 
     // All setup is done; read ply file using the callbacks
     if (!ply_read(ply))
+    {
+        g_logger.error("Error in ply_read()");
         return false;
+    }
 
     offset = fieldLoaders[0].offset();
     return true;
