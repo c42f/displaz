@@ -240,6 +240,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     fields.push_back(GeomField(TypeSpec::uint8_i(), "numberOfReturns", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "pointSourceId", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "classification", npoints));
+    if (totPoints == 0)
+    {
+        g_logger.warning("File %s has zero points", fileName);
+        return true;
+    }
     // Iterate over all points & pull in the data.
     V3f* position           = (V3f*)fields[0].as<float>();
     uint16_t* intensity     = fields[1].as<uint16_t>();
