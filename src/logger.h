@@ -16,6 +16,7 @@ class Logger : public QObject
     public:
         enum LogLevel
         {
+            Progress,
             Info,
             Warning,
             Error
@@ -23,6 +24,12 @@ class Logger : public QObject
 
         /// Printf-style logging functions (typesafe via tinyformat)
 #       define DISPLAZ_MAKE_LOG_FUNCS(n)                                   \
+                                                                           \
+        template<TINYFORMAT_ARGTYPES(n)>                                   \
+        void progress(const char* fmt, TINYFORMAT_VARARGS(n))              \
+        {                                                                  \
+            log(Progress, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));\
+        }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void info(const char* fmt, TINYFORMAT_VARARGS(n))                  \
@@ -46,22 +53,40 @@ class Logger : public QObject
 #       undef DISPLAZ_MAKE_LOG_FUNCS
 
         // 0-arg versions
-        void info   (const char* fmt) { log(Info, tfm::format(fmt)); }
-        void warning(const char* fmt) { log(Warning, tfm::format(fmt)); }
-        void error  (const char* fmt) { log(Error, tfm::format(fmt)); }
+        void progress (const char* fmt) { log(Progress, tfm::format(fmt)); }
+        void info     (const char* fmt) { log(Info, tfm::format(fmt)); }
+        void warning  (const char* fmt) { log(Warning, tfm::format(fmt)); }
+        void error    (const char* fmt) { log(Error, tfm::format(fmt)); }
 
         /// Log message at the given log level
-        virtual void log(LogLevel level, const std::string& msg)
+        void log(LogLevel level, const std::string& msg)
         {
-            emit logMessage(level, QString::fromUtf8(msg.c_str()));
+            logImpl(level, msg);
+        }
+
+        /// Report progress of some processing step
+        void progress(double progressFraction)
+        {
+            progressImpl(progressFraction);
         }
 
     signals:
         /// Signal emitted every time a log message comes in
         void logMessage(int logLevel, QString msg);
 
-    private:
-        static Logger* m_instance;
+        /// Signal emitted when processing progress has been made
+        void progressPercent(int percent);
+
+    protected:
+        virtual void logImpl(LogLevel level, const std::string& msg)
+        {
+            emit logMessage(level, QString::fromUtf8(msg.c_str()));
+        }
+
+        virtual void progressImpl(double progressFraction)
+        {
+            emit progressPercent(int(100*progressFraction));
+        }
 };
 
 
