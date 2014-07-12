@@ -10,6 +10,12 @@ include_directories(BEFORE
 
 #------------------------------------------------------------------------------
 # Sources
+set(shared_srcs
+    logger.cpp
+    geomfield.cpp
+    typespec.cpp
+    ../thirdparty/argparse.cpp
+)
 qt4_wrap_cpp(moc_srcs
     datasetui.h
     displazserver.h
@@ -27,13 +33,12 @@ qt4_wrap_cpp(moc_srcs
     shader.h
 )
 set(srcs
+    ${shared_srcs}
     ${moc_srcs}
     datasetui.cpp
     geometry.cpp
-    geomfield.cpp
     geometrycollection.cpp
     glutil.cpp
-    logger.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp
@@ -41,12 +46,10 @@ set(srcs
     ply_io.cpp
     las_io.cpp
     pointarray.cpp
-    typespec.cpp
     view3d.cpp
     shadereditor.cpp
     shader.cpp
     util.cpp
-    ../thirdparty/argparse.cpp
     ../thirdparty/rply/rply.c
 )
 if(WIN32)
@@ -65,22 +68,30 @@ include_directories(${PROJECT_BINARY_DIR})
 
 add_executable(displaz WIN32 ${srcs})
 
+add_executable(dvox
+    dvox.cpp
+    ${shared_srcs}
+)
 
 #-------------------------------------------------------------------------------
 # Library dependencies
 if (DISPLAZ_BUILD_EXTERNAL)
     add_dependencies(displaz ${externalBuilds})
+    add_dependencies(dvox ${externalBuilds})
 endif()
 
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
 )
+target_link_libraries(dvox)
+
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
         target_link_libraries (displaz ${PDAL_LIBRARIES})
     else()
         target_link_libraries (displaz ${LASLIB_LIBRARIES})
+        target_link_libraries (dvox ${LASLIB_LIBRARIES})
     endif()
 endif()
 
@@ -101,6 +112,7 @@ endif()
 
 # Install
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
+install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
 
 if(WIN32)
     # Install required qt libraries
