@@ -94,6 +94,25 @@ class Logger : public QObject
 extern Logger g_logger;
 
 
+/// Logger function which logs to the console rather than emitting signals
+class StreamLogger : public Logger
+{
+    public:
+        StreamLogger(std::ostream& outStream);
+        ~StreamLogger();
+
+    protected:
+        virtual void logImpl(LogLevel level, const std::string& msg);
+        virtual void progressImpl(double progressFraction);
+
+    private:
+        bool m_prevPrintWasProgress;
+        double m_prevProgressFraction;
+        std::string m_progressPrefix;
+        std::ostream& m_out;
+};
+
+
 //------------------------------------------------------------------------------
 /// Viewer widget for log messages.
 ///
