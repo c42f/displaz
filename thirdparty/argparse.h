@@ -181,9 +181,16 @@ private:
     std::vector<ArgOption *> m_option;
 
     ArgOption *find_option(const char *name);
-    // void error (const char *format, ...)
-    TINYFORMAT_WRAP_FORMAT (void, error, /**/,
-        std::ostringstream msg;, msg, m_errmessage = msg.str();)
+#   define ARGPARSE_MAKE_ERROR_FUNC(n)                                   \
+                                                                         \
+    /* void error (const char *format, ...) */                           \
+    template<TINYFORMAT_ARGTYPES(n)>                                     \
+    void error(const char* fmt, TINYFORMAT_VARARGS(n))                   \
+    {                                                                    \
+        m_errmessage = tinyformat::format(fmt, TINYFORMAT_PASSARGS(n));  \
+    }
+    TINYFORMAT_FOREACH_ARGNUM(ARGPARSE_MAKE_ERROR_FUNC)
+#   undef ARGPARSE_MAKE_ERROR_FUNC
 
     int found (const char *option);      // number of times option was parsed
 };
