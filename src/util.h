@@ -36,6 +36,7 @@
 #include <OpenEXR/ImathMatrix.h>
 
 #include <iostream>
+#include <stdexcept>
 
 
 //------------------------------------------------------------------------------
@@ -113,6 +114,28 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 {
     out << b.min << "--" << b.max;
     return out;
+}
+
+
+//------------------------------------------------------------------------------
+// Binary IO utils
+
+/// Write POD type to std::ostream in little endian binary format
+template<typename T>
+void writeLE(std::ostream& out, const T& val)
+{
+    out.write((const char*)&val, sizeof(val));
+}
+
+/// Read POD type from std::istream in little endian binary format
+template<typename T>
+T readLE(std::istream& in)
+{
+    T val;
+    in.read((char*)&val, sizeof(val));
+    if (!in || in.gcount() != sizeof(val))
+        throw std::runtime_error("Could not read from stream");
+    return val;
 }
 
 

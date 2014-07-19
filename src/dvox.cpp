@@ -36,6 +36,7 @@
 
 #include "config.h"
 #include "geomfield.h"
+#include "hcloud.h"
 #include "logger.h"
 #include "util.h"
 
@@ -625,14 +626,6 @@ int fieldSearch(const std::vector<GeomField>& fields,
 }
 
 
-/// Write POD type as little endian bytes to the given stream
-template<typename T>
-void writeLE(std::ostream& out, const T& val)
-{
-    out.write((const char*)&val, sizeof(val));
-}
-
-
 /// Dump octree bricks to stream in displaz hierarchicial point cloud format
 ///
 /// out        - destination stream
@@ -657,64 +650,21 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
     uint64_t numNodes, numVoxels;
     treeStats(rootNode, numNodes, numVoxels);
 
-    const uint64_t indexSize = indexNodeSize*numNodes;
-    const uint64_t dataSize = pointSize*(numVoxels + numPoints);
+    HCloudHeader header;
+    header.numPoints = numPoints;
+    header.numVoxels = numVoxels;
+    header.indexSize = indexNodeSize*numNodes;
+    header.offset = offset;
+    header.dataSize = pointSize*(numVoxels + numPoints);
+    header.boundingBox = boundingBox;
+    header.write(out);
 
-    // Construct header in memory buffer so we can easily get the size and can
-    // seek as required.
-    std::stringstream headerBytes;
-    const char magic[] = "HierarchicalPointCloud\n\x0c";
-    const uint16_t version = 0;
-    uint32_t headerSize = 0;
-    headerBytes.write(magic, 24);
-    writeLE<uint16_t>(headerBytes, version);
-    std::streampos headerSizePos = headerBytes.tellp();
-    writeLE<uint32_t>(headerBytes, headerSize);
-    writeLE<uint64_t>(headerBytes, numPoints);
-    writeLE<uint64_t>(headerBytes, numVoxels);
-    writeLE<uint64_t>(headerBytes, indexSize);
-    writeLE<uint64_t>(headerBytes, dataSize);
-    writeLE<double>(headerBytes, offset.x);
-    writeLE<double>(headerBytes, offset.y);
-    writeLE<double>(headerBytes, offset.z);
-    writeLE<double>(headerBytes, boundingBox.min.x);
-    writeLE<double>(headerBytes, boundingBox.min.y);
-    writeLE<double>(headerBytes, boundingBox.min.z);
-    writeLE<double>(headerBytes, boundingBox.max.x);
-    writeLE<double>(headerBytes, boundingBox.max.y);
-    writeLE<double>(headerBytes, boundingBox.max.z);
-    headerSize = (uint32_t)headerBytes.tellp();
-    headerBytes.seekp(headerSizePos);
-    writeLE<uint32_t>(headerBytes, headerSize);
-
-    // Write header
-    out << headerBytes.rdbuf();
-
-    logger.info(
-        "Header:\n"
-        "    version = %d\n"
-        "    headerSize = %d\n"
-        "    numPoints = %d\n"
-        "    numVoxels = %d\n"
-        "    indexSize = %d\n"
-        "    dataSize = %d\n"
-        "    offset = %.3f\n"
-        "    boundingBox = %.3f - %.3f",
-        version,
-        headerSize,
-        numPoints,
-        numVoxels,
-        indexSize,
-        dataSize,
-        offset,
-        boundingBox.min,
-        boundingBox.max
-    );
+    logger.info("Header:\n%s", header);
 
     // Dump all octree nodes at the same level into contiguous locations using
     // a breadth-first traversal so that associated data can be read together.
     logger.progress("Write data");
-    out.seekp(headerSize + indexSize);
+    out.seekp(header.headerSize + header.indexSize);
     uint64_t dataOffset = 0;
     std::queue<const OctreeNode*> nodeQueue;
     nodeQueue.push(rootNode);
@@ -735,7 +685,7 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
             out.write((const char*)(leafColors + node->beginIndex),
                       node->numLeafPoints()*sizeof(float));
         }
-        logger.progress(double(dataOffset)/dataSize);
+        logger.progress(double(dataOffset)/header.dataSize);
         for (int i = 0; i < 8; ++i)
         {
             const OctreeNode* n = node->children[i];
@@ -746,7 +696,7 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
 
     // Dump octree structure in depth-first order for simplicity.
     logger.progress("Write index");
-    out.seekp(headerSize);
+    out.seekp(header.headerSize);
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(rootNode);
     size_t indexNodesDumped = 0;

@@ -14,6 +14,7 @@ set(shared_srcs
     logger.cpp
     geomfield.cpp
     typespec.cpp
+    hcloud.cpp
     ../thirdparty/argparse.cpp
 )
 qt4_wrap_cpp(moc_srcs
