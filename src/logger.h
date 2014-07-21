@@ -10,9 +10,8 @@
 
 //------------------------------------------------------------------------------
 /// Logger class for log message formatting using printf-style strings
-class Logger : public QObject
+class Logger
 {
-    Q_OBJECT
     public:
         enum LogLevel
         {
@@ -59,15 +58,28 @@ class Logger : public QObject
         void error    (const char* fmt) { log(Error, tfm::format(fmt)); }
 
         /// Log message at the given log level
-        void log(LogLevel level, const std::string& msg)
-        {
-            logImpl(level, msg);
-        }
+        virtual void log(LogLevel level, const std::string& msg) = 0;
 
         /// Report progress of some processing step
-        void progress(double progressFraction)
+        virtual void progress(double progressFraction) = 0;
+};
+
+
+/// Logger class which logs output to qt signals
+class QtLogger : public QObject, public Logger
+{
+    Q_OBJECT
+    public:
+        QtLogger(QObject* parent = 0) : QObject(parent) {}
+
+        virtual void log(LogLevel level, const std::string& msg)
         {
-            progressImpl(progressFraction);
+            emit logMessage(level, QString::fromUtf8(msg.c_str()));
+        }
+
+        virtual void progress(double progressFraction)
+        {
+            emit progressPercent(int(100*progressFraction));
         }
 
     signals:
@@ -76,34 +88,22 @@ class Logger : public QObject
 
         /// Signal emitted when processing progress has been made
         void progressPercent(int percent);
-
-    protected:
-        virtual void logImpl(LogLevel level, const std::string& msg)
-        {
-            emit logMessage(level, QString::fromUtf8(msg.c_str()));
-        }
-
-        virtual void progressImpl(double progressFraction)
-        {
-            emit progressPercent(int(100*progressFraction));
-        }
 };
 
 
-/// Global logger instance
-extern Logger g_logger;
+/// Global displaz logger instance
+extern QtLogger g_logger;
 
 
-/// Logger function which logs to the console rather than emitting signals
+/// Logger class which logs to the console
 class StreamLogger : public Logger
 {
     public:
         StreamLogger(std::ostream& outStream);
         ~StreamLogger();
 
-    protected:
-        virtual void logImpl(LogLevel level, const std::string& msg);
-        virtual void progressImpl(double progressFraction);
+        virtual void log(LogLevel level, const std::string& msg);
+        virtual void progress(double progressFraction);
 
     private:
         bool m_prevPrintWasProgress;
@@ -130,7 +130,7 @@ class LogViewer : public QPlainTextEdit
         ///
         /// Note that for thread safety this must be a queued connection, hence
         /// the special purpose method here.
-        void connectLogger(Logger* logger);
+        void connectLogger(QtLogger* logger);
 
         /// Append plain text message to the running log
         void appendLogMessage(int logLevel, QString msg);
