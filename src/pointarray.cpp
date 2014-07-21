@@ -29,7 +29,7 @@
 
 #include "pointarray.h"
 
-#include "logger.h"
+#include "qtlogger.h"
 
 #include "glutil.h"
 

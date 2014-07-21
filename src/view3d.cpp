@@ -41,7 +41,7 @@
 
 #include "config.h"
 #include "fileloader.h"
-#include "logger.h"
+#include "qtlogger.h"
 #include "mainwindow.h"
 #include "mesh.h"
 #include "shader.h"

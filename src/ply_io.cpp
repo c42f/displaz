@@ -28,6 +28,7 @@
 // (This is the BSD 3-clause license)
 
 #include "ply_io.h"
+#include "qtlogger.h"
 
 //------------------------------------------------------------------------------
 // Utilities for interfacing with rply

@@ -19,7 +19,7 @@ qt4_wrap_cpp(moc_srcs
     geometrycollection.h
     helpdialog.h
     interactivecamera.h
-    logger.h
+    qtlogger.h
     mainwindow.h
     view3d.h
     pointarray.h
@@ -34,6 +34,7 @@ set(srcs
     geometrycollection.cpp
     glutil.cpp
     logger.cpp
+    qtlogger.cpp
     main.cpp
     mainwindow.cpp
     mesh.cpp

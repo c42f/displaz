@@ -31,7 +31,7 @@
 
 #include "tinyformat.h"
 #include "dragspinbox.h"
-#include "logger.h"
+#include "qtlogger.h"
 
 #include <QtGui/QFormLayout>
 #include <QtGui/QComboBox>

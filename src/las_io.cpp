@@ -27,7 +27,7 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "logger.h"
+#include "qtlogger.h"
 #include "pointarray.h"
 
 // FIXME! The point loader code is really a horrible mess.  It should be

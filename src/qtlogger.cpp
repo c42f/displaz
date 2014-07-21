@@ -27,54 +27,56 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "logger.h"
+#include "qtlogger.h"
 
-#include <cmath>
+QtLogger g_logger;
 
 
 //------------------------------------------------------------------------------
-StreamLogger::StreamLogger(std::ostream& outStream)
-    : m_prevPrintWasProgress(false),
-    m_prevProgressFraction(-100),
-    m_out(outStream)
+LogViewer::LogViewer(QWidget* parent)
+    : QPlainTextEdit(parent)
 { }
 
-StreamLogger::~StreamLogger()
+
+void LogViewer::connectLogger(QtLogger* logger)
 {
-    if (m_prevPrintWasProgress)
-        m_out << "\n";
+    connect(logger, SIGNAL(logMessage(int, QString)),
+            this, SLOT(appendLogMessage(int, QString)),
+            Qt::QueuedConnection);
 }
 
-void StreamLogger::log(LogLevel level, const std::string& msg)
+
+void LogViewer::appendLogMessage(int logLevel, QString msg)
 {
-    if (m_prevPrintWasProgress)
-        tfm::format(m_out, "\n");
-    m_prevPrintWasProgress = false;
-    if (level == Progress)
+    moveCursor(QTextCursor::End);
+    switch (logLevel)
     {
-        m_progressPrefix = msg;
-        progress(0);
+        case Logger::Warning:
+            appendHtml("<b>WARNING</b>: ");
+            insertPlainText(msg);
+            break;
+        case Logger::Error:
+            appendHtml("<b>ERROR</b>: ");
+            insertPlainText(msg);
+            break;
+        case Logger::Info:
+            appendPlainText(msg);
+            break;
     }
-    else if (level == Info)
-        tfm::format(m_out, "%s\n", msg);
-    else if (level == Warning)
-        tfm::format(m_out, "WARNING: %s\n", msg);
-    else if (level == Error)
-        tfm::format(m_out, "ERROR: %s\n", msg);
+    ensureCursorVisible();
 }
 
-void StreamLogger::progress(double progressFraction)
+
+//------------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& out, const QByteArray& s)
 {
-    const int barFullWidth = std::max(10, 60 - 3 - (int)m_progressPrefix.size());
-    const int barFraction = (int)floor(barFullWidth*std::min(1.0, std::max(0.0, progressFraction)) + 0.5);
-    if (fabs(progressFraction - m_prevProgressFraction) > 0.01)
-    {
-        m_prevProgressFraction = progressFraction;
-        tfm::format(m_out, "%s [%s%s]\r", m_progressPrefix,
-                    std::string(barFraction, '='),
-                    std::string(barFullWidth - barFraction, ' '));
-        m_prevPrintWasProgress = true;
-    }
+    out.write(s.constData(), s.size());
+    return out;
 }
 
 
+std::ostream& operator<<(std::ostream& out, const QString& s)
+{
+    out << s.toUtf8();
+    return out;
+}

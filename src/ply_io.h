@@ -39,7 +39,6 @@
 #include "typespec.h"
 #include "geomfield.h"
 #include "util.h"
-#include "logger.h"
 
 
 /// Find and return "vertex" element from ply file.

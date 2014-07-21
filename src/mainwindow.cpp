@@ -33,7 +33,7 @@
 #include "datasetui.h"
 #include "geometrycollection.h"
 #include "helpdialog.h"
-#include "logger.h"
+#include "qtlogger.h"
 #include "mesh.h"
 #include "shadereditor.h"
 #include "shader.h"
