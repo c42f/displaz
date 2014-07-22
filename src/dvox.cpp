@@ -386,6 +386,8 @@ class ProgressCounter
 /// the range P[inds[node.beginIndex, node.endIndex)]].  center is the central
 /// split point for splitting children of the current node; radius is the
 /// current node radius measured along one of the axes.
+///
+/// TODO: Use bounding box here rather than centre and radius
 static OctreeNode* makeTree(int depth, size_t* inds,
                             size_t beginIndex, size_t endIndex,
                             const V3f* P, const V3f& center,
@@ -755,12 +757,15 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
         inds[i] = i;
     // Expand the bound so that it's cubic.  Cubic nodes work better because
     // the points are better distributed for LoD, splitting is unbiased, etc.
-    Imath::Box3f rootBound(bbox.min - offset, bbox.max - offset);
-    V3f diag = rootBound.size();
-    float rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
+    Imath::Box3d rootBound(bbox.min, bbox.max);
+    const V3d diag = rootBound.size();
+    double rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
+    const V3d center = rootBound.center();
+    rootBound.min = center - V3d(rootRadius);
+    rootBound.max = center + V3d(rootRadius);
     std::unique_ptr<OctreeNode> rootNode;
     rootNode.reset(makeTree(0, &inds[0], 0, npoints, &position[0],
-                            rootBound.center(), rootRadius, logger, progCounter));
+                            center - offset, rootRadius, logger, progCounter));
     // Reorder point fields into octree order
     logger.progress("Reordering fields");
     for (size_t i = 0; i < fields.size(); ++i)
@@ -781,7 +786,7 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
     std::ofstream outFile(outFileName.c_str(), std::ios::binary);
     if (!outFile)
         throw std::runtime_error("Could not open output file");
-    writeHcloud(outFile, rootNode.get(), bbox, offset, position, color, npoints, logger);
+    writeHcloud(outFile, rootNode.get(), rootBound, offset, position, color, npoints, logger);
 }
 
 
