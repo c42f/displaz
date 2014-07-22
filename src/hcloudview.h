@@ -27,58 +27,49 @@
 //
 // (This is the BSD 3-clause license)
 
+
+#ifndef DISPLAZ_HCLOUDVIEW_H_INCLUDED
+#define DISPLAZ_HCLOUDVIEW_H_INCLUDED
+
 #include "geometry.h"
-#include "hcloudview.h"
-#include "mesh.h"
-#include "pointarray.h"
 
-#include <rply/rply.h>
+#include "hcloud.h"
+#include "glutil.h"
+#include "util.h"
 
-/// Determine whether a ply file has mesh or line segment elements
+#include <fstream>
+
+struct HCloudNode;
+
+/// Viewer for hcloud file format
 ///
-/// (If not, assume it's a point cloud.)
-static bool plyHasMesh(QString fileName)
+/// HCloudView uses incremental loading of the LoD structure to avoid loading
+/// the whole thing into memory at once.
+class HCloudView : public Geometry
 {
-    std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
-    if (!ply || !ply_read_header(ply.get()))
-        return false;
-    for (p_ply_element elem = ply_get_next_element(ply.get(), NULL);
-         elem != NULL; elem = ply_get_next_element(ply.get(), elem))
-    {
-        const char* name = 0;
-        long ninstances = 0;
-        if (!ply_get_element_info(elem, &name, &ninstances))
-            continue;
-        if (strcmp(name, "face") == 0 || strcmp(name, "edge") == 0)
-            return true;
-    }
-    return false;
-}
+    Q_OBJECT
+    public:
+        HCloudView();
+
+        ~HCloudView();
+
+        virtual bool loadFile(QString fileName, size_t maxVertexCount);
+
+        virtual void initializeGL() const;
+
+        virtual void draw(const TransformState& transState, double quality) const;
+
+        virtual size_t pointCount() const;
+
+        virtual size_t simplifiedPointCount(const V3d& cameraPos,
+                                            bool incrementalDraw) const;
+
+        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+                               double longitudinalScale, double* distance = 0) const;
+
+    private:
+        std::unique_ptr<HCloudNode> m_rootNode;
+};
 
 
-//------------------------------------------------------------------------------
-Geometry::Geometry()
-    : m_fileName(),
-    m_offset(0,0,0),
-    m_centroid(0,0,0),
-    m_bbox()
-{ }
-
-
-std::shared_ptr<Geometry> Geometry::create(QString fileName)
-{
-    if (fileName.endsWith(".ply") && plyHasMesh(fileName))
-        return std::shared_ptr<Geometry>(new TriMesh());
-    else if(fileName.endsWith(".hcloud"))
-        return std::shared_ptr<Geometry>(new HCloudView());
-    else
-        return std::shared_ptr<Geometry>(new PointArray());
-}
-
-
-bool Geometry::reloadFile(size_t maxVertexCount)
-{
-    return loadFile(m_fileName, maxVertexCount);
-}
-
+#endif // DISPLAZ_HCLOUDVIEW_H_INCLUDED

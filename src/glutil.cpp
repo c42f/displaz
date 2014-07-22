@@ -30,28 +30,31 @@
 #include "glutil.h"
 #include "tinyformat.h"
 
-TransformState TransformState::translate(const Imath::V3f& offset) const
+TransformState TransformState::translate(const Imath::V3d& offset) const
 {
     TransformState res(*this);
-    res.modelViewMatrix =  M44f().setTranslation(offset) * modelViewMatrix;
+    res.modelViewMatrix =  M44d().setTranslation(offset) * modelViewMatrix;
     return res;
 }
 
 
-static void setUniform(GLuint prog, const char* name, const M44f& mat)
+static void setUniform(GLuint prog, const char* name, const M44d& mat)
 {
     GLint loc = glGetUniformLocation(prog, name);
     if (loc == -1)
         return;
-    glUniformMatrix4fv(loc, 1, GL_FALSE, &mat[0][0]);
+    M44f M(mat);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
 }
 
 
 void TransformState::setUniforms(GLuint prog) const
 {
+    // Note: The matrices must have a sensible representation in float32
+    // precision by the time they get here.
     setUniform(prog, "projectionMatrix", projMatrix);
     setUniform(prog, "modelViewMatrix", modelViewMatrix);
-    M44f mvproj = modelViewMatrix * projMatrix;
+    M44d mvproj = modelViewMatrix * projMatrix;
     setUniform(prog, "modelViewProjectionMatrix", mvproj);
 }
 
@@ -59,9 +62,9 @@ void TransformState::setUniforms(GLuint prog) const
 void TransformState::load() const
 {
     glMatrixMode(GL_PROJECTION);
-    glLoadMatrix(projMatrix);
+    glLoadMatrix(M44f(projMatrix));
     glMatrixMode(GL_MODELVIEW);
-    glLoadMatrix(modelViewMatrix);
+    glLoadMatrix(M44f(modelViewMatrix));
 }
 
 
@@ -71,8 +74,10 @@ void drawBoundingBox(const TransformState& transState,
                      const Imath::Box3d& bbox,
                      const Imath::C3f& col)
 {
-    transState.load();
-    drawBoundingBox(transState, Imath::Box3f(bbox.min, bbox.max), col);
+    // Transform to box min for stability with large offsets
+    TransformState trans2 = transState.translate(bbox.min);
+    Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
+    drawBoundingBox(trans2, box2, col);
 }
 
 

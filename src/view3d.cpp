@@ -247,6 +247,9 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram(context()));
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    for (size_t i = 0; i < geoms.size(); ++i)
+        geoms[i]->initializeGL();
 }
 
 
@@ -317,6 +320,15 @@ void View3D::paintGL()
     if (!m_incrementalDraw)
     {
         drawMeshes(transState, geoms, sel);
+
+        // Generic draw for any other geometry
+        // (TODO: make all geometries use this interface, or something similar)
+        // FIXME - Do generic quality scaling
+        const double quality = 1;
+        // FIXME - Put draw offset into transform systematically
+        TransformState trans2 = transState.translate(-m_drawOffset);
+        for (int i = 0; i < sel.size(); ++i)
+            geoms[sel[i].row()]->draw(trans2, quality);
     }
 
     // Figure out how many points we should render

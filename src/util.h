@@ -46,6 +46,7 @@ using Imath::V3d;
 using Imath::V3f;
 using Imath::V2f;
 using Imath::M44f;
+using Imath::M44d;
 using Imath::C3f;
 using Imath::Box3f;
 

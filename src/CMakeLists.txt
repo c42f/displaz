@@ -24,6 +24,7 @@ qt4_wrap_cpp(moc_srcs
     fileloader.h
     geometry.h
     geometrycollection.h
+    hcloudview.h
     helpdialog.h
     interactivecamera.h
     qtlogger.h
@@ -40,6 +41,7 @@ set(srcs
     geometry.cpp
     geometrycollection.cpp
     glutil.cpp
+    hcloudview.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp

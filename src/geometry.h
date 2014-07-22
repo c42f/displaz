@@ -32,6 +32,7 @@
 
 #include <memory>
 
+#include "glutil.h"
 #include "util.h"
 #include <QString>
 #include <QMetaType>
@@ -61,6 +62,14 @@ class Geometry : public QObject
         ///
         /// The default implementation just calls loadFile() with the file name
         virtual bool reloadFile(size_t maxVertexCount);
+
+        //--------------------------------------------------
+        /// Draw geometry using current OpenGL context
+        virtual void draw(const TransformState& transState, double quality) const {}
+
+        /// Initialize (or reinitialize) any openGL state associated with the
+        /// geometry
+        virtual void initializeGL() const {}
 
         //--------------------------------------------------
         /// Draw points using given openGL shader program
