@@ -294,12 +294,13 @@ struct MipBrick
     }
 
     void cacheFilledVoxels(float radius, std::vector<float>& positions,
-                           std::vector<float>& colors)
+                           std::vector<float>& coverages, std::vector<float>& colors)
     {
         size_t fillCount = std::count_if(
             m_mipCoverage.begin(), m_mipCoverage.end(),
             [](float c) { return c != 0; } );
         positions.reserve(3*fillCount);
+        coverages.reserve(fillCount);
         colors.reserve(fillCount);
         for (int z = 0; z < brickN; ++z)
         for (int y = 0; y < brickN; ++y)
@@ -311,6 +312,7 @@ struct MipBrick
                 positions.push_back(position(x,y,z).x);
                 positions.push_back(position(x,y,z).y);
                 positions.push_back(position(x,y,z).z);
+                coverages.push_back(c);
                 colors.push_back(color(x,y,z));
             }
         }
@@ -330,6 +332,7 @@ struct OctreeNode
     // List of non-empty voxels inside the brick
     std::vector<float> voxelPositions;
     std::vector<float> voxelColors;
+    std::vector<float> voxelCoverage;
 
     // Variables used when dumping to disk
     mutable uint64_t dataOffset;
@@ -357,7 +360,7 @@ struct OctreeNode
 
     void cacheFilledVoxels()
     {
-        brick.cacheFilledVoxels(radius, voxelPositions, voxelColors);
+        brick.cacheFilledVoxels(radius, voxelPositions, voxelCoverage, voxelColors);
     }
 };
 
@@ -632,20 +635,23 @@ int fieldSearch(const std::vector<GeomField>& fields,
 ///
 /// out        - destination stream
 /// rootNode   - root of tree
-/// boundingBox - bounding box of root node
+/// boundingBox - bounding box of the data
+/// treeBoundingBox - bounding box of root node
 /// offset     - double precision origin offset for float point positions
 /// leafPositions - leaf node position data
 /// leafColors - leaf node color data
 /// numPoints  - total number of points in leafPositions,leafColors
 /// logger     - logging interface
 void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
-                 const Imath::Box3d& boundingBox, const Imath::V3d& offset,
+                 const Imath::Box3d& boundingBox, const Imath::Box3d& treeBoundingBox,
+                 const Imath::V3d& offset,
                  const V3f* leafPositions, const uint16_t* leafColors,
                  uint64_t numPoints, Logger& logger)
 {
     // Number of bytes to hold a single point.
     // TODO: Compress!
-    const int pointSize = 3*sizeof(float) + sizeof(float);
+    const int voxelPointSize = 3*sizeof(float) + sizeof(float) + sizeof(float);
+    const int leafPointSize = 3*sizeof(float) + sizeof(float);
     // Number of bytes to hold an octree node in the index
     const int indexNodeSize = sizeof(uint8_t) + sizeof(uint64_t) + 2*sizeof(uint16_t);
 
@@ -657,8 +663,10 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
     header.numVoxels = numVoxels;
     header.indexSize = indexNodeSize*numNodes;
     header.offset = offset;
-    header.dataSize = pointSize*(numVoxels + numPoints);
+    header.dataSize = voxelPointSize*numVoxels + leafPointSize*numPoints;
     header.boundingBox = boundingBox;
+    header.treeBoundingBox = treeBoundingBox;
+    header.brickSize = brickN;
     header.write(out);
 
     logger.info("Header:\n%s", header);
@@ -675,9 +683,12 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
         const OctreeNode* node = nodeQueue.front();
         nodeQueue.pop();
         node->dataOffset = dataOffset;
-        dataOffset += pointSize*(node->numOccupiedVoxels() + (node->endIndex - node->beginIndex));
+        dataOffset += voxelPointSize * node->numOccupiedVoxels() +
+                      leafPointSize  * (node->endIndex - node->beginIndex);
         out.write((const char*)node->voxelPositions.data(),
                   node->voxelPositions.size()*sizeof(float));
+        out.write((const char*)node->voxelCoverage.data(),
+                  node->voxelCoverage.size()*sizeof(float));
         out.write((const char*)node->voxelColors.data(),
                   node->voxelColors.size()*sizeof(float));
         if (node->isLeaf())
@@ -687,6 +698,7 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
             out.write((const char*)(leafColors + node->beginIndex),
                       node->numLeafPoints()*sizeof(float));
         }
+        assert((uint64_t)out.tellp() == dataOffset + header.headerSize + header.indexSize);
         logger.progress(double(dataOffset)/header.dataSize);
         for (int i = 0; i < 8; ++i)
         {
@@ -786,7 +798,7 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
     std::ofstream outFile(outFileName.c_str(), std::ios::binary);
     if (!outFile)
         throw std::runtime_error("Could not open output file");
-    writeHcloud(outFile, rootNode.get(), rootBound, offset, position, color, npoints, logger);
+    writeHcloud(outFile, rootNode.get(), bbox, rootBound, offset, position, color, npoints, logger);
 }
 
 

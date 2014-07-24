@@ -41,11 +41,14 @@
 /// Utility to handle transformation state
 struct TransformState
 {
+    Imath::V2i viewSize;
     Imath::M44d projMatrix;
     Imath::M44d modelViewMatrix;
 
-    TransformState(const M44f& projMatrix, const M44f& modelViewMatrix)
-        : projMatrix(projMatrix), modelViewMatrix(modelViewMatrix) {}
+    TransformState(Imath::V2i viewSize, const M44f& projMatrix,
+                   const M44f& modelViewMatrix)
+        : viewSize(viewSize), projMatrix(projMatrix),
+        modelViewMatrix(modelViewMatrix) {}
 
     /// Translate model by given offset
     TransformState translate(const Imath::V3d& offset) const;

@@ -36,11 +36,14 @@
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathBox.h>
 
+//------------------------------------------------------------------------------
+/// Magic number at start of each hcloud file, and size in bytes
 #define HCLOUD_MAGIC "HierarchicalPointCloud\n\x0c"
 #define HCLOUD_MAGIC_SIZE 24
 #define HCLOUD_VERSION 0
 
 
+/// Collection of header metadata stored in a hcloud file
 struct HCloudHeader
 {
     uint16_t version;
@@ -52,6 +55,8 @@ struct HCloudHeader
 
     Imath::V3d offset;
     Imath::Box3d boundingBox;
+    Imath::Box3d treeBoundingBox;
+    uint16_t brickSize;
 
     HCloudHeader()
         : version(HCLOUD_VERSION),
@@ -60,8 +65,13 @@ struct HCloudHeader
         numVoxels(0),
         indexSize(0),
         dataSize(0),
-        offset(0)
+        offset(0),
+        brickSize(0)
     { }
+
+
+    /// Get offset to start of data section
+    uint64_t dataOffset() const { return headerSize + indexSize; }
 
     /// Write HCloud header to given stream
     void write(std::ostream& out) const;
@@ -71,6 +81,11 @@ struct HCloudHeader
 };
 
 std::ostream& operator<<(std::ostream& out, const HCloudHeader& h);
+
+
+//------------------------------------------------------------------------------
+
+// TODO: HCloudInput & HCloudOutput classes for hcloud IO
 
 
 #endif // DISPLAZ_HCLOUD_H_INCLUDED

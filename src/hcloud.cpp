@@ -57,6 +57,13 @@ void HCloudHeader::write(std::ostream& out) const
     writeLE<double>(headerBytes, boundingBox.max.x);
     writeLE<double>(headerBytes, boundingBox.max.y);
     writeLE<double>(headerBytes, boundingBox.max.z);
+    writeLE<double>(headerBytes, treeBoundingBox.min.x);
+    writeLE<double>(headerBytes, treeBoundingBox.min.y);
+    writeLE<double>(headerBytes, treeBoundingBox.min.z);
+    writeLE<double>(headerBytes, treeBoundingBox.max.x);
+    writeLE<double>(headerBytes, treeBoundingBox.max.y);
+    writeLE<double>(headerBytes, treeBoundingBox.max.z);
+    writeLE<uint16_t>(headerBytes, brickSize);
     headerSize = (uint32_t)headerBytes.tellp();
     headerBytes.seekp(headerSizePos);
     writeLE<uint32_t>(headerBytes, headerSize);
@@ -89,6 +96,13 @@ void HCloudHeader::read(std::istream& in)
     boundingBox.max.x = readLE<double>(in);
     boundingBox.max.y = readLE<double>(in);
     boundingBox.max.z = readLE<double>(in);
+    treeBoundingBox.min.x = readLE<double>(in);
+    treeBoundingBox.min.y = readLE<double>(in);
+    treeBoundingBox.min.z = readLE<double>(in);
+    treeBoundingBox.max.x = readLE<double>(in);
+    treeBoundingBox.max.y = readLE<double>(in);
+    treeBoundingBox.max.z = readLE<double>(in);
+    brickSize = readLE<uint16_t>(in);
 }
 
 std::ostream& operator<<(std::ostream& out, const HCloudHeader& h)
@@ -101,7 +115,9 @@ std::ostream& operator<<(std::ostream& out, const HCloudHeader& h)
         "indexSize = %d\n"
         "dataSize = %d\n"
         "offset = %.3f\n"
-        "boundingBox = [%.3f -- %.3f]",
+        "boundingBox = [%.3f -- %.3f]\n"
+        "treeBoundingBox = [%.3f -- %.3f]\n"
+        "brickSize = %d",
         h.version,
         h.headerSize,
         h.numPoints,
@@ -110,7 +126,10 @@ std::ostream& operator<<(std::ostream& out, const HCloudHeader& h)
         h.dataSize,
         h.offset,
         h.boundingBox.min,
-        h.boundingBox.max
+        h.boundingBox.max,
+        h.treeBoundingBox.min,
+        h.treeBoundingBox.max,
+        h.brickSize
     );
     return out;
 }

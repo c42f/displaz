@@ -86,6 +86,7 @@ endif()
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+    ${ILMBASE_LIBRARIES}
 )
 target_link_libraries(dvox)
 

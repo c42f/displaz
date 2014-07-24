@@ -102,7 +102,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
     connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(geometryChanged()));
-    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryChanged()));
+    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryInserted(const QModelIndex&, int,int)));
     connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(geometryChanged()));
 
     setSelectionModel(new QItemSelectionModel(m_geometries, this));
@@ -152,6 +152,15 @@ void View3D::geometryChanged()
     //m_maxPointsPerFrame = g_defaultPointRenderCount;
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
+}
+
+
+void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
+{
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    for (int i = firstRow; i <= lastRow; ++i)
+        geoms[i]->initializeGL();
+    geometryChanged();
 }
 
 
@@ -289,7 +298,8 @@ void View3D::paintGL()
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(qt2exr(m_camera.projectionMatrix()),
+    TransformState transState(Imath::V2i(width(), height()),
+                              qt2exr(m_camera.projectionMatrix()),
                               qt2exr(m_camera.viewMatrix()));
 
     glClearDepth(1.0f);

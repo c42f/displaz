@@ -65,11 +65,11 @@ class Geometry : public QObject
 
         //--------------------------------------------------
         /// Draw geometry using current OpenGL context
-        virtual void draw(const TransformState& transState, double quality) const {}
+        virtual void draw(const TransformState& transState, double quality) {}
 
         /// Initialize (or reinitialize) any openGL state associated with the
         /// geometry
-        virtual void initializeGL() const {}
+        virtual void initializeGL() {}
 
         //--------------------------------------------------
         /// Draw points using given openGL shader program

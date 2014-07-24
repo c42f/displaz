@@ -32,14 +32,12 @@
 #define DISPLAZ_HCLOUDVIEW_H_INCLUDED
 
 #include "geometry.h"
-
 #include "hcloud.h"
-#include "glutil.h"
-#include "util.h"
 
 #include <fstream>
 
 struct HCloudNode;
+class ShaderProgram;
 
 /// Viewer for hcloud file format
 ///
@@ -55,9 +53,9 @@ class HCloudView : public Geometry
 
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual void initializeGL() const;
+        virtual void initializeGL();
 
-        virtual void draw(const TransformState& transState, double quality) const;
+        virtual void draw(const TransformState& transState, double quality);
 
         virtual size_t pointCount() const;
 
@@ -68,7 +66,12 @@ class HCloudView : public Geometry
                                double longitudinalScale, double* distance = 0) const;
 
     private:
+        HCloudHeader m_header; // TODO: Put in HCloudInput class
+        uint64_t m_sizeBytes;
+        std::ifstream m_input;
         std::unique_ptr<HCloudNode> m_rootNode;
+        std::unique_ptr<ShaderProgram> m_shader;
+        std::vector<float> m_simplifyThreshold;
 };
 
 

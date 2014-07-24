@@ -42,6 +42,10 @@ endif()
 if (DISPLAZ_BUILD_EXTERNAL)
     set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
     set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
+    set(ILMBASE_LIBRARIES
+        ${THIRDPARTY_INSTALL_DIR}/lib/libImath.a
+        ${THIRDPARTY_INSTALL_DIR}/lib/libIex.a
+    )
     set(externalBuilds ilmbase laslib)
     if (DISPLAZ_USE_LAS)
         set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
@@ -81,6 +85,9 @@ else()
 
     # Find IlmBase
     find_path (ILMBASE_INCLUDES NAMES OpenEXR/ImathVec.h)
+    find_library (ILMBASE_IMATH_LIBRARY NAMES Imath)
+    find_library (ILMBASE_IEX_LIBRARY NAMES Iex)
+    set (ILMBASE_LIBRARIES ${ILMBASE_IMATH_LIBRARY} ${ILMBASE_IEX_LIBRARY})
     if (ILMBASE_INCLUDES)
         set (ILMBASE_FOUND TRUE)
     endif()

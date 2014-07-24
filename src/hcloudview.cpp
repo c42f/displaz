@@ -29,8 +29,14 @@
 
 #include "hcloudview.h"
 
+#include "hcloud.h"
+#include "glutil.h"
 #include "qtlogger.h"
+#include "shader.h"
+#include "util.h"
 
+
+//------------------------------------------------------------------------------
 struct HCloudNode
 {
     HCloudNode* children[8]; ///< Child nodes - order (x + 2*y + 4*z)
@@ -39,6 +45,11 @@ struct HCloudNode
     uint64_t dataOffset;
     uint16_t numOccupiedVoxels;
     uint16_t numLeafPoints;
+
+    // List of non-empty voxels inside the node
+    std::unique_ptr<float[]> position;
+    std::unique_ptr<float[]> intensity;
+    std::unique_ptr<float[]> coverage;
 
     HCloudNode(const Box3f& bbox)
         : bbox(bbox),
@@ -52,6 +63,22 @@ struct HCloudNode
     {
         for (int i = 0; i < 8; ++i)
             delete children[i];
+    }
+
+    bool isLeaf() const { return numLeafPoints != 0; }
+    bool isCached() const { return position.get() != 0; }
+    //bool isChildrenCached() const { return position; }
+
+    float radius() const { return bbox.max.x - bbox.min.x; }
+
+    /// Allocate arrays for storing point data
+    ///
+    /// (TODO: need some sort of LRU cache)
+    void allocateArrays()
+    {
+        position.reset(new float[3*numOccupiedVoxels]);
+        intensity.reset(new float[numOccupiedVoxels]);
+        coverage.reset(new float[numOccupiedVoxels]);
     }
 };
 
@@ -96,14 +123,13 @@ HCloudView::~HCloudView() { }
 
 bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
 {
-    std::ifstream in(fileName.toUtf8(), std::ios::binary);
-    HCloudHeader header;
-    header.read(in);
-    g_logger.info("Header:\n%s", header);
+    m_input.open(fileName.toUtf8(), std::ios::binary);
+    m_header.read(m_input);
+    g_logger.info("Header:\n%s", m_header);
 
-    Box3f offsetBox(header.boundingBox.min - header.offset,
-                    header.boundingBox.max - header.offset);
-    m_rootNode.reset(readHCloudIndex(in, offsetBox));
+    Box3f offsetBox(m_header.boundingBox.min - m_header.offset,
+                    m_header.boundingBox.max - m_header.offset);
+    m_rootNode.reset(readHCloudIndex(m_input, offsetBox));
 
 //    fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
 //    fields.push_back(GeomField(TypeSpec::float32(), "intensity", npoints));
@@ -111,16 +137,18 @@ bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
 //    float* intensity = fields[0].as<float>();
 
     setFileName(fileName);
-    setBoundingBox(header.boundingBox);
-    setOffset(header.offset);
-    setCentroid(header.boundingBox.center());
+    setBoundingBox(m_header.boundingBox);
+    setOffset(m_header.offset);
+    setCentroid(m_header.boundingBox.center());
 
     return true;
 }
 
 
-void HCloudView::initializeGL() const
+void HCloudView::initializeGL()
 {
+    m_shader.reset(new ShaderProgram(QGLContext::currentContext()));
+    m_shader->setShaderFromSourceFile("shaders:las_points_lod.glsl");
 }
 
 
@@ -135,10 +163,107 @@ void drawBounds(HCloudNode* node, const TransformState& transState)
 }
 
 
-void HCloudView::draw(const TransformState& transState, double quality) const
+void HCloudView::draw(const TransformState& transStateIn, double quality)
 {
-    TransformState trans2 = transState.translate(offset());
-    drawBounds(m_rootNode.get(), trans2);
+    g_logger.info("hcloud MBytes = %.2f", m_sizeBytes/1e6);
+    TransformState transState = transStateIn.translate(offset());
+    //drawBounds(m_rootNode.get(), transState);
+
+    V3f cameraPos = V3d(0) * transState.modelViewMatrix.inverse();
+    QGLShaderProgram& prog = m_shader->shaderProgram();
+    prog.bind();
+    glEnable(GL_POINT_SPRITE);
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+    transState.setUniforms(prog.programId());
+    prog.enableAttributeArray("position");
+    prog.enableAttributeArray("coverage");
+    prog.enableAttributeArray("intensity");
+    prog.enableAttributeArray("simplifyThreshold");
+    prog.setUniformValue("pointPixelScale", (GLfloat)(0.5 * transState.viewSize.x *
+                                                      transState.projMatrix[0][0]));
+
+    // TODO: Ultimately should scale sizeRatioLimit with the quality, something
+    // like this:
+    // const double sizeRatioLimit = 0.01/std::min(1.0, quality);
+    // g_logger.info("quality = %f", quality);
+    const double sizeRatioLimit = 0.01;
+
+    std::vector<HCloudNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        HCloudNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        double sizeRatio = node->radius()/(node->bbox.center() - cameraPos).length();
+
+        if (sizeRatio < sizeRatioLimit || node->isLeaf())
+        {
+            if (!node->isCached())
+            {
+                // Read node from disk on demand.  This causes a lot of seeking
+                // and stuttering - should generate and optimize a read plan as
+                // a first step, and do it lazily in a separate thread as well.
+                node->allocateArrays();
+                m_input.seekg(m_header.dataOffset() + node->dataOffset);
+                if (!m_input)
+                    g_logger.error("Bad seek");
+                int nvox = node->numOccupiedVoxels;
+                m_input.read((char*)node->position.get(),  3*sizeof(float)*nvox);
+                m_input.read((char*)node->coverage.get(),  sizeof(float)*nvox);
+                m_input.read((char*)node->intensity.get(), sizeof(float)*nvox);
+
+                m_sizeBytes += 5*sizeof(float)*nvox;
+
+                // Ensure large enough array of simplification thresholds
+                //
+                // Nvidia cards seem to clamp the minimum gl_PointSize to 1, so
+                // tiny points get too much emphasis.  We can avoid this
+                // problem by randomly removing such points according to the
+                // correct probability.  This needs to happen coherently
+                // between frames to avoid shimmer, so generate a single array
+                // for it and reuse it every time.
+                int nsimp = (int)m_simplifyThreshold.size();
+                if (nvox > nsimp)
+                {
+                    m_simplifyThreshold.resize(nvox);
+                    for (int i = nsimp; i < nvox; ++i)
+                        m_simplifyThreshold[i] = float(rand())/RAND_MAX;
+                }
+            }
+
+            // We draw points as billboards (not spheres) when drawing MIP
+            // levels: the point radius represents a screen coverage in this
+            // case, with no sensible interpreation as a radius toward the
+            // camera.  If we don't do this, we get problems for multi layer
+            // surfaces where the more distant layer can cover the nearer one.
+            prog.setUniformValue("markerShape", GLint(0));
+            prog.setUniformValue("lodMultiplier", GLfloat(node->radius()/m_header.brickSize));
+            prog.setAttributeArray("position",  node->position.get(),  3);
+            prog.setAttributeArray("intensity", node->intensity.get(), 1);
+            prog.setAttributeArray("coverage",  node->coverage.get(),  1);
+            prog.setAttributeArray("simplifyThreshold", m_simplifyThreshold.data(), 1);
+            glDrawArrays(GL_POINTS, 0, node->numOccupiedVoxels);
+        }
+        else
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                HCloudNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+        }
+    }
+
+    prog.disableAttributeArray("position");
+    prog.disableAttributeArray("coverage");
+    prog.disableAttributeArray("intensity");
+    prog.disableAttributeArray("simplifyThreshold");
+
+    glDisable(GL_POINT_SPRITE);
+    glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    prog.release();
 }
 
 
