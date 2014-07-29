@@ -131,10 +131,9 @@ endif()
 # Tests
 if (DISPLAZ_USE_TESTS)
     add_executable(util_test util_test.cpp)
-    if (DISPLAZ_BUILD_EXTERNAL)
-        add_dependencies(util_test ${externalBuilds})
-    endif()
+    add_executable(streampagecache_test streampagecache_test.cpp)
     add_test(util_test util_test)
+    add_test(streampagecache_test streampagecache_test)
 endif()
 
 

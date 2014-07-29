@@ -33,6 +33,7 @@
 #include "glutil.h"
 #include "qtlogger.h"
 #include "shader.h"
+#include "streampagecache.h"
 #include "util.h"
 
 #include <queue>
@@ -131,6 +132,7 @@ bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
     Box3f offsetBox(m_header.boundingBox.min - m_header.offset,
                     m_header.boundingBox.max - m_header.offset);
     m_rootNode.reset(readHCloudIndex(m_input, offsetBox));
+    m_inputCache.reset(new StreamPageCache(m_input));
 
 //    fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
 //    fields.push_back(GeomField(TypeSpec::float32(), "intensity", npoints));
@@ -191,7 +193,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
 
     size_t nodesRendered = 0;
     size_t voxelsRendered = 0;
-    int loadQuota = 1000;
+    int loadQuota = 100000;
 
     std::queue<HCloudNode*> nodeQueue;
     nodeQueue.push(m_rootNode.get());
@@ -210,12 +212,15 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             // actually want to draw, but that's not all that many because the
             // octree is only O(log(N)) deep.
             node->allocateArrays();
-            m_input.seekg(m_header.dataOffset() + node->dataOffset);
-            assert(m_input);
             int nvox = node->numOccupiedVoxels;
-            m_input.read((char*)node->position.get(),  3*sizeof(float)*nvox);
-            m_input.read((char*)node->coverage.get(),  sizeof(float)*nvox);
-            m_input.read((char*)node->intensity.get(), sizeof(float)*nvox);
+            uint64_t offset = m_header.dataOffset() + node->dataOffset;
+            uint64_t length = nvox*sizeof(float)*5;
+            m_inputCache->prefetch(offset, length);
+            m_inputCache->fetchNow(10);
+            assert(m_input);
+            m_inputCache->read((char*)node->position.get(), offset, 3*sizeof(float)*nvox);
+            m_inputCache->read((char*)node->coverage.get(), offset + 3*sizeof(float)*nvox, sizeof(float)*nvox);
+            m_inputCache->read((char*)node->intensity.get(), offset + 4*sizeof(float)*nvox, sizeof(float)*nvox);
 
             m_sizeBytes += 5*sizeof(float)*nvox;
 

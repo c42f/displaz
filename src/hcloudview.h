@@ -31,12 +31,13 @@
 #ifndef DISPLAZ_HCLOUDVIEW_H_INCLUDED
 #define DISPLAZ_HCLOUDVIEW_H_INCLUDED
 
+#include <fstream>
+
 #include "geometry.h"
 #include "hcloud.h"
 
-#include <fstream>
-
 struct HCloudNode;
+class StreamPageCache;
 class ShaderProgram;
 
 /// Viewer for hcloud file format
@@ -69,6 +70,7 @@ class HCloudView : public Geometry
         HCloudHeader m_header; // TODO: Put in HCloudInput class
         uint64_t m_sizeBytes;
         std::ifstream m_input;
+        std::unique_ptr<StreamPageCache> m_inputCache;
         std::unique_ptr<HCloudNode> m_rootNode;
         std::unique_ptr<ShaderProgram> m_shader;
         std::vector<float> m_simplifyThreshold;
