@@ -69,7 +69,6 @@ struct HCloudNode
 
     bool isLeaf() const { return numLeafPoints != 0; }
     bool isCached() const { return position.get() != 0; }
-    //bool isChildrenCached() const { return position; }
 
     float radius() const { return bbox.max.x - bbox.min.x; }
 
@@ -81,6 +80,13 @@ struct HCloudNode
         position.reset(new float[3*numOccupiedVoxels]);
         intensity.reset(new float[numOccupiedVoxels]);
         coverage.reset(new float[numOccupiedVoxels]);
+    }
+
+    void freeArrays()
+    {
+        position.reset();
+        intensity.reset();
+        coverage.reset();
     }
 };
 
@@ -155,7 +161,7 @@ void HCloudView::initializeGL()
 }
 
 
-void drawBounds(HCloudNode* node, const TransformState& transState)
+static void drawBounds(HCloudNode* node, const TransformState& transState)
 {
     drawBoundingBox(transState, node->bbox, Imath::C3f(1));
     for (int i = 0; i < 8; ++i)
@@ -163,6 +169,29 @@ void drawBounds(HCloudNode* node, const TransformState& transState)
         if (node->children[i])
             drawBounds(node->children[i], transState);
     }
+}
+
+
+/// Read hcloud point data for node
+///
+/// If the underlying data isn't cached, return false.
+static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
+                         StreamPageCache& inputCache, double priority)
+{
+    node->allocateArrays();
+    int nvox = node->numOccupiedVoxels;
+    uint64_t offset = header.dataOffset() + node->dataOffset;
+    uint64_t length = nvox*sizeof(float)*5;
+    if (!inputCache.read((char*)node->position.get(), offset, 3*sizeof(float)*nvox) ||
+        !inputCache.read((char*)node->coverage.get(), offset + 3*sizeof(float)*nvox, sizeof(float)*nvox) ||
+        !inputCache.read((char*)node->intensity.get(), offset + 4*sizeof(float)*nvox, sizeof(float)*nvox))
+    {
+        inputCache.prefetch(offset, length, priority);
+        node->freeArrays();
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -185,45 +214,56 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
     prog.setUniformValue("pointPixelScale", (GLfloat)(0.5 * transState.viewSize.x *
                                                       transState.projMatrix[0][0]));
 
-    // TODO: Ultimately should scale sizeRatioLimit with the quality, something
+    // TODO: Ultimately should scale angularSizeLimit with the quality, something
     // like this:
-    // const double sizeRatioLimit = 0.01/std::min(1.0, quality);
+    // const double angularSizeLimit = 0.01/std::min(1.0, quality);
     // g_logger.info("quality = %f", quality);
-    const double sizeRatioLimit = 0.01;
+    const double angularSizeLimit = 0.01;
 
     size_t nodesRendered = 0;
     size_t voxelsRendered = 0;
-    int loadQuota = 100000;
 
-    std::queue<HCloudNode*> nodeQueue;
-    nodeQueue.push(m_rootNode.get());
-    while (!nodeQueue.empty())
+    const size_t fetchQuota = 10;
+    size_t fetchedPages = m_inputCache->fetchNow(fetchQuota);
+
+    // Render out nodes which are cached or can now be read from the page cache
+    const double rootPriority = 1000;
+    std::vector<HCloudNode*> nodeStack;
+    if (m_rootNode->isCached())
     {
-        HCloudNode* node = nodeQueue.front();
-        nodeQueue.pop();
+        nodeStack.push_back(m_rootNode.get());
+    }
+    else if (readNodeData(m_rootNode.get(), m_header, *m_inputCache, rootPriority))
+    {
+        nodeStack.push_back(m_rootNode.get());
+        m_sizeBytes += 5*sizeof(float)*m_rootNode->numOccupiedVoxels;
+    }
+    while (!nodeStack.empty())
+    {
+        HCloudNode* node = nodeStack.back();
+        nodeStack.pop_back();
 
-        if (!node->isCached())
+        double angularSize = node->radius()/(node->bbox.center() - cameraPos).length();
+        bool drawNode = angularSize < angularSizeLimit || node->isLeaf();
+        if (!drawNode)
         {
-            // Read node from disk on demand.  This causes a lot of seeking
-            // and stuttering - should generate and optimize a read plan as
-            // a first step, and do it lazily in a separate thread as well.
-            //
-            // Note that this caches all the parent nodes of the nodes we
-            // actually want to draw, but that's not all that many because the
-            // octree is only O(log(N)) deep.
-            node->allocateArrays();
+            // Want to decend into child nodes - try to cache them and if we
+            // can't, force current node to be drawn.
+            for (int i = 0; i < 8; ++i)
+            {
+                HCloudNode* n = node->children[i];
+                if (n && !n->isCached())
+                {
+                    if (readNodeData(n, m_header, *m_inputCache, angularSize))
+                        m_sizeBytes += 5*sizeof(float)*node->numOccupiedVoxels;
+                    else
+                        drawNode = true;
+                }
+            }
+        }
+        if (drawNode)
+        {
             int nvox = node->numOccupiedVoxels;
-            uint64_t offset = m_header.dataOffset() + node->dataOffset;
-            uint64_t length = nvox*sizeof(float)*5;
-            m_inputCache->prefetch(offset, length);
-            m_inputCache->fetchNow(10);
-            assert(m_input);
-            m_inputCache->read((char*)node->position.get(), offset, 3*sizeof(float)*nvox);
-            m_inputCache->read((char*)node->coverage.get(), offset + 3*sizeof(float)*nvox, sizeof(float)*nvox);
-            m_inputCache->read((char*)node->intensity.get(), offset + 4*sizeof(float)*nvox, sizeof(float)*nvox);
-
-            m_sizeBytes += 5*sizeof(float)*nvox;
-
             // Ensure large enough array of simplification thresholds
             //
             // Nvidia cards seem to clamp the minimum gl_PointSize to 1, so
@@ -239,11 +279,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
                 for (int i = nsimp; i < nvox; ++i)
                     m_simplifyThreshold[i] = float(rand())/RAND_MAX;
             }
-        }
 
-        double sizeRatio = node->radius()/(node->bbox.center() - cameraPos).length();
-        if (sizeRatio < sizeRatioLimit || node->isLeaf() || loadQuota <= 0)
-        {
             // We draw points as billboards (not spheres) when drawing MIP
             // levels: the point radius represents a screen coverage in this
             // case, with no sensible interpreation as a radius toward the
@@ -255,9 +291,9 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             prog.setAttributeArray("intensity", node->intensity.get(), 1);
             prog.setAttributeArray("coverage",  node->coverage.get(),  1);
             prog.setAttributeArray("simplifyThreshold", m_simplifyThreshold.data(), 1);
-            glDrawArrays(GL_POINTS, 0, node->numOccupiedVoxels);
+            glDrawArrays(GL_POINTS, 0, nvox);
             nodesRendered++;
-            voxelsRendered += node->numOccupiedVoxels;
+            voxelsRendered += nvox;
         }
         else
         {
@@ -265,12 +301,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             {
                 HCloudNode* n = node->children[i];
                 if (n)
-                {
-                    // Count newly pending uncached toward the load quota
-                    if (!n->isCached())
-                        --loadQuota;
-                    nodeQueue.push(n);
-                }
+                    nodeStack.push_back(n);
             }
         }
     }
@@ -284,8 +315,8 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     prog.release();
 
-    g_logger.info("hcloud: %.1fMB, #nodes = %d, load quota = %d, mean voxel size = %.0f",
-                  m_sizeBytes/1e6, nodesRendered, loadQuota,
+    g_logger.info("hcloud: %.1fMB, #nodes = %d, fetched pages = %d, mean voxel size = %.0f",
+                  m_sizeBytes/1e6, nodesRendered, fetchedPages,
                   double(voxelsRendered)/nodesRendered);
 }
 

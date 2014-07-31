@@ -60,6 +60,14 @@ class StreamPageCache
                 throw std::runtime_error("Page cache could not open file");
         }
 
+        /// Mark pages overlapping the given range for fetching
+        ///
+        /// Page priority is taken as the maximum of any fetch requests which
+        /// overlap the given page.
+        ///
+        /// prefetch() does not do any actual fetching of data;  it returns
+        /// immediately with status indicating whether the data is already
+        /// present in the cache.
         bool prefetch(PosType offset, PosType length, double priority = 0)
         {
             if (offset + length > m_fileSize)
@@ -73,7 +81,6 @@ class StreamPageCache
                 if (page == m_pages.end())
                 {
                     auto pendingPage = m_pendingPages.find(pageIdx);
-                    //tfm::printf("prefetch() add page %d\n", pageIdx);
                     if (pendingPage == m_pendingPages.end())
                         m_pendingPages[pageIdx] = priority;
                     else if (pendingPage->second < priority)
@@ -84,6 +91,10 @@ class StreamPageCache
             return inCache;
         }
 
+        /// Attempt to read length bytes into buf, starting at offset
+        ///
+        /// If the byte range is not in the cache, return false (the user may
+        /// call prefetch() to bring these into cache)
         bool read(char* buf, PosType offset, PosType length)
         {
             PosType pagesBegin = pageIndex(offset);
@@ -112,18 +123,18 @@ class StreamPageCache
             return true;
         }
 
-        /// Fetch a bunch of pages.  Eventually this will probably happen in the background
-        void fetchNow(size_t numFetch)
+        /// Fetch a bunch of pages which have been previously marked.
+        ///
+        /// Eventually this will probably happen in the background
+        size_t fetchNow(size_t numFetch)
         {
-            if (m_pendingPages.empty())
-                return;
             typedef std::pair<double, PosType> PendingPage;
             std::vector<PendingPage> priorityPages;
             for (auto p = m_pendingPages.begin(); p != m_pendingPages.end(); ++p)
                 priorityPages.push_back(PendingPage(p->second, p->first));
             numFetch = std::min(numFetch, priorityPages.size());
             std::nth_element(priorityPages.begin(), priorityPages.begin() + numFetch,
-                             priorityPages.end());
+                             priorityPages.end(), std::greater<PendingPage>());
             for (size_t i = 0; i < numFetch; ++i)
             {
                 PosType pageIdx = priorityPages[i].second;
@@ -135,6 +146,7 @@ class StreamPageCache
                 m_input.read(buf.get(), std::min(m_pageSize, m_fileSize - pageOffset));
                 m_pendingPages.erase(pageIdx);
             }
+            return numFetch;
         }
 
     private:
