@@ -394,8 +394,8 @@ class ProgressCounter
 static OctreeNode* makeTree(int depth, size_t* inds,
                             size_t beginIndex, size_t endIndex,
                             const V3f* P, const V3f& center,
-                            float radius, Logger& logger,
-                            ProgressCounter& progCounter)
+                            float radius, double minNodeRadius,
+                            Logger& logger, ProgressCounter& progCounter)
 {
     OctreeNode* node = new OctreeNode(center, radius);
     // FIXME: Best cutoff size?
@@ -407,7 +407,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
     const int maxDepth = 24;
     size_t* beginPtr = inds + beginIndex;
     size_t* endPtr = inds + endIndex;
-    if (endIndex - beginIndex <= pointsPerNode || depth >= maxDepth || radius < 2.5)
+    if (endIndex - beginIndex <= pointsPerNode || depth >= maxDepth || radius < minNodeRadius)
     {
         std::random_shuffle(beginPtr, endPtr);
         node->beginIndex = beginIndex;
@@ -432,7 +432,8 @@ static OctreeNode* makeTree(int depth, size_t* inds,
                              ((i/2) % 2 == 0) ? -r : r,
                              ((i/4) % 2 == 0) ? -r : r);
         node->children[i] = makeTree(depth+1, inds, childBeginIndex,
-                                     childEndIndex, P, c, r, logger, progCounter);
+                                     childEndIndex, P, c, r, minNodeRadius,
+                                     logger, progCounter);
     }
     return node;
 }
@@ -440,7 +441,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 
 /// Fill in octree with 3D mipmap "brick" data
 static void fillBricks(OctreeNode* node, const V3f* P, const uint16_t* color,
-                       Logger& logger, ProgressCounter& progCounter)
+                       float pointRadius, Logger& logger, ProgressCounter& progCounter)
 {
     MipBrick& brick = node->brick;
     if (node->isLeaf())
@@ -478,7 +479,6 @@ static void fillBricks(OctreeNode* node, const V3f* P, const uint16_t* color,
         float pixelSize = 2*node->radius/rasterWidth;
         for (int z = 0; z < brickN; ++z)
         {
-            const float pointRadius = 0.2;
             orthoZRender(raster, zbuf, rasterWidth,
                          lowerCorner.x, lowerCorner.y, pixelSize,
                          posRaw, color+node->beginIndex,
@@ -528,7 +528,7 @@ static void fillBricks(OctreeNode* node, const V3f* P, const uint16_t* color,
             OctreeNode* child = node->children[childIdx];
             if (!child)
                 continue;
-            fillBricks(child, P, color, logger, progCounter);
+            fillBricks(child, P, color, pointRadius, logger, progCounter);
             const MipBrick& childBrick = child->brick;
             int xoff = M*(childIdx % 2);
             int yoff = M*((childIdx/2) % 2);
@@ -742,7 +742,7 @@ void writeHcloud(std::ostream& out, const OctreeNode* rootNode,
 
 /// Load point cloud and save a voxelized LoD representation to output file
 void voxelizePointCloud(const std::string& inFileName, const std::string& outFileName,
-                        Logger& logger)
+                        double pointRadius, double minNodeRadius, Logger& logger)
 {
     size_t maxPointCount = 1000000000;
     size_t totPoints = 0;
@@ -777,7 +777,8 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
     rootBound.max = center + V3d(rootRadius);
     std::unique_ptr<OctreeNode> rootNode;
     rootNode.reset(makeTree(0, &inds[0], 0, npoints, &position[0],
-                            center - offset, rootRadius, logger, progCounter));
+                            center - offset, rootRadius, minNodeRadius,
+                            logger, progCounter));
     // Reorder point fields into octree order
     logger.progress("Reordering fields");
     for (size_t i = 0; i < fields.size(); ++i)
@@ -793,7 +794,7 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
     const uint16_t* color = fields[colorFieldIdx].as<uint16_t>();
     progCounter.reset();
     logger.progress("Computing bricks");
-    fillBricks(rootNode.get(), position, color, logger, progCounter);
+    fillBricks(rootNode.get(), position, color, pointRadius, logger, progCounter);
 
     std::ofstream outFile(outFileName.c_str(), std::ios::binary);
     if (!outFile)
@@ -815,6 +816,7 @@ static int storePositionalArg (int argc, const char *argv[])
 int main(int argc, char* argv[])
 {
     float pointRadius = 0.2;
+    float minNodeRadius = 2.5;
 
     ArgParse::ArgParse ap;
 
@@ -825,6 +827,7 @@ int main(int argc, char* argv[])
 
         "<SEPARATOR>", "\nOptions:",
         "-pointradius %f", &pointRadius, "Assumed radius of points used during voxelization",
+        "-minnoderadius %f", &minNodeRadius, "Minimum octree node radius for leaf nodes",
 
         NULL
     );
@@ -842,7 +845,7 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    voxelizePointCloud(g_positionalArgs[0], g_positionalArgs[1], logger);
+    voxelizePointCloud(g_positionalArgs[0], g_positionalArgs[1], pointRadius, minNodeRadius, logger);
 
     return EXIT_SUCCESS;
 }
