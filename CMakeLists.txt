@@ -130,17 +130,15 @@ endif()
 
 #------------------------------------------------------------------------------
 # Determine current displaz version
-find_package(Git)
+include(GitUtils)
 set(displazVersion "0.2")
 if (GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe
-                    OUTPUT_VARIABLE displazVersionGit
-                    RESULT_VARIABLE gitDescribeResult)
-    if (gitDescribeResult STREQUAL "0")
-        string(STRIP "${displazVersionGit}" displazVersion)
+    git_describe(displazVersionGit)
+    if (displazVersionGit)
         # For better or worse, I've been tagging as v0.1 - strip off the "v"
-        string(REGEX REPLACE "^v" "" displazVersion "${displazVersion}")
+        string(REGEX REPLACE "^v" "" displazVersion "${displazVersionGit}")
     endif()
+    message(STATUS "Building displaz version ${displazVersion}")
 else()
     message(WARNING "Git not found - assuming hardcoded version ${displazVersion}")
 endif()
