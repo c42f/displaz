@@ -35,10 +35,10 @@
 #include <fstream>
 #include <memory>
 #include <string.h>
+#include <stdexcept>
 #include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
-
 
 /// Application controlled page cache for access to raw file data
 ///
