@@ -53,8 +53,10 @@ void StreamLogger::log(LogLevel level, const std::string& msg)
     if (level == Progress)
     {
         m_progressPrefix = msg;
-        progress(0);
+        progress(0.0);
     }
+    else if (level == Debug)
+        tfm::format(m_out, "DEBUG: %s\n", msg);
     else if (level == Info)
         tfm::format(m_out, "%s\n", msg);
     else if (level == Warning)
@@ -63,18 +65,17 @@ void StreamLogger::log(LogLevel level, const std::string& msg)
         tfm::format(m_out, "ERROR: %s\n", msg);
 }
 
-void StreamLogger::progress(double progressFraction)
+void StreamLogger::progressImpl(double progressFraction)
 {
+    if (fabs(progressFraction - m_prevProgressFraction) < 0.01)
+        return;
     const int barFullWidth = std::max(10, 60 - 3 - (int)m_progressPrefix.size());
     const int barFraction = (int)floor(barFullWidth*std::min(1.0, std::max(0.0, progressFraction)) + 0.5);
-    if (fabs(progressFraction - m_prevProgressFraction) > 0.01)
-    {
-        m_prevProgressFraction = progressFraction;
-        tfm::format(m_out, "%s [%s%s]\r", m_progressPrefix,
-                    std::string(barFraction, '='),
-                    std::string(barFullWidth - barFraction, ' '));
-        m_prevPrintWasProgress = true;
-    }
+    m_prevProgressFraction = progressFraction;
+    tfm::format(m_out, "%s [%s%s]\r", m_progressPrefix,
+                std::string(barFraction, '='),
+                std::string(barFullWidth - barFraction, ' '));
+    m_prevPrintWasProgress = true;
 }
 
 
