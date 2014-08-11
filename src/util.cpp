@@ -116,3 +116,9 @@ bool iequals(const std::string& a, const std::string& b)
     return true;
 }
 
+
+bool endswith(const std::string& str, const std::string& suffix)
+{
+    return str.rfind(suffix) == str.size() - suffix.size();
+}
+

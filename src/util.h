@@ -166,4 +166,9 @@ std::string currentUserUid();
 bool iequals(const std::string& a, const std::string& b);
 
 
+/// Return true if string ends with the given suffix
+bool endswith(const std::string& str, const std::string& suffix);
+
+
+
 #endif // UTIL_H_INCLUDED
