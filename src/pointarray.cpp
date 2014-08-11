@@ -290,6 +290,27 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             return false;
         }
     }
+    else if (fileName.endsWith(".dat"))
+    {
+        // Load crappy db format
+        std::ifstream file(fileName.toUtf8(), std::ios::binary);
+        file.seekg(0, std::ios::end);
+        totPoints = file.tellg()/(4*sizeof(float));
+        file.seekg(0);
+        m_fields.push_back(GeomField(TypeSpec::vec3float32(), "position", totPoints));
+        m_fields.push_back(GeomField(TypeSpec::float32(), "intensity", totPoints));
+        float* position = m_fields[0].as<float>();
+        float* intensity = m_fields[1].as<float>();
+        for (size_t i = 0; i < totPoints; ++i)
+        {
+            file.read((char*)position, 3*sizeof(float));
+            file.read((char*)intensity, 1*sizeof(float));
+            bbox.extendBy(V3d(position[0], position[1], position[2]));
+            position += 3;
+            intensity += 1;
+        }
+        m_npoints = totPoints;
+    }
     else
     {
         if (!loadText(fileName, maxPointCount, m_fields, offset,

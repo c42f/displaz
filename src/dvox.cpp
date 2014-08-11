@@ -39,6 +39,7 @@
 #include "hcloud.h"
 #include "logger.h"
 #include "util.h"
+#include "pointdbwriter.h"
 
 //------------------------------------------------------------------------------
 // File loading stuff.  TODO: Create a generic interface we can use instead.
@@ -817,17 +818,26 @@ int main(int argc, char* argv[])
 {
     float pointRadius = 0.2;
     float minNodeRadius = 2.5;
+    bool logProgress = false;
+    int logLevel = Logger::Info;
 
     ArgParse::ArgParse ap;
 
     ap.options(
         "dvox - voxelize unstructured point clouds (version " DISPLAZ_VERSION_STRING ")\n"
-        "Usage: dvox <input>.las <output>.hcloud",
+        "Usage: dvox input1 [input2 ...] output\n"
+        "\n"
+        "input can be .las or .pointdb\n"
+        "output can be .pointdb or .hcloud",
         "%*", storePositionalArg, "",
 
-        "<SEPARATOR>", "\nOptions:",
+        "<SEPARATOR>", "\nVoxelization Options:",
         "-pointradius %f", &pointRadius, "Assumed radius of points used during voxelization",
         "-minnoderadius %f", &minNodeRadius, "Minimum octree node radius for leaf nodes",
+
+        "<SEPARATOR>", "\nDebug options:",
+        "-loglevel %d",  &logLevel,    "Logger verbosity (default 3 = info, greater is more verbose)",
+        "-progress",     &logProgress, "Log processing progress",
 
         NULL
     );
@@ -835,17 +845,38 @@ int main(int argc, char* argv[])
     StreamLogger logger(std::cerr);
 
     if (ap.parse(argc, const_cast<const char**>(argv)) < 0 ||
-        g_positionalArgs.size() != 2)
+        g_positionalArgs.size() < 2)
     {
         ap.usage();
-        if (g_positionalArgs.size() != 2)
-            logger.error("Expected exactly two positional arguments");
+        if (g_positionalArgs.size() < 2)
+            logger.error("Expected at least two positional arguments");
         else
             logger.error("%s", ap.geterror());
         return EXIT_FAILURE;
     }
 
-    voxelizePointCloud(g_positionalArgs[0], g_positionalArgs[1], pointRadius, minNodeRadius, logger);
+    logger.setLogLevel(Logger::LogLevel(logLevel));
+    logger.setLogProgress(logProgress);
+
+    try
+    {
+        std::string outputPath = g_positionalArgs.back();
+        if (endswith(outputPath, ".pointdb"))
+        {
+            std::vector<std::string> lasFileNames(g_positionalArgs.begin(), g_positionalArgs.end()-1);
+            convertLasToPointDb(outputPath, lasFileNames, Imath::Box3d(), 100, logger);
+        }
+        else
+        {
+            voxelizePointCloud(g_positionalArgs[0], outputPath, pointRadius, minNodeRadius, logger);
+        }
+        return EXIT_SUCCESS;
+    }
+    catch (std::exception& e)
+    {
+        logger.error("Caught exception: %s", e.what());
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }

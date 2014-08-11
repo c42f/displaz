@@ -15,6 +15,7 @@ set(shared_srcs
     geomfield.cpp
     typespec.cpp
     hcloud.cpp
+    util.cpp
     ../thirdparty/argparse.cpp
 )
 qt4_wrap_cpp(moc_srcs
@@ -52,7 +53,6 @@ set(srcs
     view3d.cpp
     shadereditor.cpp
     shader.cpp
-    util.cpp
     ../thirdparty/rply/rply.c
 )
 if(WIN32)
@@ -73,6 +73,7 @@ add_executable(displaz WIN32 ${srcs})
 
 add_executable(dvox
     dvox.cpp
+    pointdbwriter.cpp
     ${shared_srcs}
 )
 
@@ -88,7 +89,9 @@ target_link_libraries(displaz
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
-target_link_libraries(dvox)
+target_link_libraries(dvox
+    ${QT_QTCORE_LIBRARY}
+    )
 
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
