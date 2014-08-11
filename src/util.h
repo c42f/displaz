@@ -36,6 +36,26 @@
 #include <OpenEXR/ImathMatrix.h>
 
 #include <iostream>
+#include <stdexcept>
+#include <tinyformat.h>
+
+
+//------------------------------------------------------------------------------
+/// Exception class with typesafe printf-like error formatting in constructor
+struct DisplazError : public std::runtime_error
+{
+    DisplazError(const std::string& err) : std::runtime_error(err) { }
+
+    // template<typename... T>
+    // DisplazError(const char* fmt, const T&... vals);
+#   define MAKE_CONSTRUCTOR(n)                                          \
+    template<TINYFORMAT_ARGTYPES(n)>                                    \
+    DisplazError(const char* fmt, TINYFORMAT_VARARGS(n))            \
+        : std::runtime_error(tfm::format(fmt, TINYFORMAT_PASSARGS(n)))  \
+    { }
+    TINYFORMAT_FOREACH_ARGNUM(MAKE_CONSTRUCTOR)
+#   undef MAKE_CONSTRUCTOR
+};
 
 
 //------------------------------------------------------------------------------
