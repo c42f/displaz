@@ -48,17 +48,18 @@ class QtLogger : public QObject, public Logger
             emit logMessage(level, QString::fromUtf8(msg.c_str()));
         }
 
-        virtual void progress(double progressFraction)
-        {
-            emit progressPercent(int(100*progressFraction));
-        }
-
     signals:
         /// Signal emitted every time a log message comes in
         void logMessage(int logLevel, QString msg);
 
         /// Signal emitted when processing progress has been made
         void progressPercent(int percent);
+
+    protected:
+        virtual void progressImpl(double progressFraction)
+        {
+            emit progressPercent(int(100*progressFraction));
+        }
 };
 
 

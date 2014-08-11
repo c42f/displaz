@@ -39,11 +39,18 @@ class Logger
     public:
         enum LogLevel
         {
-            Progress,
-            Info,
+            Error,
             Warning,
-            Error
+            Info,
+            Debug,
+            Progress
         };
+
+        Logger(LogLevel logLevel = Info, bool logProgress = true)
+            : m_logLevel(logLevel), m_logProgress(logProgress) { }
+
+        void setLogLevel(LogLevel logLevel) { m_logLevel = logLevel; }
+        void setLogProgress(bool logProgress) { m_logProgress = logProgress; }
 
         /// Printf-style logging functions (typesafe via tinyformat)
 #       define DISPLAZ_MAKE_LOG_FUNCS(n)                                   \
@@ -51,25 +58,36 @@ class Logger
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void progress(const char* fmt, TINYFORMAT_VARARGS(n))              \
         {                                                                  \
-            log(Progress, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));\
+            if (m_logProgress)                                             \
+                log(Progress, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));   \
+        }                                                                  \
+                                                                           \
+        template<TINYFORMAT_ARGTYPES(n)>                                   \
+        void debug(const char* fmt, TINYFORMAT_VARARGS(n))                 \
+        {                                                                  \
+            if (m_logLevel >= Debug)                                       \
+                log(Debug, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));      \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void info(const char* fmt, TINYFORMAT_VARARGS(n))                  \
         {                                                                  \
-            log(Info, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));    \
+            if (m_logLevel >= Info)                                        \
+                log(Info, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));       \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void warning(const char* fmt, TINYFORMAT_VARARGS(n))               \
         {                                                                  \
-            log(Warning, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n))); \
+            if (m_logLevel >= Warning)                                     \
+                log(Warning, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));    \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void error(const char* fmt, TINYFORMAT_VARARGS(n))                 \
         {                                                                  \
-            log(Error, tinyformat::format(fmt, TINYFORMAT_PASSARGS(n)));   \
+            if (m_logLevel >= Error)                                       \
+                log(Error, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));      \
         }
 
         TINYFORMAT_FOREACH_ARGNUM(DISPLAZ_MAKE_LOG_FUNCS)
@@ -77,6 +95,7 @@ class Logger
 
         // 0-arg versions
         void progress (const char* fmt) { log(Progress, tfm::format(fmt)); }
+        void debug    (const char* fmt) { log(Debug, tfm::format(fmt)); }
         void info     (const char* fmt) { log(Info, tfm::format(fmt)); }
         void warning  (const char* fmt) { log(Warning, tfm::format(fmt)); }
         void error    (const char* fmt) { log(Error, tfm::format(fmt)); }
@@ -85,7 +104,18 @@ class Logger
         virtual void log(LogLevel level, const std::string& msg) = 0;
 
         /// Report progress of some processing step
-        virtual void progress(double progressFraction) = 0;
+        void progress(double progressFraction)
+        {
+            if (m_logProgress)
+                progressImpl(progressFraction);
+        }
+
+    protected:
+        virtual void progressImpl(double progressFraction) = 0;
+
+    private:
+        LogLevel m_logLevel;
+        bool m_logProgress;
 };
 
 
@@ -97,7 +127,9 @@ class StreamLogger : public Logger
         ~StreamLogger();
 
         virtual void log(LogLevel level, const std::string& msg);
-        virtual void progress(double progressFraction);
+
+    protected:
+        virtual void progressImpl(double progressFraction);
 
     private:
         bool m_prevPrintWasProgress;
