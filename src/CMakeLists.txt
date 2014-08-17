@@ -74,6 +74,7 @@ add_executable(displaz WIN32 ${srcs})
 add_executable(dvox
     dvox.cpp
     pointdbwriter.cpp
+    pointdb.cpp
     ${shared_srcs}
 )
 
