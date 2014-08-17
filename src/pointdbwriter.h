@@ -37,9 +37,6 @@
 
 #include "logger.h"
 
-typedef Imath::Vec2<int64_t> TilePos;
-
-
 /// Writer for a simple on-disk point database format
 ///
 /// The idea here is to create a very simple database which allows spatial
@@ -50,7 +47,7 @@ class PointDbWriter
 {
     public:
         PointDbWriter(const std::string& dirName, const Imath::Box3d& boundingBox,
-                      int tileSize, size_t flushInterval, Logger& logger);
+                      double tileSize, size_t flushInterval, Logger& logger);
 
         /// Compute current memory usage in bytes of the internal cache
         size_t cacheSizeBytes() const;
@@ -76,12 +73,12 @@ class PointDbWriter
 
         std::string m_dirName;
         Imath::Box3d m_boundingBox;
-        bool m_computeBounds;
-        int m_tileSize;
-        size_t m_flushInterval;
+        double m_tileSize;
         Imath::V3d m_offset;
-        bool m_haveOffset;
         std::map<TilePos, PointDbTile> m_cache;
+        bool m_computeBounds;
+        size_t m_flushInterval;
+        bool m_haveOffset;
         PointDbTile* m_prevTile;
         uint64_t m_pointsWritten;
         Logger& m_logger;
@@ -91,7 +88,7 @@ class PointDbWriter
 /// Convert a list of las files to PointDb format
 void convertLasToPointDb(const std::string& outDirName,
                          const std::vector<std::string>& lasFileNames,
-                         const Imath::Box3d& boundingBox, int tileSize,
+                         const Imath::Box3d& boundingBox, double tileSize,
                          Logger& logger);
 
 

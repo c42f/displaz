@@ -58,16 +58,6 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 #endif
 #endif
 
-namespace std {
-inline bool operator<(const TilePos& p1, const TilePos& p2)
-{
-    if (p1.x != p2.x)
-        return p1.x < p2.x;
-    return p1.y < p2.y;
-}
-}
-
-
 struct PointDbWriter::PointDbTile
 {
     PointDbTile(TilePos tilePos) : tilePos(tilePos), recentlyUsed(false) {}
@@ -83,7 +73,7 @@ struct PointDbWriter::PointDbTile
     size_t sizeBytes() const
     {
         return sizeof(float)*position.capacity() +
-                sizeof(float)*intensity.capacity();
+               sizeof(float)*intensity.capacity();
     }
 
     bool empty() const { return position.empty(); }
@@ -91,13 +81,13 @@ struct PointDbWriter::PointDbTile
 
 
 PointDbWriter::PointDbWriter(const std::string& dirName, const Imath::Box3d& boundingBox,
-                             int tileSize, size_t flushInterval, Logger& logger)
+                             double tileSize, size_t flushInterval, Logger& logger)
     : m_dirName(dirName),
     m_boundingBox(boundingBox),
-    m_computeBounds(boundingBox.isEmpty()),
     m_tileSize(tileSize),
-    m_flushInterval(flushInterval),
     m_offset(0),
+    m_computeBounds(boundingBox.isEmpty()),
+    m_flushInterval(flushInterval),
     m_haveOffset(false),
     m_prevTile(nullptr),
     m_pointsWritten(0),
@@ -127,8 +117,8 @@ void PointDbWriter::writePoint(Imath::V3d P, float intensity)
         m_offset = P;
         m_haveOffset = true;
     }
-    TilePos tilePos(m_tileSize*(int64_t)floor(P.x/m_tileSize),
-                    m_tileSize*(int64_t)floor(P.y/m_tileSize));
+    TilePos tilePos((int)floor(P.x/m_tileSize),
+                    (int)floor(P.y/m_tileSize));
     PointDbTile& tile = findTile(tilePos);
     if (m_computeBounds)
         m_boundingBox.extendBy(P);
@@ -149,7 +139,7 @@ void PointDbWriter::close()
     // Write config file
     std::ofstream dbConfig(tfm::format("%s/config.txt", m_dirName));
     tfm::format(dbConfig,
-        "%d\n"
+        "%.17e\n"
         "%.17e %.17e %.17e %.17e %.17e %.17e\n"
         "%.17e %.17e %.17e\n",
         m_tileSize,
@@ -196,6 +186,7 @@ void PointDbWriter::flushTiles(bool forceFlushAll)
 
 void PointDbWriter::flushToDisk(PointDbTile& tile)
 {
+    assert(!tile.empty());
     std::string fileName = tfm::format("%s/%d_%d.dat", m_dirName,
                                         tile.tilePos.x, tile.tilePos.y);
     std::ofstream file(fileName.c_str(), std::ios::binary | std::ios::app | std::ios::ate);
@@ -228,7 +219,7 @@ inline void fixLasFileName(std::string& fileName)
 
 void convertLasToPointDb(const std::string& outDirName,
                          const std::vector<std::string>& lasFileNames,
-                         const Imath::Box3d& boundingBox, int tileSize,
+                         const Imath::Box3d& boundingBox, double tileSize,
                          Logger& logger)
 {
     PointDbWriter dbWriter(outDirName, boundingBox, tileSize, 1000000, logger);

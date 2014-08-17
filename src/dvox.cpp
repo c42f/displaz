@@ -818,6 +818,9 @@ int main(int argc, char* argv[])
 {
     float pointRadius = 0.2;
     float minNodeRadius = 2.5;
+
+    float dbTileSize = 100;
+
     bool logProgress = false;
     int logLevel = Logger::Info;
 
@@ -835,6 +838,9 @@ int main(int argc, char* argv[])
         "-pointradius %f", &pointRadius, "Assumed radius of points used during voxelization",
         "-minnoderadius %f", &minNodeRadius, "Minimum octree node radius for leaf nodes",
 
+        "<SEPARATOR>", "\nDB creation options:",
+        "-dbtilesize %f", &dbTileSize, "Tile size of temporary point database",
+
         "<SEPARATOR>", "\nDebug options:",
         "-loglevel %d",  &logLevel,    "Logger verbosity (default 3 = info, greater is more verbose)",
         "-progress",     &logProgress, "Log processing progress",
@@ -844,14 +850,10 @@ int main(int argc, char* argv[])
 
     StreamLogger logger(std::cerr);
 
-    if (ap.parse(argc, const_cast<const char**>(argv)) < 0 ||
-        g_positionalArgs.size() < 2)
+    if (ap.parse(argc, const_cast<const char**>(argv)) < 0)
     {
         ap.usage();
-        if (g_positionalArgs.size() < 2)
-            logger.error("Expected at least two positional arguments");
-        else
-            logger.error("%s", ap.geterror());
+        logger.error("%s", ap.geterror());
         return EXIT_FAILURE;
     }
 
@@ -860,11 +862,17 @@ int main(int argc, char* argv[])
 
     try
     {
+        if (g_positionalArgs.size() < 2)
+        {
+            logger.error("Expected at least two positional arguments");
+            ap.usage();
+            return EXIT_FAILURE;
+        }
         std::string outputPath = g_positionalArgs.back();
         if (endswith(outputPath, ".pointdb"))
         {
             std::vector<std::string> lasFileNames(g_positionalArgs.begin(), g_positionalArgs.end()-1);
-            convertLasToPointDb(outputPath, lasFileNames, Imath::Box3d(), 100, logger);
+            convertLasToPointDb(outputPath, lasFileNames, Imath::Box3d(), dbTileSize, logger);
         }
         else
         {
