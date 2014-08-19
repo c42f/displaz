@@ -78,26 +78,34 @@ SimplePointDb::SimplePointDb(const std::string& dirName, size_t cacheMaxSize, Lo
     m_bytesSinceTrim(0),
     m_logger(logger)
 {
+    m_logger.debug("Using SimplePointDb cache size: %.2f MB", cacheMaxSize/(1024.0*1024.0));
     readConfig();
 }
 
+
 // Declared here to keep definition of PointDbTile out of header
 SimplePointDb::~SimplePointDb() {}
+
 
 void SimplePointDb::query(const Imath::Box3d& boundingBox,
                           std::vector<float>& position,
                           std::vector<float>& intensity)
 {
+    position.clear();
+    intensity.clear();
     int startx = (int)floor(boundingBox.min.x/m_tileSize);
     int starty = (int)floor(boundingBox.min.y/m_tileSize);
+    int startz = (int)floor(boundingBox.min.z/m_tileSize);
     int endx =   (int)ceil(boundingBox.max.x/m_tileSize);
     int endy =   (int)ceil(boundingBox.max.y/m_tileSize);
+    int endz =   (int)ceil(boundingBox.max.z/m_tileSize);
     Imath::Box3f offsetBox(boundingBox.min - m_offset,
-                            boundingBox.max - m_offset);
-    for (int tileX = startx; tileX < endx; ++tileX)
+                           boundingBox.max - m_offset);
+    for (int tileZ = startz; tileZ < endz; ++tileZ)
     for (int tileY = starty; tileY < endy; ++tileY)
+    for (int tileX = startx; tileX < endx; ++tileX)
     {
-        const PointDbTile* tile = findTile(TilePos(tileX,tileY));
+        const PointDbTile* tile = findTile(TilePos(tileX,tileY,tileZ));
         if (!tile)
             continue;
         size_t numPoints = tile->numPoints();
@@ -173,10 +181,10 @@ void SimplePointDb::readConfig()
     while (true)
     {
         TilePos pos;
-        dbConfig >> pos.x >> pos.y;
+        dbConfig >> pos.x >> pos.y >> pos.z;
         if (!dbConfig)
             break;
-        std::string fileName = tfm::format("%s/%d_%d.dat", m_dirName, pos.x, pos.y);
+        std::string fileName = tfm::format("%s/%d_%d_%d.dat", m_dirName, pos.x, pos.y, pos.z);
         m_cache.insert(std::make_pair(pos,
                 std::unique_ptr<PointDbTile>(new PointDbTile(pos, fileName))));
     }

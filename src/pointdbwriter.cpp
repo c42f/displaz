@@ -118,7 +118,8 @@ void PointDbWriter::writePoint(Imath::V3d P, float intensity)
         m_haveOffset = true;
     }
     TilePos tilePos((int)floor(P.x/m_tileSize),
-                    (int)floor(P.y/m_tileSize));
+                    (int)floor(P.y/m_tileSize),
+                    (int)floor(P.z/m_tileSize));
     PointDbTile& tile = findTile(tilePos);
     if (m_computeBounds)
         m_boundingBox.extendBy(P);
@@ -149,7 +150,10 @@ void PointDbWriter::close()
     );
 
     for (auto it = m_cache.begin(); it != m_cache.end(); ++it)
-        tfm::format(dbConfig, "%d %d\n", it->second.tilePos.x, it->second.tilePos.y);
+    {
+        tfm::format(dbConfig, "%d %d %d\n", it->second.tilePos.x,
+                    it->second.tilePos.y, it->second.tilePos.z);
+    }
 }
 
 
@@ -187,8 +191,8 @@ void PointDbWriter::flushTiles(bool forceFlushAll)
 void PointDbWriter::flushToDisk(PointDbTile& tile)
 {
     assert(!tile.empty());
-    std::string fileName = tfm::format("%s/%d_%d.dat", m_dirName,
-                                        tile.tilePos.x, tile.tilePos.y);
+    std::string fileName = tfm::format("%s/%d_%d_%d.dat", m_dirName,
+                                        tile.tilePos.x, tile.tilePos.y, tile.tilePos.z);
     std::ofstream file(fileName.c_str(), std::ios::binary | std::ios::app | std::ios::ate);
     if (file.tellp() > 0)
     {
