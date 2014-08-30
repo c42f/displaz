@@ -10,7 +10,7 @@ import tempfile
 def _interpret_spec(specstr):
     colors = {
         'r': [1, 0, 0],
-        'g': [0, 0, 0],
+        'g': [0, 1, 0],
         'b': [0, 0, 0.8],
         'c': [0, 1, 1],
         'm': [1, 0, 1],
@@ -58,13 +58,14 @@ end_header
     color.tofile(plyfile)
 
 
-_hold_state = False
+__hold_plot = False
 
 def hold(state=None):
+    global __hold_plot
     if state is not None:
-        _hold_state = state
+        __hold_plot = state
     else:
-        _hold_state = not _hold_state
+        __hold_plot = not __hold_plot
 
 
 def plot(position, plotspec='b.', color=None):
@@ -83,8 +84,10 @@ def plot(position, plotspec='b.', color=None):
     plyfile = os.fdopen(fd, 'w')
     _write_ply(plyfile, position, color)
     plyfile.close()
-    print filename
-    _call_displaz('-shader', 'generic_points.glsl', '-rmtemp', filename)
+    args = ['-shader', 'generic_points.glsl', '-rmtemp', filename]
+    if __hold_plot:
+        args = ['-add'] + args
+    _call_displaz(*args)
 
 
 def clf():
