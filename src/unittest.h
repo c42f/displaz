@@ -27,34 +27,17 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "util.h"
-#include "unittest.h"
+// Trivial unit test utilities
 
-int identity(int i) { return i; }
+#include <cstdlib>
+#include "tinyformat.h"
 
-void multi_partition_test()
-{
-    // Test multi_partition()
-    int v[] = { 1, 1, 1, 0, 1, 2, 0, 0, 3, 3, 3 };
-    int N = sizeof(v)/sizeof(v[0]);
-    int* endIters[] = {0,0,0,0};
-    int M = 4;
-
-    multi_partition(v, v + N, &identity, endIters, M);
-
-    int vExpect[] = { 0, 0, 0, 1, 1, 1, 1, 2, 3, 3, 3 };
-    for (int i = 0; i < N; ++i)
-        CHECK_EQUAL(v[i], vExpect[i]);
-
-    int classEndInds[] = { 3, 7, 8, 11 };
-    for (int i = 0; i < M; ++i)
-        CHECK_EQUAL(&v[0] + classEndInds[i], endIters[i]);
+#define CHECK_EQUAL(a, b)                                      \
+if(!((a) == (b)))                                              \
+{                                                              \
+    tfm::printf("test failed at %s:%d\n", __FILE__, __LINE__); \
+    tfm::printf("    %s != %s\n", (a), (b));                   \
+    tfm::printf("    [%s, %s]\n", #a, #b);                     \
+    std::abort();                                              \
 }
 
-
-int main()
-{
-    multi_partition_test();
-
-    return 0;
-}
