@@ -133,7 +133,8 @@ static int edge_cb(p_ply_argument argument)
     if (index < 0) // ignore length argument
         return 1;
     void* pinfo = 0;
-    ply_get_argument_user_data(argument, &pinfo, NULL);
+    long isEdgeLoop = 0;
+    ply_get_argument_user_data(argument, &pinfo, &isEdgeLoop);
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
     // Duplicate indices within a single edge chain so that we can pass them to
     // OpenGL as GL_LINES (or could use GL_LINE_STRIP?)
@@ -141,6 +142,13 @@ static int edge_cb(p_ply_argument argument)
         info.edges.push_back(info.edges.back());
     info.edges.push_back(
             (unsigned int)ply_get_argument_value(argument));
+    if (isEdgeLoop && index == length-1)
+    {
+        // Add extra edge to cloose the loop
+        int firstIdx = info.edges.end()[-2*(length-1)];
+        info.edges.push_back(info.edges.back());
+        info.edges.push_back(firstIdx);
+    }
     return 1;
 }
 
@@ -173,6 +181,8 @@ bool loadPlyFile(const QString& fileName,
     long nedges = ply_set_read_cb(ply.get(), "edge", "vertex_index", edge_cb, &info, 0);
     if (nedges == 0)
         nedges = ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
+    if (nedges == 0)
+        nedges = ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
     if (nedges <= 0 && nfaces <= 0)
         return false;
     if (nfaces > 0)
