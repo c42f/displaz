@@ -49,8 +49,11 @@ static bool plyHasMesh(QString fileName)
         long ninstances = 0;
         if (!ply_get_element_info(elem, &name, &ninstances))
             continue;
-        if (strcmp(name, "face") == 0 || strcmp(name, "edge") == 0 || strcmp(name, "hullxy"))
+        if (strcmp(name, "face") == 0 || strcmp(name, "triangle") == 0 ||
+            strcmp(name, "edge") == 0 || strcmp(name, "hullxy") == 0)
+        {
             return true;
+        }
     }
     return false;
 }
