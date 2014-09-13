@@ -41,14 +41,14 @@
 /// Utility to handle transformation state
 struct TransformState
 {
-    M44f projMatrix;
-    M44f modelViewMatrix;
+    Imath::M44d projMatrix;
+    Imath::M44d modelViewMatrix;
 
     TransformState(const M44f& projMatrix, const M44f& modelViewMatrix)
         : projMatrix(projMatrix), modelViewMatrix(modelViewMatrix) {}
 
     /// Translate model by given offset
-    TransformState translate(const Imath::V3f& offset) const;
+    TransformState translate(const Imath::V3d& offset) const;
 
     /// Load matrix uniforms onto the currently bound shader program:
     ///
