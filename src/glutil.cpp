@@ -118,6 +118,67 @@ void drawBoundingBox(const TransformState& transState,
 }
 
 
+void drawSphere(const TransformState& transState,
+                const Imath::V3d& centre, double radius,
+                GLuint shaderProg, const Imath::C4f& color,
+                int nphi, int ntheta)
+{
+    // Transform centre into camera coordinate system, and remove that part of
+    // the transform from the transform passed to the shader.
+    V3d c2 = centre * transState.modelViewMatrix;
+    TransformState newTrans = transState;
+    newTrans.modelViewMatrix = M44d();
+
+    // Generate vertices with usual spherical coordinate parameterization
+    std::unique_ptr<GLfloat[]> verts(new GLfloat[3*ntheta*nphi]);
+    for (int itheta = 0; itheta < ntheta; ++itheta)
+    {
+        double theta = M_PI*itheta/(ntheta-1);
+        for (int iphi = 0; iphi < nphi; ++iphi)
+        {
+            double phi = 2*M_PI*iphi/nphi;
+            int idx = nphi*itheta + iphi;
+            double vx = cos(phi)*sin(theta);
+            double vy = sin(phi)*sin(theta);
+            double vz = -cos(theta);
+            verts[3*idx]   = c2.x + radius*vx;
+            verts[3*idx+1] = c2.y + radius*vy;
+            verts[3*idx+2] = c2.z + radius*vz;
+        }
+    }
+    std::vector<GLushort> triInds;
+    for (int itheta = 0; itheta < ntheta-1; ++itheta)
+    {
+        for (int iphi = 0; iphi < nphi; ++iphi)
+        {
+            int i1 = nphi*itheta     + iphi;
+            int i2 = nphi*(itheta+1) + iphi;
+            int i3 = nphi*(itheta+1) + (iphi+1)%nphi;
+            int i4 = nphi*itheta     + (iphi+1)%nphi;
+            // Represent each quadrialteral patch from the parameterization
+            // using two triangles
+            triInds.push_back(i1); triInds.push_back(i2); triInds.push_back(i3);
+            triInds.push_back(i1); triInds.push_back(i3); triInds.push_back(i4);
+        }
+    }
+
+    // Draw computed sphere mesh.
+    glUseProgram(shaderProg);
+    newTrans.setUniforms(shaderProg);
+    GLint colorLoc = glGetUniformLocation(shaderProg, "color");
+    assert(colorLoc >= 0);
+    glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
+    GLint positionLoc = glGetAttribLocation(shaderProg, "position");
+    assert(positionLoc >= 0);
+    glEnableVertexAttribArray(positionLoc);
+    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts.get());
+    glDrawElements(GL_TRIANGLES, triInds.size(),
+                   GL_UNSIGNED_SHORT, triInds.data());
+    glDisableVertexAttribArray(positionLoc);
+    glUseProgram(0);
+}
+
+
 /// Get information about openGL type
 bool getGlTypeInfo(int type, const char*& name, int& rows, int& cols, TypeSpec::Type& tbase)
 {
