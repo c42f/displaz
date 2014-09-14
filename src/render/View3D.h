@@ -108,6 +108,9 @@ class View3D : public QGLWidget
         void initGrid(const float scale);
         void drawGrid() const;
 
+        void drawSelectionSphere(const TransformState& transState,
+                                 const V3d& center, double radius) const;
+
         void drawText(const QString& text);
 
         DrawCount drawPoints(const TransformState& transState,
@@ -120,16 +123,20 @@ class View3D : public QGLWidget
                              int viewportPixelWidth,
                              int viewportPixelHeight) const;
 
-        Imath::V3d guessClickPosition(const QPoint& clickPos);
+        void selectVerticesInSphere(const V3d& center, double radius);
+
+        Imath::V3d guessClickPosition(const QPoint& clickPos,
+                                      const V3d& refPos);
 
         bool snapToGeometry(const Imath::V3d& pos, double normalScaling,
-                            Imath::V3d* newPos, QString* pointInfo);
+                            Imath::V3d* newPos, QString* pointInfo = 0);
 
         void snapToPoint(const Imath::V3d& pos);
         std::vector<const Geometry*> selectedGeometry() const;
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
+        bool m_mouseDragged;
         QPoint m_prevMousePos;
         Qt::MouseButton m_mouseButton;
         bool m_middleButton;
@@ -138,6 +145,10 @@ class View3D : public QGLWidget
         /// Position of 3D cursor
         V3d m_cursorPos;
         V3d m_prevCursorSnap;
+        /// Variables controling selection mode
+        double m_selectionRadius;
+        int m_selectionClassFrom;
+        int m_selectionClassTo;
         /// Background color for drawing
         QColor m_backgroundColor;
         /// Option to draw bounding boxes of point clouds
@@ -153,6 +164,8 @@ class View3D : public QGLWidget
         /// Shaders for polygonal geometry
         std::unique_ptr<ShaderProgram> m_meshFaceShader;
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
+        /// Utility shaders
+        std::unique_ptr<ShaderProgram> m_selectionSphereShader;
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;

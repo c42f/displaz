@@ -28,10 +28,15 @@
 View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
     : QGLWidget(format, parent),
     m_camera(false, false),
+    m_mouseDragged(false),
+    m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),
     m_explicitCursorPos(false),
     m_cursorPos(0),
     m_prevCursorSnap(0),
+    m_selectionRadius(1),
+    m_selectionClassFrom(0),
+    m_selectionClassTo(1),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
     m_drawCursor(true),
@@ -305,6 +310,9 @@ void View3D::initializeGL()
     m_boundingBoxShader.reset(new ShaderProgram());
     m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
 
+    m_selectionSphereShader.reset(new ShaderProgram());
+    m_selectionSphereShader->setShaderFromSourceFile("shaders:selection_sphere.glsl");
+
     m_meshFaceShader.reset(new ShaderProgram());
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
 
@@ -459,8 +467,11 @@ void View3D::paintGL()
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
+    {
         drawCursor(transState, m_cursorPos, 10);
         //drawCursor(transState, m_camera.center(), 10);
+        drawSelectionSphere(transState, m_cursorPos, m_selectionRadius);
+    }
 
     // Draw overlay axes
     if (m_drawAxes)
@@ -528,12 +539,29 @@ void View3D::drawAnnotations(const TransformState& transState,
 void View3D::mousePressEvent(QMouseEvent* event)
 {
     m_mouseButton = event->button();
+    m_mouseDragged = false;
     m_prevMousePos = event->pos();
 
     if (event->button() == Qt::MidButton ||
         (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)))
     {
-        snapToPoint(guessClickPosition(event->pos()));
+        // Guess 3D click point with reference point of interest between camera
+        // position & camera rotation center.  This works pretty well, except
+        // when there are noise points intervening along the ray.
+        V3d refPos = 0.7*m_camera.position() + 0.3*m_camera.center();
+        snapToPoint(guessClickPosition(event->pos(), refPos));
+    }
+    else if (event->button() == Qt::LeftButton &&
+             (event->modifiers() & Qt::ControlModifier))
+    {
+        // Start selecting points, or select with a single click.  Snaps to the
+        // closest point under the mouse, with depth close to current cursor
+        // position.
+        V3d newPos = guessClickPosition(event->pos(), m_cursorPos);
+        snapToGeometry(newPos, 1, &newPos);
+        m_cursorPos = newPos;
+        m_prevCursorSnap = newPos;
+        selectVerticesInSphere(m_cursorPos, m_selectionRadius);
     }
 }
 
@@ -562,19 +590,49 @@ void View3D::snapToPoint(const Imath::V3d & pos)
 
 void View3D::mouseMoveEvent(QMouseEvent* event)
 {
+    m_mouseDragged = true;
     if (m_mouseButton == Qt::MidButton)
         return;
-    bool zooming = m_mouseButton == Qt::RightButton;
-    if(event->modifiers() & Qt::ControlModifier)
+    if (event->modifiers() & Qt::ControlModifier)
     {
-        m_cursorPos = m_camera.mouseMovePoint(m_cursorPos,
-                                              event->pos() - m_prevMousePos,
-                                              zooming);
+        if (m_mouseButton == Qt::LeftButton)
+        {
+            // Select points
+            m_cursorPos = m_camera.mouseMovePoint(m_cursorPos,
+                                event->pos() - m_prevMousePos, false);
+            V3d newPos = guessClickPosition(event->pos(), m_cursorPos);
+            // Find closest point on geometry to current 3D cursor
+            V3d snapPos;
+            if (snapToGeometry(newPos, 1, &snapPos))
+            {
+                // Snap only the cursor depth to the geometry; let x,y
+                // position be controlled smoothly by the mouse.
+                V3d v = (newPos - m_camera.position()).normalized();
+                double snapDepth = v.dot(snapPos - m_camera.position());
+                newPos = m_camera.position() + snapDepth*v;
+                if ((snapPos - m_prevCursorSnap).length() != 0)
+                {
+                    // Only snap cursor if we went to a new point to prevent
+                    // cursor getting stuck on a single point.
+                    m_cursorPos = newPos;
+                    m_prevCursorSnap = snapPos;
+                }
+            }
+            selectVerticesInSphere(m_cursorPos, m_selectionRadius);
+        }
+        else
+        {
+            // Scale selection sphere radius
+            double dy = (event->pos() - m_prevMousePos).y();
+            m_selectionRadius *= exp(-4.0*dy/height());
+        }
         restartRender();
     }
     else
-        m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
-
+    {
+        m_camera.mouseDrag(m_prevMousePos, event->pos(),
+                           m_mouseButton == Qt::RightButton);
+    }
     m_prevMousePos = event->pos();
 }
 
@@ -590,9 +648,27 @@ void View3D::keyPressEvent(QKeyEvent *event)
 {
     // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
+    {
         m_camera.setCenter(m_cursorPos);
+    }
+    else if(event->key() == Qt::Key_T)
+    {
+        std::swap(m_selectionClassFrom, m_selectionClassTo);
+    }
+    else if(event->key() == Qt::Key_S && (event->modifiers() & Qt::ControlModifier))
+    {
+        // Horrible dirty hack to save out points to files
+        QModelIndexList sel = m_selectionModel->selectedRows();
+        for (int i = 0; i < sel.size(); ++i)
+        {
+            QString fileName = QString("classified_points_%1.txt").arg(i);
+            m_geometries->get()[sel[i].row()]->saveFile(fileName);
+        }
+    }
     else
+    {
         event->ignore();
+    }
 }
 
 void View3D::initCursor(float cursorRadius, float centerPointRadius)
@@ -632,6 +708,33 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
 
     glBindVertexArray(0);
 }
+
+/// Select all points on visible geometry within the given selection sphere
+void View3D::selectVerticesInSphere(const V3d& center, double radius)
+{
+    QModelIndexList sel = m_selectionModel->selectedRows();
+    for (int i = 0; i < sel.size(); ++i)
+    {
+        m_geometries->get()[sel[i].row()]->selectVerticesInSphere(
+                center, radius, m_selectionClassFrom, m_selectionClassTo);
+    }
+    restartRender();
+}
+
+
+/// Draw a selection sphere at given `center` and `radius`
+///
+/// `transState` represents the camera and model transforms
+void View3D::drawSelectionSphere(const TransformState& transState,
+                                 const V3d& center, double radius) const
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    drawSphere(transState, center, radius,
+               m_selectionSphereShader->shaderProgram().programId(), Imath::C4f(1,1,1,0.5));
+    glDisable(GL_BLEND);
+}
+
 
 /// Draw the 3D cursor
 void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos, float centerPointRadius) const
@@ -1057,17 +1160,16 @@ DrawCount View3D::drawPoints(const TransformState& transState,
 
 /// Guess position in 3D corresponding to a 2D click
 ///
+/// The click position x,y defines a ray out from the camera in 3D space.  The
+/// returned point is on this ray, with z coordinate is taken from the
+/// reference position.
+///
 /// `clickPos` - 2D position in viewport, as from a mouse event.
-Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
+/// `refPos`   - Reference position used for depth.
+Imath::V3d View3D::guessClickPosition(const QPoint& clickPos, const V3d& refPos)
 {
     // Get new point in the projected coordinate system using the click
-    // position x,y and the z of a reference position.  Take the reference point
-    // of interest to be between the camera rotation center and the camera
-    // position, as a rough guess of the depth the user is interested in.
-    //
-    // This works pretty well, except when there are noise points intervening
-    // between the reference position and the user's actual point of interest.
-    V3d refPos = 0.3*m_camera.position() + 0.7*m_camera.center();
+    // position x,y and the z of the reference position.
     M44d mat = m_camera.viewMatrix()*m_camera.projectionMatrix()*m_camera.viewportMatrix();
     double refZ = (refPos * mat).z;
     V3d newPointProj(clickPos.x(), clickPos.y(), refZ);
@@ -1103,7 +1205,7 @@ bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
         std::string info;
         if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, distFunc,
                                                     pickedVertex, &dist,
-                                                    (pointInfo != 0) ? &info : 0))
+                                                    pointInfo ? &info : 0))
         {
             if (dist < nearestDist)
             {
