@@ -62,6 +62,8 @@ class Geometry : public QObject
         /// simplifying the geometry if possible.
         virtual bool loadFile(QString fileName, size_t maxVertexCount) = 0;
 
+        virtual void saveFile(QString fileName) {}
+
         //--------------------------------------------------
         /// Mutate a geometry
         ///
@@ -135,6 +137,14 @@ class Geometry : public QObject
                                 V3d& pickedVertex,
                                 double* distance = 0,
                                 std::string* info = 0) const = 0;
+
+        /// Convert vertices in a sphere with classification `class1` to `class2`
+        ///
+        /// `centre` and `radius` specify the selection sphere.  Any vertices
+        /// of classification `class1` will be converted to classification
+        /// `class2`.  Other classifications are left untouched.
+        virtual void selectVerticesInSphere(const V3d& centre, double radius,
+                                            int class1, int class2) {}
 
         //--------------------------------------------------
         /// Get the arbitrary user-defined label for the geometry.

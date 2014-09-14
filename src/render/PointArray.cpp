@@ -256,6 +256,17 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
 }
 
 
+int PointArray::findField(const std::string& name, const TypeSpec& spec)
+{
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        if (m_fields[i].name == name && m_fields[i].spec == spec)
+            return i;
+    }
+    return -1;
+}
+
+
 bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 {
     QTime loadTimer;
@@ -306,15 +317,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             return false;
     }
     // Search for position field
-    m_positionFieldIdx = -1;
-    for (size_t i = 0; i < m_fields.size(); ++i)
-    {
-        if (m_fields[i].name == "position" && m_fields[i].spec == TypeSpec::vec3float32())
-        {
-            m_positionFieldIdx = (int)i;
-            break;
-        }
-    }
+    m_positionFieldIdx = findField("position", TypeSpec::vec3float32());
     if (m_positionFieldIdx == -1)
     {
         g_logger.error("No position field found in file %s", fileName);
@@ -380,6 +383,30 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     emit loadProgress(int(100));
 
     return true;
+}
+
+
+void PointArray::saveFile(QString fileName)
+{
+    int classificationIdx = findField("classification", TypeSpec::uint8_i());
+    if (classificationIdx < 0)
+    {
+        g_logger.error("No classification attribute in file %s", this->fileName());
+        return;
+    }
+
+    uint8_t* classification = m_fields[classificationIdx].as<uint8_t>();
+
+    // Hack: save classified points as XYZC
+    V3d off = offset();
+    std::ofstream out(fileName.toStdString());
+    for (size_t i = 0; i < m_npoints; ++i)
+    {
+        tfm::format(out, "%.3f %.3f %.3f %d\n",
+                    m_P[i].x + off.x, m_P[i].y + off.y, m_P[i].z + off.z,
+                    classification[i]);
+    }
+    g_logger.info("Saved classified points to file: %s", fileName);
 }
 
 
@@ -559,6 +586,50 @@ bool PointArray::pickVertex(const V3d& cameraPos,
     }
 
     return true;
+}
+
+
+void PointArray::selectVerticesInSphere(const V3d& centre, double radius,
+                                        int class1, int class2)
+{
+    V3f relCenter = centre - offset();
+    Box3f sphereBox(relCenter - V3f(radius), relCenter + V3f(radius));
+
+    int classificationIdx = findField("classification", TypeSpec::uint8_i());
+    if (classificationIdx < 0)
+        return;
+
+    uint8_t* classification = m_fields[classificationIdx].as<uint8_t>();
+
+    double radius2 = radius*radius;
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        if (!node->bbox.intersects(sphereBox))
+            continue;
+        if (!node->isLeaf())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
+        }
+        for (size_t i = node->beginIndex; i < node->endIndex; ++i)
+        {
+            if ((m_P[i] - relCenter).length2() < radius2)
+            {
+                if (classification[i] == class1)
+                    classification[i] = class2;
+            }
+        }
+    }
 }
 
 

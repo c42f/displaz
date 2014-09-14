@@ -42,6 +42,8 @@ class PointArray : public Geometry
                                     const TransformState& transState,
                                     double quality, bool incrementalDraw) const;
 
+        virtual void saveFile(QString fileName);
+
         virtual size_t pointCount() const { return m_npoints; }
 
         virtual void estimateCost(const TransformState& transState,
@@ -53,6 +55,9 @@ class PointArray : public Geometry
                                 V3d& pickedVertex,
                                 double* distance = 0,
                                 std::string* info = 0) const;
+
+        virtual void selectVerticesInSphere(const V3d& centre, double radius,
+                                            int class1, int class2);
 
         /// Draw a representation of the point hierarchy.
         ///
@@ -71,6 +76,8 @@ class PointArray : public Geometry
         bool loadPly(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
                      size_t& npoints, uint64_t& totalPoints);
+
+        int findField(const std::string& name, const TypeSpec& spec);
 
         friend struct ProgressFunc;
 
