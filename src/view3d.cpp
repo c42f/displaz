@@ -412,10 +412,27 @@ void View3D::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MidButton)
     {
-        QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
-        double z = mat.map(exr2qt(m_cursorPos - m_drawOffset)).z();
-        m_cursorPos = qt2exr(mat.inverted().map(QVector3D(event->x(), event->y(), z))) + m_drawOffset;
-        snapCursorAndCentre(0.025);
+        double snapScale = 0.025;
+        if (event->modifiers() & Qt::ControlModifier)
+        {
+            // Snap cursor without changing view
+            V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
+            V3d posDiff = newPos - m_prevCursorSnap;
+            g_logger.info("Selected %.3f\n"
+                          "    [diff with previous: %.3f m;\n"
+                          "     %.3f]",
+                          newPos, posDiff.length(), posDiff);
+            m_cursorPos = newPos;
+            m_prevCursorSnap = newPos;
+            if (posDiff.length() != 0)
+                updateGL();
+        }
+        else
+        {
+            // Snap camera centre to new position
+            V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
+            m_camera.setCenter(exr2qt(newPos - m_drawOffset));
+        }
     }
 }
 
@@ -454,10 +471,6 @@ void View3D::keyPressEvent(QKeyEvent *event)
     {
         // Centre camera on current cursor location
         m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
-    }
-    else if(event->key() == Qt::Key_S)
-    {
-        snapCursorAndCentre(1);
     }
     else
         event->ignore();
@@ -586,37 +599,51 @@ size_t View3D::drawPoints(const TransformState& transState,
 }
 
 
-/// Snap 3D cursor to closest point and centre the camera
-void View3D::snapCursorAndCentre(double normalScaling)
+/// Guess position in 3D corresponding to a 2D click
+///
+/// `clickPos` - 2D position in viewport, as from a mouse event.
+Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 {
-    if(m_geometries->get().empty())
-        return;
-    V3f N = (qt2exr(m_camera.position()) + m_drawOffset -
-             m_cursorPos).normalized();
+    // Get new point in the projected coordinate system using the click
+    // position x,y and the z of the reference position.  Take the reference to
+    // be the camera rotation center since that's likely to be roughly the
+    // depth the user is interested in.
+    V3d refPos = qt2exr(m_camera.center()) + m_drawOffset;
+    QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
+    double refZ = mat.map(exr2qt(refPos - m_drawOffset)).z();
+    QVector3D newPointProj(clickPos.x(), clickPos.y(), refZ);
+    // Map projected point back into model coordinates
+    return qt2exr(mat.inverted().map(newPointProj)) + m_drawOffset;
+}
+
+
+/// Snap `pos` to the perceptually closest piece of visible geometry
+///
+/// `normalScaling` - Distance along the camera direction will be scaled by
+///                   this factor when computing the closest point.
+Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
+{
+    if (m_geometries->get().empty())
+        return pos;
+    // Ray out from the camera to the given point
+    V3f viewDir = (pos - (qt2exr(m_camera.position()) + m_drawOffset)).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
     QModelIndexList sel = m_selectionModel->selectedRows();
-    for(int i = 0; i < sel.size(); ++i)
+    for (int i = 0; i < sel.size(); ++i)
     {
         int geomIdx = sel[i].row();
         double dist = 0;
-        V3d p = m_geometries->get()[geomIdx]->pickVertex(m_cursorPos, N,
+        V3d p = m_geometries->get()[geomIdx]->pickVertex(pos, viewDir,
                                                          normalScaling, &dist);
-        if(dist < nearestDist)
+        if (dist < nearestDist)
         {
             newPos = p;
             nearestDist = dist;
         }
     }
-    V3d posDiff = newPos - m_prevCursorSnap;
-    g_logger.info("Selected %.3f\n"
-                  "    [diff with previous: %.3f m;\n"
-                  "     %.3f]",
-                  newPos, posDiff.length(), posDiff);
-    m_cursorPos = newPos;
-    m_prevCursorSnap = newPos;
-    m_camera.setCenter(exr2qt(newPos - m_drawOffset));
+    return newPos;
 }
 
 
