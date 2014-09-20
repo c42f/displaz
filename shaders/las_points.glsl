@@ -40,9 +40,22 @@ flat out int markerShape;
 
 float tonemap(float x, float exposure, float contrast)
 {
-    float Y = exposure*pow(x, contrast);
+    float Y = pow(exposure*x, contrast);
     Y = Y / (1.0 + Y);
     return Y;
+}
+
+vec3 jet_colormap(float x)
+{
+    if (x < 0.125)
+        return vec3(0, 0, 0.5 + 4*x);
+    if (x < 0.375)
+        return vec3(0, 4*(x-0.125), 1);
+    if (x < 0.625)
+        return vec3(4*(x-0.375), 1, 1 - 4*(x-0.375));
+    if (x < 0.875)
+        return vec3(1, 1 - 4*(x-0.625), 0);
+    return vec3(1 - 4*(x-0.875), 0, 0);
 }
 
 void main()
@@ -93,8 +106,8 @@ void main()
     }
     else if (colorMode == 7)
     {
-        // Colour greyscale with height above ground
-        pointColor = tonemap(0.1*heightAboveGround, exposure, contrast)*vec3(1);
+        // Color based on height above ground
+        pointColor = 0.8*jet_colormap(tonemap(0.16*heightAboveGround, exposure, 3.8*contrast));
     }
     if (selectionMode != 0)
     {
