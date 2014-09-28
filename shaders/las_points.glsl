@@ -12,8 +12,8 @@ uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=1
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number|Height Above Ground
-uniform int selectionMode = 0;     //# uiname=Selection; enum=All|First Return|Last Return|First Of Several
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Las Classification|Classified|File Number|Height Above Ground
+uniform int selectionMode = 0;     //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to keep coverage constant when doing stochastic
@@ -85,9 +85,8 @@ void main()
     }
     else if (colorMode == 5)
     {
-        // Default coloring: greyscale
+        // Colour according to some common classifications defined in the LAS spec
         pointColor = vec3(exposure*classification);
-        // Some special colors for standard ASPRS classification numbers
         if (classification == 2)      pointColor = vec3(0.33, 0.18, 0.0); // ground
         else if (classification == 3) pointColor = vec3(0.25, 0.49, 0.0); // low vegetation
         else if (classification == 4) pointColor = vec3(0.36, 0.7,  0.0); // medium vegetation
@@ -97,6 +96,13 @@ void main()
     }
     else if (colorMode == 6)
     {
+        // Use intensity, but shade all points which have been classified green
+        pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+        if (classification != 0)
+            pointColor = 0.5*pointColor + vec3(0,0.75,0);
+    }
+    else if (colorMode == 7)
+    {
         // Set point colour and marker shape cyclically based on file number to
         // give a unique combinations for 5*7 files.
         markerShape = fileNumber % 5;
@@ -104,7 +110,7 @@ void main()
                              vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
         pointColor = cols[fileNumber % 7];
     }
-    else if (colorMode == 7)
+    else if (colorMode == 8)
     {
         // Color based on height above ground
         pointColor = 0.8*jet_colormap(tonemap(0.16*heightAboveGround, exposure, 3.8*contrast));
@@ -113,15 +119,20 @@ void main()
     {
         if (selectionMode == 1)
         {
-            if (returnNumber != 1)
+            if (classification == 0)
                 markerShape = -1;
         }
         else if (selectionMode == 2)
         {
-            if (returnNumber != numberOfReturns)
+            if (returnNumber != 1)
                 markerShape = -1;
         }
         else if (selectionMode == 3)
+        {
+            if (returnNumber != numberOfReturns)
+                markerShape = -1;
+        }
+        else if (selectionMode == 4)
         {
             if (returnNumber != 1 || numberOfReturns < 2)
                 markerShape = -1;
