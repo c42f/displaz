@@ -75,6 +75,23 @@ void drawBoundingBox(const TransformState& transState,
 void drawBoundingBox(const TransformState& transState,
                      const Imath::Box3d& bbox, const Imath::C3f& col);
 
+/// Draw a sphere using the given shader.  May be semitransparent.
+///
+/// The sphere is drawn using a polygonal approximation generated from the
+/// usual spherical coordintes parameterization.  In order for transparency to
+/// work correctly, the parameterization is evaluated in camera space, which
+/// means the model view matrix must be a rigid body transformation.
+///
+/// transState - current transformations (modelview must be rigid body trans!)
+/// centre - sphere centre
+/// radius - sphere radius
+/// shaderProgram - Compiled OpenGL shader program id
+/// color - color for sphere.  May be semitransparent
+/// nphi,ntheta - number of steps in spherical coordinate parameterization
+void drawSphere(const TransformState& transState,
+                const Imath::V3d& centre, double radius,
+                GLuint shaderProgram, const Imath::C4f& color,
+                int nphi = 50, int ntheta = 10);
 
 //----------------------------------------------------------------------
 // Utilities for OpenEXR / OpenGL interoperability.

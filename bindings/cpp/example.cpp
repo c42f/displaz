@@ -27,61 +27,39 @@
 //
 // (This is the BSD 3-clause license)
 
-#include "geometry.h"
-#include "hcloudview.h"
-#include "mesh.h"
-#include "pointarray.h"
+#include "displaz.h"
+#include <cmath>
 
-#include <rply/rply.h>
-
-/// Determine whether a ply file has mesh or line segment elements
-///
-/// (If not, assume it's a point cloud.)
-static bool plyHasMesh(QString fileName)
+// Simple example of using displaz to plot points from a separate proces
+int main()
 {
-    std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
-    if (!ply || !ply_read_header(ply.get()))
-        return false;
-    for (p_ply_element elem = ply_get_next_element(ply.get(), NULL);
-         elem != NULL; elem = ply_get_next_element(ply.get(), elem))
+    dpz::Displaz displaz;
+    displaz.hold(false);
+    displaz.setDebug(true);
+
+    dpz::PointList points;
+    points.addAttribute<double>("position", 3)
+          .addAttribute<float>("intensity", 1)
+          .addAttribute<uint8_t>("color", 3);
+
+
+    int N = 10000;
+    for (int i = 0; i < N; ++i)
     {
-        const char* name = 0;
-        long ninstances = 0;
-        if (!ply_get_element_info(elem, &name, &ninstances))
-            continue;
-        if (strcmp(name, "face") == 0 || strcmp(name, "triangle") == 0 ||
-            strcmp(name, "edge") == 0 || strcmp(name, "hullxy") == 0)
-        {
-            return true;
-        }
+        double t = double(i+10*j)/N;
+        double r= 10*sqrt(t) + 2;
+        points.append(r*cos(200*t), r*sin(200*t), 10*t,
+                      255*t,
+                      255*t, 255*(1-t), 0);
     }
-    return false;
+
+    points.append(0, 0, 0,
+                  1000,
+                  0, 0, 255);
+
+    //displaz.setShader("generic_points.glsl");
+
+    displaz.plot(points);
+
+    return 0;
 }
-
-
-//------------------------------------------------------------------------------
-Geometry::Geometry()
-    : m_fileName(),
-    m_offset(0,0,0),
-    m_centroid(0,0,0),
-    m_bbox()
-{ }
-
-
-std::shared_ptr<Geometry> Geometry::create(QString fileName)
-{
-    if (fileName.endsWith(".ply") && plyHasMesh(fileName))
-        return std::shared_ptr<Geometry>(new TriMesh());
-    else if(fileName.endsWith(".hcloud"))
-        return std::shared_ptr<Geometry>(new HCloudView());
-    else
-        return std::shared_ptr<Geometry>(new PointArray());
-}
-
-
-bool Geometry::reloadFile(size_t maxVertexCount)
-{
-    return loadFile(m_fileName, maxVertexCount);
-}
-

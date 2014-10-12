@@ -37,6 +37,8 @@
 #include "tinyformat.h"
 #include "rply/rply.h"
 
+#include "qtlogger.h"
+
 
 //------------------------------------------------------------------------------
 // utils
@@ -109,16 +111,17 @@ static int face_cb(p_ply_argument argument)
     long length;
     long index;
     ply_get_argument_property(argument, NULL, &length, &index);
-    if (length != 3)
-    {
-        // Not a triangle - ignore for now!
-        std::cout << "WARNING: Discarding non-triangular face\n";
-        return 1;
-    }
     if (index < 0) // ignore length argument
         return 1;
     void* pinfo = 0;
-    ply_get_argument_user_data(argument, &pinfo, NULL);
+    long isList = 0;
+    ply_get_argument_user_data(argument, &pinfo, &isList);
+    if (isList && length != 3)
+    {
+        // Not a triangle - ignore for now!
+        g_logger.warning("Ignoring non-triangular face with %d vertices\n", length);
+        return 1;
+    }
     ((PlyLoadInfo*)pinfo)->faces.push_back(
             (unsigned int)ply_get_argument_value(argument));
     return 1;
@@ -133,7 +136,8 @@ static int edge_cb(p_ply_argument argument)
     if (index < 0) // ignore length argument
         return 1;
     void* pinfo = 0;
-    ply_get_argument_user_data(argument, &pinfo, NULL);
+    long isEdgeLoop = 0;
+    ply_get_argument_user_data(argument, &pinfo, &isEdgeLoop);
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
     // Duplicate indices within a single edge chain so that we can pass them to
     // OpenGL as GL_LINES (or could use GL_LINE_STRIP?)
@@ -141,6 +145,13 @@ static int edge_cb(p_ply_argument argument)
         info.edges.push_back(info.edges.back());
     info.edges.push_back(
             (unsigned int)ply_get_argument_value(argument));
+    if (isEdgeLoop && index == length-1)
+    {
+        // Add extra edge to cloose the loop
+        int firstIdx = info.edges.end()[-2*(length-1)];
+        info.edges.push_back(info.edges.back());
+        info.edges.push_back(firstIdx);
+    }
     return 1;
 }
 
@@ -152,11 +163,17 @@ bool loadPlyFile(const QString& fileName,
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
             ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
+    {
+        g_logger.error("Could not open ply or read header");
         return false;
+    }
     long nvertices = ply_set_read_cb(ply.get(), "vertex", "x", vertex_cb, &info, 0);
     if (ply_set_read_cb(ply.get(), "vertex", "y", vertex_cb, &info, 1) != nvertices ||
         ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
+    {
+        g_logger.error("Expected vertex properties (x,y,z) in ply file");
         return false;
+    }
     info.verts.reserve(3*nvertices);
     long ncolors = ply_set_read_cb(ply.get(), "color", "r", color_cb, &info, 0);
     if (ncolors != 0)
@@ -165,16 +182,42 @@ bool loadPlyFile(const QString& fileName,
         ply_set_read_cb(ply.get(), "color", "b", color_cb, &info, 2);
         info.colors.reserve(3*nvertices);
     }
+    if (ncolors == 0)
+    {
+        ncolors = ply_set_read_cb(ply.get(), "vertex", "r", color_cb, &info, 0);
+        if (ncolors != 0)
+        {
+            ply_set_read_cb(ply.get(), "vertex", "g", color_cb, &info, 1);
+            ply_set_read_cb(ply.get(), "vertex", "b", color_cb, &info, 2);
+            info.colors.reserve(3*nvertices);
+        }
+    }
     // Attempt to load attributes with names face/vertex_index or face/vertex_indices
     // There doesn't seem to be a real standard here...
-    long nfaces = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 0);
+    long nfaces = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 1);
     if (nfaces == 0)
-        nfaces = ply_set_read_cb(ply.get(), "face", "vertex_indices", face_cb, &info, 0);
+        nfaces = ply_set_read_cb(ply.get(), "face", "vertex_indices", face_cb, &info, 1);
+    if (nfaces == 0)
+    {
+        nfaces = ply_set_read_cb(ply.get(), "triangle", "v1", face_cb, &info, 0);
+        if (nfaces != 0 &&
+            (ply_set_read_cb(ply.get(), "triangle", "v2", face_cb, &info, 0) != nfaces ||
+             ply_set_read_cb(ply.get(), "triangle", "v3", face_cb, &info, 0) != nfaces))
+        {
+            g_logger.error("Expected triangle properties (v1,v2,v3) in ply file");
+            return false;
+        }
+    }
     long nedges = ply_set_read_cb(ply.get(), "edge", "vertex_index", edge_cb, &info, 0);
     if (nedges == 0)
         nedges = ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
+    if (nedges == 0)
+        nedges = ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
     if (nedges <= 0 && nfaces <= 0)
+    {
+        g_logger.error("Expected more than zero edges or faces in ply file");
         return false;
+    }
     if (nfaces > 0)
     {
         // Ply file contains a mesh - load as triangle mesh
@@ -186,7 +229,10 @@ bool loadPlyFile(const QString& fileName,
         info.edges.reserve(2*nedges);
     }
     if (!ply_read(ply.get()))
+    {
+        g_logger.error("Error reading ply file data section");
         return false;
+    }
     if (info.colors.size() != info.verts.size())
         info.colors.clear();
     return true;

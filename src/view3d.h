@@ -112,7 +112,9 @@ class View3D : public QGLWidget
                         const GeometryCollection::GeometryVec& geoms,
                         const QModelIndexList& sel) const;
 
-        void snapCursorAndCentre(double normalScaling);
+        Imath::V3d guessClickPosition(const QPoint& clickPos);
+
+        Imath::V3d snapToGeometry(const Imath::V3d& pos, double normalScaling);
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
