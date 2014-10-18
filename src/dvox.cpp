@@ -40,10 +40,13 @@
 #include "logger.h"
 #include "util.h"
 #include "pointdbwriter.h"
+#include "pointdb.h"
+#include "voxelizer.h"
 
 //------------------------------------------------------------------------------
 // File loading stuff.  TODO: Create a generic interface we can use instead.
 
+#if 0
 // Use laslib
 #ifdef _MSC_VER
 #   pragma warning(push)
@@ -802,6 +805,7 @@ void voxelizePointCloud(const std::string& inFileName, const std::string& outFil
         throw std::runtime_error("Could not open output file");
     writeHcloud(outFile, rootNode.get(), bbox, rootBound, offset, position, color, npoints, logger);
 }
+#endif
 
 
 std::vector<std::string> g_positionalArgs;
@@ -819,7 +823,8 @@ int main(int argc, char* argv[])
     float pointRadius = 0.2;
     float minNodeRadius = 2.5;
 
-    float dbTileSize = 100;
+    double dbTileSize = 100;
+    double dbCacheSize = 100;
 
     bool logProgress = false;
     int logLevel = Logger::Info;
@@ -838,8 +843,9 @@ int main(int argc, char* argv[])
         "-pointradius %f", &pointRadius, "Assumed radius of points used during voxelization",
         "-minnoderadius %f", &minNodeRadius, "Minimum octree node radius for leaf nodes",
 
-        "<SEPARATOR>", "\nDB creation options:",
-        "-dbtilesize %f", &dbTileSize, "Tile size of temporary point database",
+        "<SEPARATOR>", "\nPoint Database options:",
+        "-dbtilesize %F", &dbTileSize, "Tile size of temporary point database",
+        "-dbcachesize %F", &dbCacheSize, "In-memory cache size for database in MB (default 100 MB)",
 
         "<SEPARATOR>", "\nDebug options:",
         "-loglevel %d",  &logLevel,    "Logger verbosity (default 3 = info, greater is more verbose)",
@@ -869,16 +875,33 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
         std::string outputPath = g_positionalArgs.back();
+        std::vector<std::string> inputPaths(g_positionalArgs.begin(),
+                                            g_positionalArgs.end()-1);
         if (endswith(outputPath, ".pointdb"))
         {
-            std::vector<std::string> lasFileNames(g_positionalArgs.begin(), g_positionalArgs.end()-1);
-            convertLasToPointDb(outputPath, lasFileNames, Imath::Box3d(), dbTileSize, logger);
+            convertLasToPointDb(outputPath, inputPaths,
+                                Imath::Box3d(), dbTileSize, logger);
         }
         else
         {
-            voxelizePointCloud(g_positionalArgs[0], outputPath, pointRadius, minNodeRadius, logger);
+            if (!endswith(g_positionalArgs[0], ".pointdb") ||
+                inputPaths.size() != 1)
+            {
+                logger.error("Need exactly one input .pointdb file");
+                return EXIT_FAILURE;
+            }
+            SimplePointDb pointDb(inputPaths[0],
+                                  (size_t)(dbCacheSize*1024*1024),
+                                  logger);
+
+            Imath::V3d origin = Imath::V3d(389500, 7280796, -140);
+            double rootNodeWidth = 1000;
+            int leafDepth = 8;
+            int brickRes = 8;
+            voxelizePointCloud(pointDb, pointRadius,
+                               origin, rootNodeWidth,
+                               leafDepth, brickRes, logger);
         }
-        return EXIT_SUCCESS;
     }
     catch (std::exception& e)
     {

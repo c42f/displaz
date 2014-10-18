@@ -75,6 +75,7 @@ add_executable(dvox
     dvox.cpp
     pointdbwriter.cpp
     pointdb.cpp
+    voxelizer.cpp
     ${shared_srcs}
 )
 
