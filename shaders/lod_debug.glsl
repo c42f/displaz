@@ -40,6 +40,7 @@ flat out float modifiedPointRadius;
 flat out float pointScreenSize;
 flat out vec3 pointColor;
 flat out int markerShape;
+flat out float scaledCoverage;
 
 float tonemap(float x, float exposure, float contrast)
 {
@@ -67,7 +68,8 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = sqrt(coverage) * pointRadius * trimScale * pointSizeLodMultiplier * (1<<8)/(1<<treeLevel);
+    scaledCoverage = 17*coverage;
+    modifiedPointRadius = pointRadius * trimScale * pointSizeLodMultiplier * (1<<8)/(1<<treeLevel);
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     markerShape = 0;
     // Compute vertex color
@@ -120,7 +122,7 @@ void main()
         pointColor = 0.8*jet_colormap(tonemap(0.16*heightAboveGround, exposure, 3.8*contrast));
     }
     if (selectedTreeLevel != treeLevel)
-        markerShape = -1;
+        pointScreenSize = 0;
     // Ensure zero size points are discarded.  The actual minimum point size is
     // hardware and driver dependent, so set the markerShape to discarded for
     // good measure.
@@ -141,6 +143,7 @@ uniform float markerWidth = 0.3;
 
 flat in float modifiedPointRadius;
 flat in float pointScreenSize;
+flat in float scaledCoverage;
 flat in vec3 pointColor;
 flat in int markerShape;
 
@@ -153,6 +156,15 @@ const float sqrt2 = 1.414213562;
 
 void main()
 {
+    // Use simple ordered dithering to simulate partial coverage by a voxel
+    float stippleThresholds[] = float[](
+        1, 9, 3, 11,
+        13, 5, 15, 7,
+        4, 12, 2, 10,
+        16, 8, 14, 6
+    );
+    if (stippleThresholds[int(gl_FragCoord.x) % 4 + 4*(int(gl_FragCoord.y) % 4)] > scaledCoverage)
+        discard;
     if (markerShape < 0) // markerShape == -1: discarded.
         discard;
     // (markerShape == 0: Square shape)
