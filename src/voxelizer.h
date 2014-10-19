@@ -60,13 +60,15 @@ inline Imath::V3i zOrderToVec3(int zIndex)
 /// Create an octree by voxelizing points from `pointDb`
 ///
 /// Voxelization occurs by rendering points from `pointDb` with radius
-/// `pointRadius`.
+/// `pointRadius`.  The points are serialized, and written to `outputStream` in
+/// hcloud format.
 ///
 /// The bounding box of the octree will have a minimum at `origin` and a size
 /// of `rootNodeWidth` in the three directions.  A fixed maximum octree depth
 /// of `leafDepth` is used for the leaf nodes, each of which contains
 /// brickRes*brickRes*brickRes voxels.
-void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
+void voxelizePointCloud(std::ostream& outputStream,
+                        SimplePointDb& pointDb, float pointRadius,
                         const Imath::V3d& origin, double rootNodeWidth,
                         int leafDepth, int brickRes, Logger& logger);
 
@@ -74,6 +76,41 @@ void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
 /// A 3D N*N*N array of voxels
 class VoxelBrick
 {
+    public:
+        VoxelBrick(int brickRes)
+            : m_brickRes(brickRes),
+            m_mipColor(m_brickRes*m_brickRes*m_brickRes, 0),
+            m_mipCoverage(m_brickRes*m_brickRes*m_brickRes, 0),
+            m_mipPosition(3*m_brickRes*m_brickRes*m_brickRes, 0)
+        { }
+
+        /// Return resolution of brick (ie, N, where brick has N*N*N voxels)
+        int resolution() const { return m_brickRes; }
+
+        /// Return total number of voxels in brick
+        int numVoxels() const  { return m_brickRes*m_brickRes*m_brickRes; }
+
+        float& coverage(int x, int y, int z)      { return m_mipCoverage[idx(x,y,z)]; }
+        float coverage(int x, int y, int z) const { return m_mipCoverage[idx(x,y,z)]; }
+        float coverage(int i) const               { return m_mipCoverage[i]; }
+
+        V3f& position(int x, int y, int z) { return *reinterpret_cast<V3f*>(&m_mipPosition[3*idx(x,y,z)]); }
+        const V3f& position(int x, int y, int z) const { return *reinterpret_cast<const V3f*>(&m_mipPosition[3*idx(x,y,z)]); }
+        const V3f& position(int i) const { return *reinterpret_cast<const V3f*>(&m_mipPosition[3*i]); }
+
+        float& color(int x, int y, int z)      { return m_mipColor[idx(x,y,z)]; }
+        float color(int x, int y, int z) const { return m_mipColor[idx(x,y,z)]; }
+        float color(int i) const               { return m_mipColor[i]; }
+
+        /// Render given point set into the brick as voxels
+        void voxelizePoints(const V3f& lowerCorner, float brickWidth,
+                            float pointRadius,
+                            const float* position, const float* intensity,
+                            const size_t* pointIndices, int npoints);
+
+        /// Render brick from a Morton ordered set of child bricks
+        void renderFromBricks(VoxelBrick* children[8]);
+
     private:
         int m_brickRes;
         // Attributes for all voxels inside brick
@@ -86,82 +123,12 @@ class VoxelBrick
         // brickmap usage.)
         std::vector<float> m_mipPosition;
 
-    public:
-        VoxelBrick(int brickRes)
-            : m_brickRes(brickRes),
-            m_mipColor(m_brickRes*m_brickRes*m_brickRes, 0),
-            m_mipCoverage(m_brickRes*m_brickRes*m_brickRes, 0),
-            m_mipPosition(3*m_brickRes*m_brickRes*m_brickRes, 0)
-        { }
-
-        int resolution() const { return m_brickRes; }
-
+        /// Return index of voxel at (x,y,z) in brick
         int idx(int x, int y, int z) const
         {
             assert(x >= 0 && x < m_brickRes && y >= 0 && y < m_brickRes && z >= 0 && z < m_brickRes);
             return x + m_brickRes*(y + m_brickRes*z);
         }
-
-        float& coverage(int x, int y, int z)
-        {
-            return m_mipCoverage[idx(x,y,z)];
-        }
-        float coverage(int x, int y, int z) const
-        {
-            return m_mipCoverage[idx(x,y,z)];
-        }
-
-        V3f& position(int x, int y, int z)
-        {
-            return *reinterpret_cast<V3f*>(&m_mipPosition[3*idx(x,y,z)]);
-        }
-        const V3f& position(int x, int y, int z) const
-        {
-            return *reinterpret_cast<const V3f*>(&m_mipPosition[3*idx(x,y,z)]);
-        }
-
-        float& color(int x, int y, int z)
-        {
-            return m_mipColor[idx(x,y,z)];
-        }
-        float color(int x, int y, int z) const
-        {
-            return m_mipColor[idx(x,y,z)];
-        }
-
-        /// Render given point set into a brick of voxels
-        void voxelizePoints(const V3f& lowerCorner, float brickWidth,
-                            float pointRadius,
-                            const float* position, const float* intensity,
-                            const size_t* pointIndices, int npoints);
-
-        void renderFromBricks(VoxelBrick* children[8]);
-
-//        void cacheFilledVoxels(float radius, std::vector<float>& positions,
-//                            std::vector<float>& coverages, std::vector<float>& colors)
-//        {
-//            size_t fillCount = std::count_if(
-//                m_mipCoverage.begin(), m_mipCoverage.end(),
-//                [](float c) { return c != 0; } );
-//            positions.reserve(3*fillCount);
-//            coverages.reserve(fillCount);
-//            colors.reserve(fillCount);
-//            for (int z = 0; z < m_brickRes; ++z)
-//            for (int y = 0; y < m_brickRes; ++y)
-//            for (int x = 0; x < m_brickRes; ++x)
-//            {
-//                float c = coverage(x,y,z);
-//                if (c != 0)
-//                {
-//                    positions.push_back(position(x,y,z).x);
-//                    positions.push_back(position(x,y,z).y);
-//                    positions.push_back(position(x,y,z).z);
-//                    coverages.push_back(c);
-//                    colors.push_back(color(x,y,z));
-//                }
-//            }
-//        }
-
 };
 
 

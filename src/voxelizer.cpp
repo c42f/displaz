@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 
+#include "hcloud.h"
 #include "logger.h"
 #include "octreebuilder.h"
 #include "pointdb.h"
@@ -147,11 +148,34 @@ void VoxelBrick::renderFromBricks(VoxelBrick* children[8])
 
 
 //------------------------------------------------------------------------------
-void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
+void voxelizePointCloud(std::ostream& outputStream,
+                        SimplePointDb& pointDb, float pointRadius,
                         const Imath::V3d& origin, double rootNodeWidth,
                         int leafDepth, int brickRes, Logger& logger)
 {
-    using Imath::V3i;
+    // Bottom up octree build algorithm.  Each octree node contains a "brick"
+    // of M*M*M voxels which are a level-of-detail representation of all points
+    // inside the node.  The root bounding box is filled with a cubic grid of
+    // 2^N * 2^N * 2^N leaf bricks where N is the depth of the octree.
+    //
+    // Building the tree proceeds as follows:
+    //
+    // * Leaf nodes are traversed in Morton order.
+    //
+    // * For each leaf node, the points inside the bounding box are extracted
+    //   from the point database and rendered into the brick voxels.  (In
+    //   practise point extraction happens on a chunk level to avoid a lot of
+    //   very small database queries.)
+    //
+    // * Whenever a group of 8 adjacent nodes are complete, these are
+    //   downsampled to produce the next coarser level of detail in the tree.
+    //   They are then serialized to an output buffer and deallocated. Index
+    //   information for the location of the nodes in the binary stream is
+    //   saved during serialization.
+    //
+    // * When all nodes have been extracted, the index is also serialized.
+    //
+    //
     // Useful references:
     //
     // Morton/z space filling curve ordering:
@@ -160,27 +184,6 @@ void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
     // "Coherent Out-of-Core Point-Based Global Illumination" by Kontkanen et al.,
     // Eurographics Symposium on Rendering 2011.
 
-    // 1) Compute root node bounding box
-    // 2) Decide on a chunk (2^N * 2^N group of bricks) size
-    // 3) For every chunk in root bound,
-    //    * Read points for chunk, (including pointRadius buffer area), binning
-    //      their indices into bricks which are created on demand.
-    //    * Render points for each brick
-    //    * Sort bricks into Morton order
-    //
-    //    * Traverse ordering, producing higher level bricks as soon as they're
-    //      complete, and dump them to per-level output queues.
-    //
-    //    * Each output queue flushes itself entirely when it reaches a given
-    //      fill level.
-    //
-    //    * For every 
-    //    * 
-    //    * Iterate through a complete Morton ordering, picking up the next
-    //      brick each time we get to its Morton index.
-    //    * Each time we get a valid brick in a set of eight, compute the next
-    //      higher level, connecting existing bricks as children in overall
-    //      index
     Imath::Box3d rootBound(origin, origin + V3d(rootNodeWidth));
 
     double leafNodeWidth = rootNodeWidth/(1<<leafDepth);
@@ -211,15 +214,15 @@ void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
     int leavesPerChunk = chunkLeafRes*chunkLeafRes*chunkLeafRes;
 
     logger.progress("Render chunks");
-    OctreeBuilder builder(brickRes, leafDepth);
+    OctreeBuilder builder(outputStream, brickRes, leafDepth, false, logger);
     // Traverse chunks in z order
     for (int chunkIdx = 0; chunkIdx < numChunks; ++chunkIdx)
     {
         logger.progress(double(chunkIdx)/(numChunks-1));
-        V3i chunkPos = zOrderToVec3(chunkIdx);
+        Imath::V3i chunkPos = zOrderToVec3(chunkIdx);
         Imath::Box3d chunkBbox;
         chunkBbox.min = origin + chunkWidth*V3d(chunkPos);
-        chunkBbox.max = origin + chunkWidth*V3d(chunkPos + V3i(1));
+        chunkBbox.max = origin + chunkWidth*V3d(chunkPos + Imath::V3i(1));
         Imath::Box3d bufferedBox = chunkBbox;
         bufferedBox.min -= V3d(pointRadius);
         bufferedBox.max += V3d(pointRadius);
@@ -259,7 +262,7 @@ void voxelizePointCloud(SimplePointDb& pointDb, float pointRadius,
         // Render points in each leaf into a MIP brick, in z curve order
         for (int i = 0; i < leavesPerChunk; ++i)
         {
-            V3i leafPos = zOrderToVec3(i);
+            Imath::V3i leafPos = zOrderToVec3(i);
             const std::vector<size_t>& inds = leafIndices[
                 (leafPos.z*chunkLeafRes + leafPos.y)*chunkLeafRes + leafPos.x];
             if (inds.empty())

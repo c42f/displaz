@@ -890,6 +890,11 @@ int main(int argc, char* argv[])
                 logger.error("Need exactly one input .pointdb file");
                 return EXIT_FAILURE;
             }
+            if (!endswith(outputPath, ".hcloud"))
+            {
+                logger.error("Expected .hcloud file as output path");
+                return EXIT_FAILURE;
+            }
             SimplePointDb pointDb(inputPaths[0],
                                   (size_t)(dbCacheSize*1024*1024),
                                   logger);
@@ -898,7 +903,8 @@ int main(int argc, char* argv[])
             double rootNodeWidth = 1000;
             int leafDepth = 8;
             int brickRes = 8;
-            voxelizePointCloud(pointDb, pointRadius,
+            std::ofstream outputFile(outputPath);
+            voxelizePointCloud(outputFile, pointDb, pointRadius,
                                origin, rootNodeWidth,
                                leafDepth, brickRes, logger);
         }
