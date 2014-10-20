@@ -288,7 +288,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             // camera.  If we don't do this, we get problems for multi layer
             // surfaces where the more distant layer can cover the nearer one.
             prog.setUniformValue("markerShape", GLint(0));
-            prog.setUniformValue("lodMultiplier", GLfloat(node->radius()/m_header.brickSize));
+            prog.setUniformValue("lodMultiplier", GLfloat(0.5*node->radius()/m_header.brickSize));
             prog.setAttributeArray("position",  node->position.get(),  3);
             prog.setAttributeArray("intensity", node->intensity.get(), 1);
             prog.setAttributeArray("coverage",  node->coverage.get(),  1);

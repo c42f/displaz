@@ -8,7 +8,7 @@ uniform mat4 modelViewProjectionMatrix;
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointRadius = 1.4;     //# uiname=Point Radius (m); min=0.001; max=10
+uniform float pointRadius = 1.2;     //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
@@ -33,6 +33,7 @@ flat out float modifiedPointRadius;
 flat out float pointScreenSize;
 flat out vec3 pointColor;
 flat out int fragMarkerShape;
+flat out float fragCoverage;
 
 float tonemap(float x, float exposure, float contrast)
 {
@@ -47,7 +48,7 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = pointRadius * trimScale * coverage * lodMultiplier;
+    modifiedPointRadius = pointRadius * trimScale * lodMultiplier;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     fragMarkerShape = markerShape;
     // Compute vertex color
@@ -63,6 +64,7 @@ void main()
         pointScreenSize = 0;
         fragMarkerShape = -1;
     }
+    fragCoverage = coverage;
     gl_PointSize = pointScreenSize;
     gl_Position = p;
 }
@@ -77,6 +79,7 @@ flat in float modifiedPointRadius;
 flat in float pointScreenSize;
 flat in vec3 pointColor;
 flat in int fragMarkerShape;
+flat in float fragCoverage;
 
 out vec4 fragColor;
 
@@ -88,6 +91,14 @@ const float sqrt2 = 1.414213562;
 void main()
 {
     if (fragMarkerShape < 0) // fragMarkerShape == -1: discarded.
+        discard;
+    float stippleThresholds[] = float[](
+        0.02941176,  0.5       ,  0.14705882,  0.61764706,
+        0.73529412,  0.26470588,  0.85294118,  0.38235294,
+        0.20588235,  0.67647059, 0.08823529,  0.55882353,
+        0.91176471,  0.44117647,  0.79411765, 0.32352941
+    );
+    if (stippleThresholds[int(gl_FragCoord.x) % 4 + 4*(int(gl_FragCoord.y) % 4)] > fragCoverage)
         discard;
     // (fragMarkerShape == 0: Square shape)
     gl_FragDepth = gl_FragCoord.z;
