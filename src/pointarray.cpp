@@ -374,7 +374,8 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 }
 
 
-V3d PointArray::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+V3d PointArray::pickVertex(const V3d& cameraPos,
+                           const V3d& rayOrigin, const V3d& rayDirection,
                            double longitudinalScale, double* distance) const
 {
     size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),

@@ -63,7 +63,8 @@ class HCloudView : public Geometry
         virtual size_t simplifiedPointCount(const V3d& cameraPos,
                                             bool incrementalDraw) const;
 
-        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+        virtual V3d pickVertex(const V3d& cameraPos,
+                               const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const;
 
     private:

@@ -338,10 +338,64 @@ size_t HCloudView::simplifiedPointCount(const V3d& cameraPos,
 }
 
 
-V3d HCloudView::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+V3d HCloudView::pickVertex(const V3d& cameraPos,
+                           const V3d& rayOrigin, const V3d& rayDirection,
                            double longitudinalScale, double* distance) const
 {
-    // FIXME
-    return V3d(0,0,0);
+    const double angularSizeLimit = 0.01;
+    double minDist = DBL_MAX;
+    V3d selectedVertex(0);
+    std::vector<HCloudNode*> nodeStack;
+    std::vector<int> levelStack;
+    levelStack.push_back(0);
+    if (m_rootNode->isCached())
+        nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        HCloudNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        int level = levelStack.back();
+        levelStack.pop_back();
+        double angularSize = node->radius()/(node->bbox.center() + offset() - cameraPos).length();
+        bool useNode = angularSize < angularSizeLimit || node->isLeaf;
+        if (!useNode)
+        {
+            bool childrenCached = true;
+            for (int i = 0; i < 8; ++i)
+            {
+                HCloudNode* n = node->children[i];
+                if (n && !n->isCached())
+                    childrenCached = false;
+            }
+            if (!childrenCached)
+                useNode = true;
+        }
+        if (useNode)
+        {
+            int nvox = node->numOccupiedVoxels;
+            double dist = DBL_MAX;
+            const V3f* P = reinterpret_cast<const V3f*>(node->position.get());
+            size_t idx = closestPointToRay(P, nvox, rayOrigin - offset(),
+                                           rayDirection, longitudinalScale, &dist);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                selectedVertex = V3d(P[idx]) + offset();
+            }
+        }
+        else
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                HCloudNode* n = node->children[i];
+                if (n)
+                {
+                    nodeStack.push_back(n);
+                    levelStack.push_back(level+1);
+                }
+            }
+        }
+    }
+    return selectedVertex;
 }
 

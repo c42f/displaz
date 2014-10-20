@@ -648,7 +648,8 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     if (m_geometries->get().empty())
         return pos;
     // Ray out from the camera to the given point
-    V3f viewDir = (pos - (qt2exr(m_camera.position()) + m_drawOffset)).normalized();
+    V3d cameraAbsPos = qt2exr(m_camera.position()) + m_drawOffset;
+    V3f viewDir = (pos - cameraAbsPos).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
@@ -657,7 +658,7 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     {
         int geomIdx = sel[i].row();
         double dist = 0;
-        V3d p = m_geometries->get()[geomIdx]->pickVertex(pos, viewDir,
+        V3d p = m_geometries->get()[geomIdx]->pickVertex(cameraAbsPos, pos, viewDir,
                                                          normalScaling, &dist);
         if (dist < nearestDist)
         {
