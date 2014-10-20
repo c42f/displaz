@@ -195,6 +195,7 @@ void voxelizePointCloud(std::ostream& outputStream,
     double expectedPoints = pointDensity*rootNodeWidth*rootNodeWidth;
     int chunkDepth = std::max(0, (int)ceil(log(expectedPoints/desiredChunkPointCount)/log(4)));
 
+    logger.info("Tree leaf depth: %d", leafDepth);
     logger.info("Depth of chunk root: %d", chunkDepth);
     logger.info("Estimated points per chunk: %d", expectedPoints/pow(4,chunkDepth));
 
@@ -202,7 +203,6 @@ void voxelizePointCloud(std::ostream& outputStream,
     double chunkWidth = rootNodeWidth/chunkRes;
     int numChunks = chunkRes*chunkRes*chunkRes;
 
-    logger.info("Tree depth in chunk: %d", leafDepth - chunkDepth);
     int chunkLeafRes = 1 << (leafDepth - chunkDepth);
 
     std::vector<float> position;

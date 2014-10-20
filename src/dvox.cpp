@@ -820,8 +820,11 @@ static int storePositionalArg (int argc, const char *argv[])
 /// dvox: A batch voxelizer for unstructured point clouds
 int main(int argc, char* argv[])
 {
+    Imath::V3d boundMin = Imath::V3d(0);
+    double rootNodeWidth = 1000;
     float pointRadius = 0.2;
-    float minNodeRadius = 2.5;
+    int brickRes = 8;
+    double leafNodeWidth = 2.5;
 
     double dbTileSize = 100;
     double dbCacheSize = 100;
@@ -833,6 +836,7 @@ int main(int argc, char* argv[])
 
     ap.options(
         "dvox - voxelize unstructured point clouds (version " DISPLAZ_VERSION_STRING ")\n"
+        "\n"
         "Usage: dvox input1 [input2 ...] output\n"
         "\n"
         "input can be .las or .pointdb\n"
@@ -840,14 +844,17 @@ int main(int argc, char* argv[])
         "%*", storePositionalArg, "",
 
         "<SEPARATOR>", "\nVoxelization Options:",
+        "-bound %F %F %F %F", &boundMin.x, &boundMin.y, &boundMin.z, &rootNodeWidth,
+                                        "Bounding box for hcloud (min_x min_y min_z width)",
         "-pointradius %f", &pointRadius, "Assumed radius of points used during voxelization",
-        "-minnoderadius %f", &minNodeRadius, "Minimum octree node radius for leaf nodes",
+        "-brickresolution %d", &brickRes, "Resolution of octree bricks",
+        "-leafnoderadius %F", &leafNodeWidth, "Desired width for octree leaf nodes",
 
         "<SEPARATOR>", "\nPoint Database options:",
         "-dbtilesize %F", &dbTileSize, "Tile size of temporary point database",
         "-dbcachesize %F", &dbCacheSize, "In-memory cache size for database in MB (default 100 MB)",
 
-        "<SEPARATOR>", "\nDebug options:",
+        "<SEPARATOR>", "\nInformational options:",
         "-loglevel %d",  &logLevel,    "Logger verbosity (default 3 = info, greater is more verbose)",
         "-progress",     &logProgress, "Log processing progress",
 
@@ -904,13 +911,11 @@ int main(int argc, char* argv[])
                                   (size_t)(dbCacheSize*1024*1024),
                                   logger);
 
-            Imath::V3d origin = Imath::V3d(389500, 7280796, -140);
-            double rootNodeWidth = 1000;
-            int leafDepth = 8;
-            int brickRes = 8;
+            int leafDepth = floor(log(rootNodeWidth/leafNodeWidth)/log(2) + 0.5);
+            logger.info("Leaf node width = %.3f", rootNodeWidth / (1 << leafDepth));
             std::ofstream outputFile(outputPath);
             voxelizePointCloud(outputFile, pointDb, pointRadius,
-                               origin, rootNodeWidth,
+                               boundMin, rootNodeWidth,
                                leafDepth, brickRes, logger);
         }
     }
