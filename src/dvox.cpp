@@ -862,6 +862,11 @@ int main(int argc, char* argv[])
         logger.error("%s", ap.geterror());
         return EXIT_FAILURE;
     }
+    if (argc == 1)
+    {
+        ap.usage();
+        return EXIT_FAILURE;
+    }
 
     logger.setLogLevel(Logger::LogLevel(logLevel));
     logger.setLogProgress(logProgress);

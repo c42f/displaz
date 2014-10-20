@@ -46,32 +46,29 @@
 /// Collection of header metadata stored in a hcloud file
 struct HCloudHeader
 {
-    uint16_t version;
-    mutable uint32_t headerSize;
-    uint64_t numPoints;
-    uint64_t numVoxels;
-    uint64_t indexSize;
-    uint64_t dataSize;
+    uint16_t version;     ///< Version of file format
+    mutable uint32_t headerSize; ///< Size of header in bytes
+    uint64_t numPoints;   ///< Total number of raw points in leaf nodes
+    uint64_t numVoxels;   ///< Total number of voxels
+    uint64_t indexOffset; ///< Offset to tree index in bytes
+    uint64_t dataOffset;  ///< Offset to start of data section, in bytes
 
-    Imath::V3d offset;
-    Imath::Box3d boundingBox;
-    Imath::Box3d treeBoundingBox;
-    uint16_t brickSize;
+    Imath::V3d offset;    ///< Offset for positions stored in data section (TODO: remove)
+    Imath::Box3d boundingBox;  ///< Bounding box of raw data
+    Imath::Box3d treeBoundingBox; ///< Bouding box of root node of tree
+    uint16_t brickSize;   ///< Voxel resolution of interior nodes in tree
 
     HCloudHeader()
         : version(HCLOUD_VERSION),
         headerSize(0),
         numPoints(0),
         numVoxels(0),
-        indexSize(0),
-        dataSize(0),
+        indexOffset(0),
+        dataOffset(0),
         offset(0),
         brickSize(0)
     { }
 
-
-    /// Get offset to start of data section
-    uint64_t dataOffset() const { return headerSize + indexSize; }
 
     /// Write HCloud header to given stream
     void write(std::ostream& out) const;

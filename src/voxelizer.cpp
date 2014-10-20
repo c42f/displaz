@@ -214,7 +214,8 @@ void voxelizePointCloud(std::ostream& outputStream,
     int leavesPerChunk = chunkLeafRes*chunkLeafRes*chunkLeafRes;
 
     logger.progress("Render chunks");
-    OctreeBuilder builder(outputStream, brickRes, leafDepth, false, logger);
+    OctreeBuilder builder(outputStream, brickRes, leafDepth, pointDb.offset(),
+                          rootBound, logger);
     // Traverse chunks in z order
     for (int chunkIdx = 0; chunkIdx < numChunks; ++chunkIdx)
     {

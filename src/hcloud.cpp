@@ -46,8 +46,8 @@ void HCloudHeader::write(std::ostream& out) const
     writeLE<uint32_t>(headerBytes, headerSize);
     writeLE<uint64_t>(headerBytes, numPoints);
     writeLE<uint64_t>(headerBytes, numVoxels);
-    writeLE<uint64_t>(headerBytes, indexSize);
-    writeLE<uint64_t>(headerBytes, dataSize);
+    writeLE<uint64_t>(headerBytes, indexOffset);
+    writeLE<uint64_t>(headerBytes, dataOffset);
     writeLE<double>(headerBytes, offset.x);
     writeLE<double>(headerBytes, offset.y);
     writeLE<double>(headerBytes, offset.z);
@@ -85,8 +85,8 @@ void HCloudHeader::read(std::istream& in)
     headerSize = readLE<uint32_t>(in);
     numPoints  = readLE<uint64_t>(in);
     numVoxels  = readLE<uint64_t>(in);
-    indexSize  = readLE<uint64_t>(in);
-    dataSize   = readLE<uint64_t>(in);
+    indexOffset = readLE<uint64_t>(in);
+    dataOffset = readLE<uint64_t>(in);
     offset.x   = readLE<double>(in);
     offset.y   = readLE<double>(in);
     offset.z   = readLE<double>(in);
@@ -112,8 +112,8 @@ std::ostream& operator<<(std::ostream& out, const HCloudHeader& h)
         "headerSize = %d\n"
         "numPoints = %d\n"
         "numVoxels = %d\n"
-        "indexSize = %d\n"
-        "dataSize = %d\n"
+        "indexOffset = %d\n"
+        "dataOffset = %d\n"
         "offset = %.3f\n"
         "boundingBox = [%.3f -- %.3f]\n"
         "treeBoundingBox = [%.3f -- %.3f]\n"
@@ -122,8 +122,8 @@ std::ostream& operator<<(std::ostream& out, const HCloudHeader& h)
         h.headerSize,
         h.numPoints,
         h.numVoxels,
-        h.indexSize,
-        h.dataSize,
+        h.indexOffset,
+        h.dataOffset,
         h.offset,
         h.boundingBox.min,
         h.boundingBox.max,

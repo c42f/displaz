@@ -45,8 +45,9 @@ struct HCloudNode
     Imath::Box3f bbox;       ///< Bounding box of node
 
     uint64_t dataOffset;
-    uint16_t numOccupiedVoxels;
-    uint16_t numLeafPoints;
+    uint32_t numOccupiedVoxels;
+    uint32_t numLeafPoints;
+    bool isLeaf;
 
     // List of non-empty voxels inside the node
     std::unique_ptr<float[]> position;
@@ -55,7 +56,7 @@ struct HCloudNode
 
     HCloudNode(const Box3f& bbox)
         : bbox(bbox),
-        dataOffset(0), numOccupiedVoxels(0), numLeafPoints(0)
+        dataOffset(0), numOccupiedVoxels(0), numLeafPoints(0), isLeaf(false)
     {
         for (int i = 0; i < 8; ++i)
             children[i] = 0;
@@ -67,7 +68,6 @@ struct HCloudNode
             delete children[i];
     }
 
-    bool isLeaf() const { return numLeafPoints != 0; }
     bool isCached() const { return position.get() != 0; }
 
     float radius() const { return bbox.max.x - bbox.min.x; }
@@ -96,9 +96,10 @@ static HCloudNode* readHCloudIndex(std::istream& in, const Box3f& bbox)
     HCloudNode* node = new HCloudNode(bbox);
     uint8_t childNodeMask   = readLE<uint8_t>(in);
     node->dataOffset        = readLE<uint64_t>(in);
-    node->numOccupiedVoxels = readLE<uint16_t>(in);
-    node->numLeafPoints     = readLE<uint16_t>(in);
+    node->numOccupiedVoxels = readLE<uint32_t>(in);
+    node->numLeafPoints     = readLE<uint32_t>(in);
     V3f center = bbox.center();
+    node->isLeaf = (childNodeMask == 0);
     for (int i = 0; i < 8; ++i)
     {
         if (!((childNodeMask >> i) & 1))
@@ -137,6 +138,7 @@ bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
 
     Box3f offsetBox(m_header.boundingBox.min - m_header.offset,
                     m_header.boundingBox.max - m_header.offset);
+    m_input.seekg(m_header.indexOffset);
     m_rootNode.reset(readHCloudIndex(m_input, offsetBox));
     m_inputCache.reset(new StreamPageCache(m_input));
 
@@ -180,7 +182,7 @@ static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
 {
     node->allocateArrays();
     int nvox = node->numOccupiedVoxels;
-    uint64_t offset = header.dataOffset() + node->dataOffset;
+    uint64_t offset = node->dataOffset;
     uint64_t length = nvox*sizeof(float)*5;
     if (!inputCache.read((char*)node->position.get(), offset, 3*sizeof(float)*nvox) ||
         !inputCache.read((char*)node->coverage.get(), offset + 3*sizeof(float)*nvox, sizeof(float)*nvox) ||
@@ -244,10 +246,10 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
         nodeStack.pop_back();
 
         double angularSize = node->radius()/(node->bbox.center() - cameraPos).length();
-        bool drawNode = angularSize < angularSizeLimit || node->isLeaf();
+        bool drawNode = angularSize < angularSizeLimit || node->isLeaf;
         if (!drawNode)
         {
-            // Want to decend into child nodes - try to cache them and if we
+            // Want to descend into child nodes - try to cache them and if we
             // can't, force current node to be drawn.
             for (int i = 0; i < 8; ++i)
             {

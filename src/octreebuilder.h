@@ -32,12 +32,14 @@ inline void plotBrick(dpz::PointList& dpoints,
 struct IndexNode
 {
     uint64_t dataOffset;
-    uint32_t dataSize;
+    uint32_t numVoxels;
+    uint32_t numPoints;
     std::unique_ptr<IndexNode> children[8];
 
     IndexNode()
         : dataOffset(0),
-        dataSize(0)
+        numVoxels(0),
+        numPoints(0)
     { }
 };
 
@@ -63,10 +65,8 @@ class NodeOutputQueue
 
         std::unique_ptr<IndexNode> write(const VoxelBrick& brick)
         {
-            std::unique_ptr<IndexNode> index(new IndexNode);
-            index->dataOffset = m_bufferedBytes.tellp();
-            index->dataSize = serializeBrick(m_bufferedBytes, brick);
-            m_sizeBytes += index->dataSize;
+            std::unique_ptr<IndexNode> index = serializeBrick(m_bufferedBytes, brick);
+            m_sizeBytes = m_bufferedBytes.tellp();
             m_bufferedNodes.push_back(index.get());
             return std::move(index);
         }
@@ -88,8 +88,11 @@ class NodeOutputQueue
 
     private:
         /// Serialize brick to stream; return number of bytes written
-        static int serializeBrick(std::ostream& out, const VoxelBrick& brick)
+        static std::unique_ptr<IndexNode> serializeBrick(
+                std::ostream& out, const VoxelBrick& brick)
         {
+            std::unique_ptr<IndexNode> index(new IndexNode);
+            index->dataOffset = out.tellp();
             // Grab voxels with nonzero coverage
             std::vector<float> positions;
             std::vector<float> coverage;
@@ -107,14 +110,12 @@ class NodeOutputQueue
                     intensity.push_back(brick.color(i));
                 }
             }
-            size_t dataSize = positions.size()*sizeof(float) +
-                              coverage.size() *sizeof(float) +
-                              intensity.size()*sizeof(float);
-            assert(dataSize < UINT32_MAX);
+            index->numVoxels = (uint32_t)coverage.size();
+            index->numPoints = 0; // FIXME
             out.write((const char*)positions.data(), positions.size()*sizeof(float));
             out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
             out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
-            return dataSize;
+            return std::move(index);
         }
 
         std::vector<IndexNode*> m_bufferedNodes;
@@ -132,15 +133,24 @@ class OctreeBuilder
 {
     public:
         OctreeBuilder(std::ostream& output, int brickRes, int leafDepth,
-                      bool debugPlot, Logger& logger)
+                      const Imath::V3d& positionOffset,
+                      const Imath::Box3d& rootBound, Logger& logger)
             : m_output(output),
             m_brickRes(brickRes),
             m_levelInfo(leafDepth+1),
-            m_debugPlot(debugPlot),
+            m_debugPlot(false),
             m_logger(logger)
         {
+            // Fill as much of the header in as possible; we will fill the rest
+            // in as we go.
+            m_header.boundingBox = rootBound; // FIXME
+            m_header.treeBoundingBox = rootBound;
+            m_header.offset = positionOffset;
+            m_header.brickSize = brickRes;
             // Write dummy header - will come back to fill this in later
             m_header.write(m_output);
+            // Data starts directly after header
+            m_header.dataOffset = m_output.tellp();
             if (m_debugPlot)
             {
                 m_dpoints.addAttribute<float>("position", 3)
@@ -169,7 +179,12 @@ class OctreeBuilder
             // somewhat irrelevant otherwise.
             for (int i = 0; i < (int)m_levelInfo.size(); ++i)
                 flushQueue(m_levelInfo[i].outputQueue, i);
-            // FIXME: Write index
+            m_header.indexOffset = m_output.tellp();
+            // TODO: Fill numPoints
+            writeIndex(m_output, m_rootNode.get());
+            m_output.seekp(0);
+            m_header.write(m_output);
+            m_logger.debug("Wrote hcloud header:\n%s", m_header);
             if (m_debugPlot)
             {
                 // Debug plotting
@@ -269,6 +284,33 @@ class OctreeBuilder
             m_logger.debug("Flushing buffer for level %d: %.2f MiB",
                            level, queue.sizeBytes()/(1024.0*1024.0));
             queue.flush(m_output);
+        }
+
+        static void writeIndex(std::ostream& out, const IndexNode* rootNode)
+        {
+            std::vector<const IndexNode*> nodeStack;
+            nodeStack.push_back(rootNode);
+            while (!nodeStack.empty())
+            {
+                const IndexNode* node = nodeStack.back();
+                nodeStack.pop_back();
+                uint8_t childNodeMask = 0;
+                // Pack presence of children as bits into a uint8_t
+                for (int i = 0; i < 8; ++i)
+                    childNodeMask |= bool(node->children[i]) << i;
+                writeLE<uint8_t> (out, childNodeMask);
+                writeLE<uint64_t>(out, node->dataOffset);
+                writeLE<uint32_t>(out, node->numVoxels);
+                writeLE<uint32_t>(out, node->numPoints);
+                // Backward iteration here ensures children are ordered from 0
+                // to 7 on disk.
+                for (int i = 7; i >= 0; --i)
+                {
+                    const IndexNode* n = node->children[i].get();
+                    if (n)
+                        nodeStack.push_back(n);
+                }
+            }
         }
 
         HCloudHeader m_header;
