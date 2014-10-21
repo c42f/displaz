@@ -220,7 +220,10 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
     // like this:
     // const double angularSizeLimit = 0.01/std::min(1.0, quality);
     // g_logger.info("quality = %f", quality);
-    const double angularSizeLimit = 0.01;
+    const double pixelsPerVoxel = 2;
+    const double fieldOfView = 60*M_PI/180; // FIXME - shouldn't be hardcoded...
+    double pixelsPerRadian = transStateIn.viewSize.y / fieldOfView;
+    const double angularSizeLimit = pixelsPerVoxel*m_header.brickSize/pixelsPerRadian;
 
     size_t nodesRendered = 0;
     size_t voxelsRendered = 0;
@@ -231,19 +234,24 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
     // Render out nodes which are cached or can now be read from the page cache
     const double rootPriority = 1000;
     std::vector<HCloudNode*> nodeStack;
+    std::vector<int> levelStack;
     if (m_rootNode->isCached())
     {
+        levelStack.push_back(0);
         nodeStack.push_back(m_rootNode.get());
     }
     else if (readNodeData(m_rootNode.get(), m_header, *m_inputCache, rootPriority))
     {
         nodeStack.push_back(m_rootNode.get());
+        levelStack.push_back(0);
         m_sizeBytes += 5*sizeof(float)*m_rootNode->numOccupiedVoxels;
     }
     while (!nodeStack.empty())
     {
         HCloudNode* node = nodeStack.back();
         nodeStack.pop_back();
+        int level = levelStack.back();
+        levelStack.pop_back();
 
         double angularSize = node->radius()/(node->bbox.center() - cameraPos).length();
         bool drawNode = angularSize < angularSizeLimit || node->isLeaf;
@@ -288,6 +296,8 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             // camera.  If we don't do this, we get problems for multi layer
             // surfaces where the more distant layer can cover the nearer one.
             prog.setUniformValue("markerShape", GLint(0));
+            // Debug - draw octree levels
+            // prog.setUniformValue("level", level);
             prog.setUniformValue("lodMultiplier", GLfloat(0.5*node->radius()/m_header.brickSize));
             prog.setAttributeArray("position",  node->position.get(),  3);
             prog.setAttributeArray("intensity", node->intensity.get(), 1);
@@ -303,7 +313,10 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
             {
                 HCloudNode* n = node->children[i];
                 if (n)
+                {
                     nodeStack.push_back(n);
+                    levelStack.push_back(level+1);
+                }
             }
         }
     }
@@ -342,6 +355,8 @@ V3d HCloudView::pickVertex(const V3d& cameraPos,
                            const V3d& rayOrigin, const V3d& rayDirection,
                            double longitudinalScale, double* distance) const
 {
+    // FIXME: Needs full camera transform to calculate angularSizeLimit, as in
+    // draw()
     const double angularSizeLimit = 0.01;
     double minDist = DBL_MAX;
     V3d selectedVertex(0);

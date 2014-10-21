@@ -8,12 +8,13 @@ uniform mat4 modelViewProjectionMatrix;
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointRadius = 1.2;     //# uiname=Point Radius (m); min=0.001; max=10
+uniform float pointRadius = 1.3;     //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 const int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number
 uniform int markerShape = 0;
+uniform int level = -1;
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to get from a width in projected coordinates to the
@@ -48,12 +49,15 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = pointRadius * trimScale * lodMultiplier;
+    modifiedPointRadius = sqrt(coverage) * pointRadius * trimScale * lodMultiplier;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     fragMarkerShape = markerShape;
     // Compute vertex color
+    vec3 baseColor = vec3(1);
+    if (level > 0)
+        baseColor = vec3((1 + level%3)/3.0, (1 + level%5)/5.0, (1 + level%7)/7.0);
     if (colorMode == 0)
-        pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+        pointColor = tonemap(intensity/400.0, exposure, contrast) * baseColor;
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     // Ensure zero size points are discarded.  The actual minimum point size is
@@ -92,6 +96,8 @@ void main()
 {
     if (fragMarkerShape < 0) // fragMarkerShape == -1: discarded.
         discard;
+    // Disable for now, since this is really expensive
+    /*
     float stippleThresholds[] = float[](
         0.02941176,  0.5       ,  0.14705882,  0.61764706,
         0.73529412,  0.26470588,  0.85294118,  0.38235294,
@@ -100,6 +106,7 @@ void main()
     );
     if (stippleThresholds[int(gl_FragCoord.x) % 4 + 4*(int(gl_FragCoord.y) % 4)] > fragCoverage)
         discard;
+        */
     // (fragMarkerShape == 0: Square shape)
     gl_FragDepth = gl_FragCoord.z;
     if (fragMarkerShape > 0 && pointScreenSize > pointScreenSizeLimit)
