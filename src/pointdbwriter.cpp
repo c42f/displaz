@@ -237,8 +237,10 @@ void convertLasToPointDb(const std::string& outDirName,
         std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
         if(!lasReader)
             throw DisplazError("Could not open file: %s", fileName);
+        uint64_t totPoints = std::max<uint64_t>(lasReader->header.extended_number_of_point_records,
+                                                lasReader->header.number_of_point_records);
+        logger.info("File %s: %d points", fileName, totPoints);
         logger.progress("Ingest file %d", fileIdx);
-        uint64_t totPoints = lasReader->header.number_of_point_records;
         uint64_t pointsRead = 0;
         while (lasReader->read_point())
         {
