@@ -36,8 +36,6 @@
 #include "streampagecache.h"
 #include "util.h"
 
-#include <queue>
-
 //------------------------------------------------------------------------------
 struct HCloudNode
 {
@@ -231,6 +229,24 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
     const size_t fetchQuota = 10;
     size_t fetchedPages = m_inputCache->fetchNow(fetchQuota);
 
+    // Extract plane equations for frustum clipping
+    //
+    // The clipping plane equations are linear combinations of the columns of
+    // the model view projection matrix.  (Normally you'd use rows in OpenGL,
+    // but Imath multiplies vectors on the left :-( ):  After transforming by
+    // the mvp matrix, we have the vec4 in clip coordinates: (xc yc zc wc).
+    // The clipping equations are simply
+    //   -wc <= xc <= wc
+    //   -wc <= yc <= wc
+    //   -wc <= zc <= wc
+    M44d mvp = transState.modelViewMatrix * transState.projMatrix;
+    V3f c1 = V3f(mvp[0][0], mvp[1][0], mvp[2][0]); float d1 = mvp[3][0];
+    V3f c2 = V3f(mvp[0][1], mvp[1][1], mvp[2][1]); float d2 = mvp[3][1];
+    V3f c3 = V3f(mvp[0][2], mvp[1][2], mvp[2][2]); float d3 = mvp[3][2];
+    V3f c4 = V3f(mvp[0][3], mvp[1][3], mvp[2][3]); float d4 = mvp[3][3];
+    V3f    clipVecs[6] = {c4+c1, c4-c1, c4+c2, c4-c2, c4+c3, c4-c3};
+    float clipDists[6] = {d4+d1, d4-d1, d4+d2, d4-d2, d4+d3, d4-d3};
+
     // Render out nodes which are cached or can now be read from the page cache
     const double rootPriority = 1000;
     std::vector<HCloudNode*> nodeStack;
@@ -252,6 +268,25 @@ void HCloudView::draw(const TransformState& transStateIn, double quality)
         nodeStack.pop_back();
         int level = levelStack.back();
         levelStack.pop_back();
+
+        // Frustum culling
+        V3f points[8];
+        points[0][0] = points[1][0] = points[2][0] = points[3][0] = node->bbox.min[0];
+        points[4][0] = points[5][0] = points[6][0] = points[7][0] = node->bbox.max[0];
+        points[0][1] = points[1][1] = points[4][1] = points[5][1] = node->bbox.min[1];
+        points[2][1] = points[3][1] = points[6][1] = points[7][1] = node->bbox.max[1];
+        points[0][2] = points[2][2] = points[4][2] = points[6][2] = node->bbox.min[2];
+        points[1][2] = points[3][2] = points[5][2] = points[7][2] = node->bbox.max[2];
+        bool doClip = false;
+        for (int j = 0; j < 6 && !doClip; ++j)
+        {
+            // Test clipping against jth clipping plane
+            doClip = true;
+            for (int i = 0; i < 8; ++i)
+                doClip &= clipVecs[j].dot(points[i]) + clipDists[j] < 0;
+        }
+        if (doClip)
+            continue;
 
         double angularSize = node->radius()/(node->bbox.center() - cameraPos).length();
         bool drawNode = angularSize < angularSizeLimit || node->isLeaf;
