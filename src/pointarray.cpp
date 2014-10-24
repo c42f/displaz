@@ -426,9 +426,10 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
+size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                               double quality, bool incrementalDraw) const
 {
+    transState.translate(offset()).setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
     std::vector<ShaderAttribute> activeAttrs = activeShaderAttributes(prog.programId());
     // Figure out shader locations for each point field
@@ -469,7 +470,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
     size_t totDrawn = 0;
-    V3f relCamera = cameraPos - offset();
+    V3f relCamera = transState.cameraPos() - offset();
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())

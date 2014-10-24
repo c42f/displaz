@@ -37,6 +37,7 @@
 #include <QMetaType>
 
 class QGLShaderProgram;
+class TransformState;
 
 /// Shared interface for all displaz geometry types
 class Geometry : public QObject
@@ -73,13 +74,15 @@ class Geometry : public QObject
         ///
         /// Return total number of points actually drawn
         virtual size_t drawPoints(QGLShaderProgram& pointShaderProg,
-                                  const V3d& cameraPos, double quality,
+                                  const TransformState& transState, double quality,
                                   bool incrementalDraw) const { return 0; }
 
         /// Draw edges with the given shader
-        virtual void drawEdges(QGLShaderProgram& edgeShaderProg) const {}
+        virtual void drawEdges(QGLShaderProgram& edgeShaderProg,
+                               const TransformState& transState) const {}
         /// Draw faces with the given shader
-        virtual void drawFaces(QGLShaderProgram& faceShaderProg) const {}
+        virtual void drawFaces(QGLShaderProgram& faceShaderProg,
+                               const TransformState& transState) const {}
 
         /// Return total number of vertices
         virtual size_t pointCount() const = 0;

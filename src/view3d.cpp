@@ -66,9 +66,9 @@ inline Imath::V3d qt2exr(const QVector3D& v)
     return Imath::V3d(v.x(), v.y(), v.z());
 }
 
-inline Imath::M44f qt2exr(const QMatrix4x4& m)
+inline Imath::M44d qt2exr(const QMatrix4x4& m)
 {
-    Imath::M44f mOut;
+    Imath::M44d mOut;
     for(int j = 0; j < 4; ++j)
     for(int i = 0; i < 4; ++i)
         mOut[j][i] = m.constData()[4*j + i];
@@ -86,7 +86,6 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_mouseButton(Qt::NoButton),
     m_cursorPos(0),
     m_prevCursorSnap(0),
-    m_drawOffset(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
     m_drawCursor(true),
@@ -226,8 +225,7 @@ void View3D::centreOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
-    m_drawOffset = geom.offset();
-    m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+    m_camera.setCenter(exr2qt(m_cursorPos));
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
@@ -300,15 +298,12 @@ void View3D::paintGL()
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     QModelIndexList sel = m_selectionModel->selectedRows();
 
-    // Draw bounding boxes
-    if(m_drawBoundingBoxes && !m_incrementalDraw)
+    // Draw bounding boxes if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
         for(int i = 0; i < sel.size(); ++i)
         {
             // Draw bounding box
             Imath::Box3d bbox = geoms[sel[i].row()]->boundingBox();
-            bbox.min -= m_drawOffset;
-            bbox.max -= m_drawOffset;
             drawBoundingBox(transState, bbox, Imath::C3f(1));
         }
     }
@@ -353,7 +348,7 @@ void View3D::paintGL()
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
-        drawCursor(transState, m_cursorPos - m_drawOffset);
+        drawCursor(transState, m_cursorPos);
 
     // Set up timer to draw a high quality frame if necessary
     if (totDrawn == 0)
@@ -376,11 +371,7 @@ void View3D::drawMeshes(const TransformState& transState,
         meshFaceShader.setUniformValue("lightDir_eye",
                     m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
         for (int i = 0; i < sel.size(); ++i)
-        {
-            V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-            transState.translate(offset).setUniforms(meshFaceShader.programId());
-            geoms[sel[i].row()]->drawFaces(meshFaceShader);
-        }
+            geoms[sel[i].row()]->drawFaces(meshFaceShader, transState);
         meshFaceShader.release();
     }
 
@@ -391,11 +382,7 @@ void View3D::drawMeshes(const TransformState& transState,
         glLineWidth(1);
         meshEdgeShader.bind();
         for(int i = 0; i < sel.size(); ++i)
-        {
-            V3d offset = geoms[sel[i].row()]->offset() - m_drawOffset;
-            transState.translate(offset).setUniforms(meshEdgeShader.programId());
-            geoms[sel[i].row()]->drawEdges(meshEdgeShader);
-        }
+            geoms[sel[i].row()]->drawEdges(meshEdgeShader, transState);
         meshEdgeShader.release();
     }
 }
@@ -431,7 +418,7 @@ void View3D::mouseReleaseEvent(QMouseEvent* event)
         {
             // Snap camera centre to new position
             V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
-            m_camera.setCenter(exr2qt(newPos - m_drawOffset));
+            m_camera.setCenter(exr2qt(newPos));
         }
     }
 }
@@ -445,9 +432,9 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
     if(event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = qt2exr(
-            m_camera.mouseMovePoint(exr2qt(m_cursorPos - m_drawOffset),
+            m_camera.mouseMovePoint(exr2qt(m_cursorPos),
                                     event->pos() - m_prevMousePos,
-                                    zooming) ) + m_drawOffset;
+                                    zooming) );
         restartRender();
     }
     else
@@ -470,7 +457,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_C)
     {
         // Centre camera on current cursor location
-        m_camera.setCenter(exr2qt(m_cursorPos - m_drawOffset));
+        m_camera.setCenter(exr2qt(m_cursorPos));
     }
     else
         event->ignore();
@@ -478,7 +465,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
 
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const TransformState& transState, const V3f& cursorPos) const
+void View3D::drawCursor(const TransformState& transState, const V3d& cursorPos) const
 {
     transState.load();
     // Draw a point at the centre of the cursor.
@@ -489,7 +476,7 @@ void View3D::drawCursor(const TransformState& transState, const V3f& cursorPos) 
     glEnd();
 
     // Find position of cursor in screen space
-    V3f screenP3 = qt2exr(m_camera.projectionMatrix()*m_camera.viewMatrix() *
+    V3d screenP3 = qt2exr(m_camera.projectionMatrix()*m_camera.viewMatrix() *
                           exr2qt(cursorPos));
     // Cull if behind the camera
     if((m_camera.viewMatrix() * exr2qt(cursorPos)).z() > 0)
@@ -565,13 +552,14 @@ size_t View3D::drawPoints(const TransformState& transState,
         return 0;
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    V3d globalCamPos = qt2exr(m_camera.position()) + m_drawOffset;
     double quality = 1;
     // Get total number of points we would draw at quality == 1
     size_t totSimplified = 0;
     for(int i = 0; i < selection.size(); ++i)
-        totSimplified += geoms[selection[i].row()]->simplifiedPointCount(globalCamPos,
-                                                                         incrementalDraw);
+    {
+        totSimplified += geoms[selection[i].row()]->
+            simplifiedPointCount(qt2exr(m_camera.position()), incrementalDraw);
+    }
     quality = double(numPointsToRender) / totSimplified;
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
@@ -584,14 +572,11 @@ size_t View3D::drawPoints(const TransformState& transState,
         Geometry& geom = *geoms[geomIdx];
         if(geom.pointCount() == 0)
             continue;
-        V3d offset = geom.offset() - m_drawOffset;
-        //tfm::printf("offset = %.3f\n", offset);
-        transState.translate(offset).setUniforms(prog.programId());
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(geomIdx + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-        totDrawn += geom.drawPoints(prog, globalCamPos, quality, incrementalDraw);
+        totDrawn += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     prog.release();
@@ -608,12 +593,12 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
     // position x,y and the z of the reference position.  Take the reference to
     // be the camera rotation center since that's likely to be roughly the
     // depth the user is interested in.
-    V3d refPos = qt2exr(m_camera.center()) + m_drawOffset;
+    V3d refPos = qt2exr(m_camera.center());
     QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
-    double refZ = mat.map(exr2qt(refPos - m_drawOffset)).z();
+    double refZ = mat.map(exr2qt(refPos)).z();
     QVector3D newPointProj(clickPos.x(), clickPos.y(), refZ);
     // Map projected point back into model coordinates
-    return qt2exr(mat.inverted().map(newPointProj)) + m_drawOffset;
+    return qt2exr(mat.inverted().map(newPointProj));
 }
 
 
@@ -626,7 +611,7 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     if (m_geometries->get().empty())
         return pos;
     // Ray out from the camera to the given point
-    V3f viewDir = (pos - (qt2exr(m_camera.position()) + m_drawOffset)).normalized();
+    V3d viewDir = (pos - qt2exr(m_camera.position())).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it

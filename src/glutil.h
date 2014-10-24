@@ -44,8 +44,14 @@ struct TransformState
     Imath::M44d projMatrix;
     Imath::M44d modelViewMatrix;
 
-    TransformState(const M44f& projMatrix, const M44f& modelViewMatrix)
+    TransformState(const M44d& projMatrix, const M44d& modelViewMatrix)
         : projMatrix(projMatrix), modelViewMatrix(modelViewMatrix) {}
+
+    /// Return position of camera in model space
+    V3d cameraPos() const
+    {
+        return V3d(0)*modelViewMatrix.inverse();
+    }
 
     /// Translate model by given offset
     TransformState translate(const Imath::V3d& offset) const;

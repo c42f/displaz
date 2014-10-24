@@ -47,8 +47,10 @@ class TriMesh : public Geometry
     public:
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual void drawFaces(QGLShaderProgram& prog) const;
-        virtual void drawEdges(QGLShaderProgram& prog) const;
+        virtual void drawFaces(QGLShaderProgram& prog,
+                               const TransformState& transState) const;
+        virtual void drawEdges(QGLShaderProgram& prog,
+                               const TransformState& transState) const;
 
         virtual size_t pointCount() const { return 0; }
 

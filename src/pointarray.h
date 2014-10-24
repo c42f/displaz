@@ -56,7 +56,7 @@ class PointArray : public Geometry
         // Overridden Geometry functions
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual size_t drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
+        virtual size_t drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                   double quality, bool incrementalDraw) const;
         virtual size_t pointCount() const { return m_npoints; }
         virtual size_t simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const;
