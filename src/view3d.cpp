@@ -298,7 +298,8 @@ void View3D::paintGL()
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     QModelIndexList sel = m_selectionModel->selectedRows();
 
-    // Draw bounding boxes if(m_drawBoundingBoxes && !m_incrementalDraw)
+    // Draw bounding boxes
+    if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
         for(int i = 0; i < sel.size(); ++i)
         {
