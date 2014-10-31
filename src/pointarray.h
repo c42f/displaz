@@ -72,17 +72,17 @@ class PointArray : public Geometry
     private:
         bool loadLas(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, size_t& totPoints,
+                     size_t& npoints, uint64_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
         bool loadText(QString fileName, size_t maxPointCount,
                       std::vector<GeomField>& fields, V3d& offset,
-                      size_t& npoints, size_t& totPoints,
+                      size_t& npoints, uint64_t& totPoints,
                       Imath::Box3d& bbox, V3d& centroid);
 
         bool loadPly(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, size_t& totPoints,
+                     size_t& npoints, uint64_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
         friend struct ProgressFunc;

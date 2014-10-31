@@ -8,6 +8,7 @@
 #include <QStringList>
 
 #include "geometry.h"
+#include "qtlogger.h"
 
 /// Loader for data files supported by displaz
 ///
@@ -51,11 +52,22 @@ class FileLoader : public QObject
                         this, SIGNAL(loadProgress(int)));
                 connect(geom.get(), SIGNAL(loadStepStarted(QString)),
                         this, SIGNAL(loadStepStarted(QString)));
-                if (geom->loadFile(fileName, m_maxPointsPerFile))
+                try
                 {
-                    emit geometryLoaded(geom);
-                    if (m_removeAfterLoad)
-                        QFile::remove(fileName);
+                    if (geom->loadFile(fileName, m_maxPointsPerFile))
+                    {
+                        emit geometryLoaded(geom);
+                        if (m_removeAfterLoad)
+                            QFile::remove(fileName);
+                    }
+                    else
+                    {
+                        g_logger.error("Could not load %s", fileName);
+                    }
+                }
+                catch(std::bad_alloc& e)
+                {
+                    g_logger.error("Ran out of memory trying to load %s", fileName);
                 }
             }
             emit finished();

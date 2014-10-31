@@ -39,7 +39,7 @@
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, size_t& totPoints,
+                         size_t& npoints, uint64_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     g_logger.error("Cannot load %s: Displaz built without las support!", fileName);
@@ -88,7 +88,7 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, size_t& totPoints,
+                         size_t& npoints, uint64_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     V3d Psum(0);
@@ -220,7 +220,8 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 
     //std::ofstream dumpFile("points.txt");
     // Figure out how much to decimate the point cloud.
-    totPoints = lasReader->header.number_of_point_records;
+    totPoints = std::max<uint64_t>(lasReader->header.extended_number_of_point_records,
+                                   lasReader->header.number_of_point_records);
     size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
     if(decimate > 1)
     {
@@ -252,10 +253,10 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint8_t* numReturns     = fields[3].as<uint8_t>();
     uint8_t* pointSourceId  = fields[4].as<uint8_t>();
     uint8_t* classification = fields[5].as<uint8_t>();
-    size_t readCount = 0;
+    uint64_t readCount = 0;
+    uint64_t nextDecimateBlock = 1;
+    uint64_t nextStore = 1;
     size_t storeCount = 0;
-    size_t nextDecimateBlock = 1;
-    size_t nextStore = 1;
     if (!lasReader->read_point())
         return false;
     const LASpoint& point = lasReader->point;
@@ -263,7 +264,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     if (point.have_rgb)
     {
         fields.push_back(GeomField(TypeSpec(TypeSpec::Uint,2,3,TypeSpec::Color),
-                                        "color", npoints));
+                                   "color", npoints));
         color = fields.back().as<uint16_t>();
     }
     do

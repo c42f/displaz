@@ -176,7 +176,7 @@ PointArray::~PointArray()
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
                           std::vector<GeomField>& fields, V3d& offset,
-                          size_t& npoints, size_t& totPoints,
+                          size_t& npoints, uint64_t& totPoints,
                           Imath::Box3d& bbox, V3d& centroid)
 {
     V3d Psum(0);
@@ -224,7 +224,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, size_t& totPoints,
+                         size_t& npoints, uint64_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
@@ -269,7 +269,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     setFileName(fileName);
     // Read file into point data fields.  Use very basic file type detection
     // based on extension.
-    size_t totPoints = 0;
+    uint64_t totPoints = 0;
     Imath::Box3d bbox;
     V3d offset(0);
     V3d centroid(0);
@@ -344,6 +344,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     emit loadStepStarted("Reordering fields");
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
+        g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
         reorder(m_fields[i], inds.get(), m_npoints);
         emit loadProgress(int(100*(i+1)/m_fields.size()));
     }
