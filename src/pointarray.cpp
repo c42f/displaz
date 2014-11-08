@@ -94,8 +94,8 @@ struct OctreeNode
     /// Estimate cost of drawing a single leaf node with to given camera
     /// position, quality, and incremental settings.
     ///
-    /// Sets numVertices and numFragments to estimated number of vertices and
-    /// fragments which would be drawn with given settings
+    /// Returns estimate of primitive draw count and whether there's anything
+    /// more to draw.
     DrawCount drawCount(const V3f& relCamera,
                         double quality, bool incrementalDraw) const
     {
@@ -115,11 +115,6 @@ struct OctreeNode
             drawCount.numVertices = (this->nextBeginIndex >= this->endIndex) ? 0 :
                 std::min(chunkSize, this->endIndex - this->nextBeginIndex);
         }
-        drawCount.numFragments = drawCount.numVertices*pow(drawAllDist/dist, 2);
-        // The quality solver works better if numFragments contains distinct
-        // information from numVertices, so clamp this here.
-        if (drawCount.numFragments < 1)
-            drawCount.numFragments = 0;
         drawCount.moreToDraw = this->nextBeginIndex < this->endIndex;
         return drawCount;
     }

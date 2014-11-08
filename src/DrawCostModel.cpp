@@ -33,8 +33,10 @@
 // transformation
 double DrawCostModel::quality(double targetMillisecs,
                               const std::vector<const Geometry*>& geoms,
-                              const TransformState& transState, bool firstIncrementalFrame)
+                              const TransformState& transState,
+                              bool firstIncrementalFrame)
 {
+    // Sample draw count function at various qualities
     const int numQualitySamps = 4;
     double quality = firstIncrementalFrame ? m_incQuality : m_quality;
     double qualities[numQualitySamps] = {quality/20, quality/4, quality, quality*4};
@@ -44,20 +46,22 @@ double DrawCostModel::quality(double targetMillisecs,
         geoms[i]->estimateCost(transState, firstIncrementalFrame,
                                qualities, drawCounts, numQualitySamps);
     }
-
-    double tEst[numQualitySamps] = {0};
+    // Estimate frame time at each quality
+    double frameTimeEst[numQualitySamps] = {0};
     for (int i = 0; i < numQualitySamps; ++i)
     {
-        V3d v(1, drawCounts[i].numVertices, drawCounts[i].numFragments);
-        tEst[i] = m_modelCoeffs.dot(v);
+        V3d v(1, drawCounts[i].numVertices, 0);
+        frameTimeEst[i] = m_modelCoeffs.dot(v);
     }
+
+    // Interpolate desired quality using guess at the frame time
     bool expectMoreToDraw = false;
-    if (targetMillisecs <= tEst[0])
+    if (targetMillisecs <= frameTimeEst[0])
     {
         quality = qualities[0];
         expectMoreToDraw = drawCounts[0].moreToDraw;
     }
-    else if (targetMillisecs >= tEst[numQualitySamps-1])
+    else if (targetMillisecs >= frameTimeEst[numQualitySamps-1])
     {
         quality = qualities[numQualitySamps-1];
         expectMoreToDraw = drawCounts[numQualitySamps-1].moreToDraw;
@@ -66,9 +70,10 @@ double DrawCostModel::quality(double targetMillisecs,
     {
         // Find desired quality by basic linear interpolation
         int i = 0;
-        while (i < numQualitySamps-2 && tEst[i+1] < targetMillisecs)
+        while (i < numQualitySamps-2 && frameTimeEst[i+1] < targetMillisecs)
             ++i;
-        double interp = (targetMillisecs - tEst[i]) / (tEst[i+1] - tEst[i]);
+        double interp = (targetMillisecs - frameTimeEst[i]) /
+                        (frameTimeEst[i+1] - frameTimeEst[i]);
         quality = (1-interp)*qualities[i] + interp*qualities[i+1];
         expectMoreToDraw = drawCounts[i].moreToDraw;
     }
@@ -86,70 +91,26 @@ double DrawCostModel::quality(double targetMillisecs,
 
 V3d DrawCostModel::fitCostModel(const DrawRecords& drawRecords)
 {
-//    // Initialize sums to nonzero for a weak conservative regularization:
-//    // assert that we can draw nvsum vertices in tsum millisecs.
-//    double nvsum = 1000000;
-//    double tsum = 50;
-//
-//    double regWeight = 1e-3;
-//    nvsum *= regWeight;
-//    tsum *= regWeight;
-//
-//    int numDrawRecs = (int)drawRecords.size();
-//    for (int i = 0; i < numDrawRecs; ++i)
-//    {
-//        // Weight in favour of recent measurements.  Over 100 measurements,
-//        // this reduces the last measurement to a weight of ~0.1
-//        double w = exp(-0.2*(numDrawRecs - 1 - i));
-//        auto& rec = drawRecords[i];
-//        nvsum += w*rec.first.numVertices;
-//        tsum += w*rec.second;
-//    }
-//
-//    return V3d(0, tsum/nvsum, 0);
+    // Initialize sums to nonzero for a weak conservative regularization:
+    // assert that we can draw nvsum vertices in tsum millisecs.
+    double nvsum = 1000000;
+    double tsum = 50;
 
-
-    Imath::M33d ATA(0.0);
-    Imath::V3d ATt(0.0);
+    double regWeight = 1e-3;
+    nvsum *= regWeight;
+    tsum *= regWeight;
 
     int numDrawRecs = (int)drawRecords.size();
     for (int i = 0; i < numDrawRecs; ++i)
     {
-        // Weight in favour of recent measurements.  Over 100 measurements,
-        // this reduces the last measurement to a weight of ~0.1
-        double w = exp(-0.023*(numDrawRecs - 1 - i));
+        // Weight in favour of recent measurements.
+        double w = exp(-0.2*(numDrawRecs - 1 - i));
         auto& rec = drawRecords[i];
-        double v0 = 1;
-        double v1 = rec.first.numVertices;
-        double v2 = rec.first.numFragments;
-        double t = rec.second;
-        ATA[0][0] += w*v0*v0;
-        ATA[0][1] += w*v0*v1;
-        ATA[0][2] += w*v0*v2;
-        ATA[1][1] += w*v1*v1;
-        ATA[1][2] += w*v1*v2;
-        ATA[2][2] += w*v2*v2;
-
-        ATt[0] += w*v0*t;
-        ATt[1] += w*v1*t;
-        ATt[2] += w*v2*t;
+        nvsum += w*rec.first.numVertices;
+        tsum += w*rec.second;
     }
-    // Fill in lower triangular part of symmetric ATA
-    ATA[1][0] = ATA[0][1];
-    ATA[2][0] = ATA[0][2];
-    ATA[2][1] = ATA[1][2];
 
-    // Ick!  Imath doesn't have a solve() function, so invert A :-(
-    V3d modelCoeffs = ATt*ATA.invert();
-
-    // Robustness hack: clamp costs to be positive.  (Should possibly do
-    // nonegative least squares, but the above is already complex enough
-    // without a good matrix library.)
-    modelCoeffs.x = std::max(0.0, modelCoeffs.x);
-    modelCoeffs.y = std::max(0.0, modelCoeffs.y);
-    modelCoeffs.z = std::max(0.0, modelCoeffs.z);
-
-    return modelCoeffs;
+    return V3d(0, tsum/nvsum, 0);
 }
 
 

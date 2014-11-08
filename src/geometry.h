@@ -43,20 +43,17 @@ class TransformState;
 /// Estimate of amount of geometry drawn in a frame
 ///
 /// `numVertices` is the number of vertices
-/// `numFragments` is the number of framents
 /// `moreToDraw` indicates whether the geometry is completely drawn
 struct DrawCount
 {
     double numVertices;
-    double numFragments;
     bool   moreToDraw;
 
-    DrawCount() : numVertices(0), numFragments(0), moreToDraw(false) { }
+    DrawCount() : numVertices(0), moreToDraw(false) { }
 
     DrawCount& operator+=(const DrawCount& rhs)
     {
         numVertices += rhs.numVertices;
-        numFragments += rhs.numFragments;
         moreToDraw |= rhs.moreToDraw;
         return *this;
     }
@@ -115,17 +112,17 @@ class Geometry : public QObject
         /// Return total number of vertices
         virtual size_t pointCount() const = 0;
 
-        /// Estimate the number of vertices and fragments which would be shaded
-        /// with drawPoints() at the given quality settings
+        /// Estimate the number of vertices which would be shaded when
+        /// the draw() functions are called with the given quality settings.
         ///
         /// transState and incrementalDraw are as in drawPoints.
         ///
         /// `drawCounts[i]` should be filled with an estimate of the count of
-        /// verts/fragments drawn at the given quality `qualities[i]`.
-        /// `numEstimates` is the number of elements in the qualities array.
+        /// verts drawn at the given quality `qualities[i]`.  `numEstimates` is
+        /// the number of elements in the qualities array.
         virtual void estimateCost(const TransformState& transState,
                                   bool incrementalDraw, const double* qualities,
-                                  DrawCount* drawCounts, int numEstimates) const { }
+                                  DrawCount* drawCounts, int numEstimates) const = 0;
 
         /// Pick a vertex on the geometry given a ray representing a mouse click
         ///

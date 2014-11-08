@@ -54,6 +54,10 @@ class TriMesh : public Geometry
 
         virtual size_t pointCount() const { return 0; }
 
+        virtual void estimateCost(const TransformState& transState,
+                                  bool incrementalDraw, const double* qualities,
+                                  DrawCount* drawCounts, int numEstimates) const;
+
         virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const;
 

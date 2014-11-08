@@ -40,30 +40,29 @@
 ///
 /// We want to draw as much geometry per frame as possible, without the time
 /// blowing out and the application becoming laggy.  This class models the
-/// frame time as a function of an overall draw quality factor.  The draw
-/// quality is used for all geometry in the scene to avoid
-///
+/// frame time as a function of an overall draw quality factor.  The same
+/// quality factor is applied to all geometry to achive some consistency in the
+/// amount of per-geometry quality degradation.
 ///
 /// We model the cost of drawing geometry as the function
 ///
-///   t(T,q) = a + b*Nv(T,q) + c*Nf(T,q)
+///   t(T,q) = a*Nv(T,q)
 ///
 /// where
 ///   * t is the frame time
 ///   * T is the camera transformation
 ///   * q is the quality
 ///   * Nv is the number of vertices shaded
-///   * Nf is the number of fragments shaded
 ///
-/// and a,b,c are fitting parameters which depend on the shader, speed
-/// of the GPU etc.
+/// and a is an unknown fitting parameter which depends on the shader, speed of
+/// the GPU etc.
 class DrawCostModel
 {
     public:
         DrawCostModel()
             : m_quality(1),
             m_incQuality(1),
-            m_maxDrawRecords(100),
+            m_maxDrawRecords(20),
             m_drawRecords(),
             m_modelCoeffs(fitCostModel(m_drawRecords))
         { }
