@@ -56,12 +56,13 @@ class HCloudView : public Geometry
 
         virtual void initializeGL();
 
-        virtual void draw(const TransformState& transState, double quality);
+        virtual void draw(const TransformState& transState, double quality) const;
 
         virtual size_t pointCount() const;
 
-        virtual size_t simplifiedPointCount(const V3d& cameraPos,
-                                            bool incrementalDraw) const;
+        virtual void estimateCost(const TransformState& transState,
+                                  bool incrementalDraw, const double* qualities,
+                                  DrawCount* drawCounts, int numEstimates) const;
 
         virtual V3d pickVertex(const V3d& cameraPos,
                                const V3d& rayOrigin, const V3d& rayDirection,
@@ -69,12 +70,14 @@ class HCloudView : public Geometry
 
     private:
         HCloudHeader m_header; // TODO: Put in HCloudInput class
-        uint64_t m_sizeBytes;
-        std::ifstream m_input;
-        std::unique_ptr<StreamPageCache> m_inputCache;
+        // TODO: Do we really want all this mutable state?
+        // Should draw() be logically non-const?
+        mutable uint64_t m_sizeBytes;
+        mutable std::ifstream m_input;
+        mutable std::unique_ptr<StreamPageCache> m_inputCache;
         std::unique_ptr<HCloudNode> m_rootNode;
         std::unique_ptr<ShaderProgram> m_shader;
-        std::vector<float> m_simplifyThreshold;
+        mutable std::vector<float> m_simplifyThreshold;
 };
 
 

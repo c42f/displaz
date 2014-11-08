@@ -41,6 +41,8 @@
 
 #include "ply_io.h"
 
+#include "ClipBox.h"
+
 
 //------------------------------------------------------------------------------
 /// Functor to compute octree child node index with respect to some given split
@@ -88,6 +90,34 @@ struct OctreeNode
     size_t size() const { return endIndex - beginIndex; }
 
     bool isLeaf() const { return beginIndex != endIndex; }
+
+    /// Estimate cost of drawing a single leaf node with to given camera
+    /// position, quality, and incremental settings.
+    ///
+    /// Returns estimate of primitive draw count and whether there's anything
+    /// more to draw.
+    DrawCount drawCount(const V3f& relCamera,
+                        double quality, bool incrementalDraw) const
+    {
+        assert(isLeaf);
+        const double drawAllDist = 100;
+        double dist = (this->bbox.center() - relCamera).length();
+        double diagRadius = this->bbox.size().length()/2;
+        // Subtract bucket diagonal dist, since we really want an approx
+        // distance to closest point in the bucket, rather than dist to centre.
+        dist = std::max(10.0, dist - diagRadius);
+        double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
+        size_t chunkSize = (size_t)ceil(this->size()*desiredFraction);
+        DrawCount drawCount;
+        drawCount.numVertices = chunkSize;
+        if (incrementalDraw)
+        {
+            drawCount.numVertices = (this->nextBeginIndex >= this->endIndex) ? 0 :
+                std::min(chunkSize, this->endIndex - this->nextBeginIndex);
+        }
+        drawCount.moreToDraw = this->nextBeginIndex < this->endIndex;
+        return drawCount;
+    }
 };
 
 
@@ -176,7 +206,7 @@ PointArray::~PointArray()
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
                           std::vector<GeomField>& fields, V3d& offset,
-                          size_t& npoints, size_t& totPoints,
+                          size_t& npoints, uint64_t& totPoints,
                           Imath::Box3d& bbox, V3d& centroid)
 {
     V3d Psum(0);
@@ -224,7 +254,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, size_t& totPoints,
+                         size_t& npoints, uint64_t& totPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
@@ -269,7 +299,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     setFileName(fileName);
     // Read file into point data fields.  Use very basic file type detection
     // based on extension.
-    size_t totPoints = 0;
+    uint64_t totPoints = 0;
     Imath::Box3d bbox;
     V3d offset(0);
     V3d centroid(0);
@@ -365,6 +395,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     emit loadStepStarted("Reordering fields");
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
+        g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
         reorder(m_fields[i], inds.get(), m_npoints);
         emit loadProgress(int(100*(i+1)/m_fields.size()));
     }
@@ -386,45 +417,38 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
 }
 
 
-static size_t simplifiedPointCount(const OctreeNode* node, const V3f& cameraPos,
-                                   double quality, bool incrementalDraw)
+void PointArray::estimateCost(const TransformState& transState,
+                              bool incrementalDraw, const double* qualities,
+                              DrawCount* drawCounts, int numEstimates) const
 {
-    // Distance below which all points will be drawn for a node, at quality == 1
-    // TODO: Auto-adjust this for various length scales?
-    const double drawAllDist = 100;
-    if (node->isLeaf())
+    TransformState relativeTrans = transState.translate(offset());
+    V3f relCamera = relativeTrans.cameraPos();
+    ClipBox clipBox(relativeTrans);
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
     {
-        double dist = (node->bbox.center() - cameraPos).length();
-        // double diagRadius = node->radius*sqrt(3);
-        double diagRadius = node->bbox.size().length()/2;
-        // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
-        dist = std::max(10.0, dist - diagRadius);
-        double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
-        size_t chunkSize = (size_t)ceil(node->size()*desiredFraction);
-        size_t ndraw = chunkSize;
-        if (incrementalDraw)
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        if (clipBox.canCull(node->bbox))
+            continue;
+        if (!node->isLeaf())
         {
-            ndraw = (node->nextBeginIndex >= node->endIndex) ? 0 :
-                    std::min(chunkSize, node->endIndex - node->nextBeginIndex);
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
         }
-        return ndraw;
+        for (int i = 0; i < numEstimates; ++i)
+        {
+            drawCounts[i] += node->drawCount(relCamera, qualities[i],
+                                             incrementalDraw);
+        }
     }
-    size_t ndraw = 0;
-    for (int i = 0; i < 8; ++i)
-    {
-        OctreeNode* n = node->children[i];
-        if (n)
-            ndraw += simplifiedPointCount(n, cameraPos, quality, incrementalDraw);
-    }
-    return ndraw;
-}
-
-
-size_t PointArray::simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const
-{
-    V3f relCamera = cameraPos - offset();
-    return ::simplifiedPointCount(m_rootNode.get(), relCamera, 1.0, incrementalDraw);
 }
 
 
@@ -448,9 +472,14 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
-                              double quality, bool incrementalDraw) const
+//static size_t debugFileIdx;
+
+
+DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
+                                double quality, bool incrementalDraw) const
 {
+    TransformState relativeTrans = transState.translate(offset());
+    relativeTrans.setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
     std::vector<ShaderAttribute> activeAttrs = activeShaderAttributes(prog.programId());
     // Figure out shader locations for each point field
@@ -487,17 +516,21 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
             prog.enableAttributeArray(attributes[i]->location);
     }
 
+    DrawCount drawCount;
+    ClipBox clipBox(relativeTrans);
+
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
-    size_t totDrawn = 0;
-    V3f relCamera = cameraPos - offset();
+    V3f relCamera = relativeTrans.cameraPos();
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
     {
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
+        if (clipBox.canCull(node->bbox))
+            continue;
         if (!node->isLeaf())
         {
             for (int i = 0; i < 8; ++i)
@@ -508,22 +541,16 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
             }
             continue;
         }
-        size_t ndraw = node->size();
-        double lodMultiplier = 1;
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
-        ndraw = ::simplifiedPointCount(node, relCamera, quality, incrementalDraw);
+
+        DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
+        drawCount += nodeDrawCount;
+
         idx = node->nextBeginIndex;
-        if (ndraw == 0)
+        if (nodeDrawCount.numVertices == 0)
             continue;
-        // For LoD, compute the desired fraction of points for this node.
-        //
-        // The desired fraction is chosen such that the density of points
-        // per solid angle is constant; when removing points, the point
-        // radii are scaled up to keep the total area covered by the points
-        // constant.
-        //lodMultiplier = sqrt(double(node->size())/ndraw);
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
@@ -549,10 +576,8 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
                 }
             }
         }
-        prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
-        glDrawArrays(GL_POINTS, 0, (GLsizei)ndraw);
-        node->nextBeginIndex += ndraw;
-        totDrawn += ndraw;
+        glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
+        node->nextBeginIndex += nodeDrawCount.numVertices;
     }
     //tfm::printf("Drew %d of total points %d, quality %f\n", totDraw, m_npoints, quality);
 
@@ -563,7 +588,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
-    return totDrawn;
+    return drawCount;
 }
 
 

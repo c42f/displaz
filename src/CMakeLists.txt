@@ -39,6 +39,7 @@ set(srcs
     ${shared_srcs}
     ${moc_srcs}
     datasetui.cpp
+    DrawCostModel.cpp
     geometry.cpp
     geometrycollection.cpp
     glutil.cpp

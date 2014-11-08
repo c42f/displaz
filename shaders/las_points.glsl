@@ -16,9 +16,6 @@ uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour
 uniform int selectionMode = 0;     //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
-// Point size multiplier to keep coverage constant when doing stochastic
-// simplification
-uniform float pointSizeLodMultiplier = 1;
 // Point size multiplier to get from a width in projected coordinates to the
 // number of pixels across as required for gl_PointSize
 uniform float pointPixelScale = 0;
@@ -64,7 +61,7 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = pointRadius * trimScale * pointSizeLodMultiplier;
+    modifiedPointRadius = pointRadius * trimScale;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     markerShape = 1;
     // Compute vertex color

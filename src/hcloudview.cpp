@@ -195,7 +195,7 @@ static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
 }
 
 
-void HCloudView::draw(const TransformState& transStateIn, double quality)
+void HCloudView::draw(const TransformState& transStateIn, double quality) const
 {
     TransformState transState = transStateIn.translate(offset());
     //drawBounds(m_rootNode.get(), transState);
@@ -378,11 +378,11 @@ size_t HCloudView::pointCount() const
 }
 
 
-size_t HCloudView::simplifiedPointCount(const V3d& cameraPos,
-                                        bool incrementalDraw) const
+void HCloudView::estimateCost(const TransformState& transState,
+                              bool incrementalDraw, const double* qualities,
+                              DrawCount* drawCounts, int numEstimates) const
 {
     // FIXME
-    return 0;
 }
 
 

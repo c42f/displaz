@@ -262,8 +262,10 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     return true;
 }
 
-void TriMesh::drawFaces(QGLShaderProgram& prog) const
+void TriMesh::drawFaces(QGLShaderProgram& prog,
+                        const TransformState& transState) const
 {
+    transState.translate(offset()).setUniforms(prog.programId());
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("normal");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
@@ -283,8 +285,10 @@ void TriMesh::drawFaces(QGLShaderProgram& prog) const
 }
 
 
-void TriMesh::drawEdges(QGLShaderProgram& prog) const
+void TriMesh::drawEdges(QGLShaderProgram& prog,
+                        const TransformState& transState) const
 {
+    transState.translate(offset()).setUniforms(prog.programId());
     prog.enableAttributeArray("position");
     prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
     if (m_colors.size() == m_verts.size())
@@ -298,6 +302,16 @@ void TriMesh::drawEdges(QGLShaderProgram& prog) const
                    GL_UNSIGNED_INT, &m_edges[0]);
     prog.disableAttributeArray("color");
     prog.disableAttributeArray("position");
+}
+
+
+void TriMesh::estimateCost(const TransformState& transState,
+                           bool incrementalDraw, const double* qualities,
+                           DrawCount* drawCounts, int numEstimates) const
+{
+    // FIXME - we need a way to incorporate meshes into the cost model, even
+    // though simplifying them in a similar way to point clouds isn't really
+    // possible.
 }
 
 

@@ -56,10 +56,15 @@ class PointArray : public Geometry
         // Overridden Geometry functions
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual size_t drawPoints(QGLShaderProgram& prog, const V3d& cameraPos,
-                                  double quality, bool incrementalDraw) const;
+        virtual DrawCount drawPoints(QGLShaderProgram& prog,
+                                    const TransformState& transState,
+                                    double quality, bool incrementalDraw) const;
+
         virtual size_t pointCount() const { return m_npoints; }
-        virtual size_t simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const;
+
+        virtual void estimateCost(const TransformState& transState,
+                                  bool incrementalDraw, const double* qualities,
+                                  DrawCount* drawCounts, int numEstimates) const;
 
         virtual V3d pickVertex(const V3d& cameraPos,
                                const V3d& rayOrigin, const V3d& rayDirection,
@@ -73,17 +78,17 @@ class PointArray : public Geometry
     private:
         bool loadLas(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, size_t& totPoints,
+                     size_t& npoints, uint64_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
         bool loadText(QString fileName, size_t maxPointCount,
                       std::vector<GeomField>& fields, V3d& offset,
-                      size_t& npoints, size_t& totPoints,
+                      size_t& npoints, uint64_t& totPoints,
                       Imath::Box3d& bbox, V3d& centroid);
 
         bool loadPly(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, size_t& totPoints,
+                     size_t& npoints, uint64_t& totPoints,
                      Imath::Box3d& bbox, V3d& centroid);
 
         friend struct ProgressFunc;
