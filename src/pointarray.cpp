@@ -489,7 +489,6 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
             continue;
         }
         size_t ndraw = node->size();
-        double lodMultiplier = 1;
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
@@ -497,13 +496,6 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
         idx = node->nextBeginIndex;
         if (ndraw == 0)
             continue;
-        // For LoD, compute the desired fraction of points for this node.
-        //
-        // The desired fraction is chosen such that the density of points
-        // per solid angle is constant; when removing points, the point
-        // radii are scaled up to keep the total area covered by the points
-        // constant.
-        //lodMultiplier = sqrt(double(node->size())/ndraw);
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
@@ -529,7 +521,6 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
                 }
             }
         }
-        prog.setUniformValue("pointSizeLodMultiplier", (GLfloat)lodMultiplier);
         glDrawArrays(GL_POINTS, 0, (GLsizei)ndraw);
         node->nextBeginIndex += ndraw;
         totDrawn += ndraw;

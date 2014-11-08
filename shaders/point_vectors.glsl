@@ -15,9 +15,6 @@ uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
 uniform float minPointSize = 0;
 uniform float maxPointSize = 200.0;
-// Point size multiplier to keep coverage constant when doing stochastic
-// simplification
-uniform float pointSizeLodMultiplier = 1;
 uniform vec3 cursorPos = vec3(0);
 uniform int fileNumber = 0;
 in float intensity;
@@ -64,7 +61,7 @@ void main()
     float r = length(position.xy - cursorPos.xy);
     float trimFalloffLen = min(5, trimRadius/2);
     float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    pointScreenSize = clamp(20.0*pointSize * wInv * trimScale * pointSizeLodMultiplier,
+    pointScreenSize = clamp(20.0*pointSize * wInv * trimScale,
                             minPointSize, maxPointSize);
     if (selector > 0 && selector != fileNumber)
         pointScreenSize = 0;
