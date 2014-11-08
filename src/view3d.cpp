@@ -328,7 +328,6 @@ void View3D::paintGL()
 //    if ((int)s.size() > barSize)
 //        s[barSize] = '|';
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
-    tfm::printfln("%e", quality);
 
     m_incrementalFramebuffer->release();
     QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
