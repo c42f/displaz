@@ -76,8 +76,6 @@ inline Imath::M44d qt2exr(const QMatrix4x4& m)
 }
 
 
-static const size_t g_defaultPointRenderCount = 1000000;
-
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     : QGLWidget(parent),
@@ -95,8 +93,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
-    m_incrementalDraw(false),
-    m_maxPointsPerFrame(g_defaultPointRenderCount)
+    m_incrementalDraw(false)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -148,7 +145,6 @@ void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
         centreOnGeometry(m_geometries->index(0));
-    //m_maxPointsPerFrame = g_defaultPointRenderCount;
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
 }
@@ -295,52 +291,45 @@ void View3D::paintGL()
     if (!m_incrementalDraw)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
-    QModelIndexList sel = m_selectionModel->selectedRows();
+    std::vector<const Geometry*> geoms = selectedGeometry();
 
     // Draw bounding boxes
     if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
-        for(int i = 0; i < sel.size(); ++i)
-        {
-            // Draw bounding box
-            Imath::Box3d bbox = geoms[sel[i].row()]->boundingBox();
-            drawBoundingBox(transState, bbox, Imath::C3f(1));
-        }
+        for(size_t i = 0; i < geoms.size(); ++i)
+            drawBoundingBox(transState, geoms[i]->boundingBox(), Imath::C3f(1));
     }
 
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
-        drawMeshes(transState, geoms, sel);
+        drawMeshes(transState, geoms);
     }
 
-    // Figure out how many points we should render
-    size_t totPoints = 0;
-    for (int i = 0; i < sel.size(); ++i)
-        totPoints += geoms[sel[i].row()]->pointCount();
-    size_t numPointsToRender = std::min(totPoints, m_maxPointsPerFrame);
-    size_t totDrawn = 0;
+    // Aim for 40ms frame time - an ok tradeoff for desktop usage
+    const double targetMillisecs = 40;
+    double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
+                                             m_incrementalDraw);
+
     // Render points
-    totDrawn = drawPoints(transState, geoms, sel, numPointsToRender, m_incrementalDraw);
+    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
 
-    // Measure frame time to update estimate for how many points we can
-    // draw interactively
+    // Measure frame time to update estimate for how much geometry we can draw
+    // with a reasonable frame rate
     glFinish();
-    if (totPoints > 0 && !m_incrementalDraw)
-    {
-        int frameTime = frameTimer.elapsed();
-        // Aim for a frame time which is ok for desktop usage
-        const double targetMillisecs = 50;
-        double predictedPointNumber = numPointsToRender * targetMillisecs /
-                                      std::max(1, frameTime);
-        // Simple smoothing to avoid wild jumps in point count
-        double decayFactor = 0.7;
-        m_maxPointsPerFrame = (size_t) ( decayFactor     * m_maxPointsPerFrame +
-                                        (1-decayFactor) * predictedPointNumber );
-        // Prevent any insanity from this getting too small
-        m_maxPointsPerFrame = std::max(m_maxPointsPerFrame, (size_t)100);
-    }
+    int frameTime = frameTimer.elapsed();
+
+    if (!geoms.empty())
+        m_drawCostModel.addSample(drawCount, frameTime);
+
+    // Debug: print bar showing how well we're sticking to the frame time
+//    int barSize = 40;
+//    std::string s = std::string(barSize*frameTime/targetMillisecs, '=');
+//    if ((int)s.size() > barSize)
+//        s[barSize] = '|';
+//    tfm::printfln("%12f %4d %s", quality, frameTime, s);
+    tfm::printfln("%e", quality);
+
     m_incrementalFramebuffer->release();
     QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
                                           m_incrementalFramebuffer.get(),
@@ -352,7 +341,7 @@ void View3D::paintGL()
         drawCursor(transState, m_cursorPos);
 
     // Set up timer to draw a high quality frame if necessary
-    if (totDrawn == 0)
+    if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
     else
         m_incrementalFrameTimer->start(10);
@@ -361,8 +350,7 @@ void View3D::paintGL()
 
 
 void View3D::drawMeshes(const TransformState& transState,
-                        const GeometryCollection::GeometryVec& geoms,
-                        const QModelIndexList& sel) const
+                        const std::vector<const Geometry*>& geoms) const
 {
     // Draw faces
     if (m_meshFaceShader->isValid())
@@ -371,8 +359,8 @@ void View3D::drawMeshes(const TransformState& transState,
         meshFaceShader.bind();
         meshFaceShader.setUniformValue("lightDir_eye",
                     m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
-        for (int i = 0; i < sel.size(); ++i)
-            geoms[sel[i].row()]->drawFaces(meshFaceShader, transState);
+        for (size_t i = 0; i < geoms.size(); ++i)
+            geoms[i]->drawFaces(meshFaceShader, transState);
         meshFaceShader.release();
     }
 
@@ -382,8 +370,8 @@ void View3D::drawMeshes(const TransformState& transState,
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1);
         meshEdgeShader.bind();
-        for(int i = 0; i < sel.size(); ++i)
-            geoms[sel[i].row()]->drawEdges(meshEdgeShader, transState);
+        for(size_t i = 0; i < geoms.size(); ++i)
+            geoms[i]->drawEdges(meshEdgeShader, transState);
         meshEdgeShader.release();
     }
 }
@@ -541,47 +529,36 @@ void View3D::drawCursor(const TransformState& transState, const V3d& cursorPos) 
 
 
 /// Draw point cloud
-size_t View3D::drawPoints(const TransformState& transState,
-                          const GeometryCollection::GeometryVec& geoms,
-                          const QModelIndexList& selection,
-                          size_t numPointsToRender,
-                          bool incrementalDraw)
+DrawCount View3D::drawPoints(const TransformState& transState,
+                             const std::vector<const Geometry*>& geoms,
+                             double quality, bool incrementalDraw)
 {
-    if (selection.empty())
-        return 0;
+    DrawCount totDrawCount;
+    if (geoms.empty())
+        return DrawCount();
     if (!m_shaderProgram->isValid())
-        return 0;
+        return DrawCount();
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    double quality = 1;
-    // Get total number of points we would draw at quality == 1
-    size_t totSimplified = 0;
-    for(int i = 0; i < selection.size(); ++i)
-    {
-        totSimplified += geoms[selection[i].row()]->
-            simplifiedPointCount(qt2exr(m_camera.position()), incrementalDraw);
-    }
-    quality = double(numPointsToRender) / totSimplified;
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
-    size_t totDrawn = 0;
-    for(int i = 0; i < selection.size(); ++i)
+    QModelIndexList selection = m_selectionModel->selectedRows();
+    for(size_t i = 0; i < geoms.size(); ++i)
     {
-        int geomIdx = selection[i].row();
-        Geometry& geom = *geoms[geomIdx];
+        const Geometry& geom = *geoms[i];
         if(geom.pointCount() == 0)
             continue;
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
-        prog.setUniformValue("fileNumber", (GLint)(geomIdx + 1));
+        prog.setUniformValue("fileNumber", (GLint)(selection[i].row() + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
-        totDrawn += geom.drawPoints(prog, transState, quality, incrementalDraw);
+        totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     prog.release();
-    return totDrawn;
+    return totDrawCount;
 }
 
 
@@ -630,6 +607,19 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
         }
     }
     return newPos;
+}
+
+
+/// Return list of currently selected geometry
+std::vector<const Geometry*> View3D::selectedGeometry() const
+{
+    const GeometryCollection::GeometryVec& geomAll = m_geometries->get();
+    QModelIndexList sel = m_selectionModel->selectedRows();
+    std::vector<const Geometry*> geoms;
+    geoms.reserve(sel.size());
+    for(int i = 0; i < sel.size(); ++i)
+        geoms.push_back(geomAll[sel[i].row()].get());
+    return geoms;
 }
 
 

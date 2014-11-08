@@ -29,6 +29,7 @@ qt4_wrap_cpp(moc_srcs
 set(srcs
     ${moc_srcs}
     datasetui.cpp
+    DrawCostModel.cpp
     geometry.cpp
     geomfield.cpp
     geometrycollection.cpp

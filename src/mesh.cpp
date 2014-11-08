@@ -305,6 +305,16 @@ void TriMesh::drawEdges(QGLShaderProgram& prog,
 }
 
 
+void TriMesh::estimateCost(const TransformState& transState,
+                           bool incrementalDraw, const double* qualities,
+                           DrawCount* drawCounts, int numEstimates) const
+{
+    // FIXME - we need a way to incorporate meshes into the cost model, even
+    // though simplifying them in a similar way to point clouds isn't really
+    // possible.
+}
+
+
 V3d TriMesh::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
                         double longitudinalScale, double* distance) const
 {

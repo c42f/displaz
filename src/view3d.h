@@ -37,6 +37,7 @@
 #include <QGLWidget>
 #include <QModelIndex>
 
+#include "DrawCostModel.h"
 #include "interactivecamera.h"
 #include "geometrycollection.h"
 
@@ -101,18 +102,21 @@ class View3D : public QGLWidget
 
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+
         void drawCursor(const TransformState& transState, const V3d& P) const;
-        size_t drawPoints(const TransformState& transState,
-                          const GeometryCollection::GeometryVec& allPoints,
-                          const QModelIndexList& selection,
-                          size_t numPointsToRender, bool incrementalDraw);
+
+        DrawCount drawPoints(const TransformState& transState,
+                             const std::vector<const Geometry*>& geoms,
+                             double quality, bool incrementalDraw);
+
         void drawMeshes(const TransformState& transState,
-                        const GeometryCollection::GeometryVec& geoms,
-                        const QModelIndexList& sel) const;
+                        const std::vector<const Geometry*>& geoms) const;
 
         Imath::V3d guessClickPosition(const QPoint& clickPos);
 
         Imath::V3d snapToGeometry(const Imath::V3d& pos, double normalScaling);
+
+        std::vector<const Geometry*> selectedGeometry() const;
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -143,8 +147,8 @@ class View3D : public QGLWidget
         QTimer* m_incrementalFrameTimer;
         std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
-        /// Target for max total number of points to draw per frame
-        size_t m_maxPointsPerFrame;
+        /// Controller for amount of geometry to draw
+        DrawCostModel m_drawCostModel;
 };
 
 
