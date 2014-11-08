@@ -39,6 +39,30 @@
 class QGLShaderProgram;
 class TransformState;
 
+
+/// Estimate of amount of geometry drawn in a frame
+///
+/// `numVertices` is the number of vertices
+/// `numFragments` is the number of framents
+/// `moreToDraw` indicates whether the geometry is completely drawn
+struct DrawCount
+{
+    double numVertices;
+    double numFragments;
+    bool   moreToDraw;
+
+    DrawCount() : numVertices(0), numFragments(0), moreToDraw(false) { }
+
+    DrawCount& operator+=(const DrawCount& rhs)
+    {
+        numVertices += rhs.numVertices;
+        numFragments += rhs.numFragments;
+        moreToDraw |= rhs.moreToDraw;
+        return *this;
+    }
+};
+
+
 /// Shared interface for all displaz geometry types
 class Geometry : public QObject
 {
@@ -66,16 +90,20 @@ class Geometry : public QObject
         //--------------------------------------------------
         /// Draw points using given openGL shader program
         ///
-        /// Requires that prog is already bound and any necessary uniform
-        /// variables have been set.
+        /// Requires that `pointShaderProg` is already bound and any necessary
+        /// uniform variables have been set.
         ///
-        /// quality specifies the desired amount of simplification;
-        /// incrementalDraw is true if this should be an incremental frame.
+        /// transState specifies the camera transform, quality specifies the
+        /// desired amount of simplification; incrementalDraw is true if this
+        /// should be an incremental frame to build on a previous call to
+        /// drawPoints which returned true.
         ///
-        /// Return total number of points actually drawn
-        virtual size_t drawPoints(QGLShaderProgram& pointShaderProg,
-                                  const TransformState& transState, double quality,
-                                  bool incrementalDraw) const { return 0; }
+        /// The returned DrawCount should be filled with an estimate of the
+        /// actual amount of geometry shaded and whether there's any more to be
+        /// drawn.
+        virtual DrawCount drawPoints(QGLShaderProgram& pointShaderProg,
+                                     const TransformState& transState, double quality,
+                                     bool incrementalDraw) const { return DrawCount(); }
 
         /// Draw edges with the given shader
         virtual void drawEdges(QGLShaderProgram& edgeShaderProg,
@@ -87,10 +115,17 @@ class Geometry : public QObject
         /// Return total number of vertices
         virtual size_t pointCount() const = 0;
 
-        /// Compute number of vertices which would be drawn with drawPoints()
-        /// at quality == 1
-        virtual size_t simplifiedPointCount(const V3d& cameraPos,
-                                            bool incrementalDraw) const = 0;
+        /// Estimate the number of vertices and fragments which would be shaded
+        /// with drawPoints() at the given quality settings
+        ///
+        /// transState and incrementalDraw are as in drawPoints.
+        ///
+        /// `drawCounts[i]` should be filled with an estimate of the count of
+        /// verts/fragments drawn at the given quality `qualities[i]`.
+        /// `numEstimates` is the number of elements in the qualities array.
+        virtual void estimateCost(const TransformState& transState,
+                                  bool incrementalDraw, const double* qualities,
+                                  DrawCount* drawCounts, int numEstimates) const { }
 
         /// Pick a vertex on the geometry given a ray representing a mouse click
         ///

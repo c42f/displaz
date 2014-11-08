@@ -54,9 +54,6 @@ class TriMesh : public Geometry
 
         virtual size_t pointCount() const { return 0; }
 
-        virtual size_t simplifiedPointCount(const V3d& cameraPos,
-                                            bool incrementalDraw) const { return 0; }
-
         virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const;
 

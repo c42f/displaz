@@ -41,6 +41,8 @@
 
 #include "ply_io.h"
 
+#include "ClipBox.h"
+
 
 //------------------------------------------------------------------------------
 /// Functor to compute octree child node index with respect to some given split
@@ -88,6 +90,39 @@ struct OctreeNode
     size_t size() const { return endIndex - beginIndex; }
 
     bool isLeaf() const { return beginIndex != endIndex; }
+
+    /// Estimate cost of drawing a single leaf node with to given camera
+    /// position, quality, and incremental settings.
+    ///
+    /// Sets numVertices and numFragments to estimated number of vertices and
+    /// fragments which would be drawn with given settings
+    DrawCount drawCount(const V3f& relCamera,
+                        double quality, bool incrementalDraw) const
+    {
+        assert(isLeaf);
+        const double drawAllDist = 100;
+        double dist = (this->bbox.center() - relCamera).length();
+        double diagRadius = this->bbox.size().length()/2;
+        // Subtract bucket diagonal dist, since we really want an approx
+        // distance to closest point in the bucket, rather than dist to centre.
+        dist = std::max(10.0, dist - diagRadius);
+        double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
+        size_t chunkSize = (size_t)ceil(this->size()*desiredFraction);
+        DrawCount drawCount;
+        drawCount.numVertices = chunkSize;
+        if (incrementalDraw)
+        {
+            drawCount.numVertices = (this->nextBeginIndex >= this->endIndex) ? 0 :
+                std::min(chunkSize, this->endIndex - this->nextBeginIndex);
+        }
+        drawCount.numFragments = drawCount.numVertices*pow(drawAllDist/dist, 2);
+        // The quality solver works better if numFragments contains distinct
+        // information from numVertices, so clamp this here.
+        if (drawCount.numFragments < 1)
+            drawCount.numFragments = 0;
+        drawCount.moreToDraw = this->nextBeginIndex < this->endIndex;
+        return drawCount;
+    }
 };
 
 
@@ -365,45 +400,38 @@ V3d PointArray::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
 }
 
 
-static size_t simplifiedPointCount(const OctreeNode* node, const V3f& cameraPos,
-                                   double quality, bool incrementalDraw)
+void PointArray::estimateCost(const TransformState& transState,
+                              bool incrementalDraw, const double* qualities,
+                              DrawCount* drawCounts, int numEstimates) const
 {
-    // Distance below which all points will be drawn for a node, at quality == 1
-    // TODO: Auto-adjust this for various length scales?
-    const double drawAllDist = 100;
-    if (node->isLeaf())
+    TransformState relativeTrans = transState.translate(offset());
+    V3f relCamera = relativeTrans.cameraPos();
+    ClipBox clipBox(relativeTrans);
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
     {
-        double dist = (node->bbox.center() - cameraPos).length();
-        // double diagRadius = node->radius*sqrt(3);
-        double diagRadius = node->bbox.size().length()/2;
-        // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
-        dist = std::max(10.0, dist - diagRadius);
-        double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
-        size_t chunkSize = (size_t)ceil(node->size()*desiredFraction);
-        size_t ndraw = chunkSize;
-        if (incrementalDraw)
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+        if (clipBox.canCull(node->bbox))
+            continue;
+        if (!node->isLeaf())
         {
-            ndraw = (node->nextBeginIndex >= node->endIndex) ? 0 :
-                    std::min(chunkSize, node->endIndex - node->nextBeginIndex);
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
         }
-        return ndraw;
+        for (int i = 0; i < numEstimates; ++i)
+        {
+            drawCounts[i] += node->drawCount(relCamera, qualities[i],
+                                             incrementalDraw);
+        }
     }
-    size_t ndraw = 0;
-    for (int i = 0; i < 8; ++i)
-    {
-        OctreeNode* n = node->children[i];
-        if (n)
-            ndraw += simplifiedPointCount(n, cameraPos, quality, incrementalDraw);
-    }
-    return ndraw;
-}
-
-
-size_t PointArray::simplifiedPointCount(const V3d& cameraPos, bool incrementalDraw) const
-{
-    V3f relCamera = cameraPos - offset();
-    return ::simplifiedPointCount(m_rootNode.get(), relCamera, 1.0, incrementalDraw);
 }
 
 
@@ -427,10 +455,14 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
-                              double quality, bool incrementalDraw) const
+//static size_t debugFileIdx;
+
+
+DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
+                                double quality, bool incrementalDraw) const
 {
-    transState.translate(offset()).setUniforms(prog.programId());
+    TransformState relativeTrans = transState.translate(offset());
+    relativeTrans.setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
     std::vector<ShaderAttribute> activeAttrs = activeShaderAttributes(prog.programId());
     // Figure out shader locations for each point field
@@ -467,17 +499,21 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
             prog.enableAttributeArray(attributes[i]->location);
     }
 
+    DrawCount drawCount;
+    ClipBox clipBox(relativeTrans);
+
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
-    size_t totDrawn = 0;
-    V3f relCamera = transState.cameraPos() - offset();
+    V3f relCamera = relativeTrans.cameraPos();
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
     {
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
+        if (clipBox.canCull(node->bbox))
+            continue;
         if (!node->isLeaf())
         {
             for (int i = 0; i < 8; ++i)
@@ -488,13 +524,15 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
             }
             continue;
         }
-        size_t ndraw = node->size();
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
-        ndraw = ::simplifiedPointCount(node, relCamera, quality, incrementalDraw);
+
+        DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
+        drawCount += nodeDrawCount;
+
         idx = node->nextBeginIndex;
-        if (ndraw == 0)
+        if (nodeDrawCount.numVertices == 0)
             continue;
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
@@ -521,9 +559,8 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
                 }
             }
         }
-        glDrawArrays(GL_POINTS, 0, (GLsizei)ndraw);
-        node->nextBeginIndex += ndraw;
-        totDrawn += ndraw;
+        glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
+        node->nextBeginIndex += nodeDrawCount.numVertices;
     }
     //tfm::printf("Drew %d of total points %d, quality %f\n", totDraw, m_npoints, quality);
 
@@ -534,7 +571,7 @@ size_t PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& tran
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
-    return totDrawn;
+    return drawCount;
 }
 
 
