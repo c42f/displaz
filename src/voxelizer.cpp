@@ -290,9 +290,9 @@ void voxelizePointCloud(std::ostream& outputStream,
             }
         }
         // Render points in each leaf into a MIP brick, in z curve order
-        for (int i = 0; i < leavesPerChunk; ++i)
+        for (int leafIdx = 0; leafIdx < leavesPerChunk; ++leafIdx)
         {
-            Imath::V3i leafPos = zOrderToVec3(i);
+            Imath::V3i leafPos = zOrderToVec3(leafIdx);
             const std::vector<size_t>& inds = leafIndices[
                 (leafPos.z*chunkLeafRes + leafPos.y)*chunkLeafRes + leafPos.x];
             if (inds.empty())
@@ -303,7 +303,7 @@ void voxelizePointCloud(std::ostream& outputStream,
             brick->voxelizePoints(leafMin, leafWidth, pointRadius,
                                   position.data(), intensity.data(),
                                   inds.data(), inds.size());
-            int64_t leafMortonIndex = chunkIdx*leavesPerChunk + i;
+            int64_t leafMortonIndex = chunkIdx*leavesPerChunk + leafIdx;
             builder.addNode(leafDepth, leafMortonIndex, std::move(brick));
             // Want to only store O(log(N)) full bricks - should be able to
             // achieve this, since we're traversing chunks in z order, and

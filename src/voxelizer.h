@@ -111,6 +111,32 @@ class VoxelBrick
         /// Render brick from a Morton ordered set of child bricks
         void renderFromBricks(VoxelBrick* children[8]);
 
+        /// Serialize brick to output stream
+        ///
+        /// Return the number of voxels written
+        int serialize(std::ostream& out) const
+        {
+            // Serialize just the voxels with nonzero coverage
+            std::vector<float> positions;
+            std::vector<float> coverage;
+            std::vector<float> intensity;
+            for (int i = 0, iend = numVoxels(); i < iend; ++i)
+            {
+                float cov = m_mipCoverage[i];
+                if (cov != 0)
+                {
+                    positions.insert(positions.end(), &m_mipPosition[3*i],
+                                     &m_mipPosition[3*i] + 3);
+                    coverage.push_back(cov);
+                    intensity.push_back(m_mipColor[i]);
+                }
+            }
+            out.write((const char*)positions.data(), positions.size()*sizeof(float));
+            out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
+            out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
+            return (int)coverage.size();
+        }
+
     private:
         int m_brickRes;
         // Attributes for all voxels inside brick

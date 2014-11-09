@@ -94,7 +94,10 @@ class NodeOutputQueue
 
         std::unique_ptr<IndexNode> write(const VoxelBrick& brick)
         {
-            std::unique_ptr<IndexNode> index = serializeBrick(m_bufferedBytes, brick);
+            std::unique_ptr<IndexNode> index(new IndexNode);
+            index->dataOffset = m_bufferedBytes.tellp();
+            index->numVoxels = brick.serialize(m_bufferedBytes);
+            index->numPoints = 0; // FIXME
             m_sizeBytes = m_bufferedBytes.tellp();
             m_bufferedNodes.push_back(index.get());
             return std::move(index);
@@ -116,37 +119,6 @@ class NodeOutputQueue
         }
 
     private:
-        /// Serialize brick to stream; return number of bytes written
-        static std::unique_ptr<IndexNode> serializeBrick(
-                std::ostream& out, const VoxelBrick& brick)
-        {
-            std::unique_ptr<IndexNode> index(new IndexNode);
-            index->dataOffset = out.tellp();
-            // Grab voxels with nonzero coverage
-            std::vector<float> positions;
-            std::vector<float> coverage;
-            std::vector<float> intensity;
-            for (int i = 0, iend = brick.numVoxels(); i < iend; ++i)
-            {
-                float cov = brick.coverage(i);
-                if (cov != 0)
-                {
-                    V3f pos = brick.position(i);
-                    positions.push_back(pos.x);
-                    positions.push_back(pos.y);
-                    positions.push_back(pos.z);
-                    coverage.push_back(cov);
-                    intensity.push_back(brick.color(i));
-                }
-            }
-            index->numVoxels = (uint32_t)coverage.size();
-            index->numPoints = 0; // FIXME
-            out.write((const char*)positions.data(), positions.size()*sizeof(float));
-            out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
-            out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
-            return std::move(index);
-        }
-
         std::vector<IndexNode*> m_bufferedNodes;
         uint64_t m_sizeBytes;
         std::stringstream m_bufferedBytes;
@@ -190,6 +162,7 @@ class OctreeBuilder
             }
         }
 
+        /// Add voxel brick and accompanying source points to the cloud
         void addNode(int level, int64_t mortonIndex,
                      std::unique_ptr<VoxelBrick> node)
         {
