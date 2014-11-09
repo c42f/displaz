@@ -40,7 +40,7 @@
 /// Magic number at start of each hcloud file, and size in bytes
 #define HCLOUD_MAGIC "HierarchicalPointCloud\n\x0c"
 #define HCLOUD_MAGIC_SIZE 24
-#define HCLOUD_VERSION 0
+#define HCLOUD_VERSION 1
 
 
 /// Collection of header metadata stored in a hcloud file
@@ -81,6 +81,27 @@ std::ostream& operator<<(std::ostream& out, const HCloudHeader& h);
 
 
 //------------------------------------------------------------------------------
+
+enum IndexFlags
+{
+    IndexFlags_Points = 0,
+    IndexFlags_Voxels = 1,
+};
+
+
+struct NodeIndexData
+{
+    IndexFlags flags;
+    uint64_t dataOffset;
+    uint32_t numPoints;
+
+    NodeIndexData()
+        : flags(IndexFlags_Points),
+        dataOffset(0),
+        numPoints(0)
+    { }
+};
+
 
 // TODO: HCloudInput & HCloudOutput classes for hcloud IO
 

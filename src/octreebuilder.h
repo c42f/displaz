@@ -27,6 +27,9 @@
 //
 // (This is the BSD 3-clause license)
 
+#ifndef DISPLAZ_OCTREE_BUILDER_H_INCLUDED
+#define DISPLAZ_OCTREE_BUILDER_H_INCLUDED
+
 #include <cassert>
 #include <memory>
 #include <vector>
@@ -34,6 +37,7 @@
 #include "../bindings/cpp/displaz.h"
 
 #include "voxelizer.h"
+#include "util.h"
 
 /// Debug plotting for OctreeBuilder
 inline void plotBrick(dpz::PointList& dpoints,
@@ -60,16 +64,8 @@ inline void plotBrick(dpz::PointList& dpoints,
 /// Octree node holding data size and offset in the serialized stream
 struct IndexNode
 {
-    uint64_t dataOffset;
-    uint32_t numVoxels;
-    uint32_t numPoints;
+    NodeIndexData idata;
     std::unique_ptr<IndexNode> children[8];
-
-    IndexNode()
-        : dataOffset(0),
-        numVoxels(0),
-        numPoints(0)
-    { }
 };
 
 
@@ -92,12 +88,14 @@ class NodeOutputQueue
         /// Return size of currently buffered data, in bytes
         size_t sizeBytes() const { return m_sizeBytes; }
 
-        std::unique_ptr<IndexNode> write(const VoxelBrick& brick)
+        /// Serialize node data to output queue
+        template<typename NodeDataT>
+        std::unique_ptr<IndexNode> write(const NodeDataT& nodeData)
         {
+            uint64_t dataOffset = m_bufferedBytes.tellp();
             std::unique_ptr<IndexNode> index(new IndexNode);
-            index->dataOffset = m_bufferedBytes.tellp();
-            index->numVoxels = brick.serialize(m_bufferedBytes);
-            index->numPoints = 0; // FIXME
+            index->idata = nodeData.serialize(m_bufferedBytes);
+            index->idata.dataOffset = dataOffset;
             m_sizeBytes = m_bufferedBytes.tellp();
             m_bufferedNodes.push_back(index.get());
             return std::move(index);
@@ -110,7 +108,7 @@ class NodeOutputQueue
             // Update to absolute offsets in the real output stream
             uint64_t offset = out.tellp();
             for (size_t i = 0; i < m_bufferedNodes.size(); ++i)
-                m_bufferedNodes[i]->dataOffset += offset;
+                m_bufferedNodes[i]->idata.dataOffset += offset;
             out << m_bufferedBytes.rdbuf();
             // Clear buffers
             m_bufferedNodes.clear();
@@ -129,7 +127,12 @@ class NodeOutputQueue
 /// Class for building octrees in a bottom up fashion
 ///
 /// The user must supply octree leaf nodes in Morton order; the internal nodes
-/// will be built from these
+/// will be built from these.  This correponds to a depth first traversal of
+/// the whole tree, but only storing O(log(N)) full bricks in memory at any one
+/// time.  As soon as a brick is no longer needed it is serialized to an output
+/// queue and deallocated.  A lightweight index describing the node is kept and
+/// written separately at the end of the file.
+///
 class OctreeBuilder
 {
     public:
@@ -138,7 +141,7 @@ class OctreeBuilder
                       const Imath::Box3d& rootBound, Logger& logger)
             : m_output(output),
             m_brickRes(brickRes),
-            m_levelInfo(leafDepth+1),
+            m_levelInfo(leafDepth+2),
             m_debugPlot(false),
             m_logger(logger)
         {
@@ -164,26 +167,34 @@ class OctreeBuilder
 
         /// Add voxel brick and accompanying source points to the cloud
         void addNode(int level, int64_t mortonIndex,
-                     std::unique_ptr<VoxelBrick> node)
+                     std::unique_ptr<VoxelBrick> voxelBrick,
+                     LeafPointData& leafPointData)
         {
-            assert(level < (int)m_levelInfo.size());
-            NodeOutputQueue& queue = m_levelInfo[level].outputQueue;
-            std::unique_ptr<IndexNode> indexNode = queue.write(*node);
-            flushQueue(queue, level, false);
-            addNode(level, mortonIndex, std::move(node), std::move(indexNode));
+            assert(level < (int)m_levelInfo.size() + 1);
+            std::unique_ptr<IndexNode> brickIndex =
+                writeNodeData(m_levelInfo[level].outputQueue, level, *voxelBrick);
+            std::unique_ptr<IndexNode> pointsIndex =
+                writeNodeData(m_levelInfo[level+1].outputQueue, level+1, leafPointData);
+            // Link up leaf points as the first (and only) child of the brick.
+            // Note that since we're not breaking the leaf points up into
+            // octants, this introduces a special case when constructing
+            // bounding boxes which can be detected using the node flags.
+            brickIndex->children[0] = std::move(pointsIndex);
+            addNode(level, mortonIndex, std::move(voxelBrick), std::move(brickIndex));
         }
 
         void finish()
         {
             // Sweep from leaves to root, flushing any last pending bricks
-            for (int i = (int)m_levelInfo.size() - 1; i > 0; --i)
+            int numInternalLevels = (int)m_levelInfo.size() - 1;
+            for (int i = numInternalLevels - 1; i > 0; --i)
                 downsampleLevel(m_levelInfo[i], i);
             assert (m_rootNode);
             // Flush output queues from root to leaves.  This order is useful
             // if page caching starts at the root node data offset, but
             // somewhat irrelevant otherwise.
-            for (int i = 0; i < (int)m_levelInfo.size(); ++i)
-                flushQueue(m_levelInfo[i].outputQueue, i, true);
+            for (size_t i = 0; i < m_levelInfo.size(); ++i)
+                flushQueue(m_levelInfo[i].outputQueue, i);
             m_header.indexOffset = m_output.tellp();
             // TODO: Fill numPoints
             writeIndex(m_output, m_rootNode.get());
@@ -250,6 +261,9 @@ class OctreeBuilder
             }
             if (parentIndex != levelInfo.parentMortonIndex)
             {
+                // When `node` isn't a child of the node at level-1, finish
+                // and push it up the tree, replacing with the parent of
+                // `node` so we can set `node` as a child.
                 assert(levelInfo.parentMortonIndex < parentIndex);
                 downsampleLevel(levelInfo, level);
                 levelInfo.parentMortonIndex = parentIndex;
@@ -262,16 +276,16 @@ class OctreeBuilder
 
         void downsampleLevel(OctreeLevelInfo& levelInfo, int level)
         {
-            // Render downsampled brick from children
+            // Create new brick by downsampling childern at `level+1`
             VoxelBrick* brickChildren[8] = {0};
             for (int i = 0; i < 8; ++i)
                 brickChildren[i] = levelInfo.pendingNodes[i].get();
             std::unique_ptr<VoxelBrick> brick(new VoxelBrick(m_brickRes));
             brick->renderFromBricks(brickChildren);
-            // Serialize, grabbing the serialization index for later
-            NodeOutputQueue& queue = levelInfo.outputQueue;
-            std::unique_ptr<IndexNode> indexNode = queue.write(*brick);
-            flushQueue(queue, level, false);
+            // Serialize brick to queue
+            std::unique_ptr<IndexNode> indexNode =
+                writeNodeData(levelInfo.outputQueue, level, *brick);
+            // Link child indices into newly created node index
             for (int i = 0; i < 8; ++i)
                 indexNode->children[i] = std::move(levelInfo.pendingIndexNodes[i]);
             // Push new brick and index up the tree
@@ -282,15 +296,23 @@ class OctreeBuilder
                 levelInfo.pendingNodes[i].reset();
         }
 
-        void flushQueue(NodeOutputQueue& queue, int level, bool forceFlush)
+        template<typename NodeDataT>
+        std::unique_ptr<IndexNode> writeNodeData(NodeOutputQueue& queue, int level,
+                                                 const NodeDataT& nodeData)
         {
+            std::unique_ptr<IndexNode> index = queue.write(nodeData);
             const size_t maxQueueBytes = 10*1024*1024;
-            if (forceFlush || queue.sizeBytes() >= maxQueueBytes)
-            {
-                m_logger.debug("Flushing buffer for level %d: %.2f MiB",
-                               level, queue.sizeBytes()/(1024.0*1024.0));
-                queue.flush(m_output);
-            }
+            if (queue.sizeBytes() >= maxQueueBytes)
+                flushQueue(queue, level);
+            return std::move(index);
+        }
+
+        /// Flush the given queue, and log a message
+        void flushQueue(NodeOutputQueue& queue, int level)
+        {
+            m_logger.debug("Flushing buffer for level %d: %.2f MiB",
+                            level, queue.sizeBytes()/(1024.0*1024.0));
+            queue.flush(m_output);
         }
 
         static void writeIndex(std::ostream& out, const IndexNode* rootNode)
@@ -305,10 +327,10 @@ class OctreeBuilder
                 // Pack presence of children as bits into a uint8_t
                 for (int i = 0; i < 8; ++i)
                     childNodeMask |= bool(node->children[i]) << i;
+                writeLE<uint8_t> (out, node->idata.flags);
+                writeLE<uint64_t>(out, node->idata.dataOffset);
+                writeLE<uint32_t>(out, node->idata.numPoints);
                 writeLE<uint8_t> (out, childNodeMask);
-                writeLE<uint64_t>(out, node->dataOffset);
-                writeLE<uint32_t>(out, node->numVoxels);
-                writeLE<uint32_t>(out, node->numPoints);
                 // Backward iteration here ensures children are ordered from 0
                 // to 7 on disk.
                 for (int i = 7; i >= 0; --i)
@@ -334,3 +356,5 @@ class OctreeBuilder
         Logger& m_logger;
 };
 
+
+#endif // DISPLAZ_OCTREE_BUILDER_H_INCLUDED

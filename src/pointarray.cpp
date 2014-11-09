@@ -99,7 +99,7 @@ struct OctreeNode
     DrawCount drawCount(const V3f& relCamera,
                         double quality, bool incrementalDraw) const
     {
-        assert(isLeaf);
+        assert(isLeaf());
         const double drawAllDist = 100;
         double dist = (this->bbox.center() - relCamera).length();
         double diagRadius = this->bbox.size().length()/2;
@@ -472,11 +472,8 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-//static size_t debugFileIdx;
-
-
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
-                                double quality, bool incrementalDraw) const
+                                 double quality, bool incrementalDraw) const
 {
     TransformState relativeTrans = transState.translate(offset());
     relativeTrans.setUniforms(prog.programId());

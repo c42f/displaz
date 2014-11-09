@@ -29,8 +29,6 @@
 
 #include "voxelizer.h"
 
-#include <unistd.h>
-
 #include "hcloud.h"
 #include "logger.h"
 #include "octreebuilder.h"
@@ -268,10 +266,15 @@ void voxelizePointCloud(std::ostream& outputStream,
         // TODO: Early bailout when numPoints == 0.  Care must be taken here
         // in the octree build algorithm.
 
-        // Bin point indices into full leaf node grid
+        // Bin point indices into full leaf node grid.
+        // leafIndices[i] has the indices for points in the ith leaf, where i
+        // is a lexographic ordering (since that's simpler to compute than the
+        // Morton order)
+        std::vector<std::vector<size_t>> bufferedLeafIndices(leavesPerChunk);
         std::vector<std::vector<size_t>> leafIndices(leavesPerChunk);
         for (size_t pointIdx = 0; pointIdx < numPoints; ++pointIdx)
         {
+            // Record point in all leaf nodes it touches out to the point radius
             float x = invLeafNodeWidth*(position[3*pointIdx]   - relOrigin.x);
             float y = invLeafNodeWidth*(position[3*pointIdx+1] - relOrigin.y);
             float z = invLeafNodeWidth*(position[3*pointIdx+2] - relOrigin.z);
@@ -286,33 +289,42 @@ void voxelizePointCloud(std::ostream& outputStream,
             for (int xi = xbegin; xi < xend; ++xi)
             {
                 int idx = (zi*chunkLeafRes + yi)*chunkLeafRes + xi;
+                bufferedLeafIndices[idx].push_back(pointIdx);
+            }
+            // Record point in leaf node in which it actually resides
+            int xi = (int)floor(x);
+            int yi = (int)floor(y);
+            int zi = (int)floor(z);
+            if (xi >= 0 && xi < chunkLeafRes &&
+                yi >= 0 && yi < chunkLeafRes &&
+                zi >= 0 && zi < chunkLeafRes)
+            {
+                int idx = (zi*chunkLeafRes + yi)*chunkLeafRes + xi;
                 leafIndices[idx].push_back(pointIdx);
             }
         }
-        // Render points in each leaf into a MIP brick, in z curve order
+        // Render points in each leaf into a MIP brick in z curve order, and
+        // dump to output.  Since we're traversing both chunks and leaves in
+        // Morton order, the leaves are traversed in Morton order as a whole.
         for (int leafIdx = 0; leafIdx < leavesPerChunk; ++leafIdx)
         {
             Imath::V3i leafPos = zOrderToVec3(leafIdx);
-            const std::vector<size_t>& inds = leafIndices[
-                (leafPos.z*chunkLeafRes + leafPos.y)*chunkLeafRes + leafPos.x];
-            if (inds.empty())
+            int lexLeafIdx = (leafPos.z*chunkLeafRes + leafPos.y)*chunkLeafRes + leafPos.x;
+            const std::vector<size_t>& bufferedInds = bufferedLeafIndices[lexLeafIdx];
+            const std::vector<size_t>& inds = leafIndices[lexLeafIdx];
+            if (bufferedInds.empty())
                 continue;
             float leafWidth = chunkWidth/chunkLeafRes;
             Imath::V3f leafMin = relOrigin + leafWidth*V3f(leafPos);
             std::unique_ptr<VoxelBrick> brick(new VoxelBrick(brickRes));
             brick->voxelizePoints(leafMin, leafWidth, pointRadius,
                                   position.data(), intensity.data(),
-                                  inds.data(), inds.size());
+                                  bufferedInds.data(), bufferedInds.size());
+            LeafPointData leafPointData(position.data(), intensity.data(),
+                                        inds.data(), inds.size());
             int64_t leafMortonIndex = chunkIdx*leavesPerChunk + leafIdx;
-            builder.addNode(leafDepth, leafMortonIndex, std::move(brick));
-            // Want to only store O(log(N)) full bricks - should be able to
-            // achieve this, since we're traversing chunks in z order, and
-            // leaves in z order.
-            //
-            // Need an octree data structure which persists over all chunks,
-            // with the nodes storing bricks only for as long as they're
-            // needed, but storing the data offsets from the output queues for
-            // later dumping as an index.
+            builder.addNode(leafDepth, leafMortonIndex, std::move(brick),
+                            leafPointData);
         }
     }
     builder.finish();

@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "hcloud.h"
 #include "util.h"
 
 class SimplePointDb;
@@ -113,10 +114,10 @@ class VoxelBrick
 
         /// Serialize brick to output stream
         ///
-        /// Return the number of voxels written
-        int serialize(std::ostream& out) const
+        /// Return index node to the serialized data
+        NodeIndexData serialize(std::ostream& out) const
         {
-            // Serialize just the voxels with nonzero coverage
+            // Serialize all voxels with nonzero coverage
             std::vector<float> positions;
             std::vector<float> coverage;
             std::vector<float> intensity;
@@ -134,7 +135,10 @@ class VoxelBrick
             out.write((const char*)positions.data(), positions.size()*sizeof(float));
             out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
             out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
-            return (int)coverage.size();
+            NodeIndexData indexData;
+            indexData.numPoints = coverage.size();
+            indexData.flags = IndexFlags_Voxels;
+            return indexData;
         }
 
     private:
@@ -155,6 +159,38 @@ class VoxelBrick
             assert(x >= 0 && x < m_brickRes && y >= 0 && y < m_brickRes && z >= 0 && z < m_brickRes);
             return x + m_brickRes*(y + m_brickRes*z);
         }
+};
+
+
+//------------------------------------------------------------------------------
+
+/// Temporary container for leaf point data, for passing through to octree
+/// builder
+class LeafPointData
+{
+    public:
+        LeafPointData(const float* position, const float* intensity,
+                      const size_t* indices, size_t npoints)
+            : m_position(position), m_intensity(intensity), m_indices(indices), m_npoints(npoints)
+        { }
+
+        NodeIndexData serialize(std::ostream& out) const
+        {
+            for (size_t i = 0; i < m_npoints; ++i)
+                out.write((const char*)&m_position[3*m_indices[i]], 3*sizeof(float));
+            for (size_t i = 0; i < m_npoints; ++i)
+                out.write((const char*)&m_intensity[m_indices[i]], sizeof(float));
+            NodeIndexData indexData;
+            indexData.numPoints = m_npoints;
+            indexData.flags = IndexFlags_Points;
+            return indexData;
+        }
+
+    private:
+        const float* m_position;
+        const float* m_intensity;
+        const size_t* m_indices;
+        size_t m_npoints;
 };
 
 

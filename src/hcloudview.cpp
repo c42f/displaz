@@ -43,9 +43,7 @@ struct HCloudNode
     HCloudNode* children[8]; ///< Child nodes - order (x + 2*y + 4*z)
     Imath::Box3f bbox;       ///< Bounding box of node
 
-    uint64_t dataOffset;
-    uint32_t numOccupiedVoxels;
-    uint32_t numLeafPoints;
+    NodeIndexData idata;
     bool isLeaf;
 
     // List of non-empty voxels inside the node
@@ -55,7 +53,7 @@ struct HCloudNode
 
     HCloudNode(const Box3f& bbox)
         : bbox(bbox),
-        dataOffset(0), numOccupiedVoxels(0), numLeafPoints(0), isLeaf(false)
+        isLeaf(false)
     {
         for (int i = 0; i < 8; ++i)
             children[i] = 0;
@@ -76,9 +74,10 @@ struct HCloudNode
     /// (TODO: need some sort of LRU cache)
     void allocateArrays()
     {
-        position.reset(new float[3*numOccupiedVoxels]);
-        intensity.reset(new float[numOccupiedVoxels]);
-        coverage.reset(new float[numOccupiedVoxels]);
+        position.reset(new float[3*idata.numPoints]);
+        intensity.reset(new float[idata.numPoints]);
+        if (idata.flags == IndexFlags_Voxels)
+            coverage.reset(new float[idata.numPoints]);
     }
 
     void freeArrays()
@@ -93,10 +92,10 @@ struct HCloudNode
 static HCloudNode* readHCloudIndex(std::istream& in, const Box3f& bbox)
 {
     HCloudNode* node = new HCloudNode(bbox);
-    uint8_t childNodeMask   = readLE<uint8_t>(in);
-    node->dataOffset        = readLE<uint64_t>(in);
-    node->numOccupiedVoxels = readLE<uint32_t>(in);
-    node->numLeafPoints     = readLE<uint32_t>(in);
+    node->idata.flags      = IndexFlags(readLE<uint8_t>(in));
+    node->idata.dataOffset = readLE<uint64_t>(in);
+    node->idata.numPoints  = readLE<uint32_t>(in);
+    uint8_t childNodeMask  = readLE<uint8_t>(in);
     V3f center = bbox.center();
     node->isLeaf = (childNodeMask == 0);
     for (int i = 0; i < 8; ++i)
@@ -117,7 +116,12 @@ static HCloudNode* readHCloudIndex(std::istream& in, const Box3f& bbox)
         else
             b.min.z = center.z;
 //        tfm::printf("Read %d: %.3f - %.3f\n", childNodeMask, b.min, b.max);
-        node->children[i] = readHCloudIndex(in, b);
+        HCloudNode* child = readHCloudIndex(in, b);
+        // Special case for leaf node points: there's a single child node and
+        // it shares the parent bounding box.
+        if (child->idata.flags == IndexFlags_Points)
+            child->bbox = bbox;
+        node->children[i] = child;
     }
     return node;
 }
@@ -180,18 +184,19 @@ static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
                          StreamPageCache& inputCache, double priority)
 {
     node->allocateArrays();
-    int nvox = node->numOccupiedVoxels;
-    uint64_t offset = node->dataOffset;
-    uint64_t length = nvox*sizeof(float)*5;
-    if (!inputCache.read((char*)node->position.get(), offset, 3*sizeof(float)*nvox) ||
-        !inputCache.read((char*)node->coverage.get(), offset + 3*sizeof(float)*nvox, sizeof(float)*nvox) ||
-        !inputCache.read((char*)node->intensity.get(), offset + 4*sizeof(float)*nvox, sizeof(float)*nvox))
+    uint64_t offset = node->idata.dataOffset;
+    PageCacheReader reader(inputCache, offset);
+    int numPoints = node->idata.numPoints;
+    reader.read(node->position, 3*numPoints);
+    if (node->idata.flags == IndexFlags_Voxels)
+        reader.read(node->coverage, numPoints);
+    reader.read(node->intensity, numPoints);
+    if (reader.bad())
     {
-        inputCache.prefetch(offset, length, priority);
+        inputCache.prefetch(offset, reader.attemptedBytesRead(), priority);
         node->freeArrays();
         return false;
     }
-
     return true;
 }
 
@@ -208,12 +213,12 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
     transState.setUniforms(prog.programId());
+    prog.setUniformValue("pointPixelScale", (GLfloat)(0.5 * transState.viewSize.x *
+                                                      transState.projMatrix[0][0]));
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("coverage");
     prog.enableAttributeArray("intensity");
     prog.enableAttributeArray("simplifyThreshold");
-    prog.setUniformValue("pointPixelScale", (GLfloat)(0.5 * transState.viewSize.x *
-                                                      transState.projMatrix[0][0]));
 
     // TODO: Ultimately should scale angularSizeLimit with the quality, something
     // like this:
@@ -245,7 +250,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     {
         nodeStack.push_back(m_rootNode.get());
         levelStack.push_back(0);
-        m_sizeBytes += 5*sizeof(float)*m_rootNode->numOccupiedVoxels;
+        m_sizeBytes += 5*sizeof(float)*m_rootNode->idata.numPoints;
     }
     while (!nodeStack.empty())
     {
@@ -269,7 +274,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
                 if (n && !n->isCached())
                 {
                     if (readNodeData(n, m_header, *m_inputCache, angularSize))
-                        m_sizeBytes += 5*sizeof(float)*node->numOccupiedVoxels;
+                        m_sizeBytes += 5*sizeof(float)*node->idata.numPoints;
                     else
                         drawNode = true;
                 }
@@ -277,7 +282,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
         }
         if (drawNode)
         {
-            int nvox = node->numOccupiedVoxels;
+            int nvox = node->idata.numPoints;
             // Ensure large enough array of simplification thresholds
             //
             // Nvidia cards seem to clamp the minimum gl_PointSize to 1, so
@@ -294,20 +299,34 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
                     m_simplifyThreshold[i] = float(rand())/RAND_MAX;
             }
 
-            // We draw points as billboards (not spheres) when drawing MIP
-            // levels: the point radius represents a screen coverage in this
-            // case, with no sensible interpreation as a radius toward the
-            // camera.  If we don't do this, we get problems for multi layer
-            // surfaces where the more distant layer can cover the nearer one.
-            prog.setUniformValue("markerShape", GLint(0));
+            if (node->idata.flags == IndexFlags_Points)
+            {
+                prog.disableAttributeArray("coverage");
+                prog.setAttributeValue("coverage", 1.0f);
+                prog.setUniformValue("markerShape", GLint(1));
+                // FIXME: Lod multiplier for points shouldn't be hardcoded here.
+                prog.setUniformValue("lodMultiplier", 0.1f);
+            }
+            else
+            {
+                prog.setUniformValue("lodMultiplier", GLfloat(0.5*node->radius()/m_header.brickSize));
+                prog.setAttributeArray("coverage",  node->coverage.get(),  1);
+                // Draw voxels as billboards (not spheres) when drawing MIP
+                // levels: the point radius represents a screen coverage in
+                // this case, with no sensible interpreation as a radius toward
+                // the camera.  If we don't do this, we get problems for multi
+                // layer surfaces where the more distant layer can cover the
+                // nearer one.
+                prog.setUniformValue("markerShape", GLint(0));
+            }
             // Debug - draw octree levels
             // prog.setUniformValue("level", level);
-            prog.setUniformValue("lodMultiplier", GLfloat(0.5*node->radius()/m_header.brickSize));
             prog.setAttributeArray("position",  node->position.get(),  3);
             prog.setAttributeArray("intensity", node->intensity.get(), 1);
-            prog.setAttributeArray("coverage",  node->coverage.get(),  1);
             prog.setAttributeArray("simplifyThreshold", m_simplifyThreshold.data(), 1);
             glDrawArrays(GL_POINTS, 0, nvox);
+            if (node->idata.flags == IndexFlags_Points)
+                prog.enableAttributeArray("coverage");
             nodesRendered++;
             voxelsRendered += nvox;
         }
@@ -391,11 +410,11 @@ V3d HCloudView::pickVertex(const V3d& cameraPos,
         }
         if (useNode)
         {
-            int nvox = node->numOccupiedVoxels;
             double dist = DBL_MAX;
             const V3f* P = reinterpret_cast<const V3f*>(node->position.get());
-            size_t idx = closestPointToRay(P, nvox, rayOrigin - offset(),
-                                           rayDirection, longitudinalScale, &dist);
+            size_t idx = closestPointToRay(P, node->idata.numPoints,
+                                           rayOrigin - offset(), rayDirection,
+                                           longitudinalScale, &dist);
             if (dist < minDist)
             {
                 minDist = dist;

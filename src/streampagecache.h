@@ -163,4 +163,70 @@ class StreamPageCache
 };
 
 
+//------------------------------------------------------------------------------
+/// Stream-like interface on top of a page cache (how circular...)
+///
+/// Construct one of these to read consecutive bytes from a cache, without
+/// having to manually keep track of the offset and whether all the reads
+/// succeeded.
+class PageCacheReader
+{
+    public:
+        PageCacheReader(StreamPageCache& cache, uint64_t offset = 0)
+            : m_cache(cache),
+            m_initialOffset(offset),
+            m_offset(offset),
+            m_bad(false)
+        { }
+
+        /// Return true if any previous read() operation failed
+        bool bad() const
+        {
+            return m_bad;
+        }
+
+        /// Return total bytes which we attempted to read from the stream.
+        ///
+        /// This is accurate regardless of the return value of `bad()`.
+        uint64_t attemptedBytesRead() const
+        {
+            return m_offset - m_initialOffset;
+        }
+
+        /// Read bytes from stream into the supplied buffer
+        ///
+        /// If the stream is already bad, read zero bytes, but increment the
+        /// offset.  Return true on success.
+        bool read(char* buf, size_t size)
+        {
+            if (!m_bad)
+            {
+                if (!m_cache.read(buf, m_offset, size))
+                    m_bad = true;
+            }
+            m_offset += size;
+            return !m_bad;
+        }
+
+        /// If not bad, resize array to `size` and attempt to read `size`
+        /// elements from the stream in native endian binary form.
+        ///
+        /// If the stream is already bad, read zero bytes, but increment the
+        /// offset.  Return true on success.
+        template<typename T>
+        bool read(std::unique_ptr<T[]>& array, size_t size)
+        {
+            if (!m_bad)
+                array.reset(new T[size]);
+            return read((char*)array.get(), size*sizeof(T));
+        }
+
+    private:
+        StreamPageCache& m_cache;
+        uint64_t m_initialOffset;
+        uint64_t m_offset;
+        bool m_bad;
+};
+
+
 #endif // STREAM_PAGE_CACHE_H_INCLUDED

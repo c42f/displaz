@@ -80,7 +80,7 @@ void HCloudHeader::read(std::istream& in)
         throw std::runtime_error("Bad magic number: not a hierarchical point cloud");
     }
     version = readLE<uint16_t>(in);
-    if (version != 0)
+    if (version != HCLOUD_VERSION)
         throw std::runtime_error("Unknown hcloud version");
     headerSize = readLE<uint32_t>(in);
     numPoints  = readLE<uint64_t>(in);
