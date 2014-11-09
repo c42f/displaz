@@ -69,6 +69,10 @@ class FileLoader : public QObject
                 {
                     g_logger.error("Ran out of memory trying to load %s", fileName);
                 }
+                catch(std::exception& e)
+                {
+                    g_logger.error("Error loading %s: %s", fileName, e.what());
+                }
             }
             emit finished();
         }
