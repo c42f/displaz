@@ -166,8 +166,11 @@ class OctreeBuilder
         void addNode(int level, int64_t mortonIndex,
                      std::unique_ptr<VoxelBrick> node)
         {
-            addNode(level, mortonIndex, std::move(node),
-                    std::unique_ptr<IndexNode>());
+            assert(level < (int)m_levelInfo.size());
+            NodeOutputQueue& queue = m_levelInfo[level].outputQueue;
+            std::unique_ptr<IndexNode> indexNode = queue.write(*node);
+            flushQueue(queue, level, false);
+            addNode(level, mortonIndex, std::move(node), std::move(indexNode));
         }
 
         void finish()
@@ -180,7 +183,7 @@ class OctreeBuilder
             // if page caching starts at the root node data offset, but
             // somewhat irrelevant otherwise.
             for (int i = 0; i < (int)m_levelInfo.size(); ++i)
-                flushQueue(m_levelInfo[i].outputQueue, i);
+                flushQueue(m_levelInfo[i].outputQueue, i, true);
             m_header.indexOffset = m_output.tellp();
             // TODO: Fill numPoints
             writeIndex(m_output, m_rootNode.get());
@@ -268,9 +271,7 @@ class OctreeBuilder
             // Serialize, grabbing the serialization index for later
             NodeOutputQueue& queue = levelInfo.outputQueue;
             std::unique_ptr<IndexNode> indexNode = queue.write(*brick);
-            const size_t maxQueueBytes = 10*1024*1024;
-            if (queue.sizeBytes() > maxQueueBytes)
-                flushQueue(queue, level);
+            flushQueue(queue, level, false);
             for (int i = 0; i < 8; ++i)
                 indexNode->children[i] = std::move(levelInfo.pendingIndexNodes[i]);
             // Push new brick and index up the tree
@@ -281,11 +282,15 @@ class OctreeBuilder
                 levelInfo.pendingNodes[i].reset();
         }
 
-        void flushQueue(NodeOutputQueue& queue, int level)
+        void flushQueue(NodeOutputQueue& queue, int level, bool forceFlush)
         {
-            m_logger.debug("Flushing buffer for level %d: %.2f MiB",
-                           level, queue.sizeBytes()/(1024.0*1024.0));
-            queue.flush(m_output);
+            const size_t maxQueueBytes = 10*1024*1024;
+            if (forceFlush || queue.sizeBytes() >= maxQueueBytes)
+            {
+                m_logger.debug("Flushing buffer for level %d: %.2f MiB",
+                               level, queue.sizeBytes()/(1024.0*1024.0));
+                queue.flush(m_output);
+            }
         }
 
         static void writeIndex(std::ostream& out, const IndexNode* rootNode)
