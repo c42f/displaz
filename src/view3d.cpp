@@ -50,11 +50,6 @@
 
 
 //----------------------------------------------------------------------
-inline float rad2deg(float r)
-{
-    return r*180/M_PI;
-}
-
 template<typename T>
 inline QVector3D exr2qt(const Imath::Vec3<T>& v)
 {
@@ -453,22 +448,23 @@ void View3D::keyPressEvent(QKeyEvent *event)
 
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const TransformState& transState, const V3d& cursorPos) const
+void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos) const
 {
+    V3d offset = transStateIn.cameraPos();
+    TransformState transState = transStateIn.translate(offset);
+    V3d relCursor = cursorPos - offset;
+
+    // Cull if behind camera
+    if((relCursor * transState.modelViewMatrix).z > 0)
+        return;
+
     transState.load();
     // Draw a point at the centre of the cursor.
     glColor3f(1,1,1);
     glPointSize(1);
     glBegin(GL_POINTS);
-        glVertex(cursorPos);
+        glVertex(relCursor);
     glEnd();
-
-    // Find position of cursor in screen space
-    V3d screenP3 = qt2exr(m_camera.projectionMatrix()*m_camera.viewMatrix() *
-                          exr2qt(cursorPos));
-    // Cull if behind the camera
-    if((m_camera.viewMatrix() * exr2qt(cursorPos)).z() > 0)
-        return;
 
     // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
     // cursor, even when when it's behind something.
@@ -487,6 +483,8 @@ void View3D::drawCursor(const TransformState& transState, const V3d& cursorPos) 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_LINE_SMOOTH);
 
+    // Find position of cursor in screen space
+    V3d screenP3 = relCursor * transState.modelViewMatrix * transState.projMatrix;
     // Position in ortho coord system
     V2f p2 = 0.5f * V2f(width(), height()) *
              (V2f(screenP3.x, screenP3.y) + V2f(1.0f));
