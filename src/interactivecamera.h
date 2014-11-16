@@ -44,6 +44,8 @@
 #include <QtGui/QMatrix4x4>
 #include <QtCore/QRect>
 
+#include <OpenEXR/ImathVec.h>
+#include <OpenEXR/ImathMatrix.h>
 
 /// Camera controller for mouse-based scene navigation
 ///
@@ -79,37 +81,36 @@ class InteractiveCamera : public QObject
         { }
 
         /// Get the projection from camera to screen coordinates
-        QMatrix4x4 projectionMatrix() const
+        Imath::M44d projectionMatrix() const
         {
             QMatrix4x4 m;
             qreal aspect = qreal(m_viewport.width())/m_viewport.height();
             m.perspective(m_fieldOfView, aspect, m_clipNear, m_clipFar);
-            return m;
+            return qt2exr(m);
         }
 
         /// Get view transformation from world to camera coordinates
-        QMatrix4x4 viewMatrix() const
+        Imath::M44d viewMatrix() const
         {
             QMatrix4x4 m;
             m.translate(0, 0, -m_dist);
             m.rotate(m_rot);
             if(m_reverseHandedness)
                 m.scale(1,1,-1);
-            m.translate(-m_center);
-            return m;
+            return qt2exr(m).translate(-m_center);
         }
 
         /// Get transformation from screen coords to viewport coords
         ///
         /// The viewport coordinates are in pixels, with 0,0 at the top left
         /// and width,height at the bottom right.
-        QMatrix4x4 viewportMatrix() const
+        Imath::M44d viewportMatrix() const
         {
             QMatrix4x4 m;
             m.translate(m_viewport.x(), m_viewport.y(), 0);
             m.scale(0.5*m_viewport.width(), -0.5*m_viewport.height(), 1);
             m.translate(1, -1, 0);
-            return m;
+            return qt2exr(m);
         }
 
         /// Get the 2D region associated with the camera
@@ -121,9 +122,9 @@ class InteractiveCamera : public QObject
         /// Get field of view
         qreal fieldOfView() const  { return m_fieldOfView; }
         /// Get center around which the camera will pivot
-        QVector3D center() const   { return m_center; }
+        Imath::V3d center() const   { return m_center; }
         /// Get position of camera
-        QVector3D position() const { return viewMatrix().inverted()*QVector3D(0,0,0); }
+        Imath::V3d position() const { return Imath::V3d(0,0,0)*viewMatrix().inverse(); }
         /// Get distance from eye to center
         qreal eyeToCenterDistance() const { return m_dist; }
         /// Get the rotation about the center
@@ -137,20 +138,20 @@ class InteractiveCamera : public QObject
         /// vector moved by the mouse inside the 2D viewport.  If zooming is
         /// true, the point will be moved along the viewing direction rather
         /// than perpendicular to it.
-        QVector3D mouseMovePoint(QVector3D p, QPoint mouseMovement,
-                                 bool zooming) const
+        Imath::V3d mouseMovePoint(Imath::V3d p, QPoint mouseMovement,
+                                  bool zooming) const
         {
             qreal dx = 2*qreal(mouseMovement.x())/m_viewport.width();
             qreal dy = 2*qreal(-mouseMovement.y())/m_viewport.height();
             if(zooming)
             {
-                QMatrix4x4 view = viewMatrix();
-                return view.inverted().map(view.map(p)*std::exp(dy));
+                Imath::M44d view = viewMatrix();
+                return (p*view*std::exp(dy)) * view.inverse();
             }
             else
             {
-                QMatrix4x4 proj = projectionMatrix()*viewMatrix();
-                return proj.inverted().map(proj.map(p) + QVector3D(dx, dy, 0));
+                Imath::M44d proj = viewMatrix()*projectionMatrix();
+                return (p*proj + Imath::V3d(dx, dy, 0)) * proj.inverse();
             }
         }
 
@@ -175,7 +176,7 @@ class InteractiveCamera : public QObject
             m_fieldOfView = fov;
             emit projectionChanged();
         }
-        void setCenter(QVector3D center)
+        void setCenter(Imath::V3d center)
         {
             m_center = center;
             emit viewChanged();
@@ -304,12 +305,37 @@ class InteractiveCamera : public QObject
             return QVector3D(x,y,z);
         }
 
+
+        //----------------------------------------------------------------------
+        // Qt->Ilmbase vector/matrix conversions.
+        // TODO: Refactor everything to use a consistent set of matrix/vector
+        // classes (replace Ilmbase with Eigen?)
+        template<typename T>
+        static inline QVector3D exr2qt(const Imath::Vec3<T>& v)
+        {
+            return QVector3D(v.x, v.y, v.z);
+        }
+
+        static inline Imath::V3d qt2exr(const QVector3D& v)
+        {
+            return Imath::V3d(v.x(), v.y(), v.z());
+        }
+
+        static inline Imath::M44d qt2exr(const QMatrix4x4& m)
+        {
+            Imath::M44d mOut;
+            for(int j = 0; j < 4; ++j)
+            for(int i = 0; i < 4; ++i)
+                mOut[j][i] = m.constData()[4*j + i];
+            return mOut;
+        }
+
         bool m_reverseHandedness; ///< Reverse the handedness of the coordinate system
         bool m_trackballInteraction; ///< True for trackball style, false for turntable
 
         // World coordinates
         QQuaternion m_rot;    ///< camera rotation about center
-        QVector3D m_center;   ///< center of view for camera
+        Imath::V3d m_center;   ///< center of view for camera
         qreal m_dist;         ///< distance from center of view
         // Projection variables
         qreal m_fieldOfView;  ///< field of view in degrees

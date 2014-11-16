@@ -49,28 +49,6 @@
 #include "util.h"
 
 
-//----------------------------------------------------------------------
-template<typename T>
-inline QVector3D exr2qt(const Imath::Vec3<T>& v)
-{
-    return QVector3D(v.x, v.y, v.z);
-}
-
-inline Imath::V3d qt2exr(const QVector3D& v)
-{
-    return Imath::V3d(v.x(), v.y(), v.z());
-}
-
-inline Imath::M44d qt2exr(const QMatrix4x4& m)
-{
-    Imath::M44d mOut;
-    for(int j = 0; j < 4; ++j)
-    for(int i = 0; i < 4; ++i)
-        mOut[j][i] = m.constData()[4*j + i];
-    return mOut;
-}
-
-
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     : QGLWidget(parent),
@@ -216,7 +194,7 @@ void View3D::centreOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
-    m_camera.setCenter(exr2qt(m_cursorPos));
+    m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
@@ -275,8 +253,8 @@ void View3D::paintGL()
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(qt2exr(m_camera.projectionMatrix()),
-                              qt2exr(m_camera.viewMatrix()));
+    TransformState transState(m_camera.projectionMatrix(),
+                              m_camera.viewMatrix());
 
     glClearDepth(1.0f);
     glEnable(GL_DEPTH_TEST);
@@ -351,8 +329,12 @@ void View3D::drawMeshes(const TransformState& transState,
     {
         QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
         meshFaceShader.bind();
-        meshFaceShader.setUniformValue("lightDir_eye",
-                    m_camera.viewMatrix().mapVector(QVector3D(1,1,-1).normalized()));
+        M44d worldToEyeVecTransform = m_camera.viewMatrix();
+        worldToEyeVecTransform[3][0] = 0;
+        worldToEyeVecTransform[3][1] = 0;
+        worldToEyeVecTransform[3][2] = 0;
+        V3d lightDir = V3d(1,1,-1).normalized() * worldToEyeVecTransform;
+        meshFaceShader.setUniformValue("lightDir_eye", lightDir.x, lightDir.y, lightDir.z);
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawFaces(meshFaceShader, transState);
         meshFaceShader.release();
@@ -401,7 +383,7 @@ void View3D::mouseReleaseEvent(QMouseEvent* event)
         {
             // Snap camera centre to new position
             V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
-            m_camera.setCenter(exr2qt(newPos));
+            m_camera.setCenter(newPos);
         }
     }
 }
@@ -414,10 +396,9 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
     bool zooming = m_mouseButton == Qt::RightButton;
     if(event->modifiers() & Qt::ControlModifier)
     {
-        m_cursorPos = qt2exr(
-            m_camera.mouseMovePoint(exr2qt(m_cursorPos),
-                                    event->pos() - m_prevMousePos,
-                                    zooming) );
+        m_cursorPos = m_camera.mouseMovePoint(m_cursorPos,
+                                              event->pos() - m_prevMousePos,
+                                              zooming);
         restartRender();
     }
     else
@@ -440,7 +421,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_C)
     {
         // Centre camera on current cursor location
-        m_camera.setCenter(exr2qt(m_cursorPos));
+        m_camera.setCenter(m_cursorPos);
     }
     else
         event->ignore();
@@ -550,7 +531,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(selection[i].row() + 1));
-        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()(0,0)));
+        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()[0][0]));
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -568,12 +549,12 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
     // position x,y and the z of the reference position.  Take the reference to
     // be the camera rotation center since that's likely to be roughly the
     // depth the user is interested in.
-    V3d refPos = qt2exr(m_camera.center());
-    QMatrix4x4 mat = m_camera.viewportMatrix()*m_camera.projectionMatrix()*m_camera.viewMatrix();
-    double refZ = mat.map(exr2qt(refPos)).z();
-    QVector3D newPointProj(clickPos.x(), clickPos.y(), refZ);
+    V3d refPos = m_camera.center();
+    M44d mat = m_camera.viewMatrix()*m_camera.projectionMatrix()*m_camera.viewportMatrix();
+    double refZ = (refPos * mat).z;
+    V3d newPointProj(clickPos.x(), clickPos.y(), refZ);
     // Map projected point back into model coordinates
-    return qt2exr(mat.inverted().map(newPointProj));
+    return newPointProj * mat.inverse();
 }
 
 
@@ -586,7 +567,7 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     if (m_geometries->get().empty())
         return pos;
     // Ray out from the camera to the given point
-    V3d viewDir = (pos - qt2exr(m_camera.position())).normalized();
+    V3d viewDir = (pos - m_camera.position()).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
