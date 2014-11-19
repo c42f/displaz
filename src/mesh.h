@@ -58,7 +58,8 @@ class TriMesh : public Geometry
                                   bool incrementalDraw, const double* qualities,
                                   DrawCount* drawCounts, int numEstimates) const;
 
-        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+        virtual V3d pickVertex(const V3d& cameraPos,
+                               const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const;
 
     private:

@@ -28,6 +28,7 @@
 // (This is the BSD 3-clause license)
 
 #include "geometry.h"
+#include "hcloudview.h"
 #include "mesh.h"
 #include "pointarray.h"
 
@@ -72,6 +73,8 @@ std::shared_ptr<Geometry> Geometry::create(QString fileName)
 {
     if (fileName.endsWith(".ply") && plyHasMesh(fileName))
         return std::shared_ptr<Geometry>(new TriMesh());
+    else if(fileName.endsWith(".hcloud"))
+        return std::shared_ptr<Geometry>(new HCloudView());
     else
         return std::shared_ptr<Geometry>(new PointArray());
 }

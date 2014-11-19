@@ -71,7 +71,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
     connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(geometryChanged()));
-    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryChanged()));
+    connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryInserted(const QModelIndex&, int,int)));
     connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(geometryChanged()));
 
     setSelectionModel(new QItemSelectionModel(m_geometries, this));
@@ -120,6 +120,15 @@ void View3D::geometryChanged()
         centreOnGeometry(m_geometries->index(0));
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
+}
+
+
+void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
+{
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    for (int i = firstRow; i <= lastRow; ++i)
+        geoms[i]->initializeGL();
+    geometryChanged();
 }
 
 
@@ -214,6 +223,9 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram(context()));
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    for (size_t i = 0; i < geoms.size(); ++i)
+        geoms[i]->initializeGL();
 }
 
 
@@ -253,7 +265,8 @@ void View3D::paintGL()
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(m_camera.projectionMatrix(),
+    TransformState transState(Imath::V2i(width(), height()),
+                              m_camera.projectionMatrix(),
                               m_camera.viewMatrix());
 
     glClearDepth(1.0f);
@@ -277,6 +290,13 @@ void View3D::paintGL()
     if (!m_incrementalDraw)
     {
         drawMeshes(transState, geoms);
+
+        // Generic draw for any other geometry
+        // (TODO: make all geometries use this interface, or something similar)
+        // FIXME - Do generic quality scaling
+        const double quality = 1;
+        for (size_t i = 0; i < geoms.size(); ++i)
+            geoms[i]->draw(transState, quality);
     }
 
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
@@ -567,7 +587,8 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     if (m_geometries->get().empty())
         return pos;
     // Ray out from the camera to the given point
-    V3d viewDir = (pos - m_camera.position()).normalized();
+    V3d cameraPos = m_camera.position();
+    V3d viewDir = (pos - cameraPos).normalized();
     V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
@@ -576,7 +597,7 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     {
         int geomIdx = sel[i].row();
         double dist = 0;
-        V3d p = m_geometries->get()[geomIdx]->pickVertex(pos, viewDir,
+        V3d p = m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir,
                                                          normalScaling, &dist);
         if (dist < nearestDist)
         {

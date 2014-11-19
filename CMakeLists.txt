@@ -85,6 +85,9 @@ else()
 
     # Find IlmBase
     find_path (ILMBASE_INCLUDES NAMES OpenEXR/ImathVec.h)
+    find_library (ILMBASE_IMATH_LIBRARY NAMES Imath)
+    find_library (ILMBASE_IEX_LIBRARY NAMES Iex)
+    set (ILMBASE_LIBRARIES ${ILMBASE_IMATH_LIBRARY} ${ILMBASE_IEX_LIBRARY})
     if (ILMBASE_INCLUDES)
         set (ILMBASE_FOUND TRUE)
     endif()

@@ -41,11 +41,15 @@
 /// Utility to handle transformation state
 struct TransformState
 {
+    Imath::V2i viewSize;
     Imath::M44d projMatrix;
     Imath::M44d modelViewMatrix;
 
-    TransformState(const M44d& projMatrix, const M44d& modelViewMatrix)
-        : projMatrix(projMatrix), modelViewMatrix(modelViewMatrix) {}
+    TransformState(const Imath::V2i& viewSize, const M44d& projMatrix,
+                   const M44d& modelViewMatrix)
+        : viewSize(viewSize), projMatrix(projMatrix),
+        modelViewMatrix(modelViewMatrix)
+    { }
 
     /// Return position of camera in model space
     V3d cameraPos() const

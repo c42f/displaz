@@ -99,7 +99,7 @@ struct OctreeNode
     DrawCount drawCount(const V3f& relCamera,
                         double quality, bool incrementalDraw) const
     {
-        assert(isLeaf);
+        assert(isLeaf());
         const double drawAllDist = 100;
         double dist = (this->bbox.center() - relCamera).length();
         double diagRadius = this->bbox.size().length()/2;
@@ -320,6 +320,27 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             return false;
         }
     }
+    else if (fileName.endsWith(".dat"))
+    {
+        // Load crappy db format
+        std::ifstream file(fileName.toUtf8(), std::ios::binary);
+        file.seekg(0, std::ios::end);
+        totPoints = file.tellg()/(4*sizeof(float));
+        file.seekg(0);
+        m_fields.push_back(GeomField(TypeSpec::vec3float32(), "position", totPoints));
+        m_fields.push_back(GeomField(TypeSpec::float32(), "intensity", totPoints));
+        float* position = m_fields[0].as<float>();
+        float* intensity = m_fields[1].as<float>();
+        for (size_t i = 0; i < totPoints; ++i)
+        {
+            file.read((char*)position, 3*sizeof(float));
+            file.read((char*)intensity, 1*sizeof(float));
+            bbox.extendBy(V3d(position[0], position[1], position[2]));
+            position += 3;
+            intensity += 1;
+        }
+        m_npoints = totPoints;
+    }
     else
     {
         if (!loadText(fileName, maxPointCount, m_fields, offset,
@@ -384,7 +405,8 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 }
 
 
-V3d PointArray::pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+V3d PointArray::pickVertex(const V3d& cameraPos,
+                           const V3d& rayOrigin, const V3d& rayDirection,
                            double longitudinalScale, double* distance) const
 {
     size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
@@ -450,11 +472,8 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-//static size_t debugFileIdx;
-
-
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
-                                double quality, bool incrementalDraw) const
+                                 double quality, bool incrementalDraw) const
 {
     TransformState relativeTrans = transState.translate(offset());
     relativeTrans.setUniforms(prog.programId());

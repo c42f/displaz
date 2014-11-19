@@ -137,6 +137,44 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 }
 
 
+/// Tile coordinate for las tiling
+typedef Imath::Vec3<int> TilePos;
+
+namespace std {
+/// Simple lexographic tile ordering for use with std::map
+inline bool operator<(const TilePos& p1, const TilePos& p2)
+{
+    if (p1.x != p2.x)
+        return p1.x < p2.x;
+    if (p1.y != p2.y)
+        return p1.y < p2.y;
+    return p1.z < p2.z;
+}
+}
+
+
+//------------------------------------------------------------------------------
+// Binary IO utils
+
+/// Write POD type to std::ostream in little endian binary format
+template<typename T>
+void writeLE(std::ostream& out, const T& val)
+{
+    out.write((const char*)&val, sizeof(val));
+}
+
+/// Read POD type from std::istream in little endian binary format
+template<typename T>
+T readLE(std::istream& in)
+{
+    T val;
+    in.read((char*)&val, sizeof(val));
+    if (!in || in.gcount() != sizeof(val))
+        throw DisplazError("Could not read from stream");
+    return val;
+}
+
+
 //------------------------------------------------------------------------------
 // System utils
 

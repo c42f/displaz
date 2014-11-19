@@ -10,6 +10,14 @@ include_directories(BEFORE
 
 #------------------------------------------------------------------------------
 # Sources
+set(shared_srcs
+    logger.cpp
+    geomfield.cpp
+    typespec.cpp
+    hcloud.cpp
+    util.cpp
+    ../thirdparty/argparse.cpp
+)
 qt4_wrap_cpp(moc_srcs
     datasetui.h
     displazserver.h
@@ -17,6 +25,7 @@ qt4_wrap_cpp(moc_srcs
     fileloader.h
     geometry.h
     geometrycollection.h
+    hcloudview.h
     helpdialog.h
     interactivecamera.h
     qtlogger.h
@@ -27,14 +36,14 @@ qt4_wrap_cpp(moc_srcs
     shader.h
 )
 set(srcs
+    ${shared_srcs}
     ${moc_srcs}
     datasetui.cpp
     DrawCostModel.cpp
     geometry.cpp
-    geomfield.cpp
     geometrycollection.cpp
     glutil.cpp
-    logger.cpp
+    hcloudview.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp
@@ -42,12 +51,9 @@ set(srcs
     ply_io.cpp
     las_io.cpp
     pointarray.cpp
-    typespec.cpp
     view3d.cpp
     shadereditor.cpp
     shader.cpp
-    util.cpp
-    ../thirdparty/argparse.cpp
     ../thirdparty/rply/rply.c
 )
 if(WIN32)
@@ -66,11 +72,19 @@ include_directories(${PROJECT_BINARY_DIR})
 
 add_executable(displaz WIN32 ${srcs})
 
+add_executable(dvox
+    dvox.cpp
+    pointdbwriter.cpp
+    pointdb.cpp
+    voxelizer.cpp
+    ${shared_srcs}
+)
 
 #-------------------------------------------------------------------------------
 # Library dependencies
 if (DISPLAZ_BUILD_EXTERNAL)
     add_dependencies(displaz ${externalBuilds})
+    add_dependencies(dvox ${externalBuilds})
 endif()
 
 target_link_libraries(displaz
@@ -78,11 +92,16 @@ target_link_libraries(displaz
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
+target_link_libraries(dvox
+    ${QT_QTCORE_LIBRARY}
+    )
+
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
         target_link_libraries (displaz ${PDAL_LIBRARIES})
     else()
         target_link_libraries (displaz ${LASLIB_LIBRARIES})
+        target_link_libraries (dvox ${LASLIB_LIBRARIES})
     endif()
 endif()
 
@@ -103,6 +122,7 @@ endif()
 
 # Install
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
+install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
 
 if(WIN32)
     # Install required qt libraries
@@ -117,10 +137,9 @@ endif()
 # Tests
 if (DISPLAZ_USE_TESTS)
     add_executable(util_test util_test.cpp)
-    if (DISPLAZ_BUILD_EXTERNAL)
-        add_dependencies(util_test ${externalBuilds})
-    endif()
+    add_executable(streampagecache_test streampagecache_test.cpp)
     add_test(util_test util_test)
+    add_test(streampagecache_test streampagecache_test)
 endif()
 
 

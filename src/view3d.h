@@ -34,6 +34,7 @@
 #include <vector>
 #include <memory>
 
+#include <GL/glew.h>
 #include <QGLWidget>
 #include <QModelIndex>
 
@@ -99,6 +100,7 @@ class View3D : public QGLWidget
         void setupShaderParamUI();
 
         void geometryChanged();
+        void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;

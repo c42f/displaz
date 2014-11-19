@@ -27,40 +27,38 @@
 //
 // (This is the BSD 3-clause license)
 
-#ifndef DISPLAZ_POINTARRAY_H_INCLUDED
-#define DISPLAZ_POINTARRAY_H_INCLUDED
 
-#include <cassert>
-#include <memory>
-#include <vector>
+#ifndef DISPLAZ_HCLOUDVIEW_H_INCLUDED
+#define DISPLAZ_HCLOUDVIEW_H_INCLUDED
+
+#include <fstream>
 
 #include "geometry.h"
-#include "typespec.h"
-#include "geomfield.h"
+#include "hcloud.h"
 
-class QGLShaderProgram;
+struct HCloudNode;
+class StreamPageCache;
+class ShaderProgram;
 
-struct OctreeNode;
-struct TransformState;
-
-//------------------------------------------------------------------------------
-/// Container for points to be displayed in the View3D interface
-class PointArray : public Geometry
+/// Viewer for hcloud file format
+///
+/// HCloudView uses incremental loading of the LoD structure to avoid loading
+/// the whole thing into memory at once.
+class HCloudView : public Geometry
 {
     Q_OBJECT
-
     public:
-        PointArray();
-        ~PointArray();
+        HCloudView();
 
-        // Overridden Geometry functions
+        ~HCloudView();
+
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual DrawCount drawPoints(QGLShaderProgram& prog,
-                                    const TransformState& transState,
-                                    double quality, bool incrementalDraw) const;
+        virtual void initializeGL();
 
-        virtual size_t pointCount() const { return m_npoints; }
+        virtual void draw(const TransformState& transState, double quality) const;
+
+        virtual size_t pointCount() const;
 
         virtual void estimateCost(const TransformState& transState,
                                   bool incrementalDraw, const double* qualities,
@@ -70,39 +68,17 @@ class PointArray : public Geometry
                                const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const;
 
-        /// Draw a representation of the point hierarchy.
-        ///
-        /// Probably only useful for debugging.
-        void drawTree(const TransformState& transState) const;
-
     private:
-        bool loadLas(QString fileName, size_t maxPointCount,
-                     std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, uint64_t& totPoints,
-                     Imath::Box3d& bbox, V3d& centroid);
-
-        bool loadText(QString fileName, size_t maxPointCount,
-                      std::vector<GeomField>& fields, V3d& offset,
-                      size_t& npoints, uint64_t& totPoints,
-                      Imath::Box3d& bbox, V3d& centroid);
-
-        bool loadPly(QString fileName, size_t maxPointCount,
-                     std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, uint64_t& totPoints,
-                     Imath::Box3d& bbox, V3d& centroid);
-
-        friend struct ProgressFunc;
-
-        /// Total number of points
-        size_t m_npoints;
-        /// Spatial hierarchy
-        std::unique_ptr<OctreeNode> m_rootNode;
-        /// Point data field storage
-        std::vector<GeomField> m_fields;
-        /// A position field is required.  Alias for convenience:
-        int m_positionFieldIdx;
-        V3f* m_P;
+        HCloudHeader m_header; // TODO: Put in HCloudInput class
+        // TODO: Do we really want all this mutable state?
+        // Should draw() be logically non-const?
+        mutable uint64_t m_sizeBytes;
+        mutable std::ifstream m_input;
+        mutable std::unique_ptr<StreamPageCache> m_inputCache;
+        std::unique_ptr<HCloudNode> m_rootNode;
+        std::unique_ptr<ShaderProgram> m_shader;
+        mutable std::vector<float> m_simplifyThreshold;
 };
 
 
-#endif // DISPLAZ_POINTARRAY_H_INCLUDED
+#endif // DISPLAZ_HCLOUDVIEW_H_INCLUDED

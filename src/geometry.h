@@ -32,6 +32,7 @@
 
 #include <memory>
 
+#include "glutil.h"
 #include "util.h"
 #include <QString>
 #include <QMetaType>
@@ -85,6 +86,14 @@ class Geometry : public QObject
         virtual bool reloadFile(size_t maxVertexCount);
 
         //--------------------------------------------------
+        /// Draw geometry using current OpenGL context
+        virtual void draw(const TransformState& transState, double quality) const {}
+
+        /// Initialize (or reinitialize) any openGL state associated with the
+        /// geometry
+        virtual void initializeGL() {}
+
+        //--------------------------------------------------
         /// Draw points using given openGL shader program
         ///
         /// Requires that `pointShaderProg` is already bound and any necessary
@@ -135,7 +144,8 @@ class Geometry : public QObject
         /// with the ray direction scaled by the amount normalDirectionScale.
         /// This distance is returned in the distance parameter when it is
         /// non-null.
-        virtual V3d pickVertex(const V3d& rayOrigin, const V3d& rayDirection,
+        virtual V3d pickVertex(const V3d& cameraPos,
+                               const V3d& rayOrigin, const V3d& rayDirection,
                                double longitudinalScale, double* distance = 0) const = 0;
 
         //--------------------------------------------------
