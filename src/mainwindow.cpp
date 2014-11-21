@@ -246,7 +246,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAbstractItemView* dataSetOverview = dataSetUI->view();
     dataSetOverview->setModel(m_geometries);
     connect(dataSetOverview, SIGNAL(doubleClicked(const QModelIndex&)),
-            m_pointView, SLOT(centreOnGeometry(const QModelIndex&)));
+            m_pointView, SLOT(centerOnGeometry(const QModelIndex&)));
     m_pointView->setSelectionModel(dataSetOverview->selectionModel());
 
     // Set up docked widgets

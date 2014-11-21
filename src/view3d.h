@@ -80,7 +80,7 @@ class View3D : public QGLWidget
         void toggleDrawCursor();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
-        void centreOnGeometry(const QModelIndex& index);
+        void centerOnGeometry(const QModelIndex& index);
 
     protected:
         // Qt OpenGL callbacks
@@ -105,7 +105,8 @@ class View3D : public QGLWidget
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
-        void drawCursor(const TransformState& transState, const V3d& P) const;
+        void drawCursor(const TransformState& transState, const V3d& P,
+                        float cursorRadius, float centerPointRadius) const;
 
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,

@@ -117,7 +117,7 @@ void View3D::restartRender()
 void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
-        centreOnGeometry(m_geometries->index(0));
+        centerOnGeometry(m_geometries->index(0));
     setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
 }
@@ -199,7 +199,7 @@ void View3D::toggleCameraMode()
 }
 
 
-void View3D::centreOnGeometry(const QModelIndex& index)
+void View3D::centerOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
@@ -330,7 +330,10 @@ void View3D::paintGL()
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
-        drawCursor(transState, m_cursorPos);
+    {
+        drawCursor(transState, m_cursorPos, 10, 1);
+        //drawCursor(transState, m_camera.center(), 10);
+    }
 
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
@@ -385,26 +388,17 @@ void View3D::mouseReleaseEvent(QMouseEvent* event)
     if (event->button() == Qt::MidButton)
     {
         double snapScale = 0.025;
-        if (event->modifiers() & Qt::ControlModifier)
-        {
-            // Snap cursor without changing view
-            V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
-            V3d posDiff = newPos - m_prevCursorSnap;
-            g_logger.info("Selected %.3f\n"
-                          "    [diff with previous: %.3f m;\n"
-                          "     %.3f]",
-                          newPos, posDiff.length(), posDiff);
-            m_cursorPos = newPos;
-            m_prevCursorSnap = newPos;
-            if (posDiff.length() != 0)
-                updateGL();
-        }
-        else
-        {
-            // Snap camera centre to new position
-            V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
-            m_camera.setCenter(newPos);
-        }
+        V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
+        V3d posDiff = newPos - m_prevCursorSnap;
+        g_logger.info("Selected %.3f\n"
+                        "    [diff with previous: %.3f m;\n"
+                        "     %.3f]",
+                        newPos, posDiff.length(), posDiff);
+        // Snap cursor /and/ camera to new position
+        // TODO: Decouple these, but in a sensible way
+        m_cursorPos = newPos;
+        m_camera.setCenter(newPos);
+        m_prevCursorSnap = newPos;
     }
 }
 
@@ -449,7 +443,8 @@ void View3D::keyPressEvent(QKeyEvent *event)
 
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos) const
+void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos,
+                        float cursorRadius, float centerPointRadius) const
 {
     V3d offset = transStateIn.cameraPos();
     TransformState transState = transStateIn.translate(offset);
@@ -459,13 +454,16 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     if((relCursor * transState.modelViewMatrix).z > 0)
         return;
 
-    transState.load();
-    // Draw a point at the centre of the cursor.
-    glColor3f(1,1,1);
-    glPointSize(1);
-    glBegin(GL_POINTS);
-        glVertex(relCursor);
-    glEnd();
+    if (centerPointRadius > 0)
+    {
+        transState.load();
+        // Draw a point at the center of the cursor.
+        glColor3f(1,1,1);
+        glPointSize(centerPointRadius);
+        glBegin(GL_POINTS);
+            glVertex(relCursor);
+        glEnd();
+    }
 
     // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
     // cursor, even when when it's behind something.
@@ -489,33 +487,34 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     // Position in ortho coord system
     V2f p2 = 0.5f * V2f(width(), height()) *
              (V2f(screenP3.x, screenP3.y) + V2f(1.0f));
-    float r = 10;
+    float r1 = cursorRadius;
+    float r2 = r1 + cursorRadius;
     glLineWidth(2);
     glColor3f(1,1,1);
     // Combined white and black crosshairs, so they can be seen on any
     // background.
     glTranslatef(p2.x, p2.y, 0);
     glBegin(GL_LINES);
-        glVertex(V2f(r,   0));
-        glVertex(V2f(2*r, 0));
-        glVertex(-V2f(r,   0));
-        glVertex(-V2f(2*r, 0));
-        glVertex(V2f(0,   r));
-        glVertex(V2f(0, 2*r));
-        glVertex(-V2f(0,   r));
-        glVertex(-V2f(0, 2*r));
+        glVertex( V2f(r1, 0));
+        glVertex( V2f(r2, 0));
+        glVertex(-V2f(r1, 0));
+        glVertex(-V2f(r2, 0));
+        glVertex( V2f(0,  r1));
+        glVertex( V2f(0,  r2));
+        glVertex(-V2f(0,  r1));
+        glVertex(-V2f(0,  r2));
     glEnd();
     glColor3f(0,0,0);
     glRotatef(45,0,0,1);
     glBegin(GL_LINES);
-        glVertex(V2f(r,   0));
-        glVertex(V2f(2*r, 0));
-        glVertex(-V2f(r,   0));
-        glVertex(-V2f(2*r, 0));
-        glVertex(V2f(0,   r));
-        glVertex(V2f(0, 2*r));
-        glVertex(-V2f(0,   r));
-        glVertex(-V2f(0, 2*r));
+        glVertex( V2f(r1, 0));
+        glVertex( V2f(r2, 0));
+        glVertex(-V2f(r1, 0));
+        glVertex(-V2f(r2, 0));
+        glVertex( V2f(0,  r1));
+        glVertex( V2f(0,  r2));
+        glVertex(-V2f(0,  r1));
+        glVertex(-V2f(0,  r2));
     glEnd();
 
     glPopMatrix();
