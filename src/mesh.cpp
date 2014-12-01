@@ -317,7 +317,8 @@ void TriMesh::estimateCost(const TransformState& transState,
 
 V3d TriMesh::pickVertex(const V3d& cameraPos,
                         const V3d& rayOrigin, const V3d& rayDirection,
-                        double longitudinalScale, double* distance) const
+                        double longitudinalScale, double* distance,
+                        std::string* info) const
 {
     size_t idx = closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
                                    rayOrigin - offset(), rayDirection,

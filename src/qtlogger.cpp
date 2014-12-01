@@ -60,6 +60,7 @@ void LogViewer::appendLogMessage(int logLevel, QString msg)
             insertPlainText(msg);
             break;
         case Logger::Info:
+            appendHtml("<b>INFO</b>: ");
             appendPlainText(msg);
             break;
     }

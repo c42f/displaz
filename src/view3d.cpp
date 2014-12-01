@@ -388,12 +388,15 @@ void View3D::mouseReleaseEvent(QMouseEvent* event)
     if (event->button() == Qt::MidButton)
     {
         double snapScale = 0.025;
-        V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale);
+        QString pointInfo;
+        V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale,
+                                    pointInfo);
         V3d posDiff = newPos - m_prevCursorSnap;
-        g_logger.info("Selected %.3f\n"
-                        "    [diff with previous: %.3f m;\n"
-                        "     %.3f]",
-                        newPos, posDiff.length(), posDiff);
+        g_logger.info("Selected Point Attributes:\n"
+                      "%s"
+                      "diff with previous = %.3f\n"
+                      "vector diff = %.3f",
+                      pointInfo, posDiff.length(), posDiff);
         // Snap cursor /and/ camera to new position
         // TODO: Decouple these, but in a sensible way
         m_cursorPos = newPos;
@@ -581,7 +584,8 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 ///
 /// `normalScaling` - Distance along the camera direction will be scaled by
 ///                   this factor when computing the closest point.
-Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
+Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
+                                  QString& pointInfo)
 {
     if (m_geometries->get().empty())
         return pos;
@@ -596,12 +600,14 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling)
     {
         int geomIdx = sel[i].row();
         double dist = 0;
+        std::string info;
         V3d p = m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir,
-                                                         normalScaling, &dist);
+                                                         normalScaling, &dist, &info);
         if (dist < nearestDist)
         {
             newPos = p;
             nearestDist = dist;
+            pointInfo = QString::fromStdString(info);
         }
     }
     return newPos;

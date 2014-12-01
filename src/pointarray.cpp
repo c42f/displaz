@@ -407,12 +407,74 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
 V3d PointArray::pickVertex(const V3d& cameraPos,
                            const V3d& rayOrigin, const V3d& rayDirection,
-                           double longitudinalScale, double* distance) const
+                           double longitudinalScale, double* distance,
+                           std::string* info) const
 {
-    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
-                                   rayDirection, longitudinalScale, distance);
     if (m_npoints == 0)
         return V3d(0);
+    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
+                                   rayDirection, longitudinalScale, distance);
+    if (info)
+    {
+        // Format all selected point attributes for user display
+        // TODO: Make the type dispatch machinary generic & put in TypeSpec
+        std::ostringstream out;
+        for (size_t i = 0; i < m_fields.size(); ++i)
+        {
+            const GeomField& field = m_fields[i];
+            tfm::format(out, "  %s = ", field.name);
+            if (field.name == "position")
+            {
+                // Special case for position, since it has an associated offset
+                const float* p = (float*)(field.data.get() + idx*field.spec.size());
+                tfm::format(out, "%.3f %.3f %.3f\n",
+                            p[0] + offset().x, p[1] + offset().y, p[2] + offset().z);
+                continue;
+            }
+            for (int j = 0; j < field.spec.count; ++j)
+            {
+                const char* data = field.data.get() + idx*field.spec.size() + j*field.spec.elsize;
+                switch (field.spec.type)
+                {
+                    case TypeSpec::Float:
+                        switch (field.spec.elsize)
+                        {
+                            case 4:  tfm::format(out, "%g", *(float*)data);  break;
+                            case 8:  tfm::format(out, "%g", *(double*)data); break;
+                            default: tfm::format(out, "?"); break;
+                        }
+                        break;
+                    case TypeSpec::Int:
+                        switch (field.spec.elsize)
+                        {
+                            case 1:  tfm::format(out, "%d", *(int8_t*)data);  break;
+                            case 2:  tfm::format(out, "%d", *(int16_t*)data); break;
+                            case 4:  tfm::format(out, "%d", *(int32_t*)data); break;
+                            case 8:  tfm::format(out, "%d", *(int64_t*)data); break;
+                            default: tfm::format(out, "?"); break;
+                        }
+                        break;
+                    case TypeSpec::Uint:
+                        switch (field.spec.elsize)
+                        {
+                            case 1:  tfm::format(out, "%d", *(uint8_t*)data);  break;
+                            case 2:  tfm::format(out, "%d", *(uint16_t*)data); break;
+                            case 4:  tfm::format(out, "%d", *(uint32_t*)data); break;
+                            case 8:  tfm::format(out, "%d", *(uint64_t*)data); break;
+                            default: tfm::format(out, "?"); break;
+                        }
+                        break;
+                    default:
+                        tfm::format(out, "unknown");
+                }
+                if (j < field.spec.count - 1)
+                    tfm::format(out, " ");
+                else
+                    tfm::format(out, "\n");
+            }
+        }
+        *info = out.str();
+    }
     return V3d(m_P[idx]) + offset();
 }
 

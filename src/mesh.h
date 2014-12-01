@@ -60,7 +60,8 @@ class TriMesh : public Geometry
 
         virtual V3d pickVertex(const V3d& cameraPos,
                                const V3d& rayOrigin, const V3d& rayDirection,
-                               double longitudinalScale, double* distance = 0) const;
+                               double longitudinalScale, double* distance = 0,
+                               std::string* info = 0) const;
 
     private:
 

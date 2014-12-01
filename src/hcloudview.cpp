@@ -376,7 +376,8 @@ void HCloudView::estimateCost(const TransformState& transState,
 
 V3d HCloudView::pickVertex(const V3d& cameraPos,
                            const V3d& rayOrigin, const V3d& rayDirection,
-                           double longitudinalScale, double* distance) const
+                           double longitudinalScale, double* distance,
+                           std::string* info) const
 {
     // FIXME: Needs full camera transform to calculate angularSizeLimit, as in
     // draw()
