@@ -118,7 +118,6 @@ void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
         centerOnGeometry(m_geometries->index(0));
-    setupShaderParamUI(); // Ugh, file name list changed.  FIXME: Kill this off
     restartRender();
 }
 
@@ -145,13 +144,7 @@ void View3D::setupShaderParamUI()
     while (QWidget* child = m_shaderParamsUI->findChild<QWidget*>())
         delete child;
     delete m_shaderParamsUI->layout();
-    QStringList fileNames;
-    for(size_t i = 0; i < m_geometries->get().size(); ++i)
-    {
-        if (m_geometries->get()[i]->pointCount() > 0)
-            fileNames << QFileInfo(m_geometries->get()[i]->fileName()).fileName();
-    }
-    m_shaderProgram->setupParameterUI(m_shaderParamsUI, fileNames);
+    m_shaderProgram->setupParameterUI(m_shaderParamsUI);
 }
 
 
