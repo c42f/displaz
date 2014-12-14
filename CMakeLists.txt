@@ -138,7 +138,7 @@ endif()
 #------------------------------------------------------------------------------
 # Determine current displaz version
 include(GitUtils)
-set(displazVersion "0.2")
+set(displazVersion "0.3")
 if (GIT_FOUND)
     git_describe(displazVersionGit)
     if (displazVersionGit)
