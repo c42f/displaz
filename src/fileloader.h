@@ -65,7 +65,7 @@ class FileLoader : public QObject
                         g_logger.error("Could not load %s", fileName);
                     }
                 }
-                catch(std::bad_alloc& e)
+                catch(std::bad_alloc& /*e*/)
                 {
                     g_logger.error("Ran out of memory trying to load %s", fileName);
                 }

@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <string.h>
 #include <stdexcept>

@@ -160,11 +160,21 @@ class PointList
         ///
         /// The values of all attributes added using `addAttribute()` must be
         /// provided in the argument list `args`.
+#       if _MSC_FULL_VER >= 180020827
         template<typename... Args>
         void append(const Args&... args)
         {
             double values[] = {double(args)...};
             size_t numVals = sizeof...(args);
+            append(values, numVals);
+        }
+#       endif
+
+        /// Append a new point to the list
+        ///
+        /// See append() above for a more convenient way to do this
+        void append(const double* values, size_t numVals)
+        {
             for (size_t i = 0, j = 0; i < m_attributes.size(); ++i)
             {
                 detail::PointAttribute& attr = m_attributes[i];
@@ -310,7 +320,7 @@ class Displaz
         static FilePtr openTempPly(std::string& fileName)
         {
 #           ifdef _WIN32
-#           warning "TODO: Implement proper temporary file name support"
+#           pragma message("TODO: Implement proper temporary file name support")
             fileName = "_displaz_temp.ply";
             FilePtr ply(fopen(fileName.c_str(), "wb"), fclose);
 #           else

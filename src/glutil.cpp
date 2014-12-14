@@ -141,9 +141,9 @@ void drawSphere(const TransformState& transState,
             double vx = cos(phi)*sin(theta);
             double vy = sin(phi)*sin(theta);
             double vz = -cos(theta);
-            verts[3*idx]   = c2.x + radius*vx;
-            verts[3*idx+1] = c2.y + radius*vy;
-            verts[3*idx+2] = c2.z + radius*vz;
+            verts[3*idx]   = float(c2.x + radius*vx);
+            verts[3*idx+1] = float(c2.y + radius*vy);
+            verts[3*idx+2] = float(c2.z + radius*vz);
         }
     }
     std::vector<GLushort> triInds;
@@ -172,7 +172,7 @@ void drawSphere(const TransformState& transState,
     assert(positionLoc >= 0);
     glEnableVertexAttribArray(positionLoc);
     glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts.get());
-    glDrawElements(GL_TRIANGLES, triInds.size(),
+    glDrawElements(GL_TRIANGLES, (GLint)triInds.size(),
                    GL_UNSIGNED_SHORT, triInds.data());
     glDisableVertexAttribArray(positionLoc);
     glUseProgram(0);

@@ -136,7 +136,7 @@ class VoxelBrick
             out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
             out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
             NodeIndexData indexData;
-            indexData.numPoints = coverage.size();
+            indexData.numPoints = (uint32_t)coverage.size();
             indexData.flags = IndexFlags_Voxels;
             return indexData;
         }
@@ -181,7 +181,7 @@ class LeafPointData
             for (size_t i = 0; i < m_npoints; ++i)
                 out.write((const char*)&m_intensity[m_indices[i]], sizeof(float));
             NodeIndexData indexData;
-            indexData.numPoints = m_npoints;
+            indexData.numPoints = (uint32_t)m_npoints;
             indexData.flags = IndexFlags_Points;
             return indexData;
         }
@@ -218,7 +218,7 @@ inline void orthoZRender(float* intensityImage, float* zbuf, int bufWidth,
     float rPix = radius/pixelSize;
     for (int pidxIdx = 0; pidxIdx < npoints; ++pidxIdx)
     {
-        int pidx = pointIndices[pidxIdx];
+        size_t pidx = pointIndices[pidxIdx];
         float x = invPixelSize*(position[3*pidx] - xoff);
         float y = invPixelSize*(position[3*pidx+1] - yoff);
         float z = position[3*pidx+2];

@@ -52,10 +52,14 @@ inline void plotBrick(dpz::PointList& dpoints,
         if (coverage != 0)
         {
             V3f pos = brick.position(x,y,z);
-            dpoints.append(pos.x, pos.y, pos.z,
-                           brick.color(x,y,z),
-                           coverage,
-                           level, leafIdx);
+            double attrs[] = {
+                pos.x, pos.y, pos.z,
+                brick.color(x,y,z),
+                coverage,
+                (double)level,
+                (double)leafIdx
+            };
+            dpoints.append(attrs, sizeof(attrs)/sizeof(attrs[0]));
         }
     }
 }
@@ -193,7 +197,7 @@ class OctreeBuilder
             // Flush output queues from root to leaves.  This order is useful
             // if page caching starts at the root node data offset, but
             // somewhat irrelevant otherwise.
-            for (size_t i = 0; i < m_levelInfo.size(); ++i)
+            for (int i = 0; i < (int)m_levelInfo.size(); ++i)
                 flushQueue(m_levelInfo[i].outputQueue, i);
             m_header.indexOffset = m_output.tellp();
             // TODO: Fill numPoints
@@ -220,7 +224,7 @@ class OctreeBuilder
             /// List of pending nodes
             std::vector<std::unique_ptr<VoxelBrick>> pendingNodes;
             std::vector<std::unique_ptr<IndexNode>> pendingIndexNodes;
-            size_t processedNodeCount;
+            int64_t processedNodeCount;
             NodeOutputQueue outputQueue;
 
             OctreeLevelInfo()
@@ -231,6 +235,24 @@ class OctreeBuilder
             { }
 
             bool hasNodes() const { return parentMortonIndex != INT64_MIN; }
+
+#           ifdef _MSC_VER
+            // Workaround for MSVC broken automatically generated move
+            // constructor/assignment.  These should never be called anyway.
+            OctreeLevelInfo(OctreeLevelInfo&& rhs)
+                : parentMortonIndex(INT64_MIN),
+                pendingNodes(8),
+                pendingIndexNodes(8),
+                processedNodeCount(0)
+            {
+                assert(0 && "MSVC workaround.  Should not be called.");
+            }
+            OctreeLevelInfo& operator=(OctreeLevelInfo&& rhs)
+            {
+                assert(0 && "MSVC workaround.  Should not be called.");
+                return *this;
+            }
+#           endif
         };
 
         void addNode(int level, int64_t mortonIndex,
@@ -240,7 +262,7 @@ class OctreeBuilder
             assert(level < (int)m_levelInfo.size());
             OctreeLevelInfo& levelInfo = m_levelInfo[level];
             if (m_debugPlot)
-                plotBrick(m_dpoints, *node, level, levelInfo.processedNodeCount);
+                plotBrick(m_dpoints, *node, level, (int)levelInfo.processedNodeCount);
             ++levelInfo.processedNodeCount;
             if (level == 0)
             {
@@ -249,7 +271,7 @@ class OctreeBuilder
                 return;
             }
             int64_t parentIndex = mortonIndex/8;
-            int childNumber = mortonIndex - 8*parentIndex;
+            int childNumber = int(mortonIndex - 8*parentIndex);
             assert(childNumber < 8);
             if (!levelInfo.hasNodes())
             {

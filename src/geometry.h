@@ -38,7 +38,7 @@
 #include <QMetaType>
 
 class QGLShaderProgram;
-class TransformState;
+struct TransformState;
 
 
 /// Estimate of amount of geometry drawn in a frame

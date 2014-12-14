@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 {
     Imath::V3d boundMin = Imath::V3d(0);
     double rootNodeWidth = 1000;
-    float pointRadius = 0.2;
+    float pointRadius = 0.2f;
     int brickRes = 8;
     double leafNodeWidth = 2.5;
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
                                   (size_t)(dbCacheSize*1024*1024),
                                   logger);
 
-            int leafDepth = floor(log(rootNodeWidth/leafNodeWidth)/log(2) + 0.5);
+            int leafDepth = (int)floor(log(rootNodeWidth/leafNodeWidth)/log(2) + 0.5);
             logger.info("Leaf node width = %.3f", rootNodeWidth / (1 << leafDepth));
             std::ofstream outputFile(outputPath);
             voxelizePointCloud(outputFile, pointDb, pointRadius,

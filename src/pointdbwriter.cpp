@@ -29,6 +29,7 @@
 
 #include "pointdbwriter.h"
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 
@@ -216,7 +217,7 @@ inline void fixLasFileName(std::string& fileName)
 {
 #   ifdef _WIN32
     // Hack: liblas doesn't like forward slashes as path separators on windows
-    fileName.replace('/', '\\');
+    std::replace(fileName.begin(), fileName.end(), '/', '\\');
 #   endif
 }
 

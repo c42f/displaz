@@ -235,8 +235,8 @@ void voxelizePointCloud(std::ostream& outputStream,
     std::vector<float> position;
     std::vector<float> intensity;
 
-    float invLeafNodeWidth = 1/leafNodeWidth;
-    float fractionalPointRadius = pointRadius/leafNodeWidth;
+    double invLeafNodeWidth = 1/leafNodeWidth;
+    double fractionalPointRadius = pointRadius/leafNodeWidth;
 
     int leavesPerChunk = chunkLeafRes*chunkLeafRes*chunkLeafRes;
 
@@ -256,7 +256,7 @@ void voxelizePointCloud(std::ostream& outputStream,
         bufferedBox.max += V3d(pointRadius);
         // Origin of chunk relative to overall cloud origin
         // FIXME: A fixed offset() doesn't make sense for really large clouds
-        Imath::V3f relOrigin = chunkBbox.min - pointDb.offset();
+        Imath::V3d relOrigin = chunkBbox.min - pointDb.offset();
         pointDb.query(bufferedBox, position, intensity);
         size_t numPoints = intensity.size();
         logger.debug("Chunk %d has %d points", chunkPos, numPoints);
@@ -275,9 +275,9 @@ void voxelizePointCloud(std::ostream& outputStream,
         for (size_t pointIdx = 0; pointIdx < numPoints; ++pointIdx)
         {
             // Record point in all leaf nodes it touches out to the point radius
-            float x = invLeafNodeWidth*(position[3*pointIdx]   - relOrigin.x);
-            float y = invLeafNodeWidth*(position[3*pointIdx+1] - relOrigin.y);
-            float z = invLeafNodeWidth*(position[3*pointIdx+2] - relOrigin.z);
+            double x = invLeafNodeWidth*(position[3*pointIdx]   - relOrigin.x);
+            double y = invLeafNodeWidth*(position[3*pointIdx+1] - relOrigin.y);
+            double z = invLeafNodeWidth*(position[3*pointIdx+2] - relOrigin.z);
             int xbegin = Imath::clamp((int)floor(x - fractionalPointRadius), 0, chunkLeafRes);
             int xend   = Imath::clamp((int)ceil (x + fractionalPointRadius), 0, chunkLeafRes);
             int ybegin = Imath::clamp((int)floor(y - fractionalPointRadius), 0, chunkLeafRes);
@@ -314,12 +314,12 @@ void voxelizePointCloud(std::ostream& outputStream,
             const std::vector<size_t>& inds = leafIndices[lexLeafIdx];
             if (bufferedInds.empty())
                 continue;
-            float leafWidth = chunkWidth/chunkLeafRes;
-            Imath::V3f leafMin = relOrigin + leafWidth*V3f(leafPos);
+            double leafWidth = chunkWidth/chunkLeafRes;
+            Imath::V3f leafMin = relOrigin + leafWidth*V3d(leafPos);
             std::unique_ptr<VoxelBrick> brick(new VoxelBrick(brickRes));
-            brick->voxelizePoints(leafMin, leafWidth, pointRadius,
+            brick->voxelizePoints(leafMin, (float)leafWidth, pointRadius,
                                   position.data(), intensity.data(),
-                                  bufferedInds.data(), bufferedInds.size());
+                                  bufferedInds.data(), (int)bufferedInds.size());
             LeafPointData leafPointData(position.data(), intensity.data(),
                                         inds.data(), inds.size());
             int64_t leafMortonIndex = chunkIdx*leavesPerChunk + leafIdx;

@@ -31,6 +31,7 @@
 #define DISPLAZ_POINTDBWRITER_H_INCLUDED
 
 #include <map>
+#include <stdint.h>
 #include <vector>
 
 #include "util.h"

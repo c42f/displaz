@@ -111,9 +111,9 @@ void SimplePointDb::query(const Imath::Box3d& boundingBox,
         size_t numPoints = tile->numPoints();
         for (size_t i = 0; i < numPoints; ++i)
         {
-            double x = tile->position[3*i];
-            double y = tile->position[3*i+1];
-            double z = tile->position[3*i+2];
+            float x = tile->position[3*i];
+            float y = tile->position[3*i+1];
+            float z = tile->position[3*i+2];
             if (x < offsetBox.min.x || x >= offsetBox.max.x ||
                 y < offsetBox.min.y || y >= offsetBox.max.y ||
                 z < offsetBox.min.z || z >= offsetBox.max.z)
