@@ -12,7 +12,7 @@ uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=1
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Las Classification|Classified|File Number|Height Above Ground
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Las Classification|Classified|File Number
 uniform int selectionMode = 0;     //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
@@ -28,7 +28,7 @@ in int returnNumber;
 in int numberOfReturns;
 in int pointSourceId;
 in int classification;
-in float heightAboveGround;
+//in float heightAboveGround;
 
 flat out float modifiedPointRadius;
 flat out float pointScreenSize;
@@ -107,11 +107,13 @@ void main()
                              vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
         pointColor = cols[fileNumber % 7];
     }
+    /*
     else if (colorMode == 8)
     {
         // Color based on height above ground
         pointColor = 0.8*jet_colormap(tonemap(0.16*heightAboveGround, exposure, 3.8*contrast));
     }
+    */
     if (selectionMode != 0)
     {
         if (selectionMode == 1)
