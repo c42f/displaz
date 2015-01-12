@@ -55,8 +55,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 #ifdef restrict
 #   undef restrict
 #endif
-#include <pdal/drivers/las/Reader.hpp>
-#include <pdal/PointBuffer.hpp>
+#include <pdal/Stage.hpp>
+#include <pdal/StageFactory.hpp>
+#include <pdal/FileUtils.hpp>
+#include <pdal/PipelineReader.hpp>
+#include <pdal/PipelineManager.hpp>
 
 #else
 
@@ -94,14 +97,32 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     V3d Psum(0);
 #ifdef DISPLAZ_USE_PDAL
     // Open file
-    std::unique_ptr<pdal::Stage> reader(
-        new pdal::drivers::las::Reader(fileName.toAscii().constData()));
-    reader->initialize();
-    const pdal::Schema& schema = reader->getSchema();
-    bool hasColor = bool(schema.getDimensionOptional("Red"));
+    if (!pdal::FileUtils::fileExists(fileName.toAscii().constData()))
+    {
+        g_logger.info("File \"%s\" does not exist", fileName.toStdString() );
+        return false;
+    }
+    std::unique_ptr<pdal::PipelineManager> manager(new pdal::PipelineManager);
+
+    pdal::StageFactory factory;
+    std::string driver = factory.inferReaderDriver(fileName.toStdString());
+    manager->addReader(driver);
+
+    pdal::Stage* reader = static_cast<pdal::Reader*>(manager->getStage());
+    pdal::Options options;
+    pdal::Option fname("filename", fileName.toStdString());
+    options.add(fname);
+    reader->setOptions(options);
+
+    manager->execute();
+    pdal::PointBufferSet pbSet = manager->buffers();
+
+    pdal::PointContext context = manager->context();
+    bool hasColor = context.hasDim(pdal::Dimension::Id::Red);
+    pdal::QuickInfo quickinfo = reader->preview();
 
     // Figure out how much to decimate the point cloud.
-    totPoints = reader->getNumPoints();
+    totPoints = quickinfo.m_pointCount;
     size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
     if(decimate > 1)
     {
@@ -109,10 +130,10 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                       fileName.toStdString(), decimate);
     }
     npoints = (totPoints + decimate - 1) / decimate;
-    const pdal::Bounds<double>& bbox = reader->getBounds();
-    offset = V3d(0.5*(bbox.getMinimum(0) + bbox.getMaximum(0)),
-                 0.5*(bbox.getMinimum(1) + bbox.getMaximum(1)),
-                 0.5*(bbox.getMinimum(2) + bbox.getMaximum(2)));
+    pdal::BOX3D pdal_bounds = quickinfo.m_bounds;
+    offset = V3d(0.5*(pdal_bounds.minx + pdal_bounds.maxx),
+                 0.5*(pdal_bounds.miny + pdal_bounds.maxy),
+                 0.5*(pdal_bounds.minz + pdal_bounds.maxz));
     // Attempt to place all data on the same vertical scale, but allow
     // other offsets if the magnitude of z is too large (and we would
     // therefore loose noticable precision by storing the data as floats)
@@ -139,38 +160,23 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                                         "color", npoints));
         color = fields.back().as<uint16_t>();
     }
-    // Read big chunks of points at a time
-    pdal::PointBuffer buf(schema);
-    // Cache dimensions for fast access to buffer
-    const pdal::Dimension& xDim = schema.getDimension("X");
-    const pdal::Dimension& yDim = schema.getDimension("Y");
-    const pdal::Dimension& zDim = schema.getDimension("Z");
-    const pdal::Dimension *rDim = 0, *gDim = 0, *bDim = 0;
-    if (hasColor)
-    {
-        rDim = &schema.getDimension("Red");
-        gDim = &schema.getDimension("Green");
-        bDim = &schema.getDimension("Blue");
-    }
-    const pdal::Dimension& intensityDim       = schema.getDimension("Intensity");
-    const pdal::Dimension& returnNumberDim    = schema.getDimension("ReturnNumber");
-    const pdal::Dimension& numberOfReturnsDim = schema.getDimension("NumberOfReturns");
-    const pdal::Dimension& pointSourceIdDim   = schema.getDimension("PointSourceId");
-    const pdal::Dimension& classificationDim  = schema.getDimension("Classification");
-    std::unique_ptr<pdal::StageSequentialIterator> chunkIter(
-            reader->createSequentialIterator(buf));
     size_t readCount = 0;
     size_t storeCount = 0;
     size_t nextDecimateBlock = 1;
     size_t nextStore = 1;
-    while (size_t numRead = chunkIter->read(buf))
+    for (auto st = pbSet.begin(); st != pbSet.end(); ++st)
+//     while (size_t numRead = chunkIter->read(buf))
     {
-        for (size_t i = 0; i < numRead; ++i)
+        pdal::PointBufferPtr buf = *st;
+        for (size_t i = 0; i < buf->size(); ++i)
         {
             ++readCount;
-            V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
-                        yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
-                        zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
+            V3d P = V3d(buf->getFieldAs<double>(pdal::Dimension::Id::X, i),
+                        buf->getFieldAs<double>(pdal::Dimension::Id::Y, i),
+                        buf->getFieldAs<double>(pdal::Dimension::Id::Z, i));
+//             V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
+//                         yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
+//                         zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
             bbox.extendBy(P);
             Psum += P;
             if(readCount < nextStore)
@@ -178,17 +184,17 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
             ++storeCount;
             // Store the point
             *position++ = P - offset;
-            *intensity++   = buf.getField<uint16_t>(intensityDim, i);
-            *returnNumber++ = buf.getField<uint8_t>(returnNumberDim, i);
-            *numReturns++  = buf.getField<uint8_t>(numberOfReturnsDim, i);
-            *pointSourceId++ = buf.getField<uint8_t>(pointSourceIdDim, i);
-            *classification++ = buf.getField<uint8_t>(classificationDim, i);
+            *intensity++   = buf->getFieldAs<uint16_t>(pdal::Dimension::Id::Intensity, i);
+            *returnNumber++ = buf->getFieldAs<uint8_t>(pdal::Dimension::Id::ReturnNumber, i);
+            *numReturns++  = buf->getFieldAs<uint8_t>(pdal::Dimension::Id::NumberOfReturns, i);
+            *pointSourceId++ = buf->getFieldAs<uint8_t>(pdal::Dimension::Id::PointSourceId, i);
+            *classification++ = buf->getFieldAs<uint8_t>(pdal::Dimension::Id::Classification, i);
             // Extract point RGB
             if (hasColor)
             {
-                *color++ = buf.getField<uint16_t>(*rDim, i);
-                *color++ = buf.getField<uint16_t>(*gDim, i);
-                *color++ = buf.getField<uint16_t>(*bDim, i);
+                *color++ = buf->getFieldAs<uint16_t>(pdal::Dimension::Id::Red, i);
+                *color++ = buf->getFieldAs<uint16_t>(pdal::Dimension::Id::Green, i);
+                *color++ = buf->getFieldAs<uint16_t>(pdal::Dimension::Id::Blue, i);
             }
             // Figure out which point will be the next stored point.
             nextDecimateBlock += decimate;

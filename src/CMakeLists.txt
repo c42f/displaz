@@ -98,7 +98,7 @@ endif()
 
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
-        target_link_libraries (displaz ${PDAL_LIBRARIES})
+        target_link_libraries (displaz ${PDAL_LIBRARY})
         if (DISPLAZ_BUILD_DVOX)
             message(SEND_ERROR "experimental dvox utility doesn't support pdal as a backend")
         endif()
