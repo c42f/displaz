@@ -268,7 +268,7 @@ void voxelizePointCloud(std::ostream& outputStream,
 
         // Bin point indices into full leaf node grid.
         // leafIndices[i] has the indices for points in the ith leaf, where i
-        // is a lexographic ordering (since that's simpler to compute than the
+        // is a lexicographic ordering (since that's simpler to compute than the
         // Morton order)
         std::vector<std::vector<size_t>> bufferedLeafIndices(leavesPerChunk);
         std::vector<std::vector<size_t>> leafIndices(leavesPerChunk);

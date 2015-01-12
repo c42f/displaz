@@ -76,7 +76,7 @@ class SimplePointDb
         Imath::Box3d m_boundingBox;
         double m_tileSize;
         Imath::V3d m_offset;
-        std::map<TilePos, std::unique_ptr<PointDbTile>> m_cache;
+        std::map<TilePos, std::unique_ptr<PointDbTile>, TilePosLess> m_cache;
         size_t m_maxCacheSize;
         size_t m_cacheByteSize;
         size_t m_bytesSinceTrim;

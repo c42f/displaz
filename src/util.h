@@ -140,17 +140,18 @@ std::ostream& operator<<(std::ostream& out, const Imath::Box<T>& b)
 /// Tile coordinate for las tiling
 typedef Imath::Vec3<int> TilePos;
 
-namespace std {
-/// Simple lexographic tile ordering for use with std::map
-inline bool operator<(const TilePos& p1, const TilePos& p2)
+/// Simple lexicographic tile ordering for use with std::map
+struct TilePosLess
 {
-    if (p1.x != p2.x)
-        return p1.x < p2.x;
-    if (p1.y != p2.y)
-        return p1.y < p2.y;
-    return p1.z < p2.z;
-}
-}
+    inline bool operator()(const TilePos& p1, const TilePos& p2) const
+    {
+        if (p1.x != p2.x)
+            return p1.x < p2.x;
+        if (p1.y != p2.y)
+            return p1.y < p2.y;
+        return p1.z < p2.z;
+    }
+};
 
 
 //------------------------------------------------------------------------------
