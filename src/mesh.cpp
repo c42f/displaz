@@ -147,11 +147,24 @@ static int edge_cb(p_ply_argument argument)
             (unsigned int)ply_get_argument_value(argument));
     if (isEdgeLoop && index == length-1)
     {
-        // Add extra edge to cloose the loop
+        // Add extra edge to close the loop
         int firstIdx = info.edges.end()[-2*(length-1)];
         info.edges.push_back(info.edges.back());
         info.edges.push_back(firstIdx);
     }
+    return 1;
+}
+
+static int list_cb(p_ply_argument argument) {
+    long length;
+    long index;
+    ply_get_argument_property(argument, NULL, &length, &index);
+    if (index < 0) // ignore length argument
+        return 1;
+    void* plist = 0;
+    ply_get_argument_user_data(argument, &plist, NULL);
+    std::vector<unsigned int>& list = *((std::vector<unsigned int>*)plist);
+    list.push_back((unsigned int)ply_get_argument_value(argument));
     return 1;
 }
 
@@ -208,11 +221,22 @@ bool loadPlyFile(const QString& fileName,
             return false;
         }
     }
+
     long nedges = ply_set_read_cb(ply.get(), "edge", "vertex_index", edge_cb, &info, 0);
     if (nedges == 0)
         nedges = ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
+
+    // Support for specific Roames Ply format
+    std::vector<unsigned int> innerPolygonVertexCount;
+    std::vector<unsigned int> innerVertexIndices;
     if (nedges == 0)
-        nedges = ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
+    {
+        nedges = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index", edge_cb, &info, 1);
+        nedges += ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
+        nedges += ply_set_read_cb(ply.get(), "polygon", "inner_polygon_vertex_counts", list_cb, &innerPolygonVertexCount, 0);
+        ply_set_read_cb(ply.get(), "polygon", "inner_vertex_index", list_cb, &innerVertexIndices, 0);
+    }
+
     if (nedges <= 0 && nfaces <= 0)
     {
         g_logger.error("Expected more than zero edges or faces in ply file");
@@ -235,6 +259,28 @@ bool loadPlyFile(const QString& fileName,
     }
     if (info.colors.size() != info.verts.size())
         info.colors.clear();
+
+    // Reconstruct inner polygons
+    while (innerPolygonVertexCount.size())
+    {
+        unsigned int verticesCount = innerPolygonVertexCount.back();
+        unsigned long firstIdx = info.edges.size();
+        for (size_t j = 0; j < verticesCount; ++j)
+        {
+            if (j > 1)
+                info.edges.push_back(info.edges.back());
+            info.edges.push_back(innerVertexIndices.back());
+            innerVertexIndices.pop_back();
+            if (j == verticesCount-1)
+            {
+                // Add extra edge to close the loop
+                info.edges.push_back(info.edges.back());
+                info.edges.push_back(info.edges[firstIdx]);
+            }
+        }
+        innerPolygonVertexCount.pop_back();
+    }
+
     return true;
 }
 
