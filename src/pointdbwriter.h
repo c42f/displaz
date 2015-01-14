@@ -76,7 +76,7 @@ class PointDbWriter
         Imath::Box3d m_boundingBox;
         double m_tileSize;
         Imath::V3d m_offset;
-        std::map<TilePos, PointDbTile> m_cache;
+        std::map<TilePos, PointDbTile, TilePosLess> m_cache;
         bool m_computeBounds;
         size_t m_flushInterval;
         bool m_haveOffset;
