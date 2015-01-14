@@ -37,6 +37,7 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <unistd.h>
 
 /// C++11 bindings for displaz
 ///
