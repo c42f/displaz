@@ -38,7 +38,17 @@
 #include <sstream>
 #include <vector>
 
-/// C++11 bindings for displaz
+// For temporary file creation:
+#if defined(_WIN32)
+    // todo?
+#elif defined(__APPLE__)
+    #include <unistd.h>
+#else
+    // linux
+    #include <stdlib.h>
+#endif
+
+/// Experimental C++11 bindings for displaz
 ///
 /// The aim here is to make it simple to use displaz from an external C++
 /// process to plot large numbers of points.  This is especially useful for
