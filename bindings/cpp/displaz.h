@@ -160,20 +160,23 @@ class PointList
         ///
         /// The values of all attributes added using `addAttribute()` must be
         /// provided in the argument list `args`.
-#       if _MSC_FULL_VER >= 180020827
+#       if !defined(_MSC_VER) || _MSC_FULL_VER >= 180020827
         template<typename... Args>
         void append(const Args&... args)
         {
+            // Temporarily convert args to double precision for implementation
+            // convenience (double is sufficient to represent the possible
+            // integral attribute types)
             double values[] = {double(args)...};
             size_t numVals = sizeof...(args);
-            append(values, numVals);
+            appendFromArray(values, numVals);
         }
 #       endif
 
         /// Append a new point to the list
         ///
         /// See append() above for a more convenient way to do this
-        void append(const double* values, size_t numVals)
+        void appendFromArray(const double* values, size_t numVals)
         {
             for (size_t i = 0, j = 0; i < m_attributes.size(); ++i)
             {
