@@ -26,6 +26,7 @@ option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
+option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" ${defaultEmbedGlew})
 
 
@@ -119,6 +120,8 @@ if (DISPLAZ_USE_LAS)
         include_directories(${LASLIB_INCLUDES})
     endif()
 endif()
+
+include_directories(${ILMBASE_INCLUDES})
 
 
 #------------------------------------------------------------------------------

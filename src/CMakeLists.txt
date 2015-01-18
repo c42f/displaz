@@ -70,38 +70,43 @@ configure_file(config.h.in.cmake config.h @ONLY)
 include_directories(${PROJECT_BINARY_DIR})
 
 
+set(allTargets displaz)
 add_executable(displaz WIN32 ${srcs})
 
-add_executable(dvox
-    dvox.cpp
-    pointdbwriter.cpp
-    pointdb.cpp
-    voxelizer.cpp
-    ${shared_srcs}
-)
+if (DISPLAZ_BUILD_DVOX)
+    list(APPEND allTargets dvox)
+    add_executable(dvox
+        dvox.cpp
+        pointdbwriter.cpp
+        pointdb.cpp
+        voxelizer.cpp
+        ${shared_srcs}
+    )
+endif()
 
 #-------------------------------------------------------------------------------
 # Library dependencies
-if (DISPLAZ_BUILD_EXTERNAL)
-    add_dependencies(displaz ${externalBuilds})
-    add_dependencies(dvox ${externalBuilds})
-endif()
-
 target_link_libraries(displaz
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
-target_link_libraries(dvox
-    ${QT_QTCORE_LIBRARY}
-    )
+if (DISPLAZ_BUILD_DVOX)
+    # TODO: Remove this dependency
+    target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
+endif()
 
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
         target_link_libraries (displaz ${PDAL_LIBRARIES})
+        if (DISPLAZ_BUILD_DVOX)
+            message(SEND_ERROR "experimental dvox utility doesn't support pdal as a backend")
+        endif()
     else()
         target_link_libraries (displaz ${LASLIB_LIBRARIES})
-        target_link_libraries (dvox ${LASLIB_LIBRARIES})
+        if (DISPLAZ_BUILD_DVOX)
+            target_link_libraries (dvox ${LASLIB_LIBRARIES})
+        endif()
     endif()
 endif()
 
@@ -122,7 +127,9 @@ endif()
 
 # Install
 install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
-install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
+if (DISPLAZ_BUILD_DVOX)
+    install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
+endif()
 
 if(WIN32)
     # Install required qt libraries
@@ -140,6 +147,15 @@ if (DISPLAZ_USE_TESTS)
     add_executable(streampagecache_test streampagecache_test.cpp)
     add_test(util_test util_test)
     add_test(streampagecache_test streampagecache_test)
+    list(APPEND allTargets util_test streampagecache_test)
 endif()
 
+
+#------------------------------------------------------------------------------
+if (DISPLAZ_BUILD_EXTERNAL)
+    # Add dependencies on automatically built external libs
+    foreach (target ${allTargets})
+        add_dependencies(${target} ${externalBuilds})
+    endforeach()
+endif()
 
