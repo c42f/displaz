@@ -34,36 +34,8 @@
 #include <memory>
 #include <vector>
 
-#include "../bindings/cpp/displaz.h"
-
 #include "voxelizer.h"
 #include "util.h"
-
-/// Debug plotting for OctreeBuilder
-inline void plotBrick(dpz::PointList& dpoints,
-                      const VoxelBrick& brick, int level, int leafIdx)
-{
-    int brickRes = brick.resolution();
-    for (int z = 0; z < brickRes; ++z)
-    for (int y = 0; y < brickRes; ++y)
-    for (int x = 0; x < brickRes; ++x)
-    {
-        float coverage = brick.coverage(x,y,z);
-        if (coverage != 0)
-        {
-            V3f pos = brick.position(x,y,z);
-            double attrs[] = {
-                pos.x, pos.y, pos.z,
-                brick.color(x,y,z),
-                coverage,
-                (double)level,
-                (double)leafIdx
-            };
-            dpoints.append(attrs, sizeof(attrs)/sizeof(attrs[0]));
-        }
-    }
-}
-
 
 /// Octree node holding data size and offset in the serialized stream
 struct IndexNode
@@ -146,7 +118,6 @@ class OctreeBuilder
             : m_output(output),
             m_brickRes(brickRes),
             m_levelInfo(leafDepth+2),
-            m_debugPlot(false),
             m_logger(logger)
         {
             // Fill as much of the header in as possible; we will fill the rest
@@ -159,14 +130,6 @@ class OctreeBuilder
             m_header.write(m_output);
             // Data starts directly after header
             m_header.dataOffset = m_output.tellp();
-            if (m_debugPlot)
-            {
-                m_dpoints.addAttribute<float>("position", 3)
-                    .addAttribute<float>("intensity", 1)
-                    .addAttribute<float>("coverage", 1)
-                    .addAttribute<int>("treeLevel", 1)
-                    .addAttribute<int>("leafIdx", 1);
-            }
         }
 
         /// Add voxel brick and accompanying source points to the cloud
@@ -205,13 +168,6 @@ class OctreeBuilder
             m_output.seekp(0);
             m_header.write(m_output);
             m_logger.debug("Wrote hcloud header:\n%s", m_header);
-            if (m_debugPlot)
-            {
-                // Debug plotting
-                dpz::Displaz dwin;
-                dwin.hold(true);
-                dwin.plot(m_dpoints);
-            }
         }
 
         std::unique_ptr<IndexNode> root() { return std::move(m_rootNode); }
@@ -261,8 +217,6 @@ class OctreeBuilder
         {
             assert(level < (int)m_levelInfo.size());
             OctreeLevelInfo& levelInfo = m_levelInfo[level];
-            if (m_debugPlot)
-                plotBrick(m_dpoints, *node, level, (int)levelInfo.processedNodeCount);
             ++levelInfo.processedNodeCount;
             if (level == 0)
             {
@@ -371,9 +325,6 @@ class OctreeBuilder
         bool m_hasNodes;
         std::vector<OctreeLevelInfo> m_levelInfo;
         std::unique_ptr<IndexNode> m_rootNode;
-
-        bool m_debugPlot;
-        dpz::PointList m_dpoints;
 
         Logger& m_logger;
 };
