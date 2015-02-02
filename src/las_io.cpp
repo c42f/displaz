@@ -57,7 +57,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 #endif
 #include <pdal/Stage.hpp>
 #include <pdal/StageFactory.hpp>
-#include <pdal/FileUtils.hpp>
+#include <pdal/util/FileUtils.hpp>
 #include <pdal/PipelineReader.hpp>
 #include <pdal/PipelineManager.hpp>
 
