@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 /// Application controlled page cache for access to raw file data
 ///
