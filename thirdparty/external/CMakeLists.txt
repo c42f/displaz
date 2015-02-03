@@ -22,13 +22,14 @@ endif()
 
 ExternalProject_Add(
     ilmbase
-    URL http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.0.1.tar.gz
-    URL_MD5 74c0d0d2873960bd0dc1993f8e03f0ae
-    PATCH_COMMAND "${patch_executable}" -p1 < "${PROJECT_SOURCE_DIR}/ilmbase-2.0.1-build.patch"
+    URL http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.2.0.tar.gz
+    URL_MD5 b540db502c5fa42078249f43d18a4652
     CMAKE_ARGS
         -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
         -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
         -D CMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+        -D NAMESPACE_VERSIONING:BOOL=OFF
+        -D BUILD_SHARED_LIBS:BOOL=OFF
     INSTALL_DIR "${THIRDPARTY_INSTALL_DIR}"
     DOWNLOAD_DIR "${download_dir}"
 )
