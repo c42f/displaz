@@ -53,6 +53,8 @@ if (DISPLAZ_BUILD_EXTERNAL)
         set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif()
     add_subdirectory(thirdparty/external)
+else()
+    find_package(Ilmbase 1.0.1 REQUIRED)
 endif()
 
 if (DISPLAZ_USE_LAS)
