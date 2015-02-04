@@ -54,7 +54,7 @@ if (DISPLAZ_BUILD_EXTERNAL)
     endif()
     add_subdirectory(thirdparty/external)
 else()
-    find_package(Ilmbase 2.0.0 REQUIRED)
+    find_package(Ilmbase 1.0.1 REQUIRED)
 endif()
 
 if (DISPLAZ_USE_LAS)
