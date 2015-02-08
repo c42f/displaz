@@ -61,7 +61,7 @@ void LogViewer::appendLogMessage(int logLevel, QString msg)
             break;
         case Logger::Info:
             appendHtml("<b>INFO</b>: ");
-            appendPlainText(msg);
+            insertPlainText(msg);
             break;
     }
     ensureCursorVisible();
