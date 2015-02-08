@@ -261,24 +261,15 @@ bool loadPlyFile(const QString& fileName,
         info.colors.clear();
 
     // Reconstruct inner polygons
-    while (innerPolygonVertexCount.size())
+    for (size_t i = 0, j = 0; i < innerPolygonVertexCount.size(); ++i)
     {
-        unsigned int verticesCount = innerPolygonVertexCount.back();
-        unsigned long firstIdx = info.edges.size();
-        for (size_t j = 0; j < verticesCount; ++j)
+        size_t count = innerPolygonVertexCount[i];
+        for (size_t k = 0; k < count; ++k)
         {
-            if (j > 1)
-                info.edges.push_back(info.edges.back());
-            info.edges.push_back(innerVertexIndices.back());
-            innerVertexIndices.pop_back();
-            if (j == verticesCount-1)
-            {
-                // Add extra edge to close the loop
-                info.edges.push_back(info.edges.back());
-                info.edges.push_back(info.edges[firstIdx]);
-            }
+            info.edges.push_back(innerVertexIndices[j + k]);
+            info.edges.push_back(innerVertexIndices[j + (k+1) % count]);
         }
-        innerPolygonVertexCount.pop_back();
+        j += count;
     }
 
     return true;
