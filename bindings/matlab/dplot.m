@@ -35,6 +35,7 @@ function dplot(position, varargin)
     markersize = 0.1;
     markershape = 0;
     plotLine = false;
+    plotMarkers = false;
 
     skipArg = false;
     for i=1:length(varargin)
@@ -62,12 +63,13 @@ function dplot(position, varargin)
                     error('Argument "%s" to dplot unrecognized', varargin{i});
                 end
                 % Try to parse first argument as color/markershape/linespec
-                [color, markershape, plotLine] = parse_plot_spec(arg, color, markershape, plotLine);
+                [color, markershape, plotLine, plotMarkers] = ...
+                    parse_plot_spec(arg, color, markershape, plotLine, plotMarkers);
         end
     end
-    
-    if plotLine
-        error('Support for plotting lines not yet implemented');
+
+    if ~plotLine && ~plotMarkers
+        plotMarkers = true;
     end
 
     if size(position, 2) ~= 3; error('position must be a Nx3 array'); end
@@ -83,16 +85,29 @@ function dplot(position, varargin)
     if length(markershape) == 1
         markershape = repmat(markershape, nvertices, 1);
     end
-    % Ensure all fields are floats for now, to avoid surprising scaling in the
-    % shader
-    if size(color,1) ~= nvertices; error('color must have same number of rows as position array'); end
-    fileName = sprintf('%s.ply',tempname);
-    fields = struct('name',{'position','color','markersize','markershape'},...
-                    'semantic',{'vector_semantic','color_semantic','array_semantic','array_semantic'},...
-                    'typeName',{'float64','float32','float32','uint8'},...
-                    'value',{double(position),single(color),single(markersize),uint8(markershape)}...
-                    );
-    write_ply_points(fileName, nvertices,fields);
+
+    tmpLineFileName = '';
+    tmpPointFileName = '';
+
+    if plotLine
+        tmpLineFileName = sprintf('%s_lines.ply',tempname);
+        % Plot lines.  This is currently rather limited due to the
+        % inability to specify a shader for line primitives
+        write_ply_lines(tmpLineFileName, position, color);
+    end
+    if plotMarkers
+        tmpPointFileName = sprintf('%s_points.ply',tempname);
+        % Ensure all fields are floats for now, to avoid surprising scaling in the
+        % shader
+        if size(color,1) ~= nvertices; error('color must have same number of rows as position array'); end
+        fields = struct('name',{'position','color','markersize','markershape'},...
+                        'semantic',{'vector_semantic','color_semantic','array_semantic','array_semantic'},...
+                        'typeName',{'float64','float32','float32','uint8'},...
+                        'value',{double(position),single(color),single(markersize),uint8(markershape)}...
+                        );
+        write_ply_points(tmpPointFileName, nvertices,fields);
+    end
+
     if g_DisplazHold
         holdStr = '-add';
     else
@@ -105,8 +120,9 @@ function dplot(position, varargin)
         % libraries used when building displaz.
         fixLdLibPath = 'env LD_LIBRARY_PATH=""';
     end
-    displazCall=sprintf('%s displaz %s -shader generic_points.glsl -rmtemp %s &', ...
-                        fixLdLibPath, holdStr,fileName);
+    displazCall=sprintf('%s displaz %s -shader generic_points.glsl -rmtemp %s %s &', ...
+                        fixLdLibPath, holdStr, tmpPointFileName, tmpLineFileName);
+    % disp(displazCall);
     system(displazCall);
     % FIXME: Calling displaz too often in a loop causes contention on the
     % socket which can cause a new instance to be launched.  Pause a bit to
@@ -150,6 +166,51 @@ function write_ply_points(fileName, nvertices, fields)
     for item = fields
         fwrite(fid, item.value',item.typeName,0,'ieee-le');
     end
+    fclose(fid);
+end
+
+
+function write_ply_lines(fileName, position, color)
+    vertexValid = all(~isnan(position), 2);
+    lineStarts = find(diff([0;vertexValid]) == 1);
+    % Write a set of points to displaz-native ply format
+    fid = fopen(fileName, 'w');
+    nvalidvertices = sum(vertexValid);
+    fprintf(fid, ...
+        ['ply\n', ...
+        'format binary_little_endian 1.0\n', ...
+        'element vertex %d\n', ...
+        'property double x\n', ...
+        'property double y\n', ...
+        'property double z\n', ...
+        'element color %d\n', ...
+        'property float r\n', ...
+        'property float g\n', ...
+        'property float b\n', ...
+        'element edge %d\n', ...
+        'property list int int vertex_index\n', ...
+        'end_header\n' ...
+        ], ...
+        nvalidvertices, ...
+        nvalidvertices, ...
+        length(lineStarts) ...
+    );
+    fwrite(fid, position(vertexValid,:)', 'double', 0, 'ieee-le');
+    fwrite(fid, color(vertexValid,:)', 'float', 0, 'ieee-le');
+    % Write out line connectivity
+    nvertices = size(position,1);
+    realStart = 0;
+    for i = lineStarts'
+        j = i;
+        while j <= nvertices && vertexValid(j)
+            j = j + 1;
+        end
+        lineLen = j-i;
+        fwrite(fid, lineLen, 'int32');
+        fwrite(fid, realStart:realStart+lineLen-1, 'int32', 0, 'ieee-le');
+        realStart = realStart + lineLen;
+    end
+    fclose(fid);
 end
 
 
@@ -166,10 +227,12 @@ function plyProperty = ply_property_name(semantic, idx)
 end
 
 
-function [color, markerShape, plotLine] = parse_plot_spec(spec, defaultColor, defaultShape, defaultPlotLine)
+function [color, markerShape, plotLine, plotMarkers] = parse_plot_spec(...
+        spec, defaultColor, defaultShape, defaultPlotLine, defaultPlotMarkers)
     color       = defaultColor;
     markerShape = defaultShape;
     plotLine    = defaultPlotLine;
+    plotMarkers = defaultPlotMarkers;
     for s = spec(:)'
         switch s
             % Colors
@@ -195,19 +258,19 @@ function [color, markerShape, plotLine] = parse_plot_spec(spec, defaultColor, de
             % Marker styles
             case '.'
                 markerShape = 0;
-                plotLine = false;
+                plotMarkers = true;
             case 's'
                 markerShape = 1;
-                plotLine = false;
+                plotMarkers = true;
             case 'o'
                 markerShape = 2;
-                plotLine = false;
+                plotMarkers = true;
             case 'x'
                 markerShape = 3;
-                plotLine = false;
+                plotMarkers = true;
             case '+'
                 markerShape = 4;
-                plotLine = false;
+                plotMarkers = true;
             otherwise
                 error('Invalid plotspec character "%s"', s)
         end
