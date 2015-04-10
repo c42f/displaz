@@ -534,7 +534,7 @@ void PointViewerMainWindow::screenShot()
 void PointViewerMainWindow::aboutDialog()
 {
     QString message = tr(
-        "<p><a href=\"http://c42f.github.io/displaz\"><b>Displaz</b></a> &mdash; a viewer for geospatial LiDAR data</p>"
+        "<p><a href=\"http://c42f.github.io/displaz\"><b>Displaz</b></a> &mdash; a viewer for lidar point clouds</p>"
         "<p>Version " DISPLAZ_VERSION_STRING "</p>"
         "<p>This software is open source under the BSD 3-clause license.  "
         "Source code is available at <a href=\"https://github.com/c42f/displaz\">https://github.com/c42f/displaz</a>.</p>"

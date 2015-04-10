@@ -17,7 +17,7 @@ class HelpDialog : public QDialog
         {
             resize(700,900);
             setSizeGripEnabled(true);
-            setWindowTitle("Displaz help");
+            setWindowTitle("Displaz user guide");
             QGridLayout* gridLayout = new QGridLayout(this);
             gridLayout->setContentsMargins(2, 2, 2, 2);
             QTextEdit* textEdit = new QTextEdit(this);
@@ -29,14 +29,14 @@ class HelpDialog : public QDialog
     private:
         void setHelpText(QTextEdit* textEdit)
         {
-            QFile docFile("doc:README.html");
+            QFile docFile("doc:userguide.html");
             if (docFile.open(QIODevice::ReadOnly))
             {
                 textEdit->setHtml(docFile.readAll());
                 return;
             }
             // Look for text doc as backup
-            docFile.setFileName("doc:README.rst");
+            docFile.setFileName("doc:userguide.rst");
             if (docFile.open(QIODevice::ReadOnly))
             {
                 textEdit->setPlainText(docFile.readAll());

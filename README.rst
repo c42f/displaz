@@ -41,19 +41,6 @@ drivers.  Some issues have been observed with intel integrated graphics and
 older ATI drivers.
 
 
-Troubleshooting
-~~~~~~~~~~~~~~~
-
-Q: I see weird rendering artifacts.  Points which are in the background
-sometimes hide those in the foreground.
-
-A: Some graphics cards (for example integrated Intel cards on many laptops)
-seem to work badly with displaz.  First, ensure that your graphics drivers are
-up to date.  For laptops which have a higher power discrete GPU (such as from
-NVidia or ATI), you should ensure that you're actually using it - many systems
-also have a low power Intel GPU which is used by default on windows.  
-
-
 Building
 --------
 
