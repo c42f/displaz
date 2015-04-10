@@ -36,8 +36,9 @@ variables to the controls in the *Shader Parameters* dialog box.  After editing
 a shader, pressing *Shift+Return* will cause the shader to be recompiled and
 the 3D view updated.
 
-As a fairly minimal example, consider the file ``simple_example.glsl`` from the
-shaders directory:
+As a fairly minimal example, consider the file
+`simple_example.glsl <../shaders/simple_example.glsl>`_
+from the shaders directory.
 
 .. include:: ../shaders/simple_example.glsl
   :literal:
