@@ -1,5 +1,6 @@
 ply
 format ascii 1.0
+comment A set of vertices joined by coloured line segments
 element vertex 20
 property float x
 property float y

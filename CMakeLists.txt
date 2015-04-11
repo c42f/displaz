@@ -151,6 +151,7 @@ add_subdirectory(src)
 
 #------------------------------------------------------------------------------
 # Create remainder of install tree
+install(DIRECTORY test/ DESTINATION "${DISPLAZ_DOC_DIR}/examples")
 install(DIRECTORY shaders/ DESTINATION "${DISPLAZ_SHADER_DIR}")
 install(DIRECTORY thirdparty/licenses/ DESTINATION "${DISPLAZ_DOC_DIR}/thirdparty_licenses")
 

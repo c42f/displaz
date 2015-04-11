@@ -1,5 +1,6 @@
 ply
 format ascii 1.0
+comment Experimental format for a polygon with holes
 element metadata 1
 property int version
 property int srid
