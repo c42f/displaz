@@ -88,43 +88,146 @@ Uniform integer parameters may be rendered as a spin box or combo box:
   Allowed range for integer values in spin box.  Defaults 0,100.
 
 
-Supported file formats
-----------------------
+File formats
+------------
 
-Point cloud input
-~~~~~~~~~~~~~~~~~
-The primary file format is the ASPRS .las format; compressed .laz is also
-supported.  Internally these formats are read using the laszip library (via
-LASlib) so any standards-conforming las file should be read correctly.
+Displaz can load the following point cloud types:
 
-Very basic plain text import is also supported: Each line of a .txt file will
-be interpreted as ``X Y Z ...`` where the trailing part of the line is ignored.
+:las: Point clouds in the ASPRS laser scan exchange format
+:laz: Compressed las files using Martin Isenberg's laszip format
+:ply: Point clouds in the Stanford triangle format containing the
+      ``position.{x,y,z}`` or ``vertex_position.{x,y,z}`` properties as
+      described below.
+:txt: Simple plain text point clouds in space-separated XYZ format
 
-TODO: Document special displaz .ply format for points
+Simple triangle and line meshes are also supported:
+
+:ply: line segments files containing position and the ``edge.vertex_index`` property
+:ply: triangle meshes containing position and the ``face.vertex_index`` property
+
+Point clouds
+~~~~~~~~~~~~
+
+las and laz format
+..................
+
+The main file format is the ASPRS LASer format; this is particularly
+appropriate for airborne laser scans.  Internally these formats are read using
+the LASlib (by default), so any standards-conforming las file should be read
+correctly.
 
 
-Vector geometry
-~~~~~~~~~~~~~~~
-Basic support for vector geometry (meshes and line segments) is available via
-the .ply file format.  Any .ply file containing a header of the form::
+ply format details
+..................
 
-    element vertex <N>
-    property float x
-    property float y
-    property float z
-    element face <M>
-    property list uchar int vertex_index
+The `ply format <http://paulbourke.net/dataformats/ply>`_ is a very flexible
+format for storing vertices and vertex connectivity.  Due to its simplicity ply
+was chosen as a general format to communicate point cloud, mesh and line
+segment information to displaz.  Unfortunately the standard values for ply
+metadata are poorly specified which leads to interoperability problems.  The
+metadata conventions chosen in displaz are documented below.
 
-will be recognised and rendered as a mesh with solid faces.  When the face
-element is replaced with an edge element in the same format, each edge will be
-rendered as a set of linear segments.
+Having all fields as a mix of properties on the ``vertex`` element seems to be
+a common way to store point clouds in ply format.  Properties of the ``vertex``
+element are loaded into displaz shader variables as follows::
 
-TODO: Examples of
+  (x,y,z)          -> vec3 position
+  (nx,ny,nz)       -> vec3 normal
+  (red,green,blue) -> vec3 color
+  (r,g,b)          -> vec3 color
 
-* ply mesh
-* ply lines
-* "standard" ply points
+Other attributes are processed as follows::
 
+  prop[0], ..., prop[N]   -> N-element array per point with name "prop"
+  propx, propy, propz     -> 3-element vector per point with name "prop"
+  prop_x, prop_y, prop_z  -> 3-element vector per point with name "prop"
+
+
+Here is a complete header structure in this format from the file
+``standard_ply_points.ply``.  In it we define variables ``position``,
+``normal``, ``color`` and a two element array ``a``::
+
+  ply
+  format ascii 1.0
+  comment Point cloud test containing some standard ply field names + extras
+  element vertex 20
+  property float x
+  property float y
+  property float z
+  property float nx
+  property float ny
+  property float nz
+  property uint8 red
+  property uint8 green
+  property uint8 blue
+  property float a[0]
+  property float a[1]
+  end_header
+
+
+displaz native ply point format
+...............................
+
+To get data into displaz from the various language bindings, a native
+serialization format is under development.  The format a valid ply file, with
+metadata designed to be unambiguous, and data layout simple and efficient for
+binary serialization from in memory arrays.  Each ply element should be named
+``vertex_<field_name>``; the ``vertex_`` prefix is stripped off by displaz
+during parsing, with a resulting field ``<field_name>`` visible in the shader.
+The semantics of the field are determined by the names of the first property:
+"x" implies a vector, "r" a color, and "0" an array.
+
+For example, the example file ``displaz_ply_points.ply`` has the header::
+
+  ply
+  format ascii 1.0
+  element vertex_position 20
+  property float x
+  property float y
+  property float z
+  element vertex_mycolor 20
+  property uint8 r
+  property uint8 g
+  property uint8 b
+  element vertex_myarray 20
+  property float 0
+  property float 1
+  end_header
+
+will be parsed and made available to the shader in the form::
+
+  vector float[3] position
+  color uint8_t[3] mycolor
+  array float[2] myarray
+
+
+Triangle and line meshes
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Basic support for triangle and line meshes is available using what I hope is
+the standard ply format for these.  For both triangles and lines, the array of
+vertex positions are defined by properties ``vertex.x``, ``vertex.y`` and
+``vertex.z``.  Triangles are defined by connecting three vertices by specifying
+indices into the vertex array in the property list ``face.vertex_index``.
+Similarly, edges are defined by connecting any number of vertices into a
+polygonal line using the property list ``edge.vertex_index``.  For example, the
+following header structure defines a mesh with 10 faces, and 3 polygonal lines::
+
+  ply
+  format ascii 1.0
+  element vertex 20
+  property float x
+  property float y
+  property float z
+  element color 20
+  property float r
+  property float g
+  property float b
+  element face 10
+  property list uchar int vertex_index
+  element edge 3
+  property list uchar int vertex_index
+  end_header
 
 
 Troubleshooting
