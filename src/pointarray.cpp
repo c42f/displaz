@@ -320,9 +320,10 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             return false;
         }
     }
+#if 0
     else if (fileName.endsWith(".dat"))
     {
-        // Load crappy db format
+        // Load crappy db format for debugging
         std::ifstream file(fileName.toUtf8(), std::ios::binary);
         file.seekg(0, std::ios::end);
         totPoints = file.tellg()/(4*sizeof(float));
@@ -341,8 +342,10 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         }
         m_npoints = totPoints;
     }
+#endif
     else
     {
+        // Last resort: try loading as text
         if (!loadText(fileName, maxPointCount, m_fields, offset,
                       m_npoints, totPoints, bbox, centroid))
         {
