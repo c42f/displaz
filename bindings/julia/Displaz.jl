@@ -1,4 +1,5 @@
 module Displaz
+using Compat
 
 # Quick and nasty matlab-like plotting interface
 export plot, clf, hold
@@ -68,14 +69,14 @@ end
 #                           :marksize  => (array_semantic,1),
 #                           :markshape => (array_semantic,1)]
 
-const color_names = ['r' => [1.0  0   0],
-                     'g' => [0.0  0.8 0],
-                     'b' => [0.0  0   0.8],
-                     'c' => [0.0  1  1],
-                     'm' => [1.0  0  1],
-                     'y' => [1.0  1  0],
-                     'k' => [0.0  0  0],
-                     'w' => [1.0  1  1]]
+const color_names = @compat Dict('r' => [1.0  0   0],
+                                 'g' => [0.0  0.8 0],
+                                 'b' => [0.0  0   0.8],
+                                 'c' => [0.0  1  1],
+                                 'm' => [1.0  0  1],
+                                 'y' => [1.0  1  0],
+                                 'k' => [0.0  0  0],
+                                 'w' => [1.0  1  1])
 
 interpret_color(color) = color
 interpret_color(s::String) = length(s) == 1 ? interpret_color(s[1]) : error("Unknown color abbreviation $s")
