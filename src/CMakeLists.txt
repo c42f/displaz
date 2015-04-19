@@ -150,12 +150,3 @@ if (DISPLAZ_USE_TESTS)
     list(APPEND allTargets util_test streampagecache_test)
 endif()
 
-
-#------------------------------------------------------------------------------
-if (DISPLAZ_BUILD_EXTERNAL)
-    # Add dependencies on automatically built external libs
-    foreach (target ${allTargets})
-        add_dependencies(${target} ${externalBuilds})
-    endforeach()
-endif()
-

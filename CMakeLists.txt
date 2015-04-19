@@ -16,19 +16,15 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
-set(defaultEmbedGlew FALSE)
-if (WIN32)
-    set(defaultEmbedGlew TRUE)
-endif()
-
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
-option(DISPLAZ_BUILD_EXTERNAL "Automatically download and build external libraries (ilmbase, laslib)" TRUE)
 option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
-option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" ${defaultEmbedGlew})
+option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" TRUE)
 
+set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
+    CACHE PATH "Directory containing installed third party libraries (laslib, ilmbase, ...)")
 
 #------------------------------------------------------------------------------
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
@@ -40,48 +36,27 @@ endif()
 #------------------------------------------------------------------------------
 # Find third party dependencies
 
-if (DISPLAZ_BUILD_EXTERNAL)
-    set(THIRDPARTY_INSTALL_DIR ${PROJECT_BINARY_DIR}/thirdparty_install)
-    set(ILMBASE_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-    set(ILMBASE_LIBRARIES
-        ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}Imath${CMAKE_STATIC_LIBRARY_SUFFIX}
-        ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}Iex${CMAKE_STATIC_LIBRARY_SUFFIX}
-    )
-    set(externalBuilds ilmbase laslib)
-    if (DISPLAZ_USE_LAS)
-        set(LASLIB_INCLUDES ${THIRDPARTY_INSTALL_DIR}/include)
-        set(LASLIB_LIBRARIES ${THIRDPARTY_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}laslib${CMAKE_STATIC_LIBRARY_SUFFIX})
-    endif()
-    add_subdirectory(thirdparty/external)
+if (EXISTS ${DISPLAZ_EXTERNAL_DIR})
+    list (APPEND CMAKE_PREFIX_PATH ${DISPLAZ_EXTERNAL_DIR})
 else()
-    find_package(Ilmbase 1.0.1 REQUIRED)
+    message(STATUS "DISPLAZ_EXTERNAL_DIR (= \"${DISPLAZ_EXTERNAL_DIR}\") does not exist.  If you would like LASlib and ilmbase to be built for you, please run the cmake build system in thirdparty/external (see build instructions for details)")
 endif()
 
-if (DISPLAZ_USE_LAS)
-# Find a library to read .las or .laz
-    if (DISPLAZ_USE_PDAL)
-        find_package(PDAL)
+find_package(Ilmbase 1.0.1 REQUIRED)
 
-        if (PDAL_FOUND)
-            find_package (Boost 1.48)
-            if (NOT Boost_FOUND)
-                message (SEND_ERROR "Boost headers are required when compiling with PDAL")
-            endif()
-            list (APPEND PDAL_INCLUDES ${Boost_INCLUDE_DIRS})
-        endif()
+if (DISPLAZ_USE_LAS)
+    add_definitions(-DDISPLAZ_USE_LAS)
+    # Find a library to read .las or .laz
+    if (DISPLAZ_USE_PDAL)
+        find_package(PDAL REQUIRED)
+        find_package(Boost 1.48 REQUIRED)
+        add_definitions(-DDISPLAZ_USE_PDAL)
+        include_directories(${PDAL_INCLUDE_DIRS})
     else()
         # laslib support
-        find_path (LASLIB_INCLUDES NAMES lasdefinitions.hpp)
-        find_library (LASLIB_LIBRARIES NAMES laslib)
-        if (LASLIB_LIBRARIES AND LASLIB_INCLUDES)
-            set (LASLIB_FOUND TRUE)
-        endif()
+        find_package(LASlib REQUIRED)
+        include_directories(${LASLIB_INCLUDE_DIRS})
     endif()
-
-    if(NOT LASLIB_FOUND AND NOT PDAL_FOUND)
-        message(SEND_ERROR "One of PDAL or laslib is required to read point cloud files")
-    endif()
-
 endif()
 
 if (DISPLAZ_EMBED_GLEW)
@@ -95,23 +70,9 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
+find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
 
-if(NOT QT_FOUND)
-    message(SEND_ERROR "Qt 4 not found")
-endif()
-
-if (DISPLAZ_USE_LAS)
-    add_definitions(-DDISPLAZ_USE_LAS)
-    if(DISPLAZ_USE_PDAL)
-        add_definitions(-DDISPLAZ_USE_PDAL)
-        include_directories(${PDAL_INCLUDE_DIRS})
-    else()
-        include_directories(${LASLIB_INCLUDES})
-    endif()
-endif()
-
-include_directories(${ILMBASE_INCLUDES})
+include_directories(${ILMBASE_INCLUDE_DIRS})
 
 
 #------------------------------------------------------------------------------
