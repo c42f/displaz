@@ -91,12 +91,11 @@ void main()
     }
     else if (colorMode == 5)
     {
-        // Set point colour and marker shape cyclically based on file number to
-        // give a unique combinations for 5*7 files.
+        // Set point colour and marker shape cyclically based on file number
         markerShape = fileNumber % 5;
-        vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
-                             vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
-        pointColor = cols[fileNumber % 7];
+        pointColor = vec3((1.0/2.0) * (0.5 + (fileNumber % 2)),
+                          (1.0/3.0) * (0.5 + (fileNumber % 3)),
+                          (1.0/5.0) * (0.5 + (fileNumber % 5)));
     }
     /*
     else if (colorMode == 8)
