@@ -7,18 +7,18 @@ export plot, clf, hold
 
 # Convert julia array into a type name and type appropriate for putting in the
 # ply header
-ply_type_convert(a::AbstractArray{Uint8})    = ("uint8",   a)
-ply_type_convert(a::AbstractArray{Uint16})   = ("uint16",  a)
-ply_type_convert(a::AbstractArray{Uint32})   = ("uint32",  a)
+ply_type_convert(a::AbstractArray{UInt8})    = ("uint8",   a)
+ply_type_convert(a::AbstractArray{UInt16})   = ("uint16",  a)
+ply_type_convert(a::AbstractArray{UInt32})   = ("uint32",  a)
 ply_type_convert(a::AbstractArray{Int8})     = ("int8",    a)
 ply_type_convert(a::AbstractArray{Int16})    = ("int16",   a)
 ply_type_convert(a::AbstractArray{Int32})    = ("int32",   a)
 ply_type_convert(a::AbstractArray{Float32})  = ("float32", a)
 ply_type_convert(a::AbstractArray{Float64})  = ("float64", a)
 # Generic cases - actually do a conversion
-ply_type_convert{T<:Unsigned}(a::AbstractArray{T}) = ("uint32", uint32(a))
-ply_type_convert{T<:Integer }(a::AbstractArray{T}) = ("int32", int32(a))
-ply_type_convert{T<:Real    }(a::AbstractArray{T}) = ("float64", float64(a))
+ply_type_convert{T<:Unsigned}(a::AbstractArray{T}) = ("uint32",  map(UInt32,a))
+ply_type_convert{T<:Integer }(a::AbstractArray{T}) = ("int32",   map(Int32,a))
+ply_type_convert{T<:Real    }(a::AbstractArray{T}) = ("float64", map(Float64,a))
 
 
 const array_semantic = 0
@@ -89,7 +89,7 @@ _hold = false
 
 
 # Basic 3D plotting function for points
-function plot(position; color=[1 1 1], markersize=[0.1], markershape=[1])
+function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0])
     color = interpret_color(color)
     size(position, 2) == 3 || error("position must be a Nx3 array")
     size(color, 2)    == 3 || error("color must be a Nx3 array")
@@ -106,9 +106,8 @@ function plot(position; color=[1 1 1], markersize=[0.1], markershape=[1])
     end
     # Ensure all fields are floats for now, to avoid surprising scaling in the
     # shader
-    color = float32(color)
-    markersize = float32(markersize)
-    markershape = float32(markershape)
+    color = map(Float32,color)
+    markersize = map(Float32,markersize)
     size(color,1) == nvertices || error("color must have same number of rows as position array")
     #fileName = "_julia_tmp.ply"
     fileName = tempname()*".ply"
@@ -118,8 +117,8 @@ function plot(position; color=[1 1 1], markersize=[0.1], markershape=[1])
                      (:markersize, array_semantic, markersize),
                      (:markershape, array_semantic, markershape),
                      ))
-    holdStr = _hold ? "-add" : ""
-    @async run(`displaz $holdStr -shader generic_points.glsl -rmtemp $fileName`)
+    hold = _hold ? "-add" : []
+    @async run(`displaz $hold -shader generic_points.glsl -rmtemp $fileName`)
     #print("displaz $holdStr -shader generic_points.glsl -rmtemp $fileName\n")
     nothing
 end
