@@ -12,7 +12,7 @@ uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=1
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Las Classification|File Number
+uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Index|Point Source|Las Classification|File Number
 uniform int selectionMode = 0;     //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
@@ -70,17 +70,15 @@ void main()
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)
-        pointColor = 0.2*returnNumber*exposure * vec3(1);
+        pointColor = vec3(0.2*returnNumber*exposure, 0.2*numberOfReturns*exposure, 0);
     else if (colorMode == 3)
-        pointColor = 0.2*numberOfReturns*exposure * vec3(1);
-    else if (colorMode == 4)
     {
         markerShape = (pointSourceId+1) % 5;
         vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
                              vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
         pointColor = cols[(pointSourceId+3) % 7];
     }
-    else if (colorMode == 5)
+    else if (colorMode == 4)
     {
         // Colour according to some common classifications defined in the LAS spec
         pointColor = vec3(exposure*classification);
@@ -91,7 +89,7 @@ void main()
         else if (classification == 6) pointColor = vec3(0.8,  0.0,  0.0); // building
         else if (classification == 9) pointColor = vec3(0.0,  0.0,  0.8); // water
     }
-    else if (colorMode == 6)
+    else if (colorMode == 5)
     {
         // Set point colour and marker shape cyclically based on file number to
         // give a unique combinations for 5*7 files.
