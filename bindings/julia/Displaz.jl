@@ -136,7 +136,7 @@ function hold()
 end
 function hold(h)
     global _hold
-    _hold = bool(h)
+    _hold = Bool(h)
 end
 
 
