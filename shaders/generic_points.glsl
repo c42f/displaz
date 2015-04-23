@@ -8,7 +8,7 @@ uniform mat4 modelViewProjectionMatrix;
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
+uniform float radiusMultiplier = 1;//# uiname=Radius Multiplier; min=0.00001; max=100
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
 uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
 uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
@@ -43,7 +43,7 @@ void main()
 {
     vec4 p = modelViewProjectionMatrix * vec4(position,1.0);
     float r = length(position - cursorPos);
-    modifiedPointRadius = pointRadius * step(r, trimRadius);
+    modifiedPointRadius = radiusMultiplier * step(r, trimRadius);
     if (markersize != 0) // Default == 0 for in attributes.  TODO: this isn't good in this case - what to do about it?
         modifiedPointRadius *= markersize;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
