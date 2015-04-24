@@ -381,6 +381,10 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
         }
         m_pointView->camera().setEyeToCenterDistance(viewRadius);
     }
+    else if (commandTokens[0] == "QUIT")
+    {
+        close();
+    }
     else
     {
         std::cerr << "Unkown socket command \"" << command << "\"\n";

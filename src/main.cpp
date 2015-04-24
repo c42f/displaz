@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
     bool clearFiles = false;
     bool addFiles = false;
     bool rmTemp = false;
+    bool quitRemote = false;
 
     ap.options(
         "displaz - A lidar point cloud viewer\n"
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
+        "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
 
@@ -176,6 +178,10 @@ int main(int argc, char *argv[])
                 command = "SET_VIEW_RADIUS\n" +
                           QByteArray().setNum(viewRadius);
             }
+            else if (quitRemote)
+            {
+                command = "QUIT";
+            }
             else
             {
                 std::cerr << "WARNING: Existing window found, but no remote "
@@ -192,6 +198,17 @@ int main(int argc, char *argv[])
             //std::cerr << "Opening files in existing displaz instance\n";
             return EXIT_SUCCESS;
         }
+        if (quitRemote)
+        {
+            // If no remote found, -quit should not start a new instance
+            return EXIT_SUCCESS;
+        }
+    }
+    else if (quitRemote)
+    {
+        // If no remote found, assume -quit was successful
+        std::cerr << "ERROR: -quit cannot be combined with -noserver\n";
+        return EXIT_FAILURE;
     }
     // If we didn't find any other running instance, start up a server to
     // accept incoming connections, if desired
