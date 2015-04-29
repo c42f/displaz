@@ -1,3 +1,6 @@
+// Copyright 2015, Christopher J. Foster and the other displaz contributors.
+// Use of this code is governed by the BSD-style license found in LICENSE.txt
+
 #ifndef HELP_DIALOG_H_INCLUDED
 #define HELP_DIALOG_H_INCLUDED
 

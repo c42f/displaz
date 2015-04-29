@@ -2,8 +2,8 @@ Displaz is licensed under the BSD 3-clause license:
 
 
 ----------------------------------------------------------------------------
-Copyright (C) 2012, Chris J. Foster and the other authors and contributors
-All rights reserved.
+Copyright (C) 2012-2015, Christopher J. Foster and the other displaz
+contributors: https://github.com/c42f/displaz/contributors
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
