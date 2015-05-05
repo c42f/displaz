@@ -362,7 +362,18 @@ V3d TriMesh::pickVertex(const V3d& cameraPos,
                                    longitudinalScale, distance);
     if (m_verts.empty())
         return V3d(0);
-    return V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
+    V3d pos = V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
+    if (info)
+    {
+        *info = "";
+        *info += tfm::format("  position = %.3f %.3f %.3f\n", pos.x, pos.y, pos.z);
+        if (!m_colors.empty())
+        {
+            *info += tfm::format("  color = %.3f %.3f %.3f\n",
+                                 m_colors[3*idx], m_colors[3*idx+1], m_colors[3*idx+2]);
+        }
+    }
+    return pos;
 }
 
 
