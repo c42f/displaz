@@ -56,6 +56,7 @@ set(srcs
     shadereditor.cpp
     shader.cpp
     ../thirdparty/rply/rply.c
+    ../thirdparty/polypartition/polypartition.cpp
 )
 
 qt4_add_resources(RCC_GENERATED resource.qrc)

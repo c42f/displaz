@@ -10,6 +10,7 @@
 
 #include "tinyformat.h"
 #include "rply/rply.h"
+#include "polypartition/polypartition.h"
 
 #include "ply_io.h"
 #include "qtlogger.h"
@@ -45,6 +46,7 @@ static Imath::Box3d getBoundingBox(const V3d& offset, const std::vector<float>& 
 
 struct PlyLoadInfo
 {
+    std::vector<unsigned int> tmpPolygon;
     std::vector<float> verts;
     std::vector<float> colors;
     std::vector<GLuint> faces;
@@ -81,24 +83,87 @@ static int color_cb(p_ply_argument argument)
 }
 
 
+// Triangulate a polygon
+//
+// verts - 3D vertex positions
+// inds  - indices of polygon vertices in `verts`; verts[3*inds[i]] is the x
+//         component of the ith polygon vertex.
+// triangleInds - indices of triangles in output array
+static void triangulatePolygon(const std::vector<float>& verts,
+                               const std::vector<GLuint>& inds,
+                               std::vector<GLuint>& triangleInds)
+{
+    // Figure out which dimension the bounding box is smallest along, and
+    // discard it to reduce dimensionality to 2D.
+    Imath::Box3d bbox;
+    for (size_t i = 0; i < inds.size(); ++i)
+        bbox.extendBy(V3d(verts[3*inds[i]], verts[3*inds[i]+1], verts[3*inds[i]+2]));
+    V3d diag = bbox.size();
+    int xind = 0;
+    int yind = 1;
+    if (diag.z > std::min(diag.x, diag.y))
+    {
+        if (diag.x < diag.y)
+            xind = 2;
+        else
+            yind = 2;
+    }
+    // Polypartition data structures
+    TPPLPoly poly;
+    poly.Init(inds.size());
+    for (size_t i = 0; i < inds.size(); ++i)
+    {
+        poly[i].x = verts[3*inds[i]+xind];
+        poly[i].y = verts[3*inds[i]+yind];
+        poly[i].id = inds[i];
+    }
+    std::list<TPPLPoly> triangles;
+    TPPLPartition polypartition;
+    if (poly.GetOrientation() != TPPL_CCW)
+        poly.Invert();
+    // FIXME: Use Triangulate_MONO, after figuring out why it's not always
+    // working.
+    if (!polypartition.Triangulate_EC(&poly, &triangles))
+    {
+        g_logger.warning("Ignoring polygon which couldn't be triangulated.");
+        return;
+    }
+    for (auto tri = triangles.begin(); tri != triangles.end(); ++tri)
+    {
+        triangleInds.push_back((*tri)[0].id);
+        triangleInds.push_back((*tri)[1].id);
+        triangleInds.push_back((*tri)[2].id);
+    }
+}
+
 static int face_cb(p_ply_argument argument)
 {
     long length;
     long index;
     ply_get_argument_property(argument, NULL, &length, &index);
-    if (index < 0) // ignore length argument
-        return 1;
     void* pinfo = 0;
     long isList = 0;
     ply_get_argument_user_data(argument, &pinfo, &isList);
-    if (isList && length != 3)
+    PlyLoadInfo& loadInfo = *(PlyLoadInfo*)pinfo;
+    if (index < 0) // length argument
     {
-        // Not a triangle - ignore for now!
-        g_logger.warning("Ignoring non-triangular face with %d vertices\n", length);
+        if (length != 3)
+            loadInfo.tmpPolygon.resize(length);
         return 1;
     }
-    ((PlyLoadInfo*)pinfo)->faces.push_back(
-            (unsigned int)ply_get_argument_value(argument));
+    if (isList && length != 3)
+    {
+        loadInfo.tmpPolygon[index] = (int)ply_get_argument_value(argument);
+        if (index == length-1)
+        {
+            // FIXME: the verts array may not be initialized by the time we get
+            // here!
+            triangulatePolygon(loadInfo.verts, loadInfo.tmpPolygon,
+                               loadInfo.faces);
+        }
+        return 1;
+    }
+    loadInfo.faces.push_back((unsigned int)ply_get_argument_value(argument));
     return 1;
 }
 
@@ -206,8 +271,9 @@ bool loadPlyFile(const QString& fileName,
     std::vector<unsigned int> innerVertexIndices;
     if (nedges == 0)
     {
-        nedges = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index", edge_cb, &info, 1);
+        nedges = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index", face_cb, &info, 1);
         nedges += ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
+        // FIXME: Deal with polygon holes correctly in triangulation.
         nedges += ply_set_read_cb(ply.get(), "polygon", "inner_polygon_vertex_counts", list_cb, &innerPolygonVertexCount, 0);
         ply_set_read_cb(ply.get(), "polygon", "inner_vertex_index", list_cb, &innerVertexIndices, 0);
     }
