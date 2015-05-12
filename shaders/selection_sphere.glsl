@@ -1,7 +1,6 @@
+#version 130
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
-
-#version 130
 
 // Very simple shader setup for rendering a semitransparent selection sphere.
 
