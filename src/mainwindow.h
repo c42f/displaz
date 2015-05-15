@@ -11,6 +11,7 @@
 #include <memory>
 
 class QActionGroup;
+class QLocalSocket;
 class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
@@ -38,7 +39,7 @@ class PointViewerMainWindow : public QMainWindow
         GeometryCollection& geometries() { return *m_geometries; }
 
     public slots:
-        void runCommand(const QByteArray& command);
+        void runCommand(const QByteArray& command, QLocalSocket* connection);
         void openShaderFile(const QString& shaderFileName);
 
     protected:

@@ -14,6 +14,7 @@
 #include "view3d.h"
 
 #include <QtCore/QSignalMapper>
+#include <QtCore/QUrl>
 #include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
 #include <QtGui/QDockWidget>
@@ -26,8 +27,8 @@
 #include <QtGui/QSplitter>
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
-#include <QDropEvent>
-#include <QUrl>
+#include <QtGui/QDropEvent>
+#include <QtNetwork/QLocalSocket>
 
 
 //------------------------------------------------------------------------------
@@ -296,8 +297,10 @@ QSize PointViewerMainWindow::sizeHint() const
 }
 
 
-void PointViewerMainWindow::runCommand(const QByteArray& command)
+void PointViewerMainWindow::runCommand(const QByteArray& command, QLocalSocket* connectionPtr)
 {
+    // Ensure connection is cleaned up if possible
+    std::unique_ptr<QLocalSocket> connection(connectionPtr);
     QList<QByteArray> commandTokens = command.split('\n');
     if (commandTokens.empty())
         return;
@@ -354,6 +357,21 @@ void PointViewerMainWindow::runCommand(const QByteArray& command)
             return;
         }
         m_pointView->camera().setEyeToCenterDistance(viewRadius);
+    }
+    else if (commandTokens[0] == "QUERY_CURSOR")
+    {
+        QDataStream stream(connection.get());
+        V3d p = m_pointView->cursorPos();
+        std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+        stream.writeBytes(response.data(), response.size());
+        if (!connection->waitForBytesWritten(1000))
+        {
+            std::cerr << connection->state() << "\n";
+            std::cerr << "Could not write -querycursor result back to connection\n";
+            return;
+        }
+        connection->waitForDisconnected(1000);
+        return;
     }
     else if (commandTokens[0] == "QUIT")
     {

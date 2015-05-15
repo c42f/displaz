@@ -42,6 +42,8 @@ class View3D : public QGLWidget
 
         QColor background() const { return m_backgroundColor; }
 
+        Imath::V3d cursorPos() const { return m_cursorPos; }
+
         /// Return current selection of loaded files
         const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
         QItemSelectionModel* selectionModel() { return m_selectionModel; }

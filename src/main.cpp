@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
     bool addFiles = false;
     bool rmTemp = false;
     bool quitRemote = false;
+    bool queryCursor = false;
 
     ap.options(
         "displaz - A lidar point cloud viewer\n"
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
+        "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -156,6 +158,10 @@ int main(int argc, char *argv[])
             {
                 command = "QUIT";
             }
+            else if (queryCursor)
+            {
+                command = "QUERY_CURSOR";
+            }
             else
             {
                 std::cerr << "WARNING: Existing window found, but no remote "
@@ -167,15 +173,29 @@ int main(int argc, char *argv[])
             QDataStream stream(&socket);
             // Writes length as big endian uint32 followed by raw bytes
             stream.writeBytes(command.data(), command.length());
+            socket.waitForBytesWritten(10000);
+            if (queryCursor)
+            {
+                QByteArray msg = DisplazServer::readMessage(socket);
+                std::cout.write(msg.data(), msg.length());
+                std::cout << "\n";
+            }
             socket.disconnectFromServer();
-            socket.waitForDisconnected(10000);
-            //std::cerr << "Opening files in existing displaz instance\n";
             return EXIT_SUCCESS;
         }
-        if (quitRemote)
+        else
         {
-            // If no remote found, -quit should not start a new instance
-            return EXIT_SUCCESS;
+            // Some remote commands fail when no instance is found
+            if (queryCursor)
+            {
+                std::cerr << "ERROR: No remote displaz instance found\n";
+                return EXIT_FAILURE;
+            }
+            // Some remote commands succeed when no instance is found
+            if (quitRemote || clearFiles)
+            {
+                return EXIT_SUCCESS;
+            }
         }
     }
     else if (quitRemote)
@@ -200,8 +220,8 @@ int main(int argc, char *argv[])
     PointViewerMainWindow window;
     if (useServer)
     {
-        QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray)),
-                         &window, SLOT(runCommand(QByteArray)));
+        QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray, QLocalSocket*)),
+                         &window, SLOT(runCommand(QByteArray, QLocalSocket*)));
     }
     window.geometries().setMaxPointCount(maxPointCount);
     if (!shaderName.empty())
