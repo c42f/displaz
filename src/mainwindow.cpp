@@ -7,6 +7,7 @@
 #include "datasetui.h"
 #include "geometrycollection.h"
 #include "helpdialog.h"
+#include "IpcChannel.h"
 #include "qtlogger.h"
 #include "mesh.h"
 #include "shadereditor.h"
@@ -28,7 +29,7 @@
 #include <QtGui/QDoubleSpinBox>
 #include <QtGui/QDesktopWidget>
 #include <QtGui/QDropEvent>
-#include <QtNetwork/QLocalSocket>
+#include <QtNetwork/QLocalServer>
 
 
 //------------------------------------------------------------------------------
@@ -40,7 +41,8 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
-    m_geometries(0)
+    m_geometries(0),
+    m_ipcServer(0)
 {
     m_geometries = new GeometryCollection(this);
     connect(m_geometries, SIGNAL(layoutChanged()), this, SLOT(updateTitle()));
@@ -246,6 +248,27 @@ PointViewerMainWindow::PointViewerMainWindow()
 }
 
 
+void PointViewerMainWindow::startIpcServer(const QString& socketName)
+{
+    delete m_ipcServer;
+    m_ipcServer = new QLocalServer(this);
+    if (!QLocalServer::removeServer(socketName))
+        qWarning("Could not clean up socket file \"%s\"", qPrintable(socketName));
+    if (!m_ipcServer->listen(socketName))
+        qWarning("Could not listen on socket \"%s\"", qPrintable(socketName));
+    connect(m_ipcServer, SIGNAL(newConnection()),
+            this, SLOT(handleIpcConnection()));
+}
+
+
+void PointViewerMainWindow::handleIpcConnection()
+{
+    IpcChannel* channel = new IpcChannel(m_ipcServer->nextPendingConnection(), this);
+    connect(channel, SIGNAL(disconnected()), channel, SLOT(deleteLater()));
+    connect(channel, SIGNAL(messageReceived(QByteArray)), this, SLOT(handleMessage(QByteArray)));
+}
+
+
 void PointViewerMainWindow::setProgressBarText(QString text)
 {
     m_progressBar->setFormat(text + " (%p%)");
@@ -297,11 +320,9 @@ QSize PointViewerMainWindow::sizeHint() const
 }
 
 
-void PointViewerMainWindow::runCommand(const QByteArray& command, QLocalSocket* connectionPtr)
+void PointViewerMainWindow::handleMessage(QByteArray message)
 {
-    // Ensure connection is cleaned up if possible
-    std::unique_ptr<QLocalSocket> connection(connectionPtr);
-    QList<QByteArray> commandTokens = command.split('\n');
+    QList<QByteArray> commandTokens = message.split('\n');
     if (commandTokens.empty())
         return;
     if (commandTokens[0] == "OPEN_FILES" || commandTokens[0] == "ADD_FILES")
@@ -360,18 +381,16 @@ void PointViewerMainWindow::runCommand(const QByteArray& command, QLocalSocket* 
     }
     else if (commandTokens[0] == "QUERY_CURSOR")
     {
-        QDataStream stream(connection.get());
-        V3d p = m_pointView->cursorPos();
-        std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
-        stream.writeBytes(response.data(), response.size());
-        if (!connection->waitForBytesWritten(1000))
+        // Yuck!
+        IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
+        if (!channel)
         {
-            std::cerr << connection->state() << "\n";
-            std::cerr << "Could not write -querycursor result back to connection\n";
+            qWarning() << "Signalling object not a IpcChannel!\n";
             return;
         }
-        connection->waitForDisconnected(1000);
-        return;
+        V3d p = m_pointView->cursorPos();
+        std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+        channel->sendMessage(QByteArray(response.data(), (int)response.size()));
     }
     else if (commandTokens[0] == "QUIT")
     {
@@ -379,9 +398,10 @@ void PointViewerMainWindow::runCommand(const QByteArray& command, QLocalSocket* 
     }
     else
     {
-        std::cerr << "Unkown socket command \"" << command << "\"\n";
+        g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));
     }
 }
+
 
 void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 {

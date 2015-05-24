@@ -11,7 +11,7 @@
 #include <memory>
 
 class QActionGroup;
-class QLocalSocket;
+class QLocalServer;
 class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
@@ -22,6 +22,7 @@ class View3D;
 class ShaderEditor;
 class LogViewer;
 class GeometryCollection;
+class IpcChannel;
 
 
 //------------------------------------------------------------------------------
@@ -38,8 +39,14 @@ class PointViewerMainWindow : public QMainWindow
 
         GeometryCollection& geometries() { return *m_geometries; }
 
+        /// Start server for interprocess communication
+        ///
+        /// Listens on local socket `socketName` for incoming connections.  Any
+        /// socket previously in use is deleted.
+        void startIpcServer(const QString& socketName);
+
     public slots:
-        void runCommand(const QByteArray& command, QLocalSocket* connection);
+        void handleMessage(QByteArray message);
         void openShaderFile(const QString& shaderFileName);
 
     protected:
@@ -61,6 +68,7 @@ class PointViewerMainWindow : public QMainWindow
         void updateTitle();
         void setProgressBarText(QString text);
         void geometryRowsInserted(const QModelIndex& parent, int first, int last);
+        void handleIpcConnection();
 
     private:
         QColor backgroundColFromName(const QString& name) const;
@@ -78,6 +86,9 @@ class PointViewerMainWindow : public QMainWindow
 
         // Currently loaded geometry
         GeometryCollection* m_geometries;
+
+        // Interprocess communication
+        QLocalServer* m_ipcServer;
 };
 
 

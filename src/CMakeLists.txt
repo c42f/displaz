@@ -20,13 +20,13 @@ set(shared_srcs
 )
 qt4_wrap_cpp(moc_srcs
     datasetui.h
-    displazserver.h
     dragspinbox.h
     fileloader.h
     geometry.h
     geometrycollection.h
     hcloudview.h
     helpdialog.h
+    IpcChannel.h
     interactivecamera.h
     qtlogger.h
     mainwindow.h
@@ -44,6 +44,7 @@ set(srcs
     geometrycollection.cpp
     glutil.cpp
     hcloudview.cpp
+    IpcChannel.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp

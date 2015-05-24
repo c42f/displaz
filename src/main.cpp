@@ -11,18 +11,10 @@
 
 #include "argparse.h"
 #include "config.h"
-#include "displazserver.h"
+#include "IpcChannel.h"
+#include "util.h"
 
 class Geometry;
-
-
-static QStringList g_initialFileNames;
-static int storeFileName (int argc, const char *argv[])
-{
-    for(int i = 0; i < argc; ++i)
-        g_initialFileNames.push_back (argv[i]);
-    return 0;
-}
 
 
 /// Set up search paths to our application directory for Qt's file search
@@ -44,6 +36,29 @@ static void setupQFileSearchPaths()
     installBaseDir.chop(4);
     QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
     QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
+}
+
+
+/// Get socket name for displaz IPC
+///
+/// This is a combination of the program name and user name to avoid any name
+/// clashes, along with a user-defined suffix.
+static QString displazSocketName(QString suffix = "")
+{
+    QString currUid = QString::fromStdString(currentUserUid());
+    QString name = "displaz-ipc-" + currUid;
+    if (!suffix.isEmpty())
+        name += "-" + suffix;
+    return name;
+}
+
+
+static QStringList g_initialFileNames;
+static int storeFileName (int argc, const char *argv[])
+{
+    for(int i = 0; i < argc; ++i)
+        g_initialFileNames.push_back (argv[i]);
+    return 0;
 }
 
 
@@ -117,14 +132,13 @@ int main(int argc, char *argv[])
 
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.
-    QString socketName = DisplazServer::socketName(QString::fromStdString(serverName));
+    QString socketName = displazSocketName(QString::fromStdString(serverName));
     if (useServer)
     {
         QDir currentDir = QDir::current();
-        QLocalSocket socket;
         // Attempt to locate a running displaz instance
-        socket.connectToServer(socketName);
-        if (socket.waitForConnected(100))
+        std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
+        if (channel)
         {
             QByteArray command;
             if (!g_initialFileNames.empty())
@@ -166,21 +180,16 @@ int main(int argc, char *argv[])
             {
                 std::cerr << "WARNING: Existing window found, but no remote "
                              "command specified - exiting\n";
-                // Since we opened the connection, close it nicely by sending a
-                // zero-length message to say goodbye.
-                command = "";
+                return EXIT_FAILURE;
             }
-            QDataStream stream(&socket);
-            // Writes length as big endian uint32 followed by raw bytes
-            stream.writeBytes(command.data(), command.length());
-            socket.waitForBytesWritten(10000);
+            channel->sendMessage(command);
             if (queryCursor)
             {
-                QByteArray msg = DisplazServer::readMessage(socket);
+                QByteArray msg = channel->receiveMessage();
                 std::cout.write(msg.data(), msg.length());
                 std::cout << "\n";
             }
-            socket.disconnectFromServer();
+            channel->disconnectFromServer();
             return EXIT_SUCCESS;
         }
         else
@@ -204,11 +213,6 @@ int main(int argc, char *argv[])
         std::cerr << "ERROR: -quit cannot be combined with -noserver\n";
         return EXIT_FAILURE;
     }
-    // If we didn't find any other running instance, start up a server to
-    // accept incoming connections, if desired
-    std::unique_ptr<DisplazServer> server;
-    if (useServer)
-        server.reset(new DisplazServer(socketName));
 
     // Multisampled antialiasing - this makes rendered point clouds look much
     // nicer, but also makes the render much slower, especially on lower
@@ -218,12 +222,9 @@ int main(int argc, char *argv[])
     //QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
-    if (useServer)
-    {
-        QObject::connect(server.get(), SIGNAL(messageReceived(QByteArray, QLocalSocket*)),
-                         &window, SLOT(runCommand(QByteArray, QLocalSocket*)));
-    }
     window.geometries().setMaxPointCount(maxPointCount);
+    if (useServer)
+        window.startIpcServer(socketName);
     if (!shaderName.empty())
         window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
