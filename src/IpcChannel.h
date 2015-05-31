@@ -25,6 +25,9 @@ class IpcChannel : public QObject
         ///
         /// If the connection succeeds within the given timeout, return an open
         /// channel, otherwise return null.
+        ///
+        /// serverName -   Socket name as passed to QLocalSocket
+        /// timeoutMsecs - Timeout in milliseconds.  If negative, try forever.
         static std::unique_ptr<IpcChannel> connectToServer(
                 QString serverName, int timeoutMsecs = 10000);
 

@@ -64,8 +64,6 @@ static int storeFileName (int argc, const char *argv[])
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
-
     ArgParse::ArgParse ap;
     bool printVersion = false;
     bool printHelp = false;
@@ -126,15 +124,21 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    setupQFileSearchPaths();
-
-    qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
-
-    // TODO: Factor out this socket comms code - sending and recieving of
-    // messages should happen in a centralised place.
     QString socketName = displazSocketName(QString::fromStdString(serverName));
+
     if (useServer)
     {
+        // Alas, using sockets requires QCoreApplication/QApplication to be
+        // instantiated.  However, on linux each QApplication appears to consume
+        // GUI resources, regardless of whether it exits before we actually create
+        // any widgets.  This means we may run out of resources if too many displaz
+        // instances are launched by a script.
+        int dummyArgc = 0;
+        char** dummyArgv = 0;
+        QCoreApplication coreApp(dummyArgc, dummyArgv);
+
+        // TODO: Factor out this socket comms code - sending and recieving of
+        // messages should happen in a centralised place.
         QDir currentDir = QDir::current();
         // Attempt to locate a running displaz instance
         std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
@@ -213,6 +217,12 @@ int main(int argc, char *argv[])
         std::cerr << "ERROR: -quit cannot be combined with -noserver\n";
         return EXIT_FAILURE;
     }
+
+    QApplication app(argc, argv);
+
+    setupQFileSearchPaths();
+
+    qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
 
     // Multisampled antialiasing - this makes rendered point clouds look much
     // nicer, but also makes the render much slower, especially on lower

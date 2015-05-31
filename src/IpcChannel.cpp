@@ -5,6 +5,7 @@
 #include "util.h"
 #include "qtlogger.h"
 
+#include <QElapsedTimer>
 
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),
@@ -21,10 +22,48 @@ IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
 std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int timeoutMsecs)
 {
     std::unique_ptr<QLocalSocket> socket(new QLocalSocket());
-    socket->connectToServer(serverName);
-    if (!socket->waitForConnected(timeoutMsecs))
-        return std::unique_ptr<IpcChannel>();
-    return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
+    QElapsedTimer timer;
+    timer.start();
+    qint64 currTimeout = timeoutMsecs;
+    for (int64_t tryIter = 0;; ++tryIter)
+    {
+        socket->connectToServer(serverName);
+        if (socket->waitForConnected(currTimeout))
+            return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
+        // Several error codes are retryable
+        if (socket->error() == QLocalSocket::SocketResourceError ||
+            socket->error() == QLocalSocket::ConnectionError)
+        {
+            // Retryable errors - continue
+        }
+        else if (socket->error() == QLocalSocket::UnknownSocketError)
+        {
+            // "Unknown" errors on linux may result in the socket getting into
+            // a bad state from which it never recovers.  Make a new one.
+            socket.reset(new QLocalSocket());
+        }
+        else
+        {
+            // Other errors => we can't connect.  Give up!
+//            QString msg;
+//            QDebug dbg(&msg);
+//            dbg << "Fatal socket failure: " << socket->error();
+//            std::cerr << msg.toUtf8() << "\n";
+            return std::unique_ptr<IpcChannel>();
+        }
+        if (socket->error() == QLocalSocket::UnknownSocketError)
+            socket.reset(new QLocalSocket());
+        if (timeoutMsecs >= 0)
+            currTimeout = timeoutMsecs - timer.elapsed();
+        // DEBUG logging
+//        if ((tryIter & (tryIter - 1)) == 0) // power of two
+//        {
+//            QString msg;
+//            QDebug dbg(&msg);
+//            dbg << "Retrying " << tryIter << "(socket failure: " << socket->error() << ")";
+//            std::cerr << msg.toUtf8() << "\n";
+//        }
+    }
 }
 
 QByteArray IpcChannel::receiveMessage(int timeoutMsecs)
