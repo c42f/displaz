@@ -347,12 +347,9 @@ void View3D::mousePressEvent(QMouseEvent* event)
 {
     m_mouseButton = event->button();
     m_prevMousePos = event->pos();
-}
 
-
-void View3D::mouseReleaseEvent(QMouseEvent* event)
-{
-    if (event->button() == Qt::MidButton)
+    if (event->button() == Qt::MidButton ||
+        (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)))
     {
         double snapScale = 0.025;
         QString pointInfo;

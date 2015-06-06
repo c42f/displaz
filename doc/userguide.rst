@@ -8,7 +8,8 @@ Navigation
 Displaz uses three mouse buttons to control the 3D view:
 
 * *Rotate* the view by dragging with the left mouse button
-* *Centre* the camera on the closest point under the mouse by clicking the middle mouse button
+* *Centre* the camera on the closest point under the mouse by clicking the
+  middle mouse button, or using Shift+left click.
 * *Zoom* by dragging with the right mouse button (or with the mouse wheel)
 
 To change how points are displayed, use the controls in the *Shader Parameters*
