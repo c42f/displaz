@@ -8,10 +8,21 @@ developed for viewing large airborne laser scans, but also works quite well for
 point clouds acquired using terrestrial lidar and other sources such as
 bathymetric sonar.
 
-The goal is to provide a fully programmable technical tool for exploring lidar
-point data sets and derived geometry.  Point cloud display can be customized
-using OpenGL shaders connected to user defined GUI controls.  The displaz
-interface itself can be scripted via a socket interface.
+The goal is to provide a flexible and programmable technical tool for exploring
+large lidar point data sets and derived geometry.
+
+* *Open point clouds up to the size of main memory.*  Performance remains
+  interactive as the number of points becomes too large to draw in a single
+  frame.
+* *Create custom point visualizations.*  The OpenGL shader can be
+  edited interactively.  In the shader program, you automatically have access
+  to any per-point attributes defined in the input file.  Shader parameters are
+  connected to user-defined GUI controls.
+* *Plot interactively from your favourite programming language.*
+  Displaz IPC lets you script the interface from the command line.
+  Experimental language bindings are available for C++, python, julia and
+  Matlab.
+
 
 User guide
 ----------
