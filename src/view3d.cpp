@@ -421,6 +421,9 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     if((relCursor * transState.modelViewMatrix).z > 0)
         return;
 
+    glPushAttrib(GL_ENABLE_BIT);
+    glDisable(GL_DEPTH_TEST);
+
     if (centerPointRadius > 0)
     {
         transState.load();
@@ -434,8 +437,6 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
 
     // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
     // cursor, even when when it's behind something.
-    glPushAttrib(GL_ENABLE_BIT);
-    glDisable(GL_DEPTH_TEST);
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
