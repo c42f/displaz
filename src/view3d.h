@@ -15,6 +15,7 @@
 #include "DrawCostModel.h"
 #include "interactivecamera.h"
 #include "geometrycollection.h"
+#include "glutil.h"
 
 class QGLShaderProgram;
 class QGLFramebufferObject;
@@ -54,6 +55,7 @@ class View3D : public QGLWidget
         void setBackground(QColor col);
         void toggleDrawBoundingBoxes();
         void toggleDrawCursor();
+        void toggleDrawAxes();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
@@ -83,6 +85,8 @@ class View3D : public QGLWidget
         void drawCursor(const TransformState& transState, const V3d& P,
                         float cursorRadius, float centerPointRadius) const;
 
+        void drawAxes() const;
+
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
@@ -110,6 +114,7 @@ class View3D : public QGLWidget
         /// Option to draw bounding boxes of point clouds
         bool m_drawBoundingBoxes;
         bool m_drawCursor;
+        bool m_drawAxes;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
@@ -128,6 +133,11 @@ class View3D : public QGLWidget
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
+        /// GL textures
+        Texture m_drawAxesBackground;
+        Texture m_drawAxesLabelX;
+        Texture m_drawAxesLabelY;
+        Texture m_drawAxesLabelZ;
 };
 
 

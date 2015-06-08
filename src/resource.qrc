@@ -1,0 +1,8 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>resource/axes.png</file>
+    <file>resource/x.png</file>
+    <file>resource/y.png</file>
+    <file>resource/z.png</file>
+</qresource>
+</RCC>
