@@ -6,6 +6,8 @@
 
 #include <GL/glew.h>
 
+#include <QImage>
+
 #include <vector>
 
 #include "util.h"
@@ -105,6 +107,46 @@ inline void glLoadMatrix(const Imath::M44f& m)
     glLoadMatrixf((GLfloat*)m[0]);
 }
 
+//------------------------------------------------------------------------------
+// Texture utility
+
+struct Texture
+{
+    Texture(const QImage& i)
+    :   image(i),
+        target(GL_TEXTURE_2D),
+        texture(0)
+    {
+    }
+
+    ~Texture()
+    {
+        if (texture)
+        {
+            glDeleteTextures(1, &texture);
+        }
+    }
+
+    void bind() const
+    {
+        if (!texture)
+        {
+            glGenTextures(1, &texture);
+            glBindTexture(target, texture);
+            glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
+            glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        else
+        {
+            glBindTexture(target, texture);
+        }
+    }
+
+            QImage image;
+            GLint  target;
+    mutable GLuint texture;
+};
 
 //------------------------------------------------------------------------------
 // Shader utilities
