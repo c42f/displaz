@@ -51,6 +51,9 @@ The following commands may be used to build displaz on linux::
     # Install dependencies (yum-based distributions)
     sudo yum install git gcc-c++ make patch cmake qt-devel python-docutils
 
+    # Install dependencies (OpenSuse distributions)
+    sudo zypper install git gcc-c++ libqt4-devel glu-devel python-docutils
+
     # Get the source code
     git clone https://github.com/c42f/displaz.git
     cd displaz
