@@ -61,9 +61,7 @@ struct OctreeNode
             delete children[i];
     }
 
-//begin GRC
-    // added by GRC to print octree structure
-    void print(const int indent, const bool treeWalkDown, const V3f *const P) const
+/*    void print(const int indent, const bool treeWalkDown, const V3f *const P) const
     {
         char s[256];
         for(int i = 0; i < indent; i++)
@@ -101,7 +99,7 @@ struct OctreeNode
                     printf("%sChild[%i]:\n", s, i);
                     children[i]->print(indent + 2, treeWalkDown, P);
                 }
-    }
+    }*/
 
     bool rayPassesThrough(
         const V3f& rayOrigin,
@@ -138,6 +136,11 @@ struct OctreeNode
         const V3f& rayDir,
         size_t& pIdx) const
     {
+        // This function finds points that lie close to the ray rayDir eminating from rayOrigin
+        // It selects the point closest to rayOrigin that has a subtended angle back to rayOrigin less than maxTanA
+        // pIdx is then set to the index of this point and the function returns the distance from rayOrigin to the selected point
+        // If no points are found within the angle tolerance then the function returns FLT_MAX
+
         const float maxTanA = 0.005;
 
         float result = FLT_MAX;
@@ -171,7 +174,6 @@ struct OctreeNode
 
         return result;
     }
-// end GRC
 
     size_t size() const { return endIndex - beginIndex; }
 
@@ -502,16 +504,8 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
     if (m_npoints == 0)
         return V3d(0);
 
-// BEGIN GRC
-
-clock_t tStart;
-
-tStart = clock();
-
-// m_rootNode.get()->print(0, true, m_P);
-
-    const V3f rayOriginOffset = rayOrigin - offset();
     const V3f cameraPosOffset = cameraPos - offset();
+    const V3f rayOriginOffset = rayOrigin - offset();
 
     float closestApproach = FLT_MAX;
     size_t idx = 0;
@@ -536,8 +530,6 @@ tStart = clock();
 
         if(node->rayPassesThrough(rayOriginOffset, rayDirection))
         {
-//printf("Passes through octree:\n");
-//node->print(0, false, m_P);
             size_t testIdx = 0;
             const float r = node->closestPoint(m_P, cameraPosOffset, rayDirection, testIdx);
             if(r < closestApproach)
@@ -548,22 +540,9 @@ tStart = clock();
         }
     }
 
-// printf("closestApproach = %f, idx = %lu, P = (%f %f %f)\n", closestApproach, idx, m_P[idx].x, m_P[idx].y, m_P[idx].z);
-printf("Time to find node by GRC method = %f s\n", (clock() - tStart)/(float) CLOCKS_PER_SEC);
-
-    if(closestApproach == FLT_MAX)
-    {
-printf("GRC Method fail, resorting to original method\n");
+    if(closestApproach == FLT_MAX) // new method failed - resort to old method
         idx = closestPointToRay(m_P, m_npoints, rayOriginOffset,
                                    rayDirection, longitudinalScale, distance);
-    }
-
-tStart = clock();
-    size_t idx_orig = closestPointToRay(m_P, m_npoints, rayOriginOffset,
-                                   rayDirection, longitudinalScale, distance);
-// printf("idx = %lu, P = (%f %f %f)\n", idx_orig, m_P[idx_orig].x, m_P[idx_orig].y, m_P[idx_orig].z);
-printf("Time to find node by original method = %f s\n", (clock() - tStart)/(float) CLOCKS_PER_SEC);
-// END GRC
 
     if (info)
     {
