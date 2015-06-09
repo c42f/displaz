@@ -44,8 +44,8 @@ struct OctreeNode
     size_t endIndex;         ///< End index of points in this node
     mutable size_t nextBeginIndex; ///< Next index for incremental rendering
     Imath::Box3f bbox;       ///< Actual bounding box of points in node
-    V3f center;              ///< Centre of the node
-    float radius;            ///< Distance to centre to node edge along an axis
+    V3f center;              ///< center of the node
+    float radius;            ///< Distance to center to node edge along an axis
 
     OctreeNode(const V3f& center, float radius)
         : beginIndex(0), endIndex(0), nextBeginIndex(0),
@@ -60,6 +60,118 @@ struct OctreeNode
         for (int i = 0; i < 8; ++i)
             delete children[i];
     }
+
+//begin GRC
+    // added by GRC to print octree structure
+    void print(const int indent, const bool treeWalkDown, const V3f *const P) const
+    {
+        char s[256];
+        for(int i = 0; i < indent; i++)
+            s[i] = ' ';
+         s[indent] = 0;
+        printf("%sCenter = (%f %f %f)\n", s, center.x, center.y, center.z);
+        printf("%sradius = %f\n", s, radius);
+        printf("%sCenter = (%f %f %f)\n", s, bbox.center().x, bbox.center().y, bbox.center().z);
+        printf("%sBox    = (%f %f %f)\n", s, bbox.size().x, bbox.size().y, bbox.size().z);
+        printf("%sbeginIndex = %lu\n", s, beginIndex);
+        printf("%sendIndex   = %lu\n", s, endIndex);
+
+        if(endIndex > beginIndex)
+        {
+            V3f xMin( FLT_MAX,  FLT_MAX,  FLT_MAX);
+            V3f xMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            for(size_t i = beginIndex; i < endIndex; i++)
+            {
+                const V3f& p = P[i];
+                xMin.x = p.x < xMin.x ? p.x : xMin.x;
+                xMin.y = p.y < xMin.y ? p.y : xMin.y;
+                xMin.z = p.z < xMin.z ? p.z : xMin.z;
+                xMax.x = p.x > xMax.x ? p.x : xMax.x;
+                xMax.y = p.y > xMax.y ? p.y : xMax.y;
+                xMax.z = p.z > xMax.z ? p.z : xMax.z;
+            }
+            printf("%sxMin   = (%f %f %f)\n", s, xMin.x, xMin.y, xMin.z);
+            printf("%sxMax   = (%f %f %f)\n", s, xMax.x, xMax.y, xMax.z);
+        }
+
+        if(treeWalkDown)
+            for (int i = 0; i < 8; ++i)
+                if(children[i] != 0)
+                {
+                    printf("%sChild[%i]:\n", s, i);
+                    children[i]->print(indent + 2, treeWalkDown, P);
+                }
+    }
+
+    bool rayPassesThrough(
+        const V3f& rayOrigin,
+        const V3f& rayDir) const
+    {
+        // This function estimates whether to not a ray from rayOrigin
+        // in direction of rayDir passes through the bounding box for this octree node.
+        // Note this is only an approximate calculation! It calculates the
+        // bounding sphere for the box and determines if ray passes through this sphere.
+
+        if(beginIndex == endIndex)
+            return false; // this node is not a leaf
+
+        const float diagRadius = bbox.size().length()/2; // Sphere diameter is length box diagonal
+
+        V3f o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
+        const float o2cl = o2c.length();
+
+        if(o2cl < diagRadius)
+            return true; // rayOrigin lies within bounding sphere
+
+        const float cosA = (o2c ^ rayDir)/o2cl;  // cosine of angle between rayDir and vector from origin to center
+
+        if(cosA < FLT_MIN)
+            return false; // rayDir points to side or behind with respect to direction from origin to center of box
+
+        const float sinA = sqrtf(1 - cosA*cosA); //   sine of angle between rayDir and vector from origin to center
+        return sinA/cosA < diagRadius/o2cl; // test for whether rayDir passes within diagRadius of box center
+    }
+
+    float closestPoint(
+        const V3f *const P,
+        const V3f& rayOrigin,
+        const V3f& rayDir,
+        size_t& pIdx) const
+    {
+        const float maxTanA = 0.005;
+
+        float result = FLT_MAX;
+
+        for(size_t i = beginIndex; i < endIndex; i++)
+        {
+            V3f o2p = P[i] - rayOrigin; // vector from ray origin to point
+            const float o2pl = o2p.length();
+
+            if(o2pl < FLT_MIN)
+                continue; // point lies at rayOrigin - this is not the point we are looking for
+
+            const float a = o2p ^ rayDir; // distance along ray to point of closest approach to test point
+
+            if(a < FLT_MIN)
+                continue; // point lies behind rayOrigin
+
+            o2p -= a*rayDir; // o2p now vector from point of closest approach on ray to test point
+
+            const float l = o2p.length();
+
+            if(l > a*maxTanA)
+                continue;
+
+            if(o2pl < result)
+            {
+                result = o2pl;
+                pIdx = i;
+            }
+        }
+
+        return result;
+    }
+// end GRC
 
     size_t size() const { return endIndex - beginIndex; }
 
@@ -78,7 +190,7 @@ struct OctreeNode
         double dist = (this->bbox.center() - relCamera).length();
         double diagRadius = this->bbox.size().length()/2;
         // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
+        // distance to closest point in the bucket, rather than dist to center.
         dist = std::max(10.0, dist - diagRadius);
         double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
         size_t chunkSize = (size_t)ceil(this->size()*desiredFraction);
@@ -389,8 +501,70 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
 {
     if (m_npoints == 0)
         return V3d(0);
-    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
+
+// BEGIN GRC
+
+clock_t tStart;
+
+tStart = clock();
+
+// m_rootNode.get()->print(0, true, m_P);
+
+    const V3f rayOriginOffset = rayOrigin - offset();
+    const V3f cameraPosOffset = cameraPos - offset();
+
+    float closestApproach = FLT_MAX;
+    size_t idx = 0;
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+
+        if (!node->isLeaf())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
+        }
+
+        if(node->rayPassesThrough(rayOriginOffset, rayDirection))
+        {
+//printf("Passes through octree:\n");
+//node->print(0, false, m_P);
+            size_t testIdx = 0;
+            const float r = node->closestPoint(m_P, cameraPosOffset, rayDirection, testIdx);
+            if(r < closestApproach)
+            {
+                closestApproach = r;
+                idx = testIdx;
+            }
+        }
+    }
+
+// printf("closestApproach = %f, idx = %lu, P = (%f %f %f)\n", closestApproach, idx, m_P[idx].x, m_P[idx].y, m_P[idx].z);
+printf("Time to find node by GRC method = %f s\n", (clock() - tStart)/(float) CLOCKS_PER_SEC);
+
+    if(closestApproach == FLT_MAX)
+    {
+printf("GRC Method fail, resorting to original method\n");
+        idx = closestPointToRay(m_P, m_npoints, rayOriginOffset,
                                    rayDirection, longitudinalScale, distance);
+    }
+
+tStart = clock();
+    size_t idx_orig = closestPointToRay(m_P, m_npoints, rayOriginOffset,
+                                   rayDirection, longitudinalScale, distance);
+// printf("idx = %lu, P = (%f %f %f)\n", idx_orig, m_P[idx_orig].x, m_P[idx_orig].y, m_P[idx_orig].z);
+printf("Time to find node by original method = %f s\n", (clock() - tStart)/(float) CLOCKS_PER_SEC);
+// END GRC
+
     if (info)
     {
         // Format all selected point attributes for user display
