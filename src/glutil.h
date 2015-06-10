@@ -9,6 +9,7 @@
 #include <QImage>
 
 #include <vector>
+#include <cassert>
 
 #include "util.h"
 #include "typespec.h"
@@ -134,6 +135,7 @@ struct Texture
             glGenTextures(1, &texture);
             glBindTexture(target, texture);
             // TODO better handling for non-RGBA formats
+            assert(image.format()==QImage::Format_ARGB32);
             if (image.format()==QImage::Format_ARGB32)
                 glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
             glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
