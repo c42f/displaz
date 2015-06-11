@@ -535,7 +535,8 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
     // position x,y and the z of the reference position.  Take the reference to
     // be the camera rotation center since that's likely to be roughly the
     // depth the user is interested in.
-    V3d refPos = m_camera.center();
+//    V3d refPos = m_camera.center();
+    V3d refPos = (0.7*m_camera.position() + 0.3*m_camera.center());
     M44d mat = m_camera.viewMatrix()*m_camera.projectionMatrix()*m_camera.viewportMatrix();
     double refZ = (refPos * mat).z;
     V3d newPointProj(clickPos.x(), clickPos.y(), refZ);
