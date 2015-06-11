@@ -101,83 +101,29 @@ struct OctreeNode
                 }
     }*/
 
-    void closestPoint(
-        const V3f *const P,
+    bool rayPassesNearOrThrough(
         const V3f& rayOrigin,
-        const V3f& rayDir,
-        float& aToAxis,
-        float& xToOrigin,
-        size_t& iToAxis,
-        size_t& iToOrigin) const
+        const V3f& rayDir) const
     {
-        // This function does three things:
-        // (1) Firstly it determines whether or not a ray from rayOrigin in rayDir will pass near
-        //     or through the octree node and only proceed if it does
-        // (2) For each point within the octree node it finds the distance of closest approach
-        //     to the vector from rayOrigin in rayDir and tracks the point with the minimum angle from the axis
-        //     and point index in aToAxis and iToAxis respectively
-        // (3) For points within a cylinder around the ray (determined by maxRToAxis) it returns the minimum
-        //     distance to the origin and point index in xToOrigin and iToOrigin respectively
+        const float diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
 
-        const float maxRToAxis = 0.1;
+        V3f o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
 
-        {
-            const float diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
+        const float l = o2c.length();
 
-            V3f o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
-            const float l = o2c.length();
+        if(l < diagRadius)
+            return true; // rayOrigin lies within bounding sphere
 
-            if(l > diagRadius)
-            {
-                // rayOrigin lies outside of bounding sphere
+        // rayOrigin lies outside of bounding sphere
 
-                const float cosA = (o2c ^ rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
+        const float cosA = (o2c ^ rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
 
-                if(cosA < FLT_MIN)
-                    return; // rayDir points to side or behind with respect to direction from origin to center of box
+        if(cosA < FLT_MIN)
+            return false; // rayDir points to side or behind with respect to direction from origin to center of box
 
-                const float sinA = sqrtf(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
+        const float sinA = sqrtf(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
 
-                if(sinA/cosA > diagRadius/l)
-                    return; // rayDir does not pass within diagRadius of box center
-            }
-        }
-
-        // now scan though all the points within this node
-        for(size_t i = beginIndex; i < endIndex; i++)
-        {
-            V3f o2p = P[i] - rayOrigin; // vector from ray origin to point
-
-            const float l2 = o2p.length2(); // square of hypotenuse length
-
-            if(l2 < FLT_MIN)
-                continue; // point lies at rayOrigin - this is not the point we are looking for
-
-            const float a = o2p ^ rayDir; // distance along ray to point of closest approach to test point
-
-            if(a < FLT_MIN)
-                continue; // point lies behind rayOrigin
-
-            const float r = sqrtf(l2 - a*a);
-            const float a2axis = r/a;
-
-            if(a2axis < aToAxis)
-            {
-                // new closest angle to axis
-                aToAxis = a2axis;
-                iToAxis = i;
-            }
-
-            if(r < maxRToAxis)
-            {
-                // point within cylinder
-                if(a < xToOrigin)
-                {
-                    xToOrigin = a;
-                    iToOrigin = i;
-                }
-            }
-        }
+        return sinA/cosA < diagRadius/l;
     }
 
     size_t size() const { return endIndex - beginIndex; }
@@ -514,11 +460,10 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
         return V3d(0);
 
     const V3f cameraPosOffset = cameraPos - offset();
+    const V3f rayOriginOffset = rayOrigin - offset();
 
-    float rToAxis    = FLT_MAX;
-    float xToOrigin  = FLT_MAX;
-    size_t iToAxis   = 0;
-    size_t iToOrigin = 0;
+    float rClosest  = FLT_MAX;
+    size_t iClosest   = 0;
 
     std::vector<const OctreeNode*> nodeStack;
     nodeStack.push_back(m_rootNode.get());
@@ -526,6 +471,9 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
     {
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
+
+        if(!node->rayPassesNearOrThrough(cameraPosOffset, rayDirection))
+            continue;
 
         if (!node->isLeaf())
         {
@@ -538,21 +486,22 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
             continue;
         }
 
-        node->closestPoint(m_P, cameraPosOffset, rayDirection, rToAxis, xToOrigin, iToAxis, iToOrigin);
+        double thisRClosest;
+        size_t thisIdx = closestPointToRay(m_P + node->beginIndex, node->endIndex - node->beginIndex, rayOriginOffset, rayDirection,
+                         longitudinalScale, &thisRClosest);
+        if(thisRClosest < rClosest)
+        {
+            rClosest = thisRClosest;
+            iClosest = thisIdx + node->beginIndex;
+        }
     }
 
     size_t idx;
 
-    if(xToOrigin == FLT_MAX)
-    {
-        // no points within cylinder
-        if(rToAxis == FLT_MAX)
-            idx = m_lastVertexPickIdx; // no nearest point to axis found either
-        else
-            idx = iToAxis;
-    }
+    if(rClosest == FLT_MAX)
+        idx = m_lastVertexPickIdx; // no nearest point to axis found either
     else
-        idx = iToOrigin;
+        idx = iClosest;
 
     if (info)
     {
