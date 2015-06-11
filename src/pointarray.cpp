@@ -105,7 +105,7 @@ struct OctreeNode
         const V3f *const P,
         const V3f& rayOrigin,
         const V3f& rayDir,
-        float& rToAxis,
+        float& aToAxis,
         float& xToOrigin,
         size_t& iToAxis,
         size_t& iToOrigin) const
@@ -114,8 +114,8 @@ struct OctreeNode
         // (1) Firstly it determines whether or not a ray from rayOrigin in rayDir will pass near
         //     or through the octree node and only proceed if it does
         // (2) For each point within the octree node it finds the distance of closest approach
-        //     to the vector from rayOrigin in rayDir and tracks the point with the minimum distance
-        //     and point index in rToAxis and iToAxis respectively
+        //     to the vector from rayOrigin in rayDir and tracks the point with the minimum angle from the axis
+        //     and point index in aToAxis and iToAxis respectively
         // (3) For points within a cylinder around the ray (determined by maxRToAxis) it returns the minimum
         //     distance to the origin and point index in xToOrigin and iToOrigin respectively
 
@@ -125,20 +125,20 @@ struct OctreeNode
             const float diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
 
             V3f o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
-            const float o2cl = o2c.length();
+            const float l = o2c.length();
 
-            if(o2cl > diagRadius)
+            if(l > diagRadius)
             {
                 // rayOrigin lies outside of bounding sphere
 
-                const float cosA = (o2c ^ rayDir)/o2cl;  // cosine of angle between rayDir and vector from origin to center
+                const float cosA = (o2c ^ rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
 
                 if(cosA < FLT_MIN)
                     return; // rayDir points to side or behind with respect to direction from origin to center of box
 
                 const float sinA = sqrtf(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
 
-                if(sinA/cosA > diagRadius/o2cl)
+                if(sinA/cosA > diagRadius/l)
                     return; // rayDir does not pass within diagRadius of box center
             }
         }
@@ -159,11 +159,12 @@ struct OctreeNode
                 continue; // point lies behind rayOrigin
 
             const float r = sqrtf(l2 - a*a);
+            const float a2axis = r/a;
 
-            if(r < rToAxis)
+            if(a2axis < aToAxis)
             {
-                // new closest point to axis
-                rToAxis = r;
+                // new closest angle to axis
+                aToAxis = a2axis;
                 iToAxis = i;
             }
 
