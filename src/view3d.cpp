@@ -552,28 +552,29 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
                                   QString& pointInfo)
 {
+    V3d newPos(m_camera.center());
     if (m_geometries->get().empty())
-        return pos;
+        return newPos;
     // Ray out from the camera to the given point
     V3d cameraPos = m_camera.position();
     V3d viewDir = (pos - cameraPos).normalized();
-    V3d newPos(0);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
     QModelIndexList sel = m_selectionModel->selectedRows();
     for (int i = 0; i < sel.size(); ++i)
     {
         int geomIdx = sel[i].row();
+        V3d pickedVertex;
         double dist = 0;
         std::string info;
-        V3d p = m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir,
-                                                         normalScaling, &dist, &info);
-        if (dist < nearestDist)
-        {
-            newPos = p;
-            nearestDist = dist;
-            pointInfo = QString::fromStdString(info);
-        }
+        if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir, normalScaling,
+                                                    pickedVertex, &dist, &info))
+            if (dist < nearestDist)
+            {
+                newPos = pickedVertex;
+                nearestDist = dist;
+                pointInfo = QString::fromStdString(info);
+            }
     }
     return newPos;
 }

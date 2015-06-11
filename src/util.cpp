@@ -29,20 +29,9 @@ size_t closestPointToRay(const V3f* points, size_t nPoints,
     double nearestDist2 = DBL_MAX;
     for(size_t i = 0; i < nPoints; ++i)
     {
-/*        V3f v = rayOrigin - *points;
-        float distN = T.dot(v);
-        float distNperp = (v - distN*T).length2();
-        double d = f*distN*distN + distNperp;
-        if(d < nearestDist2)
-        {
-            nearestDist2 = d;
-            nearestIdx = i;
-        }*/
-
         const V3f v = points[i] - rayOrigin; // vector from ray origin to point
-        const double l2 = v.length2(); // square of hypotenuse length
         const double a = v.dot(T); // distance along ray to point of closest approach to test point
-        const double r2 = l2 + f*a*a;
+        const double r2 = v.length2() + f*a*a;
 
         if(r2 < nearestDist2)
         {
@@ -52,7 +41,12 @@ size_t closestPointToRay(const V3f* points, size_t nPoints,
         }
     }
     if(distance)
-        *distance = sqrt(nearestDist2);
+    {
+        if(nPoints == 0)
+            *distance = DBL_MAX;
+        else
+            *distance = sqrt(nearestDist2);
+    }
     return nearestIdx;
 }
 
