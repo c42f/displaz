@@ -44,8 +44,8 @@ struct OctreeNode
     size_t endIndex;         ///< End index of points in this node
     mutable size_t nextBeginIndex; ///< Next index for incremental rendering
     Imath::Box3f bbox;       ///< Actual bounding box of points in node
-    V3f center;              ///< Centre of the node
-    float radius;            ///< Distance to centre to node edge along an axis
+    V3f center;              ///< center of the node
+    float radius;            ///< Distance to center to node edge along an axis
 
     OctreeNode(const V3f& center, float radius)
         : beginIndex(0), endIndex(0), nextBeginIndex(0),
@@ -59,6 +59,124 @@ struct OctreeNode
     {
         for (int i = 0; i < 8; ++i)
             delete children[i];
+    }
+
+/*    void print(const int indent, const bool treeWalkDown, const V3f *const P) const
+    {
+        char s[256];
+        for(int i = 0; i < indent; i++)
+            s[i] = ' ';
+         s[indent] = 0;
+        printf("%sCenter = (%f %f %f)\n", s, center.x, center.y, center.z);
+        printf("%sradius = %f\n", s, radius);
+        printf("%sCenter = (%f %f %f)\n", s, bbox.center().x, bbox.center().y, bbox.center().z);
+        printf("%sBox    = (%f %f %f)\n", s, bbox.size().x, bbox.size().y, bbox.size().z);
+        printf("%sbeginIndex = %lu\n", s, beginIndex);
+        printf("%sendIndex   = %lu\n", s, endIndex);
+
+        if(endIndex > beginIndex)
+        {
+            V3f xMin( FLT_MAX,  FLT_MAX,  FLT_MAX);
+            V3f xMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            for(size_t i = beginIndex; i < endIndex; i++)
+            {
+                const V3f& p = P[i];
+                xMin.x = p.x < xMin.x ? p.x : xMin.x;
+                xMin.y = p.y < xMin.y ? p.y : xMin.y;
+                xMin.z = p.z < xMin.z ? p.z : xMin.z;
+                xMax.x = p.x > xMax.x ? p.x : xMax.x;
+                xMax.y = p.y > xMax.y ? p.y : xMax.y;
+                xMax.z = p.z > xMax.z ? p.z : xMax.z;
+            }
+            printf("%sxMin   = (%f %f %f)\n", s, xMin.x, xMin.y, xMin.z);
+            printf("%sxMax   = (%f %f %f)\n", s, xMax.x, xMax.y, xMax.z);
+        }
+
+        if(treeWalkDown)
+            for (int i = 0; i < 8; ++i)
+                if(children[i] != 0)
+                {
+                    printf("%sChild[%i]:\n", s, i);
+                    children[i]->print(indent + 2, treeWalkDown, P);
+                }
+    }*/
+
+    void closestPoint(
+        const V3f *const P,
+        const V3f& rayOrigin,
+        const V3f& rayDir,
+        float& rToAxis,
+        float& xToOrigin,
+        size_t& iToAxis,
+        size_t& iToOrigin) const
+    {
+        // This function does three things:
+        // (1) Firstly it determines whether or not a ray from rayOrigin in rayDir will pass near
+        //     or through the octree node and only proceed if it does
+        // (2) For each point within the octree node it finds the distance of closest approach
+        //     to the vector from rayOrigin in rayDir and tracks the point with the minimum distance
+        //     and point index in rToAxis and iToAxis respectively
+        // (3) For points within a cylinder around the ray (determined by maxRToAxis) it returns the minimum
+        //     distance to the origin and point index in xToOrigin and iToOrigin respectively
+
+        const float maxRToAxis = 0.1;
+
+        {
+            const float diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
+
+            V3f o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
+            const float o2cl = o2c.length();
+
+            if(o2cl > diagRadius)
+            {
+                // rayOrigin lies outside of bounding sphere
+
+                const float cosA = (o2c ^ rayDir)/o2cl;  // cosine of angle between rayDir and vector from origin to center
+
+                if(cosA < FLT_MIN)
+                    return; // rayDir points to side or behind with respect to direction from origin to center of box
+
+                const float sinA = sqrtf(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
+
+                if(sinA/cosA > diagRadius/o2cl)
+                    return; // rayDir does not pass within diagRadius of box center
+            }
+        }
+
+        // now scan though all the points within this node
+        for(size_t i = beginIndex; i < endIndex; i++)
+        {
+            V3f o2p = P[i] - rayOrigin; // vector from ray origin to point
+
+            const float l2 = o2p.length2(); // square of hypotenuse length
+
+            if(l2 < FLT_MIN)
+                continue; // point lies at rayOrigin - this is not the point we are looking for
+
+            const float a = o2p ^ rayDir; // distance along ray to point of closest approach to test point
+
+            if(a < FLT_MIN)
+                continue; // point lies behind rayOrigin
+
+            const float r = sqrtf(l2 - a*a);
+
+            if(r < rToAxis)
+            {
+                // new closest point to axis
+                rToAxis = r;
+                iToAxis = i;
+            }
+
+            if(r < maxRToAxis)
+            {
+                // point within cylinder
+                if(a < xToOrigin)
+                {
+                    xToOrigin = a;
+                    iToOrigin = i;
+                }
+            }
+        }
     }
 
     size_t size() const { return endIndex - beginIndex; }
@@ -78,7 +196,7 @@ struct OctreeNode
         double dist = (this->bbox.center() - relCamera).length();
         double diagRadius = this->bbox.size().length()/2;
         // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
+        // distance to closest point in the bucket, rather than dist to center.
         dist = std::max(10.0, dist - diagRadius);
         double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
         size_t chunkSize = (size_t)ceil(this->size()*desiredFraction);
@@ -169,7 +287,8 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 PointArray::PointArray()
     : m_npoints(0),
     m_positionFieldIdx(-1),
-    m_P(0)
+    m_P(0),
+    m_lastVertexPickIdx(0)
 { }
 
 
@@ -387,10 +506,53 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
                            double longitudinalScale, double* distance,
                            std::string* info) const
 {
+    // NOTE rayOrigin here is not cameraPos but something else
+    // This routine uses cameraPos as the rayOrigin point
+
     if (m_npoints == 0)
         return V3d(0);
-    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
-                                   rayDirection, longitudinalScale, distance);
+
+    const V3f cameraPosOffset = cameraPos - offset();
+
+    float rToAxis    = FLT_MAX;
+    float xToOrigin  = FLT_MAX;
+    size_t iToAxis   = 0;
+    size_t iToOrigin = 0;
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+
+        if (!node->isLeaf())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
+        }
+
+        node->closestPoint(m_P, cameraPosOffset, rayDirection, rToAxis, xToOrigin, iToAxis, iToOrigin);
+    }
+
+    size_t idx;
+
+    if(xToOrigin == FLT_MAX)
+    {
+        // no points within cylinder
+        if(rToAxis == FLT_MAX)
+            idx = m_lastVertexPickIdx; // no nearest point to axis found either
+        else
+            idx = iToAxis;
+    }
+    else
+        idx = iToOrigin;
+
     if (info)
     {
         // Format all selected point attributes for user display
@@ -452,6 +614,9 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
         }
         *info = out.str();
     }
+
+    m_lastVertexPickIdx = idx;
+
     return V3d(m_P[idx]) + offset();
 }
 

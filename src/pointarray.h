@@ -77,6 +77,7 @@ class PointArray : public Geometry
         /// A position field is required.  Alias for convenience:
         int m_positionFieldIdx;
         V3f* m_P;
+        mutable size_t m_lastVertexPickIdx;
 };
 
 
