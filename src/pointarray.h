@@ -40,10 +40,13 @@ class PointArray : public Geometry
                                   bool incrementalDraw, const double* qualities,
                                   DrawCount* drawCounts, int numEstimates) const;
 
-        virtual V3d pickVertex(const V3d& cameraPos,
-                               const V3d& rayOrigin, const V3d& rayDirection,
-                               double longitudinalScale, double* distance = 0,
-                               std::string* info = 0) const;
+        virtual bool pickVertex(const V3d& cameraPos,
+                                const V3d& rayOrigin,
+                                const V3d& rayDirection,
+                                const double longitudinalScale,
+                                V3d& pickedVertex,
+                                double* distance = 0,
+                                std::string* info = 0) const;
 
         /// Draw a representation of the point hierarchy.
         ///
@@ -77,7 +80,6 @@ class PointArray : public Geometry
         /// A position field is required.  Alias for convenience:
         int m_positionFieldIdx;
         V3f* m_P;
-        mutable size_t m_lastVertexPickIdx;
 };
 
 
