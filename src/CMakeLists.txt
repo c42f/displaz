@@ -57,6 +57,9 @@ set(srcs
     shader.cpp
     ../thirdparty/rply/rply.c
 )
+
+qt4_add_resources(RCC_GENERATED resource.qrc)
+
 if(WIN32)
     list(APPEND srcs ../package/windows_resources.rc)
 endif()
@@ -72,7 +75,7 @@ include_directories(${PROJECT_BINARY_DIR})
 
 
 set(allTargets displaz)
-add_executable(displaz WIN32 ${srcs})
+add_executable(displaz WIN32 ${srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
     list(APPEND allTargets dvox)

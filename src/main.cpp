@@ -222,6 +222,8 @@ int main(int argc, char *argv[])
 
     setupQFileSearchPaths();
 
+    Q_INIT_RESOURCE(resource);
+
     qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
 
     // Multisampled antialiasing - this makes rendered point clouds look much
