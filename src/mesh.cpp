@@ -326,28 +326,35 @@ void TriMesh::estimateCost(const TransformState& transState,
 }
 
 
-V3d TriMesh::pickVertex(const V3d& cameraPos,
-                        const V3d& rayOrigin, const V3d& rayDirection,
-                        double longitudinalScale, double* distance,
-                        std::string* info) const
+bool TriMesh::pickVertex(const V3d& cameraPos,
+                         const V3d& rayOrigin,
+                         const V3d& rayDirection,
+                         const double longitudinalScale,
+                         V3d& pickedVertex,
+                         double* distance,
+                         std::string* info) const
 {
+    if (m_verts.empty())
+        return false;
+
     size_t idx = closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
                                    rayOrigin - offset(), rayDirection,
                                    longitudinalScale, distance);
-    if (m_verts.empty())
-        return V3d(0);
-    V3d pos = V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
+
+    pickedVertex = V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
+
     if (info)
     {
         *info = "";
-        *info += tfm::format("  position = %.3f %.3f %.3f\n", pos.x, pos.y, pos.z);
+        *info += tfm::format("  position = %.3f %.3f %.3f\n", pickedVertex.x, pickedVertex.y, pickedVertex.z);
         if (!m_colors.empty())
         {
             *info += tfm::format("  color = %.3f %.3f %.3f\n",
                                  m_colors[3*idx], m_colors[3*idx+1], m_colors[3*idx+2]);
         }
     }
-    return pos;
+
+    return true;
 }
 
 

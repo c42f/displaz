@@ -44,8 +44,8 @@ struct OctreeNode
     size_t endIndex;         ///< End index of points in this node
     mutable size_t nextBeginIndex; ///< Next index for incremental rendering
     Imath::Box3f bbox;       ///< Actual bounding box of points in node
-    V3f center;              ///< Centre of the node
-    float radius;            ///< Distance to centre to node edge along an axis
+    V3f center;              ///< center of the node
+    float radius;            ///< Distance to center to node edge along an axis
 
     OctreeNode(const V3f& center, float radius)
         : beginIndex(0), endIndex(0), nextBeginIndex(0),
@@ -59,6 +59,34 @@ struct OctreeNode
     {
         for (int i = 0; i < 8; ++i)
             delete children[i];
+    }
+
+    bool rayPassesNearOrThrough(const V3d& rayOrigin, const V3d& rayDir) const
+    {
+        const double diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
+        const V3d o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
+        const double l = o2c.length();
+        if(l < diagRadius)
+            return true; // rayOrigin lies within bounding sphere
+        // rayOrigin lies outside of bounding sphere
+        const double cosA = o2c.dot(rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
+        if(cosA < DBL_MIN)
+            return false; // rayDir points to side or behind with respect to direction from origin to center of box
+        const double sinA = sqrt(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
+        return sinA/cosA < diagRadius/l;
+    }
+
+    size_t closestPoint(
+        const V3f *const p,
+        const V3f& rayOrigin,
+        const V3f& rayDirection,
+        const double longitudinalScale,
+        double& thisRClosest) const
+    {
+         // calls utils closestPointToRay for the points within this octree node
+         return beginIndex + closestPointToRay(p + beginIndex, endIndex - beginIndex,
+                                               rayOrigin, rayDirection,
+                                               longitudinalScale, &thisRClosest);
     }
 
     size_t size() const { return endIndex - beginIndex; }
@@ -78,7 +106,7 @@ struct OctreeNode
         double dist = (this->bbox.center() - relCamera).length();
         double diagRadius = this->bbox.size().length()/2;
         // Subtract bucket diagonal dist, since we really want an approx
-        // distance to closest point in the bucket, rather than dist to centre.
+        // distance to closest point in the bucket, rather than dist to center.
         dist = std::max(10.0, dist - diagRadius);
         double desiredFraction = std::min(1.0, quality*pow(drawAllDist/dist, 2));
         size_t chunkSize = (size_t)ceil(this->size()*desiredFraction);
@@ -382,15 +410,57 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 }
 
 
-V3d PointArray::pickVertex(const V3d& cameraPos,
-                           const V3d& rayOrigin, const V3d& rayDirection,
-                           double longitudinalScale, double* distance,
-                           std::string* info) const
+bool PointArray::pickVertex(const V3d& cameraPos,
+                            const V3d& rayOrigin,
+                            const V3d& rayDirection,
+                            const double longitudinalScale,
+                            V3d& pickedVertex,
+                            double* distance,
+                            std::string* info) const
 {
     if (m_npoints == 0)
-        return V3d(0);
-    size_t idx = closestPointToRay(m_P, m_npoints, rayOrigin - offset(),
-                                   rayDirection, longitudinalScale, distance);
+        return false;
+
+    const V3d rayOriginOffset = rayOrigin - offset();
+
+    double rClosest = DBL_MAX;
+    size_t idx = 0;
+
+    std::vector<const OctreeNode*> nodeStack;
+    nodeStack.push_back(m_rootNode.get());
+    while (!nodeStack.empty())
+    {
+        const OctreeNode* node = nodeStack.back();
+        nodeStack.pop_back();
+
+        if(!node->rayPassesNearOrThrough(rayOriginOffset, rayDirection))
+            continue;
+
+        if (!node->isLeaf())
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                OctreeNode* n = node->children[i];
+                if (n)
+                    nodeStack.push_back(n);
+            }
+            continue;
+        }
+
+        double thisRClosest;
+        size_t thisIdx = node->closestPoint(m_P, rayOriginOffset, rayDirection, longitudinalScale, thisRClosest);
+        if(thisRClosest < rClosest)
+        {
+            rClosest = thisRClosest;
+            idx = thisIdx;
+        }
+    }
+
+    if(rClosest == DBL_MAX)
+        return false;
+
+    pickedVertex = V3d(m_P[idx]) + offset();
+
     if (info)
     {
         // Format all selected point attributes for user display
@@ -452,7 +522,8 @@ V3d PointArray::pickVertex(const V3d& cameraPos,
         }
         *info = out.str();
     }
-    return V3d(m_P[idx]) + offset();
+
+    return true;
 }
 
 

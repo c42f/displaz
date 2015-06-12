@@ -23,24 +23,30 @@ size_t closestPointToRay(const V3f* points, size_t nPoints,
                          const V3f& rayOrigin, const V3f& rayDirection,
                          double longitudinalScale, double* distance)
 {
-    V3f T = rayDirection.normalized();
+    const V3f T = rayDirection.normalized();
+    const double f = longitudinalScale*longitudinalScale - 1;
     size_t nearestIdx = -1;
     double nearestDist2 = DBL_MAX;
-    double f = longitudinalScale*longitudinalScale;
-    for(size_t i = 0; i < nPoints; ++i, ++points)
+    for(size_t i = 0; i < nPoints; ++i)
     {
-        V3f v = rayOrigin - *points;
-        float distN = T.dot(v);
-        float distNperp = (v - distN*T).length2();
-        double d = f*distN*distN + distNperp;
-        if(d < nearestDist2)
+        const V3f v = points[i] - rayOrigin; // vector from ray origin to point
+        const double a = v.dot(T); // distance along ray to point of closest approach to test point
+        const double r2 = v.length2() + f*a*a;
+
+        if(r2 < nearestDist2)
         {
-            nearestDist2 = d;
+            // new closest angle to axis
+            nearestDist2 = r2;
             nearestIdx = i;
         }
     }
     if(distance)
-        *distance = sqrt(nearestDist2);
+    {
+        if(nPoints == 0)
+            *distance = DBL_MAX;
+        else
+            *distance = sqrt(nearestDist2);
+    }
     return nearestIdx;
 }
 
