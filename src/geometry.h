@@ -118,10 +118,13 @@ class Geometry : public QObject
         /// with the ray direction scaled by the amount normalDirectionScale.
         /// This distance is returned in the distance parameter when it is
         /// non-null.
-        virtual V3d pickVertex(const V3d& cameraPos,
-                               const V3d& rayOrigin, const V3d& rayDirection,
-                               double longitudinalScale, double* distance = 0,
-                               std::string* info = 0) const = 0;
+        virtual bool pickVertex(const V3d& cameraPos,
+                                const V3d& rayOrigin,
+                                const V3d& rayDirection,
+                                const double longitudinalScale,
+                                V3d& pickedVertex,
+                                double* distance = 0,
+                                std::string* info = 0) const = 0;
 
         //--------------------------------------------------
         /// Get file name describing the source of the geometry

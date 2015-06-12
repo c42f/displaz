@@ -348,18 +348,21 @@ void HCloudView::estimateCost(const TransformState& transState,
 }
 
 
-V3d HCloudView::pickVertex(const V3d& cameraPos,
-                           const V3d& rayOrigin, const V3d& rayDirection,
-                           double longitudinalScale, double* distance,
-                           std::string* info) const
+bool HCloudView::pickVertex(const V3d& cameraPos,
+                            const V3d& rayOrigin,
+                            const V3d& rayDirection,
+                            const double longitudinalScale,
+                            V3d& pickedVertex,
+                            double* distance,
+                            std::string* info) const
 {
     // FIXME: Needs full camera transform to calculate angularSizeLimit, as in
     // draw()
     const double angularSizeLimit = 0.01;
     double minDist = DBL_MAX;
-    V3d selectedVertex(0);
     std::vector<HCloudNode*> nodeStack;
     std::vector<int> levelStack;
+    bool foundVertex = false;
     levelStack.push_back(0);
     if (m_rootNode->isCached())
         nodeStack.push_back(m_rootNode.get());
@@ -393,7 +396,8 @@ V3d HCloudView::pickVertex(const V3d& cameraPos,
             if (dist < minDist)
             {
                 minDist = dist;
-                selectedVertex = V3d(P[idx]) + offset();
+                pickedVertex = V3d(P[idx]) + offset();
+                foundVertex = true;
             }
         }
         else
@@ -409,6 +413,6 @@ V3d HCloudView::pickVertex(const V3d& cameraPos,
             }
         }
     }
-    return selectedVertex;
+    return foundVertex;
 }
 
