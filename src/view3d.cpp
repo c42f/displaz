@@ -353,19 +353,22 @@ void View3D::mousePressEvent(QMouseEvent* event)
     {
         double snapScale = 0.025;
         QString pointInfo;
-        V3d newPos = snapToGeometry(guessClickPosition(event->pos()), snapScale,
-                                    pointInfo);
-        V3d posDiff = newPos - m_prevCursorSnap;
-        g_logger.info("Selected Point Attributes:\n"
-                      "%s"
-                      "diff with previous = %.3f\n"
-                      "vector diff = %.3f",
-                      pointInfo, posDiff.length(), posDiff);
-        // Snap cursor /and/ camera to new position
-        // TODO: Decouple these, but in a sensible way
-        m_cursorPos = newPos;
-        m_camera.setCenter(newPos);
-        m_prevCursorSnap = newPos;
+        V3d newPos;
+        if (snapToGeometry(guessClickPosition(event->pos()), snapScale,
+                           newPos, pointInfo))
+        {
+            V3d posDiff = newPos - m_prevCursorSnap;
+            g_logger.info("Selected Point Attributes:\n"
+                          "%s"
+                          "diff with previous = %.3f\n"
+                          "vector diff = %.3f",
+                          pointInfo, posDiff.length(), posDiff);
+            // Snap cursor /and/ camera to new position
+            // TODO: Decouple these, but in a sensible way
+            m_cursorPos = newPos;
+            m_camera.setCenter(newPos);
+            m_prevCursorSnap = newPos;
+        }
     }
 }
 
@@ -551,12 +554,13 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 ///
 /// `normalScaling` - Distance along the camera direction will be scaled by
 ///                   this factor when computing the closest point.
-Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
-                                  QString& pointInfo)
+/// `newPos`        - Returned new position
+/// `pointInfo`     - Returned descriptive string of point attributes.
+///
+/// Returns true if a close piece of geometry was found, false otherwise.
+bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
+                            Imath::V3d& newPos, QString& pointInfo)
 {
-    V3d newPos(m_camera.center());
-    if (m_geometries->get().empty())
-        return newPos;
     // Ray out from the camera to the given point
     V3d cameraPos = m_camera.position();
     V3d viewDir = (pos - cameraPos).normalized();
@@ -580,7 +584,7 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
             }
         }
     }
-    return newPos;
+    return nearestDist < DBL_MAX;
 }
 
 
