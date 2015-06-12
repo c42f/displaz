@@ -529,6 +529,9 @@ void View3D::drawAxes() const
     const GLint w = 64;    // Width of axes widget
     const GLint o = 8;     // Axes widget offset in x and y
 
+    // Center of axis overlay
+    const V3d center(o+w/2,o+w/2,0.0);
+
     // Background texture
 
     m_drawAxesBackground.bind();
@@ -544,11 +547,25 @@ void View3D::drawAxes() const
 
     // Extract the x, y and z axis directions
 
-    const M44d &mat = m_camera.viewMatrix();
+    // Compute center in screen coordinates.  Note that Qt's viewport has y=0
+    // at the top, which is opposite from the glOrtho convention used above.
+    V3d center_screen = (V3d(0, height(), 0) - center) * m_camera.viewportMatrix().inverse();
 
-    V3d x(mat[0][0],mat[0][1],mat[0][2]);
-    V3d y(mat[1][0],mat[1][1],mat[1][2]);
-    V3d z(mat[2][0],mat[2][1],mat[2][2]);
+    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
+    // Compute perspective correct x,y,z axis directions at position of the
+    // axis widget centre.  These can be derived by taking the derivative of
+    // the projective transformation u = v*M / (v*M)[3], and noting that the
+    // result can be expressed entirely in terms of the screen coordinates of
+    // the axis center.
+    //
+    // Using the projected axis directions can look a little weird, but so does
+    // an orthographic projection.  The projected version has the advantage
+    // that a line in the scene which is parallel to one of the x,y or z axes
+    // and passes through the location of the axis widget is parallel to the
+    // associated axis as drawn in the widget itself.
+    V3d x = V3d(M[0][0],M[0][1],M[0][2]) - center_screen*M[0][3];
+    V3d y = V3d(M[1][0],M[1][1],M[1][2]) - center_screen*M[1][3];
+    V3d z = V3d(M[2][0],M[2][1],M[2][2]) - center_screen*M[2][3];
 
     x.normalize();
     y.normalize();
@@ -559,8 +576,6 @@ void View3D::drawAxes() const
     x.z = y.z = z.z = 0.0;
 
     // Draw lines for the x, y and z directions
-
-    const V3d center(o+w/2,o+w/2,0.0);
 
     {
         const double r = 0.6;  // 60% towards edge of circle
