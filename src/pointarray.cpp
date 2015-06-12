@@ -61,28 +61,18 @@ struct OctreeNode
             delete children[i];
     }
 
-    bool rayPassesNearOrThrough(
-        const V3d& rayOrigin,
-        const V3d& rayDir) const
+    bool rayPassesNearOrThrough(const V3d& rayOrigin, const V3d& rayDir) const
     {
         const double diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
-
-        V3d o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
-
+        const V3d o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
         const double l = o2c.length();
-
         if(l < diagRadius)
             return true; // rayOrigin lies within bounding sphere
-
         // rayOrigin lies outside of bounding sphere
-
-        const double cosA = (o2c ^ rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
-
+        const double cosA = o2c.dot(rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
         if(cosA < DBL_MIN)
             return false; // rayDir points to side or behind with respect to direction from origin to center of box
-
         const double sinA = sqrt(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
-
         return sinA/cosA < diagRadius/l;
     }
 
@@ -94,13 +84,9 @@ struct OctreeNode
         double& thisRClosest) const
     {
          // calls utils closestPointToRay for the points within this octree node
-         return beginIndex + closestPointToRay(
-                                 p + beginIndex,
-                                 endIndex - beginIndex,
-                                 rayOrigin,
-                                 rayDirection,
-                                 longitudinalScale,
-                                 &thisRClosest);
+         return beginIndex + closestPointToRay(p + beginIndex, endIndex - beginIndex,
+                                               rayOrigin, rayDirection,
+                                               longitudinalScale, &thisRClosest);
     }
 
     size_t size() const { return endIndex - beginIndex; }
