@@ -532,11 +532,13 @@ DrawCount View3D::drawPoints(const TransformState& transState,
 Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 {
     // Get new point in the projected coordinate system using the click
-    // position x,y and the z of the reference position.  Take the reference to
-    // be the camera rotation center since that's likely to be roughly the
-    // depth the user is interested in.
-//    V3d refPos = m_camera.center();
-    V3d refPos = (0.7*m_camera.position() + 0.3*m_camera.center());
+    // position x,y and the z of a reference position.  Take the reference point
+    // of interest to be between the camera rotation center and the camera
+    // position, as a rough guess of the depth the user is interested in.
+    //
+    // This works pretty well, except when there are noise points intervening
+    // between the reference position and the user's actual point of interest.
+    V3d refPos = 0.7*m_camera.position() + 0.3*m_camera.center();
     M44d mat = m_camera.viewMatrix()*m_camera.projectionMatrix()*m_camera.viewportMatrix();
     double refZ = (refPos * mat).z;
     V3d newPointProj(clickPos.x(), clickPos.y(), refZ);
@@ -569,12 +571,14 @@ Imath::V3d View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
         std::string info;
         if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir, normalScaling,
                                                     pickedVertex, &dist, &info))
+        {
             if (dist < nearestDist)
             {
                 newPos = pickedVertex;
                 nearestDist = dist;
                 pointInfo = QString::fromStdString(info);
             }
+        }
     }
     return newPos;
 }
