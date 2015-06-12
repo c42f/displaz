@@ -528,6 +528,7 @@ void View3D::drawAxes() const
 
     const GLint w = 64;    // Width of axes widget
     const GLint o = 8;     // Axes widget offset in x and y
+    float transparency = 0.5;
 
     // Center of axis overlay
     const V3d center(o+w/2,o+w/2,0.0);
@@ -535,7 +536,7 @@ void View3D::drawAxes() const
     // Background texture
 
     m_drawAxesBackground.bind();
-    glColor4f(1,1,1,1);
+    glColor4f(1,1,1,transparency);
     glEnable(GL_TEXTURE_2D);
     glBegin(GL_QUADS);
         glTexCoord2i(0,0); glVertex2i(o,   o  );
@@ -578,14 +579,20 @@ void View3D::drawAxes() const
     // Draw lines for the x, y and z directions
 
     {
+        // color tint
+        const double c = 0.8;
+        const double d = 0.5;
+        const double t = 0.5*(1+transparency);
         const double r = 0.6;  // 60% towards edge of circle
         glLineWidth(1);
         glBegin(GL_LINES);
-            glColor3f(1,1,1);
+            glColor4f(c,d,d,t);
             glVertex(center);
             glVertex(center+x*r*w/2);
+            glColor4f(d,c,d,t);
             glVertex(center);
             glVertex(center+y*r*w/2);
+            glColor4f(d,d,c,t);
             glVertex(center);
             glVertex(center+z*r*w/2);
         glEnd();
@@ -596,9 +603,9 @@ void View3D::drawAxes() const
     const double r = 0.8;   // 80% towards edge of circle
     const GLint l = 16;     // Label is 16 pixels wide
 
-    glColor4f(1,1,1,1);
+    glColor4f(1,1,1,transparency);
     glEnable(GL_TEXTURE_2D);
-    
+
     // Note that V3d -> V3i (double to integer precision)
     // conversion is intentionally snapping the label to
     // integer co-ordinates to eliminate subpixel aliasing
