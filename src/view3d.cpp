@@ -79,6 +79,10 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+
+    m_animatedViewTransformTimer = new QTimer(this);
+    m_animatedViewTransformTimer->setSingleShot(false);
+    connect(m_animatedViewTransformTimer, SIGNAL(timeout()), this, SLOT(animateViewTransform()));
 }
 
 
@@ -106,6 +110,24 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
     for (int i = firstRow; i <= lastRow; ++i)
         geoms[i]->initializeGL();
     geometryChanged();
+}
+
+void View3D::animateViewTransform()
+{
+    m_animatedViewTransformIndex++;
+    double xsi = m_animatedViewTransformIndex/10.0;
+    xsi = xsi*xsi*(3 - 2*xsi);
+
+    m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
+                                       + xsi *m_animatedViewTransformEndCamera.center());
+    m_camera.setRotation(           (1 - xsi)*m_animatedViewTransformStartCamera.rotation()
+                                       + xsi *m_animatedViewTransformEndCamera.rotation());
+    m_camera.setEyeToCenterDistance((1 - xsi)*m_animatedViewTransformStartCamera.eyeToCenterDistance()
+                                       + xsi *m_animatedViewTransformEndCamera.eyeToCenterDistance());
+
+    if(m_animatedViewTransformIndex == 10)
+        m_animatedViewTransformTimer->stop();    
+    update();
 }
 
 
@@ -321,9 +343,11 @@ void View3D::paintGL()
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
-    else
+    else if(!m_animatedViewTransformTimer->isActive())
+    {
         m_incrementalFrameTimer->start(10);
-    m_incrementalDraw = true;
+        m_incrementalDraw = true;
+    }
 }
 
 
@@ -422,6 +446,37 @@ void View3D::keyPressEvent(QKeyEvent *event)
     {
         // Centre camera on current cursor location
         m_camera.setCenter(m_cursorPos);
+    }
+    else if(event->key() == Qt::Key_R)
+    {
+        // Reset view to from top encompassing selected geometries
+        QModelIndexList sel = m_selectionModel->selectedRows();
+        if(sel.size() > 0)
+        {
+            m_animatedViewTransformStartCamera.setCenter(m_camera.center());
+            m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
+            m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
+            Imath::Box3d bbox = m_geometries->get()[sel[0].row()]->boundingBox();
+            for (int i = 1; i < sel.size(); ++i)
+                bbox.extendBy( m_geometries->get()[sel[i].row()]->boundingBox());
+            m_cursorPos       = bbox.center();
+            const double diag = (bbox.max - bbox.min).length();
+            m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
+            m_animatedViewTransformEndCamera.setRotation(QQuaternion());
+            m_animatedViewTransformEndCamera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+            beginAnimateViewTransform();
+        }
+    }
+    else if(event->key() == Qt::Key_T)
+    {
+        // Reset view to from top
+        m_animatedViewTransformStartCamera.setCenter(m_camera.center());
+        m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
+        m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
+        m_animatedViewTransformEndCamera.setCenter(m_camera.center());
+        m_animatedViewTransformEndCamera.setRotation(QQuaternion());
+        m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
+        beginAnimateViewTransform();
     }
     else
         event->ignore();
@@ -756,5 +811,12 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
     return geoms;
 }
 
+/// Initialises animated view transform
+void View3D::beginAnimateViewTransform()
+{
+    m_incrementalDraw = false;
+    m_animatedViewTransformIndex = 0;
+    m_animatedViewTransformTimer->start(10);
+}
 
 // vi: set et:
