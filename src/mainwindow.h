@@ -23,6 +23,7 @@ class ShaderEditor;
 class LogViewer;
 class GeometryCollection;
 class IpcChannel;
+class FileLoader;
 
 
 //------------------------------------------------------------------------------
@@ -37,13 +38,21 @@ class PointViewerMainWindow : public QMainWindow
         /// Hint at an appropriate size
         QSize sizeHint() const;
 
-        GeometryCollection& geometries() { return *m_geometries; }
+        /// Return file loader object
+        FileLoader& fileLoader() { return *m_fileLoader; }
 
         /// Start server for interprocess communication
         ///
         /// Listens on local socket `socketName` for incoming connections.  Any
         /// socket previously in use is deleted.
         void startIpcServer(const QString& socketName);
+
+        /// Set maximum total desired number of points
+        ///
+        /// An attempt will be made to keep the total number of vertices less
+        /// than this, but this is quite hard to ensure, so the limit may be
+        /// violated.
+        void setMaxPointCount(size_t maxPointCount) { m_maxPointCount = maxPointCount; }
 
     public slots:
         void handleMessage(QByteArray message);
@@ -84,6 +93,10 @@ class PointViewerMainWindow : public QMainWindow
         QDir m_currFileDir;
         QString m_currShaderFileName;
 
+        // File loader (slots run on separate thread)
+        FileLoader* m_fileLoader;
+        /// Maximum desired number of points to load
+        size_t m_maxPointCount;
         // Currently loaded geometry
         GeometryCollection* m_geometries;
 

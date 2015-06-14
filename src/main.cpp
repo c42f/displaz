@@ -11,6 +11,7 @@
 
 #include "argparse.h"
 #include "config.h"
+#include "fileloader.h"
 #include "IpcChannel.h"
 #include "util.h"
 
@@ -232,13 +233,14 @@ int main(int argc, char *argv[])
     //QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
-    window.geometries().setMaxPointCount(maxPointCount);
+    window.setMaxPointCount(maxPointCount);
     if (useServer)
         window.startIpcServer(socketName);
     if (!shaderName.empty())
         window.openShaderFile(QString::fromStdString(shaderName));
     window.show();
-    window.geometries().loadFiles(g_initialFileNames, rmTemp);
+    for (int i = 0; i < g_initialFileNames.size(); ++i)
+        window.fileLoader().loadFile(g_initialFileNames[i], rmTemp);
 
     return app.exec();
 }

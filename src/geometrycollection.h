@@ -10,6 +10,7 @@
 #include <QItemSelectionModel>
 
 #include "geometry.h"
+#include "fileloader.h"
 
 
 /// Collection of loaded data sets for use with Qt's model view architecture
@@ -21,10 +22,7 @@ class GeometryCollection : public QAbstractListModel
     public:
         typedef std::vector<std::shared_ptr<Geometry>> GeometryVec;
 
-        GeometryCollection(QObject * parent = 0)
-            : QAbstractListModel(parent),
-            m_maxPointCount(100000000)
-        { }
+        GeometryCollection(QObject * parent = 0);
 
         /// Get current list of geometries
         const GeometryVec& get() const { return m_geometries; }
@@ -43,39 +41,15 @@ class GeometryCollection : public QAbstractListModel
 
 
     public slots:
-        /// Set maximum total desired number of points
+        /// Add to the list of loaded geometries
         ///
-        /// An attempt will be made to keep the total number of vertices less
-        /// than this, but this is quite hard to ensure, so the limit may be
-        /// violated.
-        void setMaxPointCount(size_t maxPointCount);
-
-        /// Append given file list to the current set of geometries
-        ///
-        /// If removeAfterLoad is true, *delete* the files after loading.
-        void loadFiles(const QStringList& fileNames, bool removeAfterLoad = false);
-
-        /// Reload all currently loaded files from disk
-        void reloadFiles();
-
-    signals:
-        /// Emitted when files are about to be loaded
-        void fileLoadStarted();
-        /// Emitted when files are finished loading
-        void fileLoadFinished();
-        /// Emitted at the start of a point loading step
-        void loadStepStarted(QString stepDescription);
-        /// Emitted when progress is made loading a file
-        void loadProgress(int progress);
-
-    private slots:
-        void addGeometry(std::shared_ptr<Geometry> geom);
+        /// If `reloaded` is true, search existing geometry for
+        /// `geom->fileName()` and if found, replace the existing geometry.
+        void addGeometry(std::shared_ptr<Geometry> geom, bool reloaded = false);
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);
 
-        /// Maximum desired number of points to load
-        size_t m_maxPointCount;
         GeometryVec m_geometries;
 };
 

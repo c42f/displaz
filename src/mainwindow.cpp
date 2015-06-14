@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "datasetui.h"
+#include "fileloader.h"
 #include "geometrycollection.h"
 #include "helpdialog.h"
 #include "IpcChannel.h"
@@ -15,6 +16,7 @@
 #include "view3d.h"
 
 #include <QtCore/QSignalMapper>
+#include <QtCore/QThread>
 #include <QtCore/QUrl>
 #include <QtGui/QApplication>
 #include <QtGui/QColorDialog>
@@ -41,18 +43,38 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
+    m_maxPointCount(100000000),
     m_geometries(0),
     m_ipcServer(0)
 {
+    setWindowTitle("Displaz");
+    setAcceptDrops(true);
+
+    m_helpDialog = new HelpDialog(this);
+
     m_geometries = new GeometryCollection(this);
     connect(m_geometries, SIGNAL(layoutChanged()), this, SLOT(updateTitle()));
     connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(updateTitle()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(updateTitle()));
     connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(updateTitle()));
 
-    setWindowTitle("Displaz");
-    setAcceptDrops(true);
-    m_helpDialog = new HelpDialog(this);
+    //--------------------------------------------------
+    // Set up file loader in a separate thread
+    //
+    // Some subtleties regarding qt thread usage are discussed here:
+    // http://mayaposch.wordpress.com/2011/11/01/how-to-really-truly-use-qthreads-the-full-explanation
+    //
+    // Main point: each QObject has a thread affinity which determines which
+    // thread its slots will execute on, when called via a connected signal.
+    QThread* loaderThread = new QThread();
+    m_fileLoader = new FileLoader(m_maxPointCount);
+    m_fileLoader->moveToThread(loaderThread);
+    connect(loaderThread, SIGNAL(finished()), m_fileLoader, SLOT(deleteLater()));
+    connect(loaderThread, SIGNAL(finished()), loaderThread, SLOT(deleteLater()));
+    //connect(m_fileLoader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
+    connect(m_fileLoader, SIGNAL(geometryLoaded(std::shared_ptr<Geometry>, bool)),
+            m_geometries, SLOT(addGeometry(std::shared_ptr<Geometry>, bool)));
+    loaderThread->start();
 
     //--------------------------------------------------
     // Menus
@@ -196,15 +218,11 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_progressBar = new QProgressBar(logUI);
     m_progressBar->setRange(0,100);
     m_progressBar->setValue(0);
-    m_progressBar->hide();
-    connect(m_geometries, SIGNAL(loadStepStarted(QString)),
+    //m_progressBar->hide();
+    connect(m_fileLoader, SIGNAL(loadStepStarted(QString)),
             this, SLOT(setProgressBarText(QString)));
-    connect(m_geometries, SIGNAL(loadProgress(int)),
+    connect(m_fileLoader, SIGNAL(loadProgress(int)),
             m_progressBar, SLOT(setValue(int)));
-    connect(m_geometries, SIGNAL(fileLoadStarted()),
-            m_progressBar, SLOT(show()));
-    connect(m_geometries, SIGNAL(fileLoadFinished()),
-            m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     //logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
@@ -304,13 +322,11 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
     QList<QUrl> urls = event->mimeData()->urls();
     if (urls.isEmpty())
         return;
-    QStringList droppedFiles;
     for (int i = 0; i < urls.size(); ++i)
     {
          if (urls[i].isLocalFile())
-             droppedFiles << urls[i].toLocalFile();
+             m_fileLoader->loadFile(urls[i].toLocalFile());
     }
-    m_geometries->loadFiles(droppedFiles);
 }
 
 
@@ -334,12 +350,10 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             rmTemp = true;
             firstFileIdx = 2;
         }
-        QStringList files;
-        for (int i = firstFileIdx; i < commandTokens.size(); ++i)
-            files << QString(commandTokens[i]);
         if (commandTokens[0] == "OPEN_FILES")
             m_geometries->clear();
-        m_geometries->loadFiles(files, rmTemp);
+        for (int i = firstFileIdx; i < commandTokens.size(); ++i)
+            m_fileLoader->loadFile(commandTokens[i], rmTemp);
     }
     else if (commandTokens[0] == "CLEAR_FILES")
     {
@@ -428,7 +442,8 @@ void PointViewerMainWindow::openFiles()
     if (files.empty())
         return;
     m_geometries->clear();
-    m_geometries->loadFiles(files);
+    for (int i = 0; i < files.size(); ++i)
+        m_fileLoader->loadFile(files[i]);
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
 }
@@ -440,13 +455,14 @@ void PointViewerMainWindow::addFiles()
         this,
         tr("Add point clouds or meshes"),
         m_currFileDir.path(),
-        tr("Data sets (*.las *.laz *.txt *.ply);;All files (*)"),
+        tr("Data sets (*.las *.laz *.txt *.xyz *.ply);;All files (*)"),
         0,
         QFileDialog::ReadOnly
     );
     if (files.empty())
         return;
-    m_geometries->loadFiles(files);
+    for (int i = 0; i < files.size(); ++i)
+        m_fileLoader->loadFile(files[i]);
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
 }
@@ -513,7 +529,9 @@ void PointViewerMainWindow::saveShaderFile()
 
 void PointViewerMainWindow::reloadFiles()
 {
-    m_geometries->reloadFiles();
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    for (auto g = geoms.begin(); g != geoms.end(); ++g)
+        m_fileLoader->reloadFile((*g)->fileName());
 }
 
 
