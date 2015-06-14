@@ -115,7 +115,7 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
 void View3D::animateViewTransform()
 {
     m_animatedViewTransformIndex++;
-    double xsi = m_animatedViewTransformIndex/10.0;
+    double xsi = m_animatedViewTransformIndex/12.0;
     xsi = xsi*xsi*(3 - 2*xsi);
 
     m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
@@ -125,7 +125,7 @@ void View3D::animateViewTransform()
     m_camera.setEyeToCenterDistance((1 - xsi)*m_animatedViewTransformStartCamera.eyeToCenterDistance()
                                        + xsi *m_animatedViewTransformEndCamera.eyeToCenterDistance());
 
-    if(m_animatedViewTransformIndex == 10)
+    if(m_animatedViewTransformIndex == 12)
         m_animatedViewTransformTimer->stop();    
     update();
 }
@@ -405,9 +405,13 @@ void View3D::mousePressEvent(QMouseEvent* event)
                           pointInfo, posDiff.length(), posDiff);
             // Snap cursor /and/ camera to new position
             // TODO: Decouple these, but in a sensible way
+
+            // Reset view to from top
             m_cursorPos = newPos;
-            m_camera.setCenter(newPos);
-            m_prevCursorSnap = newPos;
+            m_animatedViewTransformEndCamera.setCenter(newPos);
+            m_animatedViewTransformEndCamera.setRotation(m_camera.rotation());
+            m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
+            beginAnimateViewTransform();
         }
     }
 }
@@ -453,9 +457,6 @@ void View3D::keyPressEvent(QKeyEvent *event)
         QModelIndexList sel = m_selectionModel->selectedRows();
         if(sel.size() > 0)
         {
-            m_animatedViewTransformStartCamera.setCenter(m_camera.center());
-            m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
-            m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
             Imath::Box3d bbox = m_geometries->get()[sel[0].row()]->boundingBox();
             for (int i = 1; i < sel.size(); ++i)
                 bbox.extendBy( m_geometries->get()[sel[i].row()]->boundingBox());
@@ -470,9 +471,6 @@ void View3D::keyPressEvent(QKeyEvent *event)
     else if(event->key() == Qt::Key_T)
     {
         // Reset view to from top
-        m_animatedViewTransformStartCamera.setCenter(m_camera.center());
-        m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
-        m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
         m_animatedViewTransformEndCamera.setCenter(m_camera.center());
         m_animatedViewTransformEndCamera.setRotation(QQuaternion());
         m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
@@ -814,6 +812,9 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
 /// Initialises animated view transform
 void View3D::beginAnimateViewTransform()
 {
+    m_animatedViewTransformStartCamera.setCenter(m_camera.center());
+    m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
+    m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
     m_incrementalDraw = false;
     m_animatedViewTransformIndex = 0;
     m_animatedViewTransformTimer->start(10);
