@@ -22,7 +22,6 @@
 #include "tinyformat.h"
 #include "util.h"
 
-
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     : QGLWidget(parent),
@@ -34,13 +33,18 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
     m_drawCursor(true),
+    m_drawAxes(true),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
-    m_incrementalDraw(false)
+    m_incrementalDraw(false),
+    m_drawAxesBackground(QImage(":/resource/axes.png")),
+    m_drawAxesLabelX(QImage(":/resource/x.png")),
+    m_drawAxesLabelY(QImage(":/resource/y.png")),
+    m_drawAxesLabelZ(QImage(":/resource/z.png"))
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -157,6 +161,12 @@ void View3D::toggleDrawBoundingBoxes()
 void View3D::toggleDrawCursor()
 {
     m_drawCursor = !m_drawCursor;
+    restartRender();
+}
+
+void View3D::toggleDrawAxes()
+{
+    m_drawAxes = !m_drawAxes;
     restartRender();
 }
 
@@ -300,6 +310,12 @@ void View3D::paintGL()
     {
         drawCursor(transState, m_cursorPos, 10, 1);
         //drawCursor(transState, m_camera.center(), 10);
+    }
+
+    // Draw overlay axes
+    if (m_drawAxes)
+    {
+        drawAxes();
     }
 
     // Set up timer to draw a high quality frame if necessary
@@ -492,6 +508,146 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopAttrib();
+}
+
+void View3D::drawAxes() const
+{
+    glPushAttrib(GL_ENABLE_BIT);
+    glDisable(GL_DEPTH_TEST);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0, width(), 0, height(), 0, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    const GLint w = 64;    // Width of axes widget
+    const GLint o = 8;     // Axes widget offset in x and y
+    float transparency = 0.5;
+
+    // Center of axis overlay
+    const V3d center(o+w/2,o+w/2,0.0);
+
+    // Background texture
+
+    m_drawAxesBackground.bind();
+    glColor4f(1,1,1,transparency);
+    glEnable(GL_TEXTURE_2D);
+    glBegin(GL_QUADS);
+        glTexCoord2i(0,0); glVertex2i(o,   o  );
+        glTexCoord2i(1,0); glVertex2i(o+w, o  );
+        glTexCoord2i(1,1); glVertex2i(o+w, o+w);
+        glTexCoord2i(0,1); glVertex2i(o,   o+w);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+
+    // Extract the x, y and z axis directions
+
+    // Compute center in screen coordinates.  Note that Qt's viewport has y=0
+    // at the top, which is opposite from the glOrtho convention used above.
+    V3d center_screen = (V3d(0, height(), 0) - center) * m_camera.viewportMatrix().inverse();
+
+    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
+    // Compute perspective correct x,y,z axis directions at position of the
+    // axis widget centre.  These can be derived by taking the derivative of
+    // the projective transformation u = v*M / (v*M)[3], and noting that the
+    // result can be expressed entirely in terms of the screen coordinates of
+    // the axis center.
+    //
+    // Using the projected axis directions can look a little weird, but so does
+    // an orthographic projection.  The projected version has the advantage
+    // that a line in the scene which is parallel to one of the x,y or z axes
+    // and passes through the location of the axis widget is parallel to the
+    // associated axis as drawn in the widget itself.
+    V3d x = V3d(M[0][0],M[0][1],M[0][2]) - center_screen*M[0][3];
+    V3d y = V3d(M[1][0],M[1][1],M[1][2]) - center_screen*M[1][3];
+    V3d z = V3d(M[2][0],M[2][1],M[2][2]) - center_screen*M[2][3];
+
+    x.normalize();
+    y.normalize();
+    z.normalize();
+
+    // Ignore z component
+
+    x.z = y.z = z.z = 0.0;
+
+    // Draw lines for the x, y and z directions
+
+    {
+        // color tint
+        const double c = 0.8;
+        const double d = 0.5;
+        const double t = 0.5*(1+transparency);
+        const double r = 0.6;  // 60% towards edge of circle
+        glLineWidth(1);
+        glBegin(GL_LINES);
+            glColor4f(c,d,d,t);
+            glVertex(center);
+            glVertex(center+x*r*w/2);
+            glColor4f(d,c,d,t);
+            glVertex(center);
+            glVertex(center+y*r*w/2);
+            glColor4f(d,d,c,t);
+            glVertex(center);
+            glVertex(center+z*r*w/2);
+        glEnd();
+    }
+
+    // Labels
+
+    const double r = 0.8;   // 80% towards edge of circle
+    const GLint l = 16;     // Label is 16 pixels wide
+
+    glColor4f(1,1,1,transparency);
+    glEnable(GL_TEXTURE_2D);
+
+    // Note that V3d -> V3i (double to integer precision)
+    // conversion is intentionally snapping the label to
+    // integer co-ordinates to eliminate subpixel aliasing
+    // artifacts.  This is also the reason that matrix
+    // transformations are not being used for this.
+
+    const V3d px = center+x*r*w/2;
+    m_drawAxesLabelX.bind();
+    glBegin(GL_QUADS);
+        glTexCoord2i(0,0); glVertex(V3i(px+V3d(-l/2, l/2,0)));
+        glTexCoord2i(0,1); glVertex(V3i(px+V3d(-l/2,-l/2,0)));
+        glTexCoord2i(1,1); glVertex(V3i(px+V3d( l/2,-l/2,0)));
+        glTexCoord2i(1,0); glVertex(V3i(px+V3d( l/2, l/2,0)));
+    glEnd();
+
+    const V3d py = center+y*r*w/2;
+    m_drawAxesLabelY.bind();
+    glBegin(GL_QUADS);
+        glTexCoord2i(0,0); glVertex(V3i(py+V3d(-l/2, l/2,0)));
+        glTexCoord2i(0,1); glVertex(V3i(py+V3d(-l/2,-l/2,0)));
+        glTexCoord2i(1,1); glVertex(V3i(py+V3d( l/2,-l/2,0)));
+        glTexCoord2i(1,0); glVertex(V3i(py+V3d( l/2, l/2,0)));
+    glEnd();
+
+    const V3d pz = center+z*r*w/2;
+    m_drawAxesLabelZ.bind();
+    glBegin(GL_QUADS);
+        glTexCoord2i(0,0); glVertex(V3i(pz+V3d(-l/2, l/2,0)));
+        glTexCoord2i(0,1); glVertex(V3i(pz+V3d(-l/2,-l/2,0)));
+        glTexCoord2i(1,1); glVertex(V3i(pz+V3d( l/2,-l/2,0)));
+        glTexCoord2i(1,0); glVertex(V3i(pz+V3d( l/2, l/2,0)));
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopAttrib();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 

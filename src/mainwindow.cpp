@@ -154,6 +154,9 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* drawCursor = viewMenu->addAction(tr("Draw 3D &Cursor"));
     drawCursor->setCheckable(true);
     drawCursor->setChecked(true);
+    QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
+    drawAxes->setCheckable(true);
+    drawAxes->setChecked(true);
 
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
@@ -172,6 +175,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
     connect(drawCursor, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawCursor()));
+    connect(drawAxes, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawAxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
