@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <GL/glew.h>
+#include <QTime>
 #include <QGLWidget>
 #include <QModelIndex>
 
@@ -144,7 +145,8 @@ class View3D : public QGLWidget
         Texture m_drawAxesLabelZ;
         /// Animated view transforms
         QTimer* m_animatedViewTransformTimer;
-        int m_animatedViewTransformIndex;
+        QTime             m_animatedViewTransformTime;
+        int               m_animatedViewTransformDuration;  // msec
         InteractiveCamera m_animatedViewTransformStartCamera;
         InteractiveCamera m_animatedViewTransformEndCamera;
 };

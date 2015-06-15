@@ -44,7 +44,8 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
-    m_drawAxesLabelZ(QImage(":/resource/z.png"))
+    m_drawAxesLabelZ(QImage(":/resource/z.png")),
+    m_animatedViewTransformDuration(250)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -114,8 +115,8 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
 
 void View3D::animateViewTransform()
 {
-    m_animatedViewTransformIndex++;
-    double xsi = m_animatedViewTransformIndex/12.0;
+    double xsi = m_animatedViewTransformTime.elapsed()/double(m_animatedViewTransformDuration);
+    xsi = std::min(xsi,1.0);
     xsi = xsi*xsi*(3 - 2*xsi);
 
     m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
@@ -125,8 +126,9 @@ void View3D::animateViewTransform()
     m_camera.setEyeToCenterDistance((1 - xsi)*m_animatedViewTransformStartCamera.eyeToCenterDistance()
                                        + xsi *m_animatedViewTransformEndCamera.eyeToCenterDistance());
 
-    if(m_animatedViewTransformIndex == 12)
+    if (xsi>=1.0)
         m_animatedViewTransformTimer->stop();    
+
     update();
 }
 
@@ -854,7 +856,7 @@ void View3D::beginAnimateViewTransform()
     m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
     m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
     m_incrementalDraw = false;
-    m_animatedViewTransformIndex = 0;
+    m_animatedViewTransformTime.restart();
     m_animatedViewTransformTimer->start(10);
 }
 
