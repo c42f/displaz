@@ -121,10 +121,10 @@ void View3D::animateViewTransform()
 
     m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
                                        + xsi *m_animatedViewTransformEndCamera.center());
-    m_camera.setRotation(           (1 - xsi)*m_animatedViewTransformStartCamera.rotation()
-                                       + xsi *m_animatedViewTransformEndCamera.rotation());
-    m_camera.setEyeToCenterDistance((1 - xsi)*m_animatedViewTransformStartCamera.eyeToCenterDistance()
-                                       + xsi *m_animatedViewTransformEndCamera.eyeToCenterDistance());
+    m_camera.setRotation(QQuaternion::slerp(m_animatedViewTransformStartCamera.rotation(),
+                                            m_animatedViewTransformEndCamera.rotation(), xsi));
+    m_camera.setEyeToCenterDistance(pow(m_animatedViewTransformStartCamera.eyeToCenterDistance(), (1 - xsi)) *
+                                    pow(m_animatedViewTransformEndCamera.eyeToCenterDistance(), xsi));
 
     if (xsi>=1.0)
         m_animatedViewTransformTimer->stop();    
@@ -301,7 +301,7 @@ void View3D::paintGL()
     }
 
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
-    const double targetMillisecs = 40;
+    const double targetMillisecs = 20;
     double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
                                              m_incrementalDraw);
 
@@ -347,7 +347,7 @@ void View3D::paintGL()
         m_incrementalFrameTimer->stop();
     else if(!m_animatedViewTransformTimer->isActive())
     {
-        m_incrementalFrameTimer->start(10);
+        m_incrementalFrameTimer->start(0);
         m_incrementalDraw = true;
     }
 }
