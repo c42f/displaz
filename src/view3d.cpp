@@ -451,9 +451,9 @@ void View3D::keyPressEvent(QKeyEvent *event)
         // Centre camera on current cursor location
         m_camera.setCenter(m_cursorPos);
     }
-    else if(event->key() == Qt::Key_R)
+    else if(event->key() == Qt::Key_Z)
     {
-        // Reset view to from top encompassing selected geometries
+        // Reset center and zoom to encompass selected geometries
         QModelIndexList sel = m_selectionModel->selectedRows();
         if(sel.size() > 0)
         {
@@ -463,16 +463,54 @@ void View3D::keyPressEvent(QKeyEvent *event)
             m_cursorPos       = bbox.center();
             const double diag = (bbox.max - bbox.min).length();
             m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
-            m_animatedViewTransformEndCamera.setRotation(QQuaternion());
+            m_animatedViewTransformEndCamera.setRotation(m_camera.rotation());
             m_animatedViewTransformEndCamera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
             beginAnimateViewTransform();
         }
     }
-    else if(event->key() == Qt::Key_T)
+    else if(event->key() == Qt::Key_A)
     {
-        // Reset view to from top
-        m_animatedViewTransformEndCamera.setCenter(m_camera.center());
-        m_animatedViewTransformEndCamera.setRotation(QQuaternion());
+        // Snap to nearest axis position
+        QQuaternion rot = m_camera.rotation();
+
+        QMatrix4x4 m;
+        QVector3D e;
+        QVector3D newE;
+        double a;
+        QQuaternion rotStep;
+
+        // snap view pos to nearest axis
+        m.setToIdentity();
+        m.rotate(rot);
+        e = QVector3D(0, 0, 1) * m;
+        if(fabs(e.x()) > std::max(fabs(e.y()), fabs(e.z())))
+            newE = QVector3D(Imath::sign(e.x()), 0, 0);
+        else if(fabs(e.y()) > fabs(e.z()))
+            newE = QVector3D(0, Imath::sign(e.y()), 0);
+        else
+            newE = QVector3D(0, 0, Imath::sign(e.z()));
+        e = QVector3D::crossProduct(newE, e);
+        a = asin(e.length());
+        e.normalize();
+        rot *= QQuaternion::fromAxisAndAngle(e, a*180/M_PI); // function wants angle in deg!
+
+        // snap view up to nearest axis
+        m.setToIdentity();
+        m.rotate(rot);
+        e = QVector3D(0, 1, 0) * m;
+        if(fabs(e.x()) > std::max(fabs(e.y()), fabs(e.z())))
+            newE = QVector3D(Imath::sign(e.x()), 0, 0);
+        else if(fabs(e.y()) > fabs(e.z()))
+            newE = QVector3D(0, Imath::sign(e.y()), 0);
+        else
+            newE = QVector3D(0, 0, Imath::sign(e.z()));
+        e = QVector3D::crossProduct(newE, e);
+        a = asin(e.length());
+        e.normalize();
+        rot *= QQuaternion::fromAxisAndAngle(e, a*180/M_PI); // function wants angle in deg!
+
+        m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
+        m_animatedViewTransformEndCamera.setRotation(rot);
         m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
         beginAnimateViewTransform();
     }
