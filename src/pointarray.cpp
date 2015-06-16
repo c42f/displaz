@@ -89,6 +89,31 @@ struct OctreeNode
                                                longitudinalScale, &thisRClosest);
     }
 
+    void spatialResolution(const V3f *const p, float& sumRMin, size_t& count) const
+    {
+        if(endIndex == beginIndex)
+        {
+            for (int i = 0; i < 8; ++i)
+                if(children[i])
+                    children[i]->spatialResolution(p, sumRMin, count);
+        }
+        else
+        {
+            for(size_t i = beginIndex; i < endIndex - 1; i += 1000)
+            {
+                float rMin = FLT_MAX;
+                for(size_t j = i+1; j < endIndex; ++j)
+                {
+                    const float r = (p[j] - p[i]).length2();
+                    rMin = r < rMin ? r : rMin;
+                }
+                sumRMin += sqrtf(rMin);
+                count++;
+            }
+        }
+    }
+
+
     size_t size() const { return endIndex - beginIndex; }
 
     bool isLeaf() const { return beginIndex != endIndex; }
@@ -405,6 +430,13 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         emit loadProgress(int(100*(i+1)/m_fields.size()));
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+
+    float rMin = 0;
+    size_t count = 0;
+    m_rootNode.get()->spatialResolution(m_P, rMin, count);
+
+    m_spatialResolution = rMin/count;
+printf("m_spatialResolution = %f\n", m_spatialResolution);
 
     return true;
 }
