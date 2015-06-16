@@ -118,6 +118,9 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
     trackballMode->setCheckable(true);
     trackballMode->setChecked(false);
+    QAction* animateViewTransformMode = viewMenu->addAction(tr("&Animate view transforms"));
+    animateViewTransformMode->setCheckable(true);
+    animateViewTransformMode->setChecked(true);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -179,6 +182,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawAxes()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
+    connect(animateViewTransformMode, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleAnimateViewTransformMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 

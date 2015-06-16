@@ -58,6 +58,7 @@ class View3D : public QGLWidget
         void toggleDrawCursor();
         void toggleDrawAxes();
         void toggleCameraMode();
+        void toggleAnimateViewTransformMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
 
@@ -69,6 +70,7 @@ class View3D : public QGLWidget
 
         // Qt event callbacks
         void mousePressEvent(QMouseEvent* event);
+        void mouseReleaseEvent(QMouseEvent* event);
         void mouseMoveEvent(QMouseEvent* event);
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);
@@ -103,6 +105,8 @@ class View3D : public QGLWidget
                             Imath::V3d& newPos, QString& pointInfo);
 
         std::vector<const Geometry*> selectedGeometry() const;
+
+        void snapRotationToAxis(const QVector3D& dir, QQuaternion& rot) const;
 
         void beginAnimateViewTransform();
 
