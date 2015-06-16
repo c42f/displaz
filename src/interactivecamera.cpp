@@ -25,12 +25,11 @@ inline Imath::M44d qt2exr(const QMatrix4x4& m)
 {
     Imath::M44d mOut;
     for(int j = 0; j < 4; ++j)
-    for(int i = 0; i < 4; ++i)
-    mOut[j][i] = m.constData()[4*j + i];
+        for(int i = 0; i < 4; ++i)
+            mOut[j][i] = m.constData()[4*j + i];
     return mOut;
 }
 
-/// Adjusts rotation so that rotated dir aligns with (+x|+y|+z|-x|-y|-z) axis
 void InteractiveCamera::snapRotationToAxis(const QVector3D& dir, QQuaternion& rot)
 {
     QMatrix4x4 m;
@@ -61,17 +60,17 @@ InteractiveCamera::InteractiveCamera(bool reverseHandedness,
       m_fieldOfView(60),
       m_clipNear(0.1),
       m_clipFar(1000),
-      m_animatedViewTransformDuration(250)
+      m_animateDuration(250)
 {
-    m_animatedViewTransformTimer = new QTimer(this);
-    m_animatedViewTransformTimer->setSingleShot(false);
-    connect(m_animatedViewTransformTimer, SIGNAL(timeout()), this, SLOT(nextViewTransformFrame()));
+    m_animateTimer = new QTimer(this);
+    m_animateTimer->setSingleShot(false);
+    connect(m_animateTimer, SIGNAL(timeout()), this, SLOT(nextFrame()));
 }
 
 
 bool InteractiveCamera::isAnimating() const
 {
-    return m_animatedViewTransformTimer->isActive();
+    return m_animateTimer->isActive();
 }
 
 
@@ -129,68 +128,6 @@ Imath::V3d InteractiveCamera::mouseMovePoint(Imath::V3d p, QPoint mouseMovement,
 }
 
 
-void InteractiveCamera::mouseDrag(QPoint prevPos, QPoint currPos, bool zoom)
-{
-    if(zoom)
-    {
-        // exponential zooming gives scale-independent sensitivity
-        qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
-        const qreal zoomSpeed = 3.0f;
-        m_dist *= std::exp(zoomSpeed*dy);
-    }
-    else
-    {
-        if(m_trackballInteraction)
-            m_rot = trackballRotation(prevPos, currPos) * m_rot;
-        else
-        {
-            // TODO: Not sure this is entirely consistent if the user
-            // switches between trackball and turntable modes...
-            m_rot = turntableRotation(prevPos, currPos, m_rot);
-        }
-        m_rot.normalize();
-    }
-    emit viewChanged();
-}
-
-
-void InteractiveCamera::beginAnimateViewTransform(const QQuaternion& newRotation,
-                                                  const Imath::V3d& newCenter,
-                                                  const qreal newEyeToCenterDistance)
-{
-    // check that a transform is actually required
-    if(   (m_center - newCenter).length() < 1e-3
-       && (m_rot  - newRotation).length() < 1e-3
-       && fabs(m_dist - newEyeToCenterDistance) < 1e-3)
-        return;
-    // set start camera postion to current camera
-    m_rotStart    = m_rot;
-    m_centerStart = m_center;
-    m_distStart   = m_dist;
-    // set end camera postion to new values
-    m_rotEnd      = newRotation;
-    m_centerEnd   = newCenter;
-    m_distEnd     = newEyeToCenterDistance;
-    // start transform
-    m_animatedViewTransformTime.restart();
-    m_animatedViewTransformTimer->start(10);
-}
-
-
-void InteractiveCamera::toggleTrackballInteraction()
-{
-    m_trackballInteraction = !m_trackballInteraction;
-}
-
-
-void InteractiveCamera::toggleAnimateViewTransform()
-{
-    if(m_animatedViewTransformDuration == 0)
-        m_animatedViewTransformDuration = 250;
-    else
-        m_animatedViewTransformDuration = 0;
-}
-
 void InteractiveCamera::setViewport(QRect rect)
 {
     m_viewport = rect;
@@ -240,11 +177,74 @@ void InteractiveCamera::setRotation(QQuaternion rotation)
 }
 
 
-void InteractiveCamera::nextViewTransformFrame()
+void InteractiveCamera::animateTo(const QQuaternion& newRotation,
+                                  const Imath::V3d& newCenter,
+                                  const qreal newEyeToCenterDistance)
 {
-    if(m_animatedViewTransformDuration > 0)
+    // check that a transform is actually required
+    if(   (m_center - newCenter).length() < 1e-3
+       && (m_rot  - newRotation).length() < 1e-3
+       && fabs(m_dist - newEyeToCenterDistance) < 1e-3)
+        return;
+    // set start camera postion to current camera
+    m_rotStart    = m_rot;
+    m_centerStart = m_center;
+    m_distStart   = m_dist;
+    // set end camera postion to new values
+    m_rotEnd      = newRotation;
+    m_centerEnd   = newCenter;
+    m_distEnd     = newEyeToCenterDistance;
+    // start transform
+    m_animateTime.restart();
+    m_animateTimer->start(10);
+}
+
+
+void InteractiveCamera::mouseDrag(QPoint prevPos, QPoint currPos, bool zoom)
+{
+    if(zoom)
     {
-        double xsi = m_animatedViewTransformTime.elapsed()/double(m_animatedViewTransformDuration);
+        // exponential zooming gives scale-independent sensitivity
+        qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
+        const qreal zoomSpeed = 3.0f;
+        m_dist *= std::exp(zoomSpeed*dy);
+    }
+    else
+    {
+        if(m_trackballInteraction)
+            m_rot = trackballRotation(prevPos, currPos) * m_rot;
+        else
+        {
+            // TODO: Not sure this is entirely consistent if the user
+            // switches between trackball and turntable modes...
+            m_rot = turntableRotation(prevPos, currPos, m_rot);
+        }
+        m_rot.normalize();
+    }
+    emit viewChanged();
+}
+
+
+void InteractiveCamera::toggleTrackballMode()
+{
+    m_trackballInteraction = !m_trackballInteraction;
+}
+
+
+void InteractiveCamera::toggleAnimateViewTransformMode()
+{
+    if(m_animateDuration == 0)
+        m_animateDuration = 250;
+    else
+        m_animateDuration = 0;
+}
+
+
+void InteractiveCamera::nextFrame()
+{
+    if(m_animateDuration > 0)
+    {
+        double xsi = m_animateTime.elapsed()/double(m_animateDuration);
         xsi = std::min(xsi,1.0);
         xsi = xsi*xsi*(3 - 2*xsi);
 
@@ -253,14 +253,14 @@ void InteractiveCamera::nextViewTransformFrame()
         m_dist = pow(m_distStart, 1 - xsi)*pow(m_distEnd, xsi);
 
         if (xsi>=1.0)
-            m_animatedViewTransformTimer->stop();
+            m_animateTimer->stop();
     }
     else
     {
         m_rot    = m_rotEnd;
         m_center = m_centerEnd;
         m_dist   = m_distEnd;
-        m_animatedViewTransformTimer->stop();
+        m_animateTimer->stop();
     }
 
     emit viewChanged();

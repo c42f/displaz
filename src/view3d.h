@@ -57,8 +57,6 @@ class View3D : public QGLWidget
         void toggleDrawBoundingBoxes();
         void toggleDrawCursor();
         void toggleDrawAxes();
-        void toggleCameraMode();
-        void toggleAnimateViewTransformMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
 

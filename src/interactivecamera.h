@@ -41,6 +41,8 @@ class InteractiveCamera : public QObject
     Q_OBJECT
 
     public:
+
+        /// Adjusts rotation so that rotated dir aligns with (+x|+y|+z|-x|-y|-z) axis
         static void snapRotationToAxis(const QVector3D& dir, QQuaternion& rot);
 
         /// Construct camera; if reverseHandedness is true, the viewing
@@ -85,22 +87,6 @@ class InteractiveCamera : public QObject
         Imath::V3d mouseMovePoint(Imath::V3d p, QPoint mouseMovement,
                                   bool zooming) const;
 
-        /// Move the camera using a drag of the mouse.
-        /// The previous and current positions of the mouse during the move are
-        /// given by prevPos and currPos.  By default this rotates the camera
-        /// around the center, but if zoom is true, the camera position is
-        /// zoomed in toward the center instead.
-        void mouseDrag(QPoint prevPos, QPoint currPos, bool zoom = false);
-
-        void beginAnimateViewTransform(const QQuaternion& rotationEnd,
-                                       const Imath::V3d& centerEnd,
-                                       const qreal eyeToCenterDistanceEnd);
-
-        void toggleTrackballInteraction();
-
-        void toggleAnimateViewTransform();
-
-    public slots:
         void setViewport(QRect rect);
         void setClipNear(qreal clipNear);
         void setClipFar(qreal clipFar);
@@ -108,6 +94,21 @@ class InteractiveCamera : public QObject
         void setCenter(Imath::V3d center);
         void setEyeToCenterDistance(qreal dist);
         void setRotation(QQuaternion rotation);
+
+        void animateTo(const QQuaternion& newRotation,
+                       const Imath::V3d& newCenter,
+                       const qreal newEyeToCenterDistance);
+
+        /// Move the camera using a drag of the mouse.
+        /// The previous and current positions of the mouse during the move are
+        /// given by prevPos and currPos.  By default this rotates the camera
+        /// around the center, but if zoom is true, the camera position is
+        /// zoomed in toward the center instead.
+        void mouseDrag(QPoint prevPos, QPoint currPos, bool zoom = false);
+
+    public slots:
+        void toggleTrackballMode();
+        void toggleAnimateViewTransformMode();
 
 
     signals:
@@ -117,7 +118,7 @@ class InteractiveCamera : public QObject
         void viewChanged();
 
     private slots:
-        void nextViewTransformFrame();
+        void nextFrame();
 
     private:
         /// Perform "turntable" style rotation on current orientation
@@ -166,10 +167,10 @@ class InteractiveCamera : public QObject
         qreal m_clipNear;     ///< near clipping plane
         qreal m_clipFar;      ///< far clipping plane
         QRect m_viewport;     ///< rectangle we'll drag inside
-        /// Animated view transforms
-        QTimer*           m_animatedViewTransformTimer;
-        QTime             m_animatedViewTransformTime;
-        int               m_animatedViewTransformDuration;  // msec
+        /// Animated view transform
+        QTimer*           m_animateTimer;
+        QTime             m_animateTime;
+        int               m_animateDuration;  // msec
         QQuaternion m_rotStart,    m_rotEnd;     ///< start and end rotation position for animation
         Imath::V3d  m_centerStart, m_centerEnd; ///< star and end camera centers
         qreal       m_distStart,   m_distEnd;   ///< start and end zoom distance

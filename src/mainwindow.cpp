@@ -181,9 +181,9 @@ PointViewerMainWindow::PointViewerMainWindow()
     connect(drawAxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawAxes()));
     connect(trackballMode, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleCameraMode()));
+            &m_pointView->camera(), SLOT(toggleTrackballMode()));
     connect(animateViewTransformMode, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleAnimateViewTransformMode()));
+            &m_pointView->camera(), SLOT(toggleAnimateViewTransformMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 
