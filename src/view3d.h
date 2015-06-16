@@ -82,8 +82,6 @@ class View3D : public QGLWidget
         void geometryChanged();
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
-        void animateViewTransform();
-
     private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
@@ -105,10 +103,6 @@ class View3D : public QGLWidget
                             Imath::V3d& newPos, QString& pointInfo);
 
         std::vector<const Geometry*> selectedGeometry() const;
-
-        void snapRotationToAxis(const QVector3D& dir, QQuaternion& rot) const;
-
-        void beginAnimateViewTransform();
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -147,12 +141,6 @@ class View3D : public QGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
-        /// Animated view transforms
-        QTimer* m_animatedViewTransformTimer;
-        QTime             m_animatedViewTransformTime;
-        int               m_animatedViewTransformDuration;  // msec
-        InteractiveCamera m_animatedViewTransformStartCamera;
-        InteractiveCamera m_animatedViewTransformEndCamera;
 };
 
 

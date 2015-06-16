@@ -44,8 +44,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
-    m_drawAxesLabelZ(QImage(":/resource/z.png")),
-    m_animatedViewTransformDuration(250)
+    m_drawAxesLabelZ(QImage(":/resource/z.png"))
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -80,10 +79,6 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
-
-    m_animatedViewTransformTimer = new QTimer(this);
-    m_animatedViewTransformTimer->setSingleShot(false);
-    connect(m_animatedViewTransformTimer, SIGNAL(timeout()), this, SLOT(animateViewTransform()));
 }
 
 
@@ -101,7 +96,8 @@ void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
         centerOnGeometry(m_geometries->index(0));
-    restartRender();
+    else
+        restartRender();
 }
 
 
@@ -111,35 +107,6 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
     for (int i = firstRow; i <= lastRow; ++i)
         geoms[i]->initializeGL();
     geometryChanged();
-}
-
-void View3D::animateViewTransform()
-{
-    if(m_animatedViewTransformDuration > 0)
-    {
-        double xsi = m_animatedViewTransformTime.elapsed()/double(m_animatedViewTransformDuration);
-        xsi = std::min(xsi,1.0);
-        xsi = xsi*xsi*(3 - 2*xsi);
-
-        m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
-                                           + xsi *m_animatedViewTransformEndCamera.center());
-        m_camera.setRotation(QQuaternion::slerp(m_animatedViewTransformStartCamera.rotation(),
-                                                m_animatedViewTransformEndCamera.rotation(), xsi));
-        m_camera.setEyeToCenterDistance(pow(m_animatedViewTransformStartCamera.eyeToCenterDistance(), (1 - xsi)) *
-                                        pow(m_animatedViewTransformEndCamera.eyeToCenterDistance(), xsi));
-
-        if (xsi>=1.0)
-            m_animatedViewTransformTimer->stop();
-    }
-    else
-    {
-        m_camera.setCenter(m_animatedViewTransformEndCamera.center());
-        m_camera.setRotation(m_animatedViewTransformEndCamera.rotation());
-        m_camera.setEyeToCenterDistance(m_animatedViewTransformEndCamera.eyeToCenterDistance());
-        m_animatedViewTransformTimer->stop();
-    }
-
-    update();
 }
 
 
@@ -209,16 +176,13 @@ void View3D::toggleDrawAxes()
 
 void View3D::toggleCameraMode()
 {
-    m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
+    m_camera.toggleTrackballInteraction();
 }
 
 
 void View3D::toggleAnimateViewTransformMode()
 {
-    if(m_animatedViewTransformDuration == 0)
-        m_animatedViewTransformDuration = 250;
-    else
-        m_animatedViewTransformDuration = 0;
+    m_camera.toggleAnimateViewTransform();
 }
 
 
@@ -226,9 +190,8 @@ void View3D::centerOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
-    m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+    m_camera.beginAnimateViewTransform(m_camera.rotation(), m_cursorPos, std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
 
@@ -367,7 +330,7 @@ void View3D::paintGL()
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
-    else if(!m_animatedViewTransformTimer->isActive())
+    else if(!m_camera.isAnimating())
     {
         m_incrementalFrameTimer->start(0);
         m_incrementalDraw = true;
@@ -432,10 +395,7 @@ void View3D::mousePressEvent(QMouseEvent* event)
 
             // Reset view to from top
             m_cursorPos = newPos;
-            m_animatedViewTransformEndCamera.setCenter(newPos);
-            m_animatedViewTransformEndCamera.setRotation(m_camera.rotation());
-            m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
-            beginAnimateViewTransform();
+            m_camera.beginAnimateViewTransform(m_camera.rotation(), newPos, m_camera.eyeToCenterDistance());
         }
     }
 }
@@ -475,7 +435,7 @@ void View3D::wheelEvent(QWheelEvent* event)
 
 void View3D::keyPressEvent(QKeyEvent *event)
 {
-    if(m_animatedViewTransformTimer->isActive() || m_mouseButton != Qt::NoButton)
+    if(m_camera.isAnimating() || m_mouseButton != Qt::NoButton)
     {
         event->ignore();
         return;
@@ -484,10 +444,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
     if(event->key() == Qt::Key_C)
     {
         // Centre camera on current cursor location
-        m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
-        m_animatedViewTransformEndCamera.setRotation(m_camera.rotation());
-        m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
-        beginAnimateViewTransform();
+        m_camera.beginAnimateViewTransform(m_camera.rotation(), m_cursorPos, m_camera.eyeToCenterDistance());
     }
     else if(event->key() == Qt::Key_Z)
     {
@@ -500,10 +457,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
                 bbox.extendBy(geoms[i]->boundingBox());
             m_cursorPos       = bbox.center();
             const double diag = (bbox.max - bbox.min).length();
-            m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
-            m_animatedViewTransformEndCamera.setRotation(m_camera.rotation());
-            m_animatedViewTransformEndCamera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
-            beginAnimateViewTransform();
+            m_camera.beginAnimateViewTransform(m_camera.rotation(), m_cursorPos, std::max<double>(2*m_camera.clipNear(), diag*0.7));
         }
     }
     else if(event->key() == Qt::Key_R)
@@ -511,22 +465,15 @@ void View3D::keyPressEvent(QKeyEvent *event)
         // Snap to nearest axis position
         QQuaternion rot = m_camera.rotation();
         // snap view pos to nearest axis
-        snapRotationToAxis(QVector3D(0, 0, 1), rot);
+        InteractiveCamera::snapRotationToAxis(QVector3D(0, 0, 1), rot);
         // snap view up to nearest axis
-        snapRotationToAxis(QVector3D(0, 1, 0), rot);
-
-        m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
-        m_animatedViewTransformEndCamera.setRotation(rot);
-        m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
-        beginAnimateViewTransform();
+        InteractiveCamera::snapRotationToAxis(QVector3D(0, 1, 0), rot);
+        m_camera.beginAnimateViewTransform(rot, m_cursorPos, m_camera.eyeToCenterDistance());
     }
     else if(event->key() == Qt::Key_T)
     {
         // Rotate to top view
-        m_animatedViewTransformEndCamera.setCenter(m_cursorPos);
-        m_animatedViewTransformEndCamera.setRotation(QQuaternion());
-        m_animatedViewTransformEndCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
-        beginAnimateViewTransform();
+        m_camera.beginAnimateViewTransform(QQuaternion(), m_cursorPos, m_camera.eyeToCenterDistance());
     }
     else
         event->ignore();
@@ -859,44 +806,6 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
     for(int i = 0; i < sel.size(); ++i)
         geoms.push_back(geomAll[sel[i].row()].get());
     return geoms;
-}
-
-/// Adjusts rotation so that rotated dir aligns with (+x|+y|+z|-x|-y|-z) axis
-void View3D::snapRotationToAxis(const QVector3D& dir, QQuaternion& rot) const
-{
-    QMatrix4x4 m;
-
-    m.rotate(rot);
-    QVector3D e = dir * m;
-    QVector3D newE;
-    if(fabs(e.x()) > std::max(fabs(e.y()), fabs(e.z())))
-        newE = QVector3D(Imath::sign(e.x()), 0, 0);
-    else if(fabs(e.y()) > fabs(e.z()))
-        newE = QVector3D(0, Imath::sign(e.y()), 0);
-    else
-        newE = QVector3D(0, 0, Imath::sign(e.z()));
-    e = QVector3D::crossProduct(newE, e);
-    const double a = asin(e.length());
-    e.normalize();
-    rot *= QQuaternion::fromAxisAndAngle(e, a*180/M_PI); // this function wants angle in deg!
-}
-
-/// Initialises animated view transform
-void View3D::beginAnimateViewTransform()
-{
-    // check that a transform is actually required
-    if(   (m_camera.center() - m_animatedViewTransformEndCamera.center()).length() < 1e-3
-       && (m_camera.rotation() - m_animatedViewTransformEndCamera.rotation()).length() < 1e-3
-       && fabs(m_camera.eyeToCenterDistance() - m_animatedViewTransformEndCamera.eyeToCenterDistance()) < 1e-3)
-        return;
-    // set start camera postion to current camera
-    m_animatedViewTransformStartCamera.setCenter(m_camera.center());
-    m_animatedViewTransformStartCamera.setRotation(m_camera.rotation());
-    m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
-    // start transform
-    m_incrementalDraw = false;
-    m_animatedViewTransformTime.restart();
-    m_animatedViewTransformTimer->start(10);
 }
 
 // vi: set et:

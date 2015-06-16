@@ -45,6 +45,7 @@ set(srcs
     glutil.cpp
     hcloudview.cpp
     IpcChannel.cpp
+    interactivecamera.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp
