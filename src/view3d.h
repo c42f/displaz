@@ -80,9 +80,10 @@ class View3D : public QGLWidget
         void geometryChanged();
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
+    private:
+
         void animateViewTransform();
 
-    private:
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
         void drawCursor(const TransformState& transState, const V3d& P,
@@ -133,7 +134,7 @@ class View3D : public QGLWidget
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
-        QTimer* m_incrementalFrameTimer;
+        QTimer* m_updateTimer;
         std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
@@ -144,7 +145,6 @@ class View3D : public QGLWidget
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
         /// Animated view transforms
-        QTimer* m_animatedViewTransformTimer;
         QTime             m_animatedViewTransformTime;
         int               m_animatedViewTransformDuration;  // msec
         InteractiveCamera m_animatedViewTransformStartCamera;

@@ -39,13 +39,13 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
-    m_incrementalFrameTimer(0),
+    m_updateTimer(0),
     m_incrementalDraw(false),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
     m_drawAxesLabelZ(QImage(":/resource/z.png")),
-    m_animatedViewTransformDuration(250)
+    m_animatedViewTransformDuration(0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -77,13 +77,9 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
 
-    m_incrementalFrameTimer = new QTimer(this);
-    m_incrementalFrameTimer->setSingleShot(false);
-    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
-
-    m_animatedViewTransformTimer = new QTimer(this);
-    m_animatedViewTransformTimer->setSingleShot(false);
-    connect(m_animatedViewTransformTimer, SIGNAL(timeout()), this, SLOT(animateViewTransform()));
+    m_updateTimer = new QTimer(this);
+    m_updateTimer->setSingleShot(false);
+    connect(m_updateTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
 
@@ -115,21 +111,22 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
 
 void View3D::animateViewTransform()
 {
-    double xsi = m_animatedViewTransformTime.elapsed()/double(m_animatedViewTransformDuration);
-    xsi = std::min(xsi,1.0);
-    xsi = xsi*xsi*(3 - 2*xsi);
+    if (m_animatedViewTransformDuration)
+    {
+        double xsi = m_animatedViewTransformTime.elapsed()/double(m_animatedViewTransformDuration);
+        xsi = std::min(xsi,1.0);
+        xsi = xsi*xsi*(3 - 2*xsi);
 
-    m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
-                                       + xsi *m_animatedViewTransformEndCamera.center());
-    m_camera.setRotation(QQuaternion::slerp(m_animatedViewTransformStartCamera.rotation(),
-                                            m_animatedViewTransformEndCamera.rotation(), xsi));
-    m_camera.setEyeToCenterDistance(pow(m_animatedViewTransformStartCamera.eyeToCenterDistance(), (1 - xsi)) *
-                                    pow(m_animatedViewTransformEndCamera.eyeToCenterDistance(), xsi));
+        m_camera.setCenter(             (1 - xsi)*m_animatedViewTransformStartCamera.center()
+                                           + xsi *m_animatedViewTransformEndCamera.center());
+        m_camera.setRotation(QQuaternion::slerp(m_animatedViewTransformStartCamera.rotation(),
+                                                m_animatedViewTransformEndCamera.rotation(), xsi));
+        m_camera.setEyeToCenterDistance(pow(m_animatedViewTransformStartCamera.eyeToCenterDistance(), (1 - xsi)) *
+                                        pow(m_animatedViewTransformEndCamera.eyeToCenterDistance(), xsi));
 
-    if (xsi>=1.0)
-        m_animatedViewTransformTimer->stop();    
-
-    update();
+        if (xsi>=1.0)
+            m_animatedViewTransformDuration = 0;    
+    }
 }
 
 
@@ -259,6 +256,10 @@ void View3D::paintGL()
 {
     if (m_badOpenGL)
         return;
+
+    if (!m_incrementalDraw)
+        animateViewTransform();
+
     QTime frameTimer;
     frameTimer.start();
 
@@ -344,10 +345,10 @@ void View3D::paintGL()
 
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
-        m_incrementalFrameTimer->stop();
-    else if(!m_animatedViewTransformTimer->isActive())
+        m_updateTimer->stop();
+    else if (!m_animatedViewTransformDuration)
     {
-        m_incrementalFrameTimer->start(0);
+        m_updateTimer->start(0);
         m_incrementalDraw = true;
     }
 }
@@ -857,7 +858,8 @@ void View3D::beginAnimateViewTransform()
     m_animatedViewTransformStartCamera.setEyeToCenterDistance(m_camera.eyeToCenterDistance());
     m_incrementalDraw = false;
     m_animatedViewTransformTime.restart();
-    m_animatedViewTransformTimer->start(10);
+    m_animatedViewTransformDuration = 250;
+    m_updateTimer->start(0);
 }
 
 // vi: set et:
