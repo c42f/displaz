@@ -162,7 +162,7 @@ class InteractiveCamera : public QObject
         }
         void setRotation(QQuaternion rotation)
         {
-            m_rot = rotation;
+            m_rot = rotation.normalized();
             emit viewChanged();
         }
         void setTrackballInteraction(bool trackballInteraction)

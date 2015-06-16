@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <GL/glew.h>
+#include <QTime>
 #include <QGLWidget>
 #include <QModelIndex>
 
@@ -80,6 +81,9 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
+
+        void animateViewTransform();
+
         std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
         void drawCursor(const TransformState& transState, const V3d& P,
@@ -100,6 +104,8 @@ class View3D : public QGLWidget
                             Imath::V3d& newPos, QString& pointInfo);
 
         std::vector<const Geometry*> selectedGeometry() const;
+
+        void beginAnimateViewTransform();
 
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
@@ -128,7 +134,7 @@ class View3D : public QGLWidget
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
-        QTimer* m_incrementalFrameTimer;
+        QTimer* m_updateTimer;
         std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
@@ -138,6 +144,11 @@ class View3D : public QGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
+        /// Animated view transforms
+        QTime             m_animatedViewTransformTime;
+        int               m_animatedViewTransformDuration;  // msec
+        InteractiveCamera m_animatedViewTransformStartCamera;
+        InteractiveCamera m_animatedViewTransformEndCamera;
 };
 
 
