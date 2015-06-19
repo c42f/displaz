@@ -459,6 +459,7 @@ bool PointArray::pickVertex(const V3d& cameraPos,
     if(rClosest == DBL_MAX)
         return false;
 
+    *distance = rClosest;
     pickedVertex = V3d(m_P[idx]) + offset();
 
     if (info)
