@@ -102,6 +102,10 @@ class View3D : public QGLWidget
 
         std::vector<const Geometry*> selectedGeometry() const;
 
+        enum {DS_NOTHING_TO_DRAW,
+              DS_FIRST_DRAW,
+              DS_ADDITIONAL_DRAW};
+
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
         QPoint m_prevMousePos;
@@ -129,9 +133,9 @@ class View3D : public QGLWidget
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
-        QTimer* m_incrementalFrameTimer;
+        QTimer* m_drawTimer;
         std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
-        bool m_incrementalDraw;
+        int m_drawState;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
         /// GL textures

@@ -196,7 +196,7 @@ void InteractiveCamera::animateTo(const QQuaternion& newRotation,
     m_distEnd     = newEyeToCenterDistance;
     // start transform
     m_animateTime.restart();
-    m_animateTimer->start(10);
+    m_animateTimer->start(20);
 }
 
 
