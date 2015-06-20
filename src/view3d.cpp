@@ -546,38 +546,58 @@ void View3D::drawAxes() const
     glEnd();
     glDisable(GL_TEXTURE_2D);
 
-    // Extract the x, y and z axis directions
-
-    // Compute center in screen coordinates.  Note that Qt's viewport has y=0
-    // at the top, which is opposite from the glOrtho convention used above.
-    V3d center_screen = (V3d(0, height(), 0) - center) * m_camera.viewportMatrix().inverse();
-
-    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
     // Compute perspective correct x,y,z axis directions at position of the
-    // axis widget centre.  These can be derived by taking the derivative of
-    // the projective transformation u = v*M / (v*M)[3], and noting that the
-    // result can be expressed entirely in terms of the screen coordinates of
-    // the axis center.
+    // axis widget centre.  The full 3->window coordinate transformation is
+    //
+    //   c = a*M     // world -> clip coords
+    //   n = c/c[3]  // Perspective divide (clip->NDC)
+    //   e = n*W     // NDC -> window
+    //
+    // Taking the derivative de/da and rearranging gives the derivative:
+    //
+    //   de/da = (1/c[3]) * (M*W - outer_product(center, M[:,3]))
+    //
+    // The x-axis vector in the window coords is then [1,0,0,0] * de/da, etc.
     //
     // Using the projected axis directions can look a little weird, but so does
     // an orthographic projection.  The projected version has the advantage
     // that a line in the scene which is parallel to one of the x,y or z axes
     // and passes through the location of the axis widget is parallel to the
     // associated axis as drawn in the widget itself.
-    V3d x = V3d(M[0][0],M[0][1],M[0][2]) - center_screen*M[0][3];
-    V3d y = V3d(M[1][0],M[1][1],M[1][2]) - center_screen*M[1][3];
-    V3d z = V3d(M[2][0],M[2][1],M[2][2]) - center_screen*M[2][3];
+    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
 
+    // NDC->Window transform for the y=up,x=right window coordinate convention
+    // used in the glOrtho() call above.  Note this is opposite of Qt's window
+    // coordinates, which has y=0 at the top.
+    //
+    // Use zScreenScale so the size of the component into the screen is
+    // comparable with x and y in the other directions.
+    //
+    // TODO: Fix the coordinate systems used so that they're consistently
+    // manipulated with a common set of utilities.
+    double zScreenScale = 0.5*std::max(width(),height());
+    const M44d W = m_camera.viewportMatrix() *
+                   Imath::M44d().setScale(V3d(1,-1,zScreenScale)) *
+                   Imath::M44d().setTranslation(V3d(0,height(),0));
+
+    const M44d A = M*W;
+    V3d x = V3d(A[0][0],A[0][1],A[0][2]) - center*M[0][3];
+    V3d y = V3d(A[1][0],A[1][1],A[1][2]) - center*M[1][3];
+    V3d z = V3d(A[2][0],A[2][1],A[2][2]) - center*M[2][3];
+
+    // Normalize axes to make them a predictable size in 2D.
+    //
+    // TODO: For a perspective transform this is actually a bit subtle, since
+    // the magnitude of the component into the screen is affected by the clip
+    // plane positions.
     x.normalize();
     y.normalize();
     z.normalize();
 
-    // Ignore z component
-
+    // Ignore z component for drawing overlay
     x.z = y.z = z.z = 0.0;
 
     // Draw lines for the x, y and z directions
-
     {
         // color tint
         const double c = 0.8;
@@ -588,13 +608,13 @@ void View3D::drawAxes() const
         glBegin(GL_LINES);
             glColor4f(c,d,d,t);
             glVertex(center);
-            glVertex(center+x*r*w/2);
+            glVertex(center + x*r*w/2);
             glColor4f(d,c,d,t);
             glVertex(center);
-            glVertex(center+y*r*w/2);
+            glVertex(center + y*r*w/2);
             glColor4f(d,d,c,t);
             glVertex(center);
-            glVertex(center+z*r*w/2);
+            glVertex(center + z*r*w/2);
         glEnd();
     }
 
