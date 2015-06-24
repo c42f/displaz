@@ -5,13 +5,13 @@
 #define STREAM_PAGE_CACHE_H_INCLUDED
 
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
+#include <cstdint>
 #include <fstream>
 #include <functional>
 #include <memory>
 #include <string.h>
 #include <stdexcept>
-#include <stdint.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>

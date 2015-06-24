@@ -2,6 +2,9 @@
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
 #include "ply_io.h"
+
+#include <cstdint>
+
 #include "qtlogger.h"
 
 //------------------------------------------------------------------------------

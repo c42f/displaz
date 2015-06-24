@@ -75,7 +75,7 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
             if (m_geometries[i]->fileName() == geom->fileName())
             {
                 m_geometries[i] = geom;
-                QModelIndex idx = createIndex(i, 0);
+                QModelIndex idx = createIndex((int)i, 0);
                 emit dataChanged(idx, idx);
                 return;
             }

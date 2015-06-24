@@ -5,7 +5,7 @@
 #ifndef DISPLAZ_HCLOUD_H_INCLUDED
 #define DISPLAZ_HCLOUD_H_INCLUDED
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathBox.h>

@@ -2,10 +2,13 @@
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
 #include "IpcChannel.h"
-#include "util.h"
-#include "qtlogger.h"
+
+#include <cstdint>
 
 #include <QElapsedTimer>
+
+#include "util.h"
+#include "qtlogger.h"
 
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),

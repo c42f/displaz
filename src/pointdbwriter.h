@@ -4,8 +4,8 @@
 #ifndef DISPLAZ_POINTDBWRITER_H_INCLUDED
 #define DISPLAZ_POINTDBWRITER_H_INCLUDED
 
+#include <cstdint>
 #include <map>
-#include <stdint.h>
 #include <vector>
 
 #include "util.h"

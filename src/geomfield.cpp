@@ -3,6 +3,8 @@
 
 #include "geomfield.h"
 
+#include <cstdint>
+
 #include <tinyformat.h>
 
 std::ostream& operator<<(std::ostream& out, const GeomField& field)

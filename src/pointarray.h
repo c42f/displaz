@@ -5,6 +5,7 @@
 #define DISPLAZ_POINTARRAY_H_INCLUDED
 
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
