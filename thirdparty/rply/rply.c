@@ -312,13 +312,12 @@ static int BREFILL(p_ply ply) {
     ply->buffer_first = ply->buffer_token = 0;
     /* fill remaining with new data */
     size = fread(ply->buffer+size, 1, BUFFERSIZE-size-1, ply->fp);
-    /* place sentinel so we can use str* functions with buffer */
-    ply->buffer[BUFFERSIZE-1] = '\0';
-    /* check if read failed */
-    if (size <= 0) return 0;
     /* increase size to account for new data */
     ply->buffer_last += size;
-    return 1;
+    /* place sentinel so we can use str* functions with buffer */
+    ply->buffer[ply->buffer_last] = '\0';
+    /* Success if we read more than zero bytes */
+    return size > 0;
 }
 
 /* We don't care about end-of-line, generally, because we
