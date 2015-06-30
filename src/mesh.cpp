@@ -11,6 +11,7 @@
 #include "tinyformat.h"
 #include "rply/rply.h"
 
+#include "ply_io.h"
 #include "qtlogger.h"
 
 
@@ -148,7 +149,7 @@ bool loadPlyFile(const QString& fileName,
 {
     // Read a triangulation from a .ply file
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
+            ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
     {
         g_logger.error("Could not open ply or read header");

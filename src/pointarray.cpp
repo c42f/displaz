@@ -260,7 +260,7 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
+            ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
     // Parse out header data

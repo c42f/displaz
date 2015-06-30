@@ -443,3 +443,7 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
 }
 
 
+void logRplyError(p_ply ply, const char* message)
+{
+    g_logger.error("rply: %s", message);
+}

@@ -4,6 +4,7 @@
 #include "geometry.h"
 #include "hcloudview.h"
 #include "mesh.h"
+#include "ply_io.h"
 #include "pointarray.h"
 
 #include <rply/rply.h>
@@ -14,7 +15,7 @@
 static bool plyHasMesh(QString fileName)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), NULL, 0, NULL), ply_close);
+            ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
     if (!ply || !ply_read_header(ply.get()))
         return false;
     for (p_ply_element elem = ply_get_next_element(ply.get(), NULL);

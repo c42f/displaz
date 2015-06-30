@@ -85,4 +85,8 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
                           size_t& npoints);
 
 
+/// Logging callback, logging all rply errors to g_logger
+void logRplyError(p_ply ply, const char* message);
+
+
 #endif // DISPLAZ_PLY_IO_INCLUDED
