@@ -40,13 +40,9 @@ end
 function write_ply_points(fileName, nvertices, fields)
     convertedFields = [ply_type_convert(value) for (_,__,value) in fields]
     open(fileName, "w") do fid
-        write(fid,
-            """
-            ply
-            format binary_little_endian 1.0
-            comment Displaz native
-            """
-        )
+        write(fid, "ply\n")
+        write(fid, "format binary_little_endian 1.0\n")
+        write(fid, "comment Displaz native\n")
         for ((name,semantic,_), (typeName, value)) in zip(fields, convertedFields)
             n = size(value,1)
             assert(n == nvertices || n == 1)
