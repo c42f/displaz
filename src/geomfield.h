@@ -43,6 +43,9 @@ struct GeomField
         return reinterpret_cast<T*>(data.get());
     }
 
+    /// Print human readable form of `data[index]` to output stream
+    void format(std::ostream& out, size_t index) const;
+
     // Horrible hack: explicitly implement move constructor.  Required to
     // appease MSVC 2012 (broken move semantics for unique_ptr?)
     GeomField(GeomField&& f)

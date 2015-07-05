@@ -477,48 +477,11 @@ bool PointArray::pickVertex(const V3d& cameraPos,
                 const float* p = (float*)(field.data.get() + idx*field.spec.size());
                 tfm::format(out, "%.3f %.3f %.3f\n",
                             p[0] + offset().x, p[1] + offset().y, p[2] + offset().z);
-                continue;
             }
-            for (int j = 0; j < field.spec.count; ++j)
+            else
             {
-                const char* data = field.data.get() + idx*field.spec.size() + j*field.spec.elsize;
-                switch (field.spec.type)
-                {
-                    case TypeSpec::Float:
-                        switch (field.spec.elsize)
-                        {
-                            case 4:  tfm::format(out, "%g", *(float*)data);  break;
-                            case 8:  tfm::format(out, "%g", *(double*)data); break;
-                            default: tfm::format(out, "?"); break;
-                        }
-                        break;
-                    case TypeSpec::Int:
-                        switch (field.spec.elsize)
-                        {
-                            case 1:  tfm::format(out, "%d", *(int8_t*)data);  break;
-                            case 2:  tfm::format(out, "%d", *(int16_t*)data); break;
-                            case 4:  tfm::format(out, "%d", *(int32_t*)data); break;
-                            case 8:  tfm::format(out, "%d", *(int64_t*)data); break;
-                            default: tfm::format(out, "?"); break;
-                        }
-                        break;
-                    case TypeSpec::Uint:
-                        switch (field.spec.elsize)
-                        {
-                            case 1:  tfm::format(out, "%d", *(uint8_t*)data);  break;
-                            case 2:  tfm::format(out, "%d", *(uint16_t*)data); break;
-                            case 4:  tfm::format(out, "%d", *(uint32_t*)data); break;
-                            case 8:  tfm::format(out, "%d", *(uint64_t*)data); break;
-                            default: tfm::format(out, "?"); break;
-                        }
-                        break;
-                    default:
-                        tfm::format(out, "unknown");
-                }
-                if (j < field.spec.count - 1)
-                    tfm::format(out, " ");
-                else
-                    tfm::format(out, "\n");
+                field.format(out, idx);
+                tfm::format(out, "\n");
             }
         }
         *info = out.str();

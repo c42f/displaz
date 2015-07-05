@@ -7,6 +7,51 @@
 
 #include <tinyformat.h>
 
+
+void GeomField::format(std::ostream& out, size_t index) const
+{
+    for (int j = 0; j < spec.count; ++j)
+    {
+        const char* val = data.get() + index*spec.size() + j*spec.elsize;
+        switch (spec.type)
+        {
+            case TypeSpec::Float:
+                switch (spec.elsize)
+                {
+                    case 4:  tfm::format(out, "%g", *(float*)val);  break;
+                    case 8:  tfm::format(out, "%g", *(double*)val); break;
+                    default: tfm::format(out, "?"); break;
+                }
+                break;
+            case TypeSpec::Int:
+                switch (spec.elsize)
+                {
+                    case 1:  tfm::format(out, "%d", *(int8_t*)val);  break;
+                    case 2:  tfm::format(out, "%d", *(int16_t*)val); break;
+                    case 4:  tfm::format(out, "%d", *(int32_t*)val); break;
+                    case 8:  tfm::format(out, "%d", *(int64_t*)val); break;
+                    default: tfm::format(out, "?"); break;
+                }
+                break;
+            case TypeSpec::Uint:
+                switch (spec.elsize)
+                {
+                    case 1:  tfm::format(out, "%d", *(uint8_t*)val);  break;
+                    case 2:  tfm::format(out, "%d", *(uint16_t*)val); break;
+                    case 4:  tfm::format(out, "%d", *(uint32_t*)val); break;
+                    case 8:  tfm::format(out, "%d", *(uint64_t*)val); break;
+                    default: tfm::format(out, "?"); break;
+                }
+                break;
+            default:
+                tfm::format(out, "unknown");
+        }
+        if (j < spec.count - 1)
+            tfm::format(out, " ");
+    }
+}
+
+
 std::ostream& operator<<(std::ostream& out, const GeomField& field)
 {
     tfm::format(out, "%s %s", field.spec, field.name);
@@ -37,6 +82,7 @@ void doReorder(char* dest, const char* src, const size_t* inds, size_t size, int
             destT[count*i + j] = srcT[count*inds[i] + j];
     }
 }
+
 
 void reorder(GeomField& field, const size_t* inds, size_t indsSize)
 {
