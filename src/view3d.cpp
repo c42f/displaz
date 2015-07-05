@@ -371,7 +371,7 @@ void View3D::mousePressEvent(QMouseEvent* event)
         QString pointInfo;
         V3d newPos;
         if (snapToGeometry(guessClickPosition(event->pos()), snapScale,
-                           newPos, pointInfo))
+                           &newPos, &pointInfo))
         {
             V3d posDiff = newPos - m_prevCursorSnap;
             g_logger.info("Selected Point Attributes:\n"
@@ -732,10 +732,11 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 ///                   this factor when computing the closest point.
 /// `newPos`        - Returned new position
 /// `pointInfo`     - Returned descriptive string of point attributes.
+///                   Ignored if null.
 ///
 /// Returns true if a close piece of geometry was found, false otherwise.
 bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
-                            Imath::V3d& newPos, QString& pointInfo)
+                            Imath::V3d* newPos, QString* pointInfo)
 {
     // Ray out from the camera to the given point
     V3d cameraPos = m_camera.position();
@@ -750,13 +751,15 @@ bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
         double dist = 0;
         std::string info;
         if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir, normalScaling,
-                                                    pickedVertex, &dist, &info))
+                                                    pickedVertex, &dist,
+                                                    (pointInfo != 0) ? &info : 0))
         {
             if (dist < nearestDist)
             {
-                newPos = pickedVertex;
+                *newPos = pickedVertex;
                 nearestDist = dist;
-                pointInfo = QString::fromStdString(info);
+                if (pointInfo)
+                    *pointInfo = QString::fromStdString(info);
             }
         }
     }
