@@ -1,0 +1,59 @@
+ply
+format ascii 1.0
+comment Experimental format for polygons with holes.
+comment
+comment Should look like the following:
+comment
+comment xxxxxxxxxxxxxxxxxx
+comment xxxxxxxxxxxxxxxxxx
+comment xx      xx      xx
+comment xx      xx      xx
+comment xx      xx      xx
+comment xxxxxxxxxxxxxxxxxx
+comment xxxxxxxxxxxxxxxxxx
+comment
+comment
+comment xxxxxxxxxxxxxxxxxx
+comment xxxxxxxxxxxxxxxxxx
+comment xxxx xxxxx xxx xxx
+comment xxx   xxxx  x  xxx
+comment xx     xxx     xxx
+comment xxxxxxxxxxxxxxxxxx
+comment xxxxxxxxxxxxxxxxxx
+comment
+comment
+element vertex 24
+property double x
+property double y
+property double z
+element polygon 2
+property list int int outer_vertex_index
+property list int int inner_polygon_vertex_counts
+property list int int inner_vertex_index
+end_header
+0 0 0
+0 3 0
+5 3 0
+5 0 0
+1 1 0
+2 1 0
+2 2 0
+1 2 0
+3 1 0
+4 1 0
+4 2 0
+3 2 0
+0 6 0
+0 9 0
+5 9 0
+5 6 0
+1 7 0
+2 7 0
+2 8 0
+1.5 7.5 0
+1 8 0
+3 7 0
+4 7 0
+3.5 8 0
+4 0 1 2 3         2 4 4    8 4 5 6 7         8 9 10 11
+4 12 13 14 15     2 5 3    8 16 17 18 19 20  21 22 23
