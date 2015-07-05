@@ -10,9 +10,9 @@
 
 #include "tinyformat.h"
 #include "rply/rply.h"
-#include "polypartition/polypartition.h"
 
 #include "ply_io.h"
+#include "PolygonBuilder.h"
 #include "qtlogger.h"
 
 
@@ -44,14 +44,35 @@ static Imath::Box3d getBoundingBox(const V3d& offset, const std::vector<float>& 
 //------------------------------------------------------------------------------
 // Stuff to load .ply files
 
+
+/// Context to be passed to ply read callbacks
 struct PlyLoadInfo
 {
-    std::vector<unsigned int> tmpPolygon;
+    long nvertices;
     std::vector<float> verts;
+    double offset[3]; /// Global offset for verts array
     std::vector<float> colors;
-    std::vector<GLuint> faces;
+
+    std::vector<GLuint> triangles;
     std::vector<GLuint> edges;
-    double offset[3];
+    long prevEdgeIndex;
+    PolygonBuilder currPoly;
+    std::vector<PolygonBuilder> deferredPolys;
+
+    PlyLoadInfo()
+        : nvertices(0),
+        prevEdgeIndex(-1)
+    {
+        offset[0] = offset[1] = offset[2] = 0;
+    }
+
+    // Perform any computations required to clean things up after all ply
+    // elements have been loaded.
+    void postprocess()
+    {
+        for (size_t i = 0; i < deferredPolys.size(); ++i)
+            deferredPolys[i].triangulate(verts, triangles);
+    }
 };
 
 
@@ -83,87 +104,28 @@ static int color_cb(p_ply_argument argument)
 }
 
 
-// Triangulate a polygon
-//
-// verts - 3D vertex positions
-// inds  - indices of polygon vertices in `verts`; verts[3*inds[i]] is the x
-//         component of the ith polygon vertex.
-// triangleInds - indices of triangles in output array
-static void triangulatePolygon(const std::vector<float>& verts,
-                               const std::vector<GLuint>& inds,
-                               std::vector<GLuint>& triangleInds)
-{
-    // Figure out which dimension the bounding box is smallest along, and
-    // discard it to reduce dimensionality to 2D.
-    Imath::Box3d bbox;
-    for (size_t i = 0; i < inds.size(); ++i)
-        bbox.extendBy(V3d(verts[3*inds[i]], verts[3*inds[i]+1], verts[3*inds[i]+2]));
-    V3d diag = bbox.size();
-    int xind = 0;
-    int yind = 1;
-    if (diag.z > std::min(diag.x, diag.y))
-    {
-        if (diag.x < diag.y)
-            xind = 2;
-        else
-            yind = 2;
-    }
-    // Polypartition data structures
-    TPPLPoly poly;
-    poly.Init(inds.size());
-    for (size_t i = 0; i < inds.size(); ++i)
-    {
-        poly[i].x = verts[3*inds[i]+xind];
-        poly[i].y = verts[3*inds[i]+yind];
-        poly[i].id = inds[i];
-    }
-    std::list<TPPLPoly> triangles;
-    TPPLPartition polypartition;
-    if (poly.GetOrientation() != TPPL_CCW)
-        poly.Invert();
-    // FIXME: Use Triangulate_MONO, after figuring out why it's not always
-    // working.
-    if (!polypartition.Triangulate_EC(&poly, &triangles))
-    {
-        g_logger.warning("Ignoring polygon which couldn't be triangulated.");
-        return;
-    }
-    for (auto tri = triangles.begin(); tri != triangles.end(); ++tri)
-    {
-        triangleInds.push_back((*tri)[0].id);
-        triangleInds.push_back((*tri)[1].id);
-        triangleInds.push_back((*tri)[2].id);
-    }
-}
-
 static int face_cb(p_ply_argument argument)
 {
     long length;
     long index;
     ply_get_argument_property(argument, NULL, &length, &index);
     void* pinfo = 0;
-    long isList = 0;
-    ply_get_argument_user_data(argument, &pinfo, &isList);
-    PlyLoadInfo& loadInfo = *(PlyLoadInfo*)pinfo;
-    if (index < 0) // length argument
-    {
-        if (length != 3)
-            loadInfo.tmpPolygon.resize(length);
+    long indexType = 0;
+    ply_get_argument_user_data(argument, &pinfo, &indexType);
+    PlyLoadInfo& info = *(PlyLoadInfo*)pinfo;
+    if (index < 0) // Ignore length argument
         return 1;
-    }
-    if (isList && length != 3)
+    long vertexIndex = ply_get_argument_value(argument);
+    if (info.currPoly.addIndex(indexType, length, index, vertexIndex))
     {
-        loadInfo.tmpPolygon[index] = (int)ply_get_argument_value(argument);
-        if (index == length-1)
-        {
-            // FIXME: the verts array may not be initialized by the time we get
-            // here!
-            triangulatePolygon(loadInfo.verts, loadInfo.tmpPolygon,
-                               loadInfo.faces);
-        }
-        return 1;
+        // If the vertex array has been read, we can immediately triangulate.
+        // If not, need to defer until later.
+        if (info.verts.empty())
+            info.deferredPolys.push_back(info.currPoly);
+        else
+            info.currPoly.triangulate(info.verts, info.triangles);
+        info.currPoly.reset();
     }
-    loadInfo.faces.push_back((unsigned int)ply_get_argument_value(argument));
     return 1;
 }
 
@@ -176,35 +138,24 @@ static int edge_cb(p_ply_argument argument)
     if (index < 0) // ignore length argument
         return 1;
     void* pinfo = 0;
-    long isEdgeLoop = 0;
-    ply_get_argument_user_data(argument, &pinfo, &isEdgeLoop);
+    ply_get_argument_user_data(argument, &pinfo, NULL);
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
+    long vertexIndex = ply_get_argument_value(argument);
+    if (vertexIndex < 0 || vertexIndex >= info.nvertices)
+    {
+        g_logger.warning("Vertex index %d outside of valid range [0,%d] - ignoring edge",
+                         vertexIndex, info.nvertices-1);
+        info.prevEdgeIndex = -1;
+        return 1;
+    }
     // Duplicate indices within a single edge chain so that we can pass them to
     // OpenGL as GL_LINES (or could use GL_LINE_STRIP?)
-    if (index > 1)
-        info.edges.push_back(info.edges.back());
-    info.edges.push_back(
-            (unsigned int)ply_get_argument_value(argument));
-    if (isEdgeLoop && index == length-1)
+    if (info.prevEdgeIndex != -1)
     {
-        // Add extra edge to close the loop
-        int firstIdx = info.edges.end()[-2*(length-1)];
-        info.edges.push_back(info.edges.back());
-        info.edges.push_back(firstIdx);
+        info.edges.push_back((GLuint)info.prevEdgeIndex);
+        info.edges.push_back((GLuint)vertexIndex);
     }
-    return 1;
-}
-
-static int list_cb(p_ply_argument argument) {
-    long length;
-    long index;
-    ply_get_argument_property(argument, NULL, &length, &index);
-    if (index < 0) // ignore length argument
-        return 1;
-    void* plist = 0;
-    ply_get_argument_user_data(argument, &plist, NULL);
-    std::vector<unsigned int>& list = *((std::vector<unsigned int>*)plist);
-    list.push_back((unsigned int)ply_get_argument_value(argument));
+    info.prevEdgeIndex = (index < length-1) ? vertexIndex : -1;
     return 1;
 }
 
@@ -227,6 +178,8 @@ bool loadPlyFile(const QString& fileName,
         g_logger.error("Expected vertex properties (x,y,z) in ply file");
         return false;
     }
+    info.nvertices = nvertices;
+    info.currPoly.setVertexCount(nvertices);
     info.verts.reserve(3*nvertices);
     long ncolors = ply_set_read_cb(ply.get(), "color", "r", color_cb, &info, 0);
     if (ncolors != 0)
@@ -245,73 +198,60 @@ bool loadPlyFile(const QString& fileName,
             info.colors.reserve(3*nvertices);
         }
     }
-    // Attempt to load attributes with names face/vertex_index or face/vertex_indices
-    // There doesn't seem to be a real standard here...
-    long nfaces = ply_set_read_cb(ply.get(), "face", "vertex_index", face_cb, &info, 1);
-    if (nfaces == 0)
-        nfaces = ply_set_read_cb(ply.get(), "face", "vertex_indices", face_cb, &info, 1);
-    if (nfaces == 0)
+
+    long nfaces = 0;
+    long nedges = 0;
+
+    // Attach callbacks for faces.  Try both face.vertex_index and
+    // face.vertex_indices since there doesn't seem to be a real standard.
+    nfaces += ply_set_read_cb(ply.get(), "face", "vertex_index",
+                              face_cb, &info, PolygonBuilder::OuterRingInds);
+    nfaces += ply_set_read_cb(ply.get(), "face", "vertex_indices",
+                              face_cb, &info, PolygonBuilder::OuterRingInds);
+
+    // Attach callbacks for polygons with holes.
+    // This isn't a standard at all, it's something I just made up :-/
+    long npolygons = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index",
+                                     face_cb, &info, PolygonBuilder::OuterRingInds);
+    nfaces += npolygons;
+    if (npolygons > 0)
     {
-        nfaces = ply_set_read_cb(ply.get(), "triangle", "v1", face_cb, &info, 0);
-        if (nfaces != 0 &&
-            (ply_set_read_cb(ply.get(), "triangle", "v2", face_cb, &info, 0) != nfaces ||
-             ply_set_read_cb(ply.get(), "triangle", "v3", face_cb, &info, 0) != nfaces))
+        // Holes
+        if (ply_set_read_cb(ply.get(), "polygon", "inner_polygon_vertex_counts",
+                            face_cb, &info, PolygonBuilder::InnerRingSizes))
         {
-            g_logger.error("Expected triangle properties (v1,v2,v3) in ply file");
-            return false;
+            if (!ply_set_read_cb(ply.get(), "polygon", "inner_vertex_index",
+                                 face_cb, &info, PolygonBuilder::InnerRingInds))
+            {
+                g_logger.error("Found ply property polygon.inner_polygon_vertex_counts "
+                               "without polygon.inner_vertex_index");
+                return false;
+            }
+            info.currPoly.setPropertiesAvailable(PolygonBuilder::OuterRingInds |
+                                                 PolygonBuilder::InnerRingSizes |
+                                                 PolygonBuilder::InnerRingInds);
         }
     }
 
-    long nedges = ply_set_read_cb(ply.get(), "edge", "vertex_index", edge_cb, &info, 0);
-    if (nedges == 0)
-        nedges = ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
-
-    // Support for specific Roames Ply format
-    std::vector<unsigned int> innerPolygonVertexCount;
-    std::vector<unsigned int> innerVertexIndices;
-    if (nedges == 0)
-    {
-        nedges = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index", face_cb, &info, 1);
-        nedges += ply_set_read_cb(ply.get(), "hullxy", "vertex_index", edge_cb, &info, 1);
-        // FIXME: Deal with polygon holes correctly in triangulation.
-        nedges += ply_set_read_cb(ply.get(), "polygon", "inner_polygon_vertex_counts", list_cb, &innerPolygonVertexCount, 0);
-        ply_set_read_cb(ply.get(), "polygon", "inner_vertex_index", list_cb, &innerVertexIndices, 0);
-    }
+    // Attach callbacks for edges.  AFAIK this isn't really a standard, I'm
+    // just copying the semi-standard people use for faces.
+    nedges += ply_set_read_cb(ply.get(), "edge", "vertex_index",   edge_cb, &info, 0);
+    nedges += ply_set_read_cb(ply.get(), "edge", "vertex_indices", edge_cb, &info, 0);
 
     if (nedges <= 0 && nfaces <= 0)
     {
         g_logger.error("Expected more than zero edges or faces in ply file");
         return false;
     }
-    if (nfaces > 0)
-    {
-        // Ply file contains a mesh - load as triangle mesh
-        info.faces.reserve(3*nfaces);
-    }
-    if (nedges > 0)
-    {
-        // Ply file contains a set of edges
-        info.edges.reserve(2*nedges);
-    }
+
     if (!ply_read(ply.get()))
     {
         g_logger.error("Error reading ply file data section");
         return false;
     }
+    info.postprocess();
     if (info.colors.size() != info.verts.size())
         info.colors.clear();
-
-    // Reconstruct inner polygons
-    for (size_t i = 0, j = 0; i < innerPolygonVertexCount.size(); ++i)
-    {
-        size_t count = innerPolygonVertexCount[i];
-        for (size_t k = 0; k < count; ++k)
-        {
-            info.edges.push_back(innerVertexIndices[j + k]);
-            info.edges.push_back(innerVertexIndices[j + (k+1) % count]);
-        }
-        j += count;
-    }
 
     return true;
 }
@@ -333,10 +273,10 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     setBoundingBox(getBoundingBox(offset, info.verts));
     m_verts.swap(info.verts);
     m_colors.swap(info.colors);
-    m_faces.swap(info.faces);
+    m_triangles.swap(info.triangles);
     m_edges.swap(info.edges);
-    //makeSmoothNormals(m_normals, m_verts, m_faces);
-    //makeEdges(m_edges, m_faces);
+    //makeSmoothNormals(m_normals, m_verts, m_triangles);
+    //makeEdges(m_edges, m_triangles);
     return true;
 }
 
@@ -355,8 +295,8 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
     }
     else
         prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_TRIANGLES, (GLsizei)m_faces.size(),
-                   GL_UNSIGNED_INT, &m_faces[0]);
+    glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(),
+                   GL_UNSIGNED_INT, &m_triangles[0]);
     prog.disableAttributeArray("color");
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("normal");
@@ -428,20 +368,20 @@ bool TriMesh::pickVertex(const V3d& cameraPos,
 /// Compute smooth normals by averaging normals on connected faces
 void TriMesh::makeSmoothNormals(std::vector<float>& normals,
                                 const std::vector<float>& verts,
-                                const std::vector<unsigned int>& faces)
+                                const std::vector<unsigned int>& triangles)
 {
     normals.resize(verts.size());
     const V3f* P = (const V3f*)&verts[0];
     V3f* N = (V3f*)&normals[0];
-    for (size_t i = 0; i < faces.size(); i += 3)
+    for (size_t i = 0; i < triangles.size(); i += 3)
     {
-        V3f P1 = P[faces[i]];
-        V3f P2 = P[faces[i+1]];
-        V3f P3 = P[faces[i+2]];
+        V3f P1 = P[triangles[i]];
+        V3f P2 = P[triangles[i+1]];
+        V3f P3 = P[triangles[i+2]];
         V3f Ni = ((P1 - P2).cross(P1 - P3)).normalized();
-        N[faces[i]] += Ni;
-        N[faces[i+1]] += Ni;
-        N[faces[i+2]] += Ni;
+        N[triangles[i]] += Ni;
+        N[triangles[i+1]] += Ni;
+        N[triangles[i+2]] += Ni;
     }
     for (size_t i = 0; i < normals.size()/3; ++i)
     {
@@ -453,15 +393,15 @@ void TriMesh::makeSmoothNormals(std::vector<float>& normals,
 
 /// Figure out a unique set of edges for the given faces
 void TriMesh::makeEdges(std::vector<unsigned int>& edges,
-                        const std::vector<unsigned int>& faces)
+                        const std::vector<unsigned int>& triangles)
 {
     std::vector<std::pair<GLuint,GLuint> > edgePairs;
-    for (size_t i = 0; i < faces.size(); i += 3)
+    for (size_t i = 0; i < triangles.size(); i += 3)
     {
         for (int j = 0; j < 3; ++j)
         {
-            GLuint i1 = faces[i + j];
-            GLuint i2 = faces[i + (j+1)%3];
+            GLuint i1 = triangles[i + j];
+            GLuint i2 = triangles[i + (j+1)%3];
             if (i1 > i2)
                 std::swap(i1,i2);
             edgePairs.push_back(std::make_pair(i1, i2));

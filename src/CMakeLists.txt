@@ -52,6 +52,7 @@ set(srcs
     ply_io.cpp
     las_io.cpp
     pointarray.cpp
+    PolygonBuilder.cpp
     view3d.cpp
     shadereditor.cpp
     shader.cpp

@@ -56,7 +56,7 @@ class TriMesh : public Geometry
         /// Per-vertex normal
         std::vector<float> m_normals;
         /// triples of indices into vertex array
-        std::vector<unsigned int> m_faces;
+        std::vector<unsigned int> m_triangles;
         std::vector<unsigned int> m_edges;
 };
 
