@@ -4,13 +4,14 @@
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 
+#include <iostream>
+#include <stdexcept>
+
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathBox.h>
 #include <OpenEXR/ImathColor.h>
 #include <OpenEXR/ImathMatrix.h>
 
-#include <iostream>
-#include <stdexcept>
 #include <tinyformat.h>
 
 
@@ -173,6 +174,10 @@ void attachToParentConsole();
 /// id, which isn't quite the same thing but should work as a unique id on the
 /// machine.
 std::string currentUserUid();
+
+
+/// Sleep for msecs milliseconds
+void milliSleep(int msecs);
 
 
 //------------------------------------------------------------------------------

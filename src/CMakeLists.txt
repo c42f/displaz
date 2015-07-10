@@ -44,6 +44,7 @@ set(srcs
     geometrycollection.cpp
     glutil.cpp
     hcloudview.cpp
+    InterProcessLock.cpp
     IpcChannel.cpp
     qtlogger.cpp
     main.cpp
