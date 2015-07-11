@@ -14,7 +14,7 @@
 #   include <string.h>   // strerror()
 #endif
 
-#include "tinyformat.h"
+#include <tinyformat.h>
 
 
 #ifdef _WIN32
@@ -27,7 +27,13 @@ class InterProcessLock::Impl
 
 #else
 
-/// Posix implementation
+
+/// Posix implementation using a file lock
+///
+/// Amusing/depressing perspective about the borkenness of posix locking:
+/// http://0pointer.de/blog/projects/locking.html
+/// Luckily the usage below falls into the category of "trivial usage on a
+/// very-probably-local filesystem"...
 class InterProcessLock::Impl
 {
     public:
@@ -47,6 +53,8 @@ class InterProcessLock::Impl
 
         bool tryLock()
         {
+            if (m_fd != -1)
+                return true; // Already have lock
             // Open file
             while (true)
             {
@@ -60,24 +68,24 @@ class InterProcessLock::Impl
                     return false;
                 }
             }
-            // Lock without blocking
+            // Try to lock without blocking
             while (flock(m_fd, LOCK_EX | LOCK_NB) == -1)
             {
                 if (errno == EINTR)
                     continue;
+                // Other errors cancel the lock attempt
+                close(m_fd);
+                m_fd = -1;
                 if (errno == EWOULDBLOCK)
                 {
-                    // Lock already held by another process
-                    close(m_fd);
-                    m_fd = -1;
-                    return false;
+                    /* another process has the lock */
                 }
                 else
                 {
                     tfm::format(std::cerr, "Unexpected error locking file %s: %s\n",
                                 m_lockPath, strerror(errno));
-                    return false;
                 }
+                return false;
             }
             return true;
         }

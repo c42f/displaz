@@ -15,8 +15,10 @@
 class InterProcessLock
 {
     public:
+        /// Create lock named with the UTF-8 string `lockName`
         InterProcessLock(const std::string& lockName);
 
+        /// Calls unlock()
         ~InterProcessLock();
 
         /// Try to acquire the lock, returning immediately.
@@ -26,7 +28,7 @@ class InterProcessLock
         /// process).
         bool tryLock();
 
-        /// Release the lock.
+        /// Release the lock and clean up.
         ///
         /// Do nothing if the lock wasn't previously acquired.
         void unlock();
