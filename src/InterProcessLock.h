@@ -34,7 +34,7 @@ class InterProcessLock
         void unlock();
 
     private:
-        struct Impl;
+        class Impl;
         // Hidden system-dependent implementation
         std::unique_ptr<Impl> m_impl;
 };

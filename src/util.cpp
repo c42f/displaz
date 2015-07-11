@@ -89,7 +89,7 @@ std::string currentUserUid()
 void milliSleep(int msecs)
 {
 #ifdef _WIN32
-    Sleep(uint(msecs));
+    Sleep((DWORD)msecs);
 #else
     struct timespec ts = {msecs/1000, (msecs % 1000)*1000*1000};
     nanosleep(&ts, NULL);

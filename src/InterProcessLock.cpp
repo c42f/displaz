@@ -19,10 +19,65 @@
 
 #ifdef _WIN32
 
-/// Windows implementation
+/// Windows implementation using creation of a windows mutex as the lock
 class InterProcessLock::Impl
 {
     public:
+        Impl(const std::string& lockName)
+            : m_mutex(NULL)
+        {
+            // Convert UTF-8 lock name to windows-native UTF-16
+            m_lockName.resize(MultiByteToWideChar(CP_UTF8, 0, lockName.c_str(), -1, NULL, 0));
+            MultiByteToWideChar(CP_UTF8, 0, lockName.c_str(), -1,
+                                &m_lockName[0], (int)m_lockName.size());
+        }
+
+        ~Impl()
+        {
+            unlock();
+        }
+
+        bool tryLock()
+        {
+            if (m_mutex)
+                return true;
+            // CreateMutex() creates a new named mutex *or* gets a handle to
+            // the existing mutex with the same name.
+            m_mutex = CreateMutexW(NULL, FALSE, m_lockName.c_str());
+            if (!m_mutex)
+            {
+                std::cerr << "Unexpected CreateMutex() failure: " << GetLastError() << "\n";
+                return false;
+            }
+            // Expect to always get here with valid m_mutex.  If we were the
+            // process which created it, consider that we obtained the lock.
+            // Yes, this is a bit strange - we don't call WaitForSingleObject()
+            // to actually lock the mutex at all!
+            if (GetLastError() == ERROR_ALREADY_EXISTS)
+            {
+                // Didn't lock - close handle early so that when the process
+                // with the lock exits the system will destroy the mutex
+                // entirely.  This will allow another process to recreate it
+                // and obtain the lock, regardless of whether there's a process
+                // without the lock which is still hanging around.
+                CloseHandle(m_mutex);
+                m_mutex = NULL;
+            }
+            return m_mutex != NULL;
+        }
+
+        void unlock()
+        {
+            if (m_mutex)
+            {
+                CloseHandle(m_mutex);
+                m_mutex = NULL;
+            }
+        }
+
+    private:
+        std::wstring m_lockName;
+        HANDLE m_mutex;
 };
 
 #else
