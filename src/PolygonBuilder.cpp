@@ -16,11 +16,11 @@
 static void initTPPLPoly(TPPLPoly& poly,
                          const std::vector<float>& verts,
                          int xind, int yind,
-                         const GLuint* inds, size_t size,
+                         const GLuint* inds, int size,
                          bool isHole)
 {
     poly.Init(size);
-    for (size_t i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i)
     {
         poly[i].x = verts[3*inds[i]+xind];
         poly[i].y = verts[3*inds[i]+yind];
@@ -80,7 +80,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
         // TODO: Use Triangulate_MONO, after figuring out why it's not always
         // working?
         initTPPLPoly(poly, verts, xind, yind,
-                     outerRingInds.data(), outerRingInds.size(), false);
+                     outerRingInds.data(), (int)outerRingInds.size(), false);
         TPPLPartition polypartition;
         if (!polypartition.Triangulate_EC(&poly, &triangles))
         {
@@ -95,7 +95,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
         inputPolys.resize(1 + innerRingSizes.size());
         auto polyIter = inputPolys.begin();
         initTPPLPoly(*polyIter, verts, xind, yind,
-                     outerRingInds.data(), outerRingInds.size(), false);
+                     outerRingInds.data(), (int)outerRingInds.size(), false);
         ++polyIter;
         for (size_t i = 0, j = 0; i < innerRingSizes.size(); ++i, ++polyIter)
         {
@@ -107,7 +107,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
                 return false;
             }
             initTPPLPoly(*polyIter, verts, xind, yind,
-                         innerRingInds.data() + j, count, true);
+                         innerRingInds.data() + j, (int)count, true);
             j += count;
         }
         // Triangulate
