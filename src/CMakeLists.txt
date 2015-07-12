@@ -153,12 +153,10 @@ if (DISPLAZ_USE_TESTS)
     add_executable(util_test util_test.cpp)
     add_executable(streampagecache_test streampagecache_test.cpp)
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
+    target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
     add_test(util_test util_test)
     add_test(streampagecache_test streampagecache_test)
-    get_target_property(InterProcessLock_test_location InterProcessLock_test LOCATION)
-    add_test(InterProcessLock_test
-             ${CMAKE_CURRENT_SOURCE_DIR}/InterProcessLock_test.sh
-             ${InterProcessLock_test_location})
+    add_test(InterProcessLock_test InterProcessLock_test master)
     list(APPEND allTargets util_test streampagecache_test)
 endif()
 
