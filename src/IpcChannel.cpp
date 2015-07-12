@@ -28,16 +28,16 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
     QElapsedTimer timer;
     timer.start();
     qint64 currTimeout = timeoutMsecs;
-    for (int64_t tryIter = 0;; ++tryIter)
+    while (true)
     {
         socket->connectToServer(serverName);
         if (socket->waitForConnected(currTimeout))
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
-        // Several error codes are retryable
-        if (socket->error() == QLocalSocket::SocketResourceError ||
-            socket->error() == QLocalSocket::ConnectionError)
+        if (timeoutMsecs >= 0)
+            currTimeout = timeoutMsecs - timer.elapsed();
+        if (socket->error() == QLocalSocket::SocketTimeoutError)
         {
-            // Retryable errors - continue
+            return std::unique_ptr<IpcChannel>();
         }
         else if (socket->error() == QLocalSocket::UnknownSocketError)
         {
@@ -45,27 +45,13 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
             // a bad state from which it never recovers.  Make a new one.
             socket.reset(new QLocalSocket());
         }
-        else
-        {
-            // Other errors => we can't connect.  Give up!
-//            QString msg;
-//            QDebug dbg(&msg);
-//            dbg << "Fatal socket failure: " << socket->error();
-//            std::cerr << msg.toUtf8() << "\n";
-            return std::unique_ptr<IpcChannel>();
-        }
-        if (socket->error() == QLocalSocket::UnknownSocketError)
-            socket.reset(new QLocalSocket());
-        if (timeoutMsecs >= 0)
-            currTimeout = timeoutMsecs - timer.elapsed();
-        // DEBUG logging
-//        if ((tryIter & (tryIter - 1)) == 0) // power of two
-//        {
-//            QString msg;
-//            QDebug dbg(&msg);
-//            dbg << "Retrying " << tryIter << "(socket failure: " << socket->error() << ")";
-//            std::cerr << msg.toUtf8() << "\n";
-//        }
+        // For maximum robustness, consider all other errors to be retryable.
+        //
+        // Some errors such as ServerNotFoundError may seem fatal, but a race
+        // condition may occur where the remote instance has only just started
+        // and hasn't created the socket yet.  Prevent busy looping on these
+        // kinds of conditions by including a small sleep between retries.
+        milliSleep(1);
     }
 }
 
