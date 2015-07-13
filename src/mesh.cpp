@@ -211,19 +211,22 @@ bool loadPlyFile(const QString& fileName,
 
     // Attach callbacks for polygons with holes.
     // This isn't a standard at all, it's something I just made up :-/
-    long npolygons = ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index",
-                                     face_cb, &info, PolygonBuilder::OuterRingInds);
+    long npolygons = 0;
+    npolygons += ply_set_read_cb(ply.get(), "polygon", "vertex_index",
+                                 face_cb, &info, PolygonBuilder::OuterRingInds);
+    npolygons += ply_set_read_cb(ply.get(), "polygon", "outer_vertex_index",
+                                 face_cb, &info, PolygonBuilder::OuterRingInds); // DEPRECATED
     nfaces += npolygons;
     if (npolygons > 0)
     {
         // Holes
-        if (ply_set_read_cb(ply.get(), "polygon", "inner_polygon_vertex_counts",
+        if (ply_set_read_cb(ply.get(), "polygon", "inner_vertex_counts",
                             face_cb, &info, PolygonBuilder::InnerRingSizes))
         {
             if (!ply_set_read_cb(ply.get(), "polygon", "inner_vertex_index",
                                  face_cb, &info, PolygonBuilder::InnerRingInds))
             {
-                g_logger.error("Found ply property polygon.inner_polygon_vertex_counts "
+                g_logger.error("Found ply property polygon.inner_vertex_counts "
                                "without polygon.inner_vertex_index");
                 return false;
             }

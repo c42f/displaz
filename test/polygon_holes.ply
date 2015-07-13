@@ -27,8 +27,8 @@ property double x
 property double y
 property double z
 element polygon 2
-property list int int outer_vertex_index
-property list int int inner_polygon_vertex_counts
+property list int int vertex_index
+property list int int inner_vertex_counts
 property list int int inner_vertex_index
 end_header
 0 0 0
