@@ -1,22 +1,15 @@
 ply
 format ascii 1.0
-element metadata 1
-property int version
-property int srid
-property int model_type
-property double confidence_level
 element vertex 13
 property double x
 property double y
 property double z
 element polygon 1
-property int flags
 property list int int vertex_index
 property list int int inner_vertex_counts
 property list int int inner_vertex_index
 property double radius
 end_header
-2 32756 1 1.0000000000000000
 0.7500000000000000 44.5000000000000000 0.0000000000000000
 -0.7500000000000000 44.5000000000000000 0.0000000000000000
 -4.5000000000000000 35.5000000000000000 0.0000000000000000
@@ -30,4 +23,4 @@ end_header
 -1.1250000000000000 40.0000000000000000 0.0000000000000000
 1.1250000000000000 40.0000000000000000 0.0000000000000000
 0.0000000000000000 42.2500000000000000 0.0000000000000000
-10 9 0 1 2 3 4 5 6 7 8 1 4 4 9 10 11 12 0.2500000000000000
+9 0 1 2 3 4 5 6 7 8 1 4 4 9 10 11 12 0.2500000000000000
