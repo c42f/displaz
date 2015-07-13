@@ -32,9 +32,9 @@
 
 #include <memory>
 
-#include <QtCore/QMap>
-#include <QtOpenGL/QGLShader>
-#include <QtOpenGL/QGLShaderProgram>
+#include <QMap>
+#include <QOpenGLShader>
+#include <QOpenGLShaderProgram>
 
 
 /// Representation of a shader "parameter" (uniform variable or attribute)
@@ -107,8 +107,8 @@ inline bool operator<(const ShaderParam& p1, const ShaderParam& p2)
 class Shader
 {
     public:
-        Shader(QGLShader::ShaderType type, const QGLContext* context)
-            : m_shader(type, context)
+        Shader(QOpenGLShader::ShaderType type)
+            : m_shader(type)
         { }
 
         /// Return list of uniform shader parameters
@@ -124,7 +124,7 @@ class Shader
         }
 
         /// Access to underlying shader
-        QGLShader* shader()
+        QOpenGLShader* shader()
         {
             return &m_shader;
         }
@@ -133,7 +133,7 @@ class Shader
 
     private:
         QList<ShaderParam> m_uniforms;
-        QGLShader m_shader;  ///< Underlying shader
+        QOpenGLShader m_shader;  ///< Underlying shader
         QByteArray m_source; ///< Non-mangled source code
 };
 
@@ -150,10 +150,10 @@ class ShaderProgram : public QObject
     Q_OBJECT
 
     public:
-        ShaderProgram(const QGLContext * context, QObject* parent = 0);
+        ShaderProgram(const QOpenGLContext * context, QObject* parent = 0);
 
         /// Access to the underlying shader program
-        QGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
+        QOpenGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
 
         /// Set up UI for the shader
         void setupParameterUI(QWidget* parentWidget);
@@ -161,7 +161,7 @@ class ShaderProgram : public QObject
         void setUniforms();
 
         /// Reset the context
-        void setContext(const QGLContext* context);
+        void setContext(const QOpenGLContext* context);
 
         /// Read shader source from given file and call setShader()
         bool setShaderFromSourceFile(QString fileName);
@@ -206,7 +206,7 @@ class ShaderProgram : public QObject
     private:
         void setupParameters();
 
-        const QGLContext* m_context;
+        const QOpenGLContext* m_context;
         double m_pointSize;
         double m_exposure;
         double m_contrast;
@@ -215,7 +215,7 @@ class ShaderProgram : public QObject
         ParamMap m_params;
         std::unique_ptr<Shader> m_vertexShader;
         std::unique_ptr<Shader> m_fragmentShader;
-        std::unique_ptr<QGLShaderProgram> m_shaderProgram;
+        std::unique_ptr<QOpenGLShaderProgram> m_shaderProgram;
 };
 
 

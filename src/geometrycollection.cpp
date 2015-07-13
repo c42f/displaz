@@ -29,7 +29,7 @@
 
 #include "geometrycollection.h"
 
-#include <QtCore/QThread>
+#include <QThread>
 
 #include "tinyformat.h"
 #include "fileloader.h"

@@ -30,14 +30,13 @@
 #include "glutil.h"
 #include "view3d.h"
 
-#include <QtCore/QTimer>
-#include <QtCore/QTime>
-#include <QtGui/QKeyEvent>
-#include <QtGui/QLayout>
+#include <QTimer>
+#include <QTime>
+#include <QKeyEvent>
+#include <QLayout>
 #include <QItemSelectionModel>
-#include <QtOpenGL/QGLFramebufferObject>
 #include <QMessageBox>
-//#include <QtOpenGL/QGLBuffer>
+#include <QOpenGLFramebufferObjectFormat>
 
 #include "config.h"
 #include "fileloader.h"
@@ -51,7 +50,7 @@
 
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, QWidget *parent)
-    : QGLWidget(parent),
+    : QOpenGLWidget(parent),
     m_camera(false, false),
     m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),
@@ -89,18 +88,9 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
-    makeCurrent();
-    m_shaderProgram.reset(new ShaderProgram(context()));
-    connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
-            this, SLOT(restartRender()));
-    connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
-            this, SLOT(restartRender()));
-    connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
-            this, SLOT(setupShaderParamUI()));
-
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
-    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+//    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
 
@@ -204,21 +194,28 @@ void View3D::centerOnGeometry(const QModelIndex& index)
 
 void View3D::initializeGL()
 {
-    if (glewInit() != GLEW_OK)
-    {
-        g_logger.error("%s", "Failed to initialize GLEW");
-        m_badOpenGL = true;
-        return;
-    }
-    m_shaderProgram->setContext(context());
+    initializeOpenGLFunctions();
+
+    m_shaderProgram.reset(new ShaderProgram(context()));
+    connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
+            this, SLOT(restartRender()));
+    connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
+            this, SLOT(restartRender()));
+    connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
+            this, SLOT(setupShaderParamUI()));
+    m_shaderProgram->setShaderFromSourceFile("shaders:las_points.glsl");
+
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
         geoms[i]->initializeGL();
+
+    emit initialisedGL();
 }
 
 
@@ -233,17 +230,17 @@ void View3D::resizeGL(int w, int h)
 }
 
 
-std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
+std::unique_ptr<QOpenGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
 {
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    const QGLFormat fmt = context()->format();
-    QGLFramebufferObjectFormat fboFmt;
-    fboFmt.setAttachment(QGLFramebufferObject::Depth);
+    const QSurfaceFormat fmt = context()->format();
+    QOpenGLFramebufferObjectFormat fboFmt;
+    fboFmt.setAttachment(QOpenGLFramebufferObject::Depth);
     fboFmt.setSamples(fmt.samples());
     //fboFmt.setTextureTarget();
-    return std::unique_ptr<QGLFramebufferObject>(
-        new QGLFramebufferObject(w, h, fboFmt));
+    return std::unique_ptr<QOpenGLFramebufferObject>(
+        new QOpenGLFramebufferObject(w, h, fboFmt));
 }
 
 
@@ -316,10 +313,10 @@ void View3D::paintGL()
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
 
     m_incrementalFramebuffer->release();
-    QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
-                                          m_incrementalFramebuffer.get(),
-                                          QRect(0,0,width(),height()),
-                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    QOpenGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
+                                              m_incrementalFramebuffer.get(),
+                                              QRect(0,0,width(),height()),
+                                              GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
@@ -338,12 +335,12 @@ void View3D::paintGL()
 
 
 void View3D::drawMeshes(const TransformState& transState,
-                        const std::vector<const Geometry*>& geoms) const
+                        const std::vector<const Geometry*>& geoms)
 {
     // Draw faces
     if (m_meshFaceShader->isValid())
     {
-        QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+        QOpenGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
         meshFaceShader.bind();
         M44d worldToEyeVecTransform = m_camera.viewMatrix();
         worldToEyeVecTransform[3][0] = 0;
@@ -359,7 +356,7 @@ void View3D::drawMeshes(const TransformState& transState,
     // Draw edges
     if (m_meshEdgeShader->isValid())
     {
-        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+        QOpenGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1);
         meshEdgeShader.bind();
         for(size_t i = 0; i < geoms.size(); ++i)
@@ -440,7 +437,7 @@ void View3D::keyPressEvent(QKeyEvent *event)
 
 /// Draw the 3D cursor
 void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos,
-                        float cursorRadius, float centerPointRadius) const
+                        float cursorRadius, float centerPointRadius)
 {
     V3d offset = transStateIn.cameraPos();
     TransformState transState = transStateIn.translate(offset);
@@ -534,7 +531,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
-    QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
+    QOpenGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
     QModelIndexList selection = m_selectionModel->selectedRows();

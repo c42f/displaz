@@ -39,21 +39,24 @@
 #include "shader.h"
 #include "view3d.h"
 
-#include <QtCore/QSignalMapper>
-#include <QtGui/QApplication>
-#include <QtGui/QColorDialog>
-#include <QtGui/QDockWidget>
-#include <QtGui/QFileDialog>
-#include <QtGui/QGridLayout>
-#include <QtGui/QMenuBar>
-#include <QtGui/QMessageBox>
-#include <QtGui/QPlainTextEdit>
-#include <QtGui/QProgressBar>
-#include <QtGui/QSplitter>
-#include <QtGui/QDoubleSpinBox>
-#include <QtGui/QDesktopWidget>
+#include <QSignalMapper>
+#include <QApplication>
+#include <QColorDialog>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QGridLayout>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QPlainTextEdit>
+#include <QProgressBar>
+#include <QSplitter>
+#include <QDoubleSpinBox>
+#include <QDesktopWidget>
 #include <QDropEvent>
 #include <QUrl>
+
+// TODO: JS: Weird issue with forward declaration of QMimeData in Qt5 with this explicit import
+#include <QMimeData>
 
 
 //------------------------------------------------------------------------------
@@ -199,8 +202,7 @@ PointViewerMainWindow::PointViewerMainWindow()
                                       Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
     m_shaderEditor = new ShaderEditor(shaderEditorUI);
-    connect(m_shaderEditor, SIGNAL(sendShader(QString)),
-            &m_pointView->shaderProgram(), SLOT(setShader(QString)));
+
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
     shaderEditorLayout->setContentsMargins(2,2,2,2);
     shaderEditorLayout->addWidget(m_shaderEditor, 0, 0, 1, 1);
@@ -267,7 +269,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Final setup
-    openShaderFile("shaders:las_points.glsl");
+    connect(m_pointView, SIGNAL(initialisedGL()), this, SLOT(finalSetup()));
 }
 
 
@@ -452,9 +454,15 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     m_currShaderFileName = shaderFile.fileName();
     QByteArray src = shaderFile.readAll();
     m_shaderEditor->setPlainText(src);
-    m_pointView->shaderProgram().setShader(src);
+//    m_pointView->shaderProgram().setShader(src);
 }
 
+void PointViewerMainWindow::finalSetup()
+{
+    openShaderFile("shaders:las_points.glsl");
+    connect(m_shaderEditor, SIGNAL(sendShader(QString)),
+            &m_pointView->shaderProgram(), SLOT(setShader(QString)));
+}
 
 void PointViewerMainWindow::openShaderFile()
 {

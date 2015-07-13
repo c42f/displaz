@@ -33,9 +33,9 @@
 #include <iostream>
 #include <memory>
 
-#include <QtCore/QDataStream>
-#include <QtNetwork/QLocalServer>
-#include <QtNetwork/QLocalSocket>
+#include <QDataStream>
+#include <QLocalServer>
+#include <QLocalSocket>
 
 #include "util.h"
 

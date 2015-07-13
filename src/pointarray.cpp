@@ -33,8 +33,8 @@
 
 #include "glutil.h"
 
-#include <QtOpenGL/QGLShaderProgram>
-#include <QtCore/QTime>
+#include <QOpenGLShaderProgram>
+#include <QTime>
 
 #include <unordered_map>
 #include <fstream>
@@ -534,7 +534,7 @@ void PointArray::drawTree(const TransformState& transState) const
 }
 
 
-DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
+DrawCount PointArray::drawPoints(QOpenGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
     TransformState relativeTrans = transState.translate(offset());

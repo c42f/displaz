@@ -37,7 +37,10 @@
 #include <QString>
 #include <QMetaType>
 
-class QGLShaderProgram;
+// TODO: JS: Add for porting
+#include <QObject>
+
+class QOpenGLShaderProgram;
 struct TransformState;
 
 
@@ -107,15 +110,15 @@ class Geometry : public QObject
         /// The returned DrawCount should be filled with an estimate of the
         /// actual amount of geometry shaded and whether there's any more to be
         /// drawn.
-        virtual DrawCount drawPoints(QGLShaderProgram& pointShaderProg,
+        virtual DrawCount drawPoints(QOpenGLShaderProgram& pointShaderProg,
                                      const TransformState& transState, double quality,
                                      bool incrementalDraw) const { return DrawCount(); }
 
         /// Draw edges with the given shader
-        virtual void drawEdges(QGLShaderProgram& edgeShaderProg,
+        virtual void drawEdges(QOpenGLShaderProgram& edgeShaderProg,
                                const TransformState& transState) const {}
         /// Draw faces with the given shader
-        virtual void drawFaces(QGLShaderProgram& faceShaderProg,
+        virtual void drawFaces(QOpenGLShaderProgram& faceShaderProg,
                                const TransformState& transState) const {}
 
         /// Return total number of vertices

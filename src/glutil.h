@@ -30,7 +30,8 @@
 #ifndef GLUTIL_H_INCLUDED
 #define GLUTIL_H_INCLUDED
 
-#include <GL/glew.h>
+//#include <GL/glew.h>
+#include <QOpenGLFunctions_3_2_Core>
 
 #include <vector>
 

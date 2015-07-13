@@ -2,8 +2,11 @@ project(viewer)
 
 include_directories(BEFORE
     ../thirdparty
+    ${Qt5Widgets_INCLUDE_DIRS}
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5GUI_INCLUDE_DIRS}
+    ${Qt5Network_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIR}
-    ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
     ${THIRDPARTY_INSTALL_DIR}/include
 )
@@ -18,7 +21,7 @@ set(shared_srcs
     util.cpp
     ../thirdparty/argparse.cpp
 )
-qt4_wrap_cpp(moc_srcs
+qt5_wrap_cpp(moc_srcs
     datasetui.h
     displazserver.h
     dragspinbox.h
@@ -87,13 +90,13 @@ endif()
 #-------------------------------------------------------------------------------
 # Library dependencies
 target_link_libraries(displaz
-    ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+    ${Qt5Core_LIBRARIES} ${Qt5Widgets_LIBRARIES} ${Qt5Gui_LIBRARIES} ${Qt5Network_LIBRARIES}
+    ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
 if (DISPLAZ_BUILD_DVOX)
     # TODO: Remove this dependency
-    target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
+    target_link_libraries(dvox ${Qt5Core_LIBRARIES})
 endif()
 
 if (DISPLAZ_USE_LAS)

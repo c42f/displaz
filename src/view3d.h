@@ -34,16 +34,16 @@
 #include <vector>
 #include <memory>
 
-#include <GL/glew.h>
-#include <QGLWidget>
+//#include <GL/glew.h>
+#include <QOpenGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
 #include "interactivecamera.h"
 #include "geometrycollection.h"
 
-class QGLShaderProgram;
-class QGLFramebufferObject;
+class QOpenGLShaderProgram;
+class QOpenGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 
@@ -52,7 +52,7 @@ struct TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
-class View3D : public QGLWidget
+class View3D : public QOpenGLWidget, public QOpenGLFunctions_3_2_Core
 {
     Q_OBJECT
     public:
@@ -72,6 +72,9 @@ class View3D : public QGLWidget
         const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
+
+    signals:
+        void initialisedGL();
 
     public slots:
         /// Set the backgroud color
@@ -103,17 +106,17 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
-        std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+        std::unique_ptr<QOpenGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
         void drawCursor(const TransformState& transState, const V3d& P,
-                        float cursorRadius, float centerPointRadius) const;
+                        float cursorRadius, float centerPointRadius);
 
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
 
         void drawMeshes(const TransformState& transState,
-                        const std::vector<const Geometry*>& geoms) const;
+                        const std::vector<const Geometry*>& geoms);
 
         Imath::V3d guessClickPosition(const QPoint& clickPos);
 
@@ -149,7 +152,7 @@ class View3D : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
+        std::unique_ptr<QOpenGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;

@@ -8,13 +8,11 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
-if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 project(displaz)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.11)
 
 set(defaultEmbedGlew FALSE)
 if (WIN32)
@@ -95,11 +93,21 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL)
 
-if(NOT QT_FOUND)
-    message(SEND_ERROR "Qt 4 not found")
-endif()
+# Qt modules
+find_package(Qt5Widgets)
+find_package(Qt5Core)
+find_package(Qt5Gui)
+find_package(Qt5Network)
+add_definitions(${Qt5Widgets_DEFINITIONS})
+add_definitions(${Qt5Core_DEFINITIONS})
+add_definitions(${Qt5Gui_DEFINITIONS})
+add_definitions(${Qt5Network_DEFINITIONS})
+
+# TODO: JS: Reinstate this
+#if(NOT QT_FOUND)
+#    message(SEND_ERROR "Qt 4 not found")
+#endif()
 
 if (DISPLAZ_USE_LAS)
     add_definitions(-DDISPLAZ_USE_LAS)
@@ -113,6 +121,10 @@ endif()
 
 include_directories(${ILMBASE_INCLUDES})
 
+
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS} ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
+endif()
 
 #------------------------------------------------------------------------------
 # Install directory for binaries

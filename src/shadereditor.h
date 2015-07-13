@@ -30,7 +30,7 @@
 #ifndef DISPLAZ_SHADER_EDITOR_H_INCLUDED
 #define DISPLAZ_SHADER_EDITOR_H_INCLUDED
 
-#include <QtGui/QPlainTextEdit>
+#include <QPlainTextEdit>
 
 class ShaderEditor : public QPlainTextEdit
 {

@@ -30,14 +30,15 @@
 #include "mainwindow.h"
 #include "geometrycollection.h"
 
-#include <QtCore/QDataStream>
-#include <QtCore/QTimer>
-#include <QtGui/QApplication>
-#include <QtOpenGL/QGLFormat>
+#include <QDataStream>
+#include <QTimer>
+#include <QApplication>
+#include <QSurfaceFormat>
 
 #include "argparse.h"
 #include "config.h"
 #include "displazserver.h"
+
 
 class Geometry;
 
@@ -59,17 +60,21 @@ static int storeFileName (int argc, const char *argv[])
 /// the install directories are laid out.
 static void setupQFileSearchPaths()
 {
-    QString installBinDir = QCoreApplication::applicationDirPath();
-    if (!installBinDir.endsWith("/bin"))
-    {
-        std::cerr << "WARNING: strange install location detected "
-                     "- shaders will not be found\n";
-        return;
-    }
-    QString installBaseDir = installBinDir;
-    installBaseDir.chop(4);
-    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
-    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
+    // TODO: revert hack
+    QDir::addSearchPath("shaders", QString::fromStdString("/Users/dedalus/Developer/displaz/shaders"));
+    QDir::addSearchPath("doc", QString::fromStdString("/Users/dedalus/Developer/displaz"));
+
+//    QString installBinDir = QCoreApplication::applicationDirPath();
+//    if (!installBinDir.endsWith("/bin"))
+//    {
+//        std::cerr << "WARNING: strange install location detected "
+//                     "- shaders will not be found\n";
+//        return;
+//    }
+//    QString installBaseDir = installBinDir;
+//    installBaseDir.chop(4);
+//    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
+//    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
 }
 
 
@@ -205,6 +210,11 @@ int main(int argc, char *argv[])
     //QGLFormat f = QGLFormat::defaultFormat();
     //f.setSampleBuffers(true);
     //QGLFormat::setDefaultFormat(f);
+
+    QSurfaceFormat fmt;
+    fmt.setVersion(3, 2);
+    fmt.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(fmt);
 
     PointViewerMainWindow window;
     if (useServer)

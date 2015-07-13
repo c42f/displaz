@@ -1,4 +1,4 @@
-#version 130
+#version 150
 
 // Very simple shader setup for rendering a semitransparent selection sphere.
 
