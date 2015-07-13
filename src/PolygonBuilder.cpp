@@ -19,6 +19,20 @@ static void initTPPLPoly(TPPLPoly& poly,
                          const GLuint* inds, int size,
                          bool isHole)
 {
+    // Check for explicitly closed polygons (last and first vertices equal) and
+    // discard the last vertex in these cases.  This is a pretty stupid
+    // convention, but the OGC have blessed it and now we've got a bunch of
+    // geospatial formats (kml, WKT, GeoJSON) which require it.  Sigh.
+    // http://gis.stackexchange.com/questions/10308/why-do-valid-polygons-repeat-the-same-start-and-end-point/10309#10309
+    if (inds[0] == inds[size-1] ||
+        (verts[3*inds[0]+0] == verts[3*inds[size-1]+0] &&
+         verts[3*inds[0]+1] == verts[3*inds[size-1]+1] &&
+         verts[3*inds[0]+2] == verts[3*inds[size-1]+2]))
+    {
+        g_logger.warning("Ignoring duplicate final vertex in explicitly closed polygon");
+        size -= 1;
+    }
+    // Copy into polypartition data structure
     poly.Init(size);
     for (int i = 0; i < size; ++i)
     {
