@@ -113,8 +113,6 @@ static int face_cb(p_ply_argument argument)
     long indexType = 0;
     ply_get_argument_user_data(argument, &pinfo, &indexType);
     PlyLoadInfo& info = *(PlyLoadInfo*)pinfo;
-    if (index < 0) // Ignore length argument
-        return 1;
     long vertexIndex = ply_get_argument_value(argument);
     if (info.currPoly.addIndex(indexType, length, index, vertexIndex))
     {

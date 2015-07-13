@@ -160,21 +160,24 @@ bool PolygonBuilder::addIndex(long propType, long plyListLength,
     assert(propType & m_propsAvail);
     m_propsRead |= propType; // support any ply property order
     size_t currSize = 0;
-    switch (propType)
+    if (plyListLength != 0 && plyListIndex >= 0)
     {
-#       define ADD_IND(vec) vec.push_back(vertexIndex); currSize = vec.size();
-        case OuterRingInds:  ADD_IND(m_outerRingInds);  break;
-        case InnerRingSizes: ADD_IND(m_innerRingSizes); break;
-        case InnerRingInds:  ADD_IND(m_innerRingInds);  break;
-#       undef ADD_IND
-        default: assert(0 && "Unexpected index type");
-    }
-    if (propType != InnerRingSizes &&
-        (vertexIndex < 0 || vertexIndex >= m_vertexCount))
-    {
-        g_logger.warning("Vertex index %d outside of valid range [0,%d] - ignoring polygon",
-                            vertexIndex, m_vertexCount-1);
-        m_valid = false;
+        switch (propType)
+        {
+#           define ADD_IND(vec) vec.push_back(vertexIndex); currSize = vec.size();
+            case OuterRingInds:  ADD_IND(m_outerRingInds);  break;
+            case InnerRingSizes: ADD_IND(m_innerRingSizes); break;
+            case InnerRingInds:  ADD_IND(m_innerRingInds);  break;
+#           undef ADD_IND
+            default: assert(0 && "Unexpected index type");
+        }
+        if (propType != InnerRingSizes &&
+            (vertexIndex < 0 || vertexIndex >= m_vertexCount))
+        {
+            g_logger.warning("Vertex index %d outside of valid range [0,%d] - ignoring polygon",
+                                vertexIndex, m_vertexCount-1);
+            m_valid = false;
+        }
     }
     return m_propsRead == m_propsAvail && (long)currSize == plyListLength;
 }

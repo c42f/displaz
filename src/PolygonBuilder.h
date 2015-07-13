@@ -30,8 +30,11 @@ class PolygonBuilder
         /// Add index to polygon definition.
         ///
         /// propType      - One of FacePropertyType
-        /// plyListLength - Length of ply property list currently being read
-        /// plyListIndex  - Index in current ply property list
+        /// plyListLength - Length of ply property list currently being read.
+        /// plyListIndex  - Index in current ply property list.  If negative,
+        ///                 addIndex will ignore plyListIndex and vertexIndex,
+        ///                 but consider propType to have been seen for this
+        ///                 polygon (used to support polygons with zero holes).
         /// vertexIndex   - Index of vertex to be added
         ///
         /// Return true if the current polygon is complete.
