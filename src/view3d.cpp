@@ -228,8 +228,11 @@ std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w,
     // for samples==1, so work around it by forcing 0, if possible
     fboFmt.setSamples(fmt.samples() > 1 ? fmt.samples() : 0);
     //fboFmt.setTextureTarget();
-    return std::unique_ptr<QGLFramebufferObject>(
-        new QGLFramebufferObject(w, h, fboFmt));
+    std::unique_ptr<QGLFramebufferObject> fbo;
+    fbo.reset(new QGLFramebufferObject(w, h, fboFmt));
+    if (fbo.get() && fbo->attachment()==QGLFramebufferObject::NoAttachment)
+        g_logger.error("%s", "Failed to attach FBO depth buffer.");
+    return fbo;
 }
 
 
