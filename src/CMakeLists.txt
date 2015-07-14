@@ -46,6 +46,7 @@ set(srcs
     hcloudview.cpp
     InterProcessLock.cpp
     IpcChannel.cpp
+    interactivecamera.cpp
     qtlogger.cpp
     main.cpp
     mainwindow.cpp

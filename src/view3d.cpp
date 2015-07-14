@@ -39,8 +39,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
-    m_incrementalFrameTimer(0),
-    m_incrementalDraw(false),
+    m_drawState(0),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
@@ -76,9 +75,10 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
 
-    m_incrementalFrameTimer = new QTimer(this);
-    m_incrementalFrameTimer->setSingleShot(false);
-    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+    m_drawTimer = new QTimer(this);
+    m_drawTimer->setSingleShot(false);
+    connect(m_drawTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+    m_drawTimer->start(20);
 }
 
 
@@ -87,7 +87,7 @@ View3D::~View3D() { }
 
 void View3D::restartRender()
 {
-    m_incrementalDraw = false;
+    m_drawState = DS_FIRST_DRAW;
     update();
 }
 
@@ -96,7 +96,8 @@ void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1)
         centerOnGeometry(m_geometries->index(0));
-    restartRender();
+    else
+        restartRender();
 }
 
 
@@ -158,11 +159,13 @@ void View3D::toggleDrawBoundingBoxes()
     restartRender();
 }
 
+
 void View3D::toggleDrawCursor()
 {
     m_drawCursor = !m_drawCursor;
     restartRender();
 }
+
 
 void View3D::toggleDrawAxes()
 {
@@ -170,19 +173,13 @@ void View3D::toggleDrawAxes()
     restartRender();
 }
 
-void View3D::toggleCameraMode()
-{
-    m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
-}
-
 
 void View3D::centerOnGeometry(const QModelIndex& index)
 {
     const Geometry& geom = *m_geometries->get()[index.row()];
     m_cursorPos = geom.centroid();
-    m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+    m_camera.animateTo(m_camera.rotation(), m_cursorPos, std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
 
@@ -233,6 +230,9 @@ std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w,
 
 void View3D::paintGL()
 {
+    if(m_drawState == DS_NOTHING_TO_DRAW)
+        return;
+
     if (m_badOpenGL)
         return;
     QTime frameTimer;
@@ -251,21 +251,21 @@ void View3D::paintGL()
     glDepthFunc(GL_LEQUAL);
     glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
                  m_backgroundColor.blueF(), 1.0f);
-    if (!m_incrementalDraw)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     std::vector<const Geometry*> geoms = selectedGeometry();
 
-    // Draw bounding boxes
-    if(m_drawBoundingBoxes && !m_incrementalDraw)
+    if(m_drawState == DS_FIRST_DRAW)
     {
-        for(size_t i = 0; i < geoms.size(); ++i)
-            drawBoundingBox(transState, geoms[i]->boundingBox(), Imath::C3f(1));
-    }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw meshes and lines
-    if (!m_incrementalDraw)
-    {
+        // Draw bounding boxes
+        if(m_drawBoundingBoxes)
+        {
+            for(size_t i = 0; i < geoms.size(); ++i)
+               drawBoundingBox(transState, geoms[i]->boundingBox(), Imath::C3f(1));
+        }
+
+        // Draw meshes and lines
         drawMeshes(transState, geoms);
 
         // Generic draw for any other geometry
@@ -277,12 +277,12 @@ void View3D::paintGL()
     }
 
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
-    const double targetMillisecs = 40;
+    const double targetMillisecs = 20;
     double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
-                                             m_incrementalDraw);
+                                             m_drawState == DS_ADDITIONAL_DRAW);
 
     // Render points
-    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
+    DrawCount drawCount = drawPoints(transState, geoms, quality, m_drawState == DS_ADDITIONAL_DRAW);
 
     // Measure frame time to update estimate for how much geometry we can draw
     // with a reasonable frame rate
@@ -320,10 +320,9 @@ void View3D::paintGL()
 
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
-        m_incrementalFrameTimer->stop();
-    else
-        m_incrementalFrameTimer->start(10);
-    m_incrementalDraw = true;
+        m_drawState = DS_NOTHING_TO_DRAW;
+    else if(m_mouseButton == Qt::NoButton && !m_camera.isAnimating())
+        m_drawState = DS_ADDITIONAL_DRAW;
 }
 
 
@@ -381,16 +380,24 @@ void View3D::mousePressEvent(QMouseEvent* event)
                           pointInfo, posDiff.length(), posDiff);
             // Snap cursor /and/ camera to new position
             // TODO: Decouple these, but in a sensible way
+
+            // Reset view to from top
             m_cursorPos = newPos;
-            m_camera.setCenter(newPos);
-            m_prevCursorSnap = newPos;
+            m_camera.animateTo(m_camera.rotation(), newPos, m_camera.eyeToCenterDistance());
         }
     }
 }
 
 
-void View3D::mouseMoveEvent(QMouseEvent* event)
+void View3D::mouseReleaseEvent(QMouseEvent* event)
 {
+    m_mouseButton = Qt::NoButton;
+    paintGL();
+}
+
+
+void View3D::mouseMoveEvent(QMouseEvent* event)
+{ 
     if (m_mouseButton == Qt::MidButton)
         return;
     bool zooming = m_mouseButton == Qt::RightButton;
@@ -418,10 +425,45 @@ void View3D::wheelEvent(QWheelEvent* event)
 
 void View3D::keyPressEvent(QKeyEvent *event)
 {
+    if(m_camera.isAnimating() || m_mouseButton != Qt::NoButton)
+    {
+        event->ignore();
+        return;
+    }
+
     if(event->key() == Qt::Key_C)
     {
         // Centre camera on current cursor location
-        m_camera.setCenter(m_cursorPos);
+        m_camera.animateTo(m_camera.rotation(), m_cursorPos, m_camera.eyeToCenterDistance());
+    }
+    else if(event->key() == Qt::Key_Z)
+    {
+        // Reset center and zoom to encompass selected geometries
+        std::vector<const Geometry*> geoms = selectedGeometry();
+        if(geoms.size() > 0)
+        {
+            Imath::Box3d bbox = geoms[0]->boundingBox();
+            for (unsigned int i = 1; i < geoms.size(); ++i)
+                bbox.extendBy(geoms[i]->boundingBox());
+            m_cursorPos       = bbox.center();
+            const double diag = (bbox.max - bbox.min).length();
+            m_camera.animateTo(m_camera.rotation(), m_cursorPos, std::max<double>(2*m_camera.clipNear(), diag*0.7));
+        }
+    }
+    else if(event->key() == Qt::Key_R)
+    {
+        // Snap to nearest axis position
+        QQuaternion rot = m_camera.rotation();
+        // snap view pos to nearest axis
+        InteractiveCamera::snapRotationToAxis(QVector3D(0, 0, 1), rot);
+        // snap view up to nearest axis
+        InteractiveCamera::snapRotationToAxis(QVector3D(0, 1, 0), rot);
+        m_camera.animateTo(rot, m_cursorPos, m_camera.eyeToCenterDistance());
+    }
+    else if(event->key() == Qt::Key_T)
+    {
+        // Rotate to top view
+        m_camera.animateTo(QQuaternion(), m_cursorPos, m_camera.eyeToCenterDistance());
     }
     else
         event->ignore();
@@ -778,6 +820,5 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
         geoms.push_back(geomAll[sel[i].row()].get());
     return geoms;
 }
-
 
 // vi: set et:
