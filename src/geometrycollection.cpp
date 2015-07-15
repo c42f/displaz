@@ -13,9 +13,12 @@ GeometryCollection::GeometryCollection(QObject* parent)
 
 void GeometryCollection::clear()
 {
-    emit beginRemoveRows(QModelIndex(), 0, (int)m_geometries.size()-1);
-    m_geometries.clear();
-    emit endRemoveRows();
+    if (m_geometries.size())
+    {
+        emit beginRemoveRows(QModelIndex(), 0, (int)m_geometries.size()-1);
+        m_geometries.clear();
+        emit endRemoveRows();
+    }
 }
 
 
