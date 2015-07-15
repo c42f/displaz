@@ -224,7 +224,9 @@ std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w,
     const QGLFormat fmt = context()->format();
     QGLFramebufferObjectFormat fboFmt;
     fboFmt.setAttachment(QGLFramebufferObject::Depth);
-    fboFmt.setSamples(fmt.samples());
+    // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
+    // for samples==1, so work around it by forcing 0, if possible
+    fboFmt.setSamples(fmt.samples() > 1 ? fmt.samples() : 0);
     //fboFmt.setTextureTarget();
     return std::unique_ptr<QGLFramebufferObject>(
         new QGLFramebufferObject(w, h, fboFmt));
