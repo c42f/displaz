@@ -107,7 +107,7 @@ Next, in the x64 cross tools command prompt::
     cd displaz
     mkdir build_external
     cd build_external
-    cmake -G "NMake Makefiles" ..\thirdparty\external
+    cmake -G "NMake Makefiles" -D CMAKE_BUILD_TYPE=Release ..\thirdparty\external
     nmake
     cd ..
 
@@ -116,6 +116,7 @@ Next, in the x64 cross tools command prompt::
     mkdir build
     cd build
     cmake -G "NMake Makefiles" ^
+        -D CMAKE_BUILD_TYPE=Release ^
         -D QT_QMAKE_EXECUTABLE:PATH=C:\Qt\4.8.6\bin\qmake.exe ^
         -D CMAKE_INSTALL_PREFIX:PATH=dist ^
         ..
