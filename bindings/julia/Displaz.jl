@@ -121,7 +121,7 @@ end
 
 
 function clf()
-    @async run(`displaz -shader generic_points.glsl -clear`)
+    run(`displaz -shader generic_points.glsl -clear`)
     nothing
 end
 
