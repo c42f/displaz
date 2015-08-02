@@ -4,7 +4,11 @@
 #include "mainwindow.h"
 #include "geometrycollection.h"
 
+#include <fstream>
+
 #include <QtCore/QDataStream>
+#include <QtCore/QProcess>
+#include <QtCore/QTextCodec>
 #include <QtCore/QTimer>
 #include <QtGui/QApplication>
 #include <QtOpenGL/QGLFormat>
@@ -41,26 +45,27 @@ static void setupQFileSearchPaths()
 }
 
 
-/// Get resource name for displaz IPC
-///
-/// This is a combination of the program name and user name to avoid any name
-/// clashes, along with a user-defined suffix.
-static std::string displazIpcName(const std::string& suffix = "")
+/// Run the main GUI window
+int runGui(int argc, char **argv)
 {
-    std::string name = "displaz-ipc-" + currentUserUid();
-    if (!suffix.empty())
-        name += "-" + suffix;
-    return name;
-}
+    std::string lockName;
+    std::string lockId;
+    std::string socketName;
 
+    ArgParse::ArgParse ap;
+    ap.options(
+        "displaz - internal GUI mode",
+        "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
+        "-socketname %s", &socketName,             "Local socket name for IPC",
+        NULL
+    );
 
-/// Run the main GUI window event loop
-int runGuiEventLoop(int argc, char **argv,
-                    bool useServer, QString socketName,
-                    int maxPointCount, QString shaderName,
-                    QStringList initialFileNames,
-                    bool removeInitialFiles)
-{
+    if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
+    {
+        std::cerr << "ERROR: " << ap.geterror() << std::endl;
+        return EXIT_FAILURE;
+    }
+
     QApplication app(argc, argv);
 
     setupQFileSearchPaths();
@@ -77,16 +82,26 @@ int runGuiEventLoop(int argc, char **argv,
     //QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window;
-    window.setMaxPointCount(maxPointCount);
-    if (useServer)
-        window.startIpcServer(socketName);
-    if (!shaderName.isEmpty())
-        window.openShaderFile(shaderName);
+    InterProcessLock instanceLock(lockName);
+    if (!lockId.empty())
+        instanceLock.inherit(lockId);
+    if (!socketName.empty())
+        window.startIpcServer(QString::fromStdString(socketName));
     window.show();
-    for (int i = 0; i < initialFileNames.size(); ++i)
-        window.fileLoader().loadFile(initialFileNames[i], removeInitialFiles);
-
     return app.exec();
+}
+
+
+/// Get resource name for displaz IPC
+///
+/// This is a combination of the program name and user name to avoid any name
+/// clashes, along with a user-defined suffix.
+static std::string displazIpcName(const std::string& suffix = "")
+{
+    std::string name = "displaz-ipc-" + currentUserUid();
+    if (!suffix.empty())
+        name += "-" + suffix;
+    return name;
 }
 
 
@@ -102,23 +117,32 @@ static int storeFileName (int argc, const char *argv[])
 
 int main(int argc, char *argv[])
 {
-    ArgParse::ArgParse ap;
+    attachToParentConsole();
+    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
+
+    // Special case handling for running the GUI.  All user-visible command
+    // line handling happens below.
+    if (argc > 1 && std::string(argv[1]) == "RUN_GUI")
+        return runGui(argc-1, argv+1);
+
     bool printVersion = false;
     bool printHelp = false;
-    int maxPointCount = 200000000;
+    int maxPointCount = -1;
     std::string serverName = "default";
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
-    bool useServer = true;
+    bool useServer = true;  // FIXME!
 
     bool clearFiles = false;
     bool addFiles = false;
     bool rmTemp = false;
     bool quitRemote = false;
     bool queryCursor = false;
+    bool background = false;
 
+    ArgParse::ArgParse ap;
     ap.options(
         "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
@@ -136,6 +160,7 @@ int main(int argc, char *argv[])
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
+        "-background",   &background,    "Put process in background - do not wait for displaz GUI to exit",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -143,7 +168,6 @@ int main(int argc, char *argv[])
         NULL
     );
 
-    attachToParentConsole();
     if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
     {
         ap.usage();
@@ -162,23 +186,20 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    if (!useServer && (quitRemote || queryCursor || clearFiles))
-    {
-        std::cerr << "ERROR: given commands cannot be combined with -noserver\n";
-        return EXIT_FAILURE;
-    }
+    // Use QCoreApplication rather than QApplication here since it doesn't
+    // require GUI resources which can get exhaused if a lot of instances are
+    // started at once.
+    QCoreApplication application(argc, argv);
 
     std::string ipcResourceName = displazIpcName(serverName);
     QString socketName = QString::fromStdString(ipcResourceName);
 
-    InterProcessLock instanceLock(ipcResourceName + ".lock");
+    std::string lockName = ipcResourceName + ".lock";
+    InterProcessLock instanceLock(lockName);
+    bool startedGui = false;
     if (!useServer || instanceLock.tryLock())
     {
-        // Current process should act as the main GUI window, exiting when it
-        // closes.
-
-        // First check that the user hasn't made a mess of the command line
-        // options:
+        // Check that the user hasn't made a mess of the command line options
         if (queryCursor)
         {
             std::cerr << "ERROR: No remote displaz instance found\n";
@@ -189,20 +210,41 @@ int main(int argc, char *argv[])
             return EXIT_SUCCESS;
         }
 
-        return runGuiEventLoop(argc, argv, useServer, socketName,
-                               maxPointCount, QString::fromStdString(shaderName),
-                               g_initialFileNames, rmTemp);
+        // Launch the main GUI window in a separate process.
+        QStringList args;
+        args << "RUN_GUI";
+        if (useServer)
+        {
+            args << "-instancelock" << QString::fromStdString(lockName)
+                                    << QString::fromStdString(instanceLock.makeLockId())
+                 << "-socketname"   << socketName;
+        }
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args,
+                                     QDir::currentPath()))
+        {
+            std::cerr << "ERROR: Could not start remote displaz process\n";
+            return EXIT_FAILURE;
+        }
+        startedGui = true;
     }
 
-    // Another displaz instance is running - try to communicate with it.
+    // Remote displaz instance should now be running (either it existed
+    // already, or we started it above).  Communicate with it via the socket
+    // interface to set any requested parameters, load additional files etc.
+    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
+    if (!channel)
+    {
+        std::cerr << "ERROR: Could not open IPC channel to remote instance - exiting\n";
+        return EXIT_FAILURE;
+    }
 
     // Format IPC message, or exit if none specified.
     //
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.
-    QByteArray command;
     if (!g_initialFileNames.empty())
     {
+        QByteArray command;
         QDir currentDir = QDir::current();
         command = addFiles ? "ADD_FILES" : "OPEN_FILES";
         if (rmTemp)
@@ -212,59 +254,55 @@ int main(int argc, char *argv[])
             command += "\n";
             command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
         }
+        channel->sendMessage(command);
     }
-    else if (clearFiles)
+    if (clearFiles)
     {
-        command = "CLEAR_FILES";
+        channel->sendMessage("CLEAR_FILES");
     }
-    else if (yaw != -DBL_MAX)
+    if (yaw != -DBL_MAX)
     {
-        command = "SET_VIEW_ANGLES\n" +
-                  QByteArray().setNum(yaw)   + "\n" +
-                  QByteArray().setNum(pitch) + "\n" +
-                  QByteArray().setNum(roll);
+        channel->sendMessage("SET_VIEW_ANGLES\n" +
+                             QByteArray().setNum(yaw)   + "\n" +
+                             QByteArray().setNum(pitch) + "\n" +
+                             QByteArray().setNum(roll));
     }
-    else if (viewRadius != -DBL_MAX)
+    if (viewRadius != -DBL_MAX)
     {
-        command = "SET_VIEW_RADIUS\n" +
-                  QByteArray().setNum(viewRadius);
+        channel->sendMessage("SET_VIEW_RADIUS\n" +
+                             QByteArray().setNum(viewRadius));
     }
-    else if (quitRemote)
+    if (quitRemote)
     {
-        command = "QUIT";
+        channel->sendMessage("QUIT");
     }
-    else if (queryCursor)
-    {
-        command = "QUERY_CURSOR";
-    }
-    else
-    {
-        std::cerr << "WARNING: Existing window found, but no remote "
-                        "command specified - exiting\n";
-        return EXIT_FAILURE;
-    }
-
-    // Using Qt sockets requires QCoreApplication or QApplication to be
-    // instantiated.  Create a QCoreApplication since it doesn't require GUI
-    // resources which can get exhaused if a lot of instances go down this code
-    // path.
-    QCoreApplication app(argc, argv);
-
-    // Attempt to locate a running displaz instance
-    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
-    if (!channel)
-    {
-        std::cerr << "ERROR: Could not open IPC channel to remote instance - exiting\n";
-        return EXIT_FAILURE;
-    }
-    channel->sendMessage(command);
     if (queryCursor)
     {
+        channel->sendMessage("QUERY_CURSOR");
         QByteArray msg = channel->receiveMessage();
         std::cout.write(msg.data(), msg.length());
         std::cout << "\n";
     }
-    channel->disconnectFromServer();
+    if (maxPointCount > 0)
+    {
+        channel->sendMessage("SET_MAX_POINT_COUNT\n" +
+                             QByteArray().setNum(maxPointCount));
+    }
+    if (!shaderName.empty() && startedGui)
+    {
+        // Note - only send the OPEN_SHADER command when the GUI is initially
+        // started, since this is probably what you want when using from a
+        // scripting language.
+        // TODO: This shader open behaviour seems a bit inconsistent - figure
+        // out how to make it nicer?
+        channel->sendMessage(QByteArray("OPEN_SHADER\n") +
+                             shaderName.c_str());
+    }
+
+    if (startedGui && !background)
+        channel->waitForDisconnected(-1);
+    else
+        channel->disconnectFromServer();
 
     return EXIT_SUCCESS;
 }

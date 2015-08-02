@@ -47,13 +47,6 @@ class PointViewerMainWindow : public QMainWindow
         /// socket previously in use is deleted.
         void startIpcServer(const QString& socketName);
 
-        /// Set maximum total desired number of points
-        ///
-        /// An attempt will be made to keep the total number of vertices less
-        /// than this, but this is quite hard to ensure, so the limit may be
-        /// violated.
-        void setMaxPointCount(size_t maxPointCount) { m_maxPointCount = maxPointCount; }
-
     public slots:
         void handleMessage(QByteArray message);
         void openShaderFile(const QString& shaderFileName);

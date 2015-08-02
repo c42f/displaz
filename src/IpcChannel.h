@@ -42,6 +42,11 @@ class IpcChannel : public QObject
         /// Synchronous disconnect from server
         void disconnectFromServer(int timeoutMsecs = 10000);
 
+        /// Synchronous wait for server to disconnect
+        ///
+        /// If timeoutMsecs is -1, wait indefinitely.
+        void waitForDisconnected(int timeoutMsecs = 10000);
+
     public slots:
         /// Send message asynchronously
         ///

@@ -88,6 +88,13 @@ void IpcChannel::disconnectFromServer(int timeoutMsecs)
 }
 
 
+void IpcChannel::waitForDisconnected(int timeoutMsecs)
+{
+    if (m_socket->state() != QLocalSocket::UnconnectedState)
+        m_socket->waitForDisconnected(timeoutMsecs);
+}
+
+
 //--------------------------------------------------
 // Private functions
 

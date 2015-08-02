@@ -12,6 +12,11 @@
 ///
 /// An acquired lock has process lifetime - the system will clean it up in the
 /// event that the process crashes.
+///
+/// On unix, the implementation is based on the flock() API, so the lock is
+/// shared between parent and child after a call to either fork() or execve().
+/// In this case, both processes must exit or call unlock() before the lock is
+/// released.
 class InterProcessLock
 {
     public:
@@ -28,10 +33,26 @@ class InterProcessLock
         /// process).
         bool tryLock();
 
+        /// Inherit lock from a parent process.
+        ///
+        /// The lockId parameter provides a way pass a system dependent lock id
+        /// from a parent to child process.  Depending on the system, the lock
+        /// may already have been inherited during the creation of the child
+        /// process, in which case this is just book keeping and hooks things
+        /// up so that unlock() can be used.
+        ///
+        /// Return true if the lock was successfully inherited, false otherwise.
+        bool inherit(const std::string& lockId);
+
         /// Release the lock and clean up.
         ///
         /// Do nothing if the lock wasn't previously acquired.
         void unlock();
+
+        /// Format lock identifier as a string for passing to a child process.
+        ///
+        /// If currently unlocked, return the empty string.
+        std::string makeLockId() const;
 
     private:
         class Impl;
