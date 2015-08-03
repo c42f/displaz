@@ -15,6 +15,7 @@
 #   include <io.h>
 #else
 #   include <unistd.h>
+#   include <signal.h>
 #endif
 
 #include "tinyformat.h"
@@ -74,6 +75,17 @@ void attachToParentConsole()
 }
 
 
+void milliSleep(int msecs)
+{
+#ifdef _WIN32
+    Sleep((DWORD)msecs);
+#else
+    struct timespec ts = {msecs/1000, (msecs % 1000)*1000*1000};
+    nanosleep(&ts, NULL);
+#endif
+}
+
+
 std::string currentUserUid()
 {
 #   ifdef _WIN32
@@ -86,17 +98,63 @@ std::string currentUserUid()
 }
 
 
-void milliSleep(int msecs)
-{
 #ifdef _WIN32
-    Sleep((DWORD)msecs);
+
+class SigIntTransferHandler::Impl
+{
+    public:
+        // TODO
+        Impl(int64_t targetProcess) {}
+};
+
 #else
-    struct timespec ts = {msecs/1000, (msecs % 1000)*1000*1000};
-    nanosleep(&ts, NULL);
+
+class SigIntTransferHandler::Impl
+{
+    public:
+        Impl(int64_t targetProcess)
+            : m_targetProcess(targetProcess)
+        {
+            assert(!g_impl);
+            g_impl = this;
+            signal(SIGINT, &passSignalToTarget);
+        }
+
+        ~Impl()
+        {
+            signal(SIGINT, SIG_DFL);
+            g_impl = NULL;
+        }
+
+    private:
+        static void passSignalToTarget(int signum)
+        {
+            assert(g_impl);
+            // Send signal to target and reraise
+            kill(g_impl->m_targetProcess, signum);
+            signal(SIGINT, SIG_DFL);
+            raise(SIGINT);
+        }
+
+        int64_t m_targetProcess;
+
+        static Impl* g_impl;
+};
+
+SigIntTransferHandler::Impl* SigIntTransferHandler::Impl::g_impl = NULL;
+
 #endif
-}
 
 
+SigIntTransferHandler::SigIntTransferHandler(int64_t targetProcess)
+    : m_impl(new Impl(targetProcess))
+{ }
+
+SigIntTransferHandler::~SigIntTransferHandler()
+{ }
+
+
+//------------------------------------------------------------------------------
 bool iequals(const std::string& a, const std::string& b)
 {
     if (a.size() != b.size())

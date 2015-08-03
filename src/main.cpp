@@ -92,6 +92,8 @@ int runGui(int argc, char **argv)
 }
 
 
+//------------------------------------------------------------------------------
+
 /// Get resource name for displaz IPC
 ///
 /// This is a combination of the program name and user name to avoid any name
@@ -197,6 +199,7 @@ int main(int argc, char *argv[])
     std::string lockName = ipcResourceName + ".lock";
     InterProcessLock instanceLock(lockName);
     bool startedGui = false;
+    qint64 guiPid = -1;
     if (!useServer || instanceLock.tryLock())
     {
         // Check that the user hasn't made a mess of the command line options
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
                  << "-socketname"   << socketName;
         }
         if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args,
-                                     QDir::currentPath()))
+                                     QDir::currentPath(), &guiPid))
         {
             std::cerr << "ERROR: Could not start remote displaz process\n";
             return EXIT_FAILURE;
@@ -300,9 +303,14 @@ int main(int argc, char *argv[])
     }
 
     if (startedGui && !background)
+    {
+        SigIntTransferHandler sigIntHandler(guiPid);
         channel->waitForDisconnected(-1);
+    }
     else
+    {
         channel->disconnectFromServer();
+    }
 
     return EXIT_SUCCESS;
 }
