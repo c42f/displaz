@@ -9,6 +9,7 @@
 #include <QString>
 
 #include "logger.h"
+#include "qtutil.h"
 
 /// Logger class which logs output to qt signals
 class QtLogger : public QObject, public Logger
@@ -63,14 +64,6 @@ class LogViewer : public QPlainTextEdit
         /// Append plain text message to the running log
         void appendLogMessage(int logLevel, QString msg);
 };
-
-
-//------------------------------------------------------------------------------
-/// Print QByteArray to std stream as raw data
-std::ostream& operator<<(std::ostream& out, const QByteArray& s);
-
-/// Print QString to std stream as utf8
-std::ostream& operator<<(std::ostream& out, const QString& s);
 
 
 #endif // QT_LOGGER_H_INCLUDED

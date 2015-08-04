@@ -1,96 +1,17 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "mainwindow.h"
-#include "geometrycollection.h"
-
-#include <fstream>
-
-#include <QtCore/QDataStream>
+//#include <QtCore/QDataStream>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
 #include <QtCore/QProcess>
 #include <QtCore/QTextCodec>
-#include <QtCore/QTimer>
-#include <QtGui/QApplication>
-#include <QtOpenGL/QGLFormat>
 
 #include "argparse.h"
 #include "config.h"
-#include "fileloader.h"
 #include "IpcChannel.h"
 #include "InterProcessLock.h"
 #include "util.h"
-
-class Geometry;
-
-
-/// Set up search paths to our application directory for Qt's file search
-/// mechanism.
-///
-/// This allows us to use "shaders:las_points.glsl" as a path to a shader
-/// in the rest of the code, regardless of the system-specific details of how
-/// the install directories are laid out.
-static void setupQFileSearchPaths()
-{
-    QString installBinDir = QCoreApplication::applicationDirPath();
-    if (!installBinDir.endsWith("/bin"))
-    {
-        std::cerr << "WARNING: strange install location detected "
-                     "- shaders will not be found\n";
-        return;
-    }
-    QString installBaseDir = installBinDir;
-    installBaseDir.chop(4);
-    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
-    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
-}
-
-
-/// Run the main GUI window
-int runGui(int argc, char **argv)
-{
-    std::string lockName;
-    std::string lockId;
-    std::string socketName;
-
-    ArgParse::ArgParse ap;
-    ap.options(
-        "displaz - internal GUI mode",
-        "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
-        "-socketname %s", &socketName,             "Local socket name for IPC",
-        NULL
-    );
-
-    if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
-    {
-        std::cerr << "ERROR: " << ap.geterror() << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    QApplication app(argc, argv);
-
-    setupQFileSearchPaths();
-
-    Q_INIT_RESOURCE(resource);
-
-    qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
-
-    // Multisampled antialiasing - this makes rendered point clouds look much
-    // nicer, but also makes the render much slower, especially on lower
-    // powered graphics cards.
-    //QGLFormat f = QGLFormat::defaultFormat();
-    //f.setSampleBuffers(true);
-    //QGLFormat::setDefaultFormat(f);
-
-    PointViewerMainWindow window;
-    InterProcessLock instanceLock(lockName);
-    if (!lockId.empty())
-        instanceLock.inherit(lockId);
-    if (!socketName.empty())
-        window.startIpcServer(QString::fromStdString(socketName));
-    window.show();
-    return app.exec();
-}
-
 
 //------------------------------------------------------------------------------
 
@@ -119,14 +40,6 @@ static int storeFileName (int argc, const char *argv[])
 
 int main(int argc, char *argv[])
 {
-    attachToParentConsole();
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
-
-    // Special case handling for running the GUI.  All user-visible command
-    // line handling happens below.
-    if (argc > 1 && std::string(argv[1]) == "RUN_GUI")
-        return runGui(argc-1, argv+1);
-
     bool printVersion = false;
     bool printHelp = false;
     int maxPointCount = -1;
@@ -192,6 +105,7 @@ int main(int argc, char *argv[])
     // require GUI resources which can get exhaused if a lot of instances are
     // started at once.
     QCoreApplication application(argc, argv);
+    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 
     std::string ipcResourceName = displazIpcName(serverName);
     QString socketName = QString::fromStdString(ipcResourceName);
@@ -215,14 +129,15 @@ int main(int argc, char *argv[])
 
         // Launch the main GUI window in a separate process.
         QStringList args;
-        args << "RUN_GUI";
         if (useServer)
         {
             args << "-instancelock" << QString::fromStdString(lockName)
                                     << QString::fromStdString(instanceLock.makeLockId())
                  << "-socketname"   << socketName;
         }
-        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args,
+        QString guiExe = QDir(QCoreApplication::applicationDirPath())
+                         .absoluteFilePath("displaz-gui");
+        if (!QProcess::startDetached(guiExe, args,
                                      QDir::currentPath(), &guiPid))
         {
             std::cerr << "ERROR: Could not start remote displaz process\n";

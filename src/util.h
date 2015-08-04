@@ -157,18 +157,6 @@ T readLE(std::istream& in)
 //------------------------------------------------------------------------------
 // System utils
 
-/// On windows, attach to the console of the parent process if possible.  On
-/// other platforms, do nothing.
-///
-/// By default, stdout and stderr disappear completely for windows GUI
-/// programs.  This is rather unhelpful when using or debugging a program from
-/// the console, so this function can be used to re-attach to the parent
-/// console (if it's present) after startup.  This lets us get console
-/// messages, while also avoiding an annoying extra window when started
-/// normally via the GUI.
-void attachToParentConsole();
-
-
 /// Get a unique id string for the current user
 ///
 /// On unix this is just the user's numeric id; on windows, it's the session

@@ -10,7 +10,9 @@ include_directories(BEFORE
 
 #------------------------------------------------------------------------------
 # Sources
-set(shared_srcs
+
+# Generic utility stuff
+set(util_srcs
     logger.cpp
     geomfield.cpp
     typespec.cpp
@@ -18,7 +20,19 @@ set(shared_srcs
     util.cpp
     ../thirdparty/argparse.cpp
 )
-qt4_wrap_cpp(moc_srcs
+
+# Interprocess communication
+qt4_wrap_cpp(ipc_moc_srcs
+    IpcChannel.h
+)
+set(ipc_srcs
+    ${ipc_moc_srcs}
+    InterProcessLock.cpp
+    IpcChannel.cpp
+)
+
+# GUI
+qt4_wrap_cpp(gui_moc_srcs
     datasetui.h
     dragspinbox.h
     fileloader.h
@@ -26,7 +40,6 @@ qt4_wrap_cpp(moc_srcs
     geometrycollection.h
     hcloudview.h
     helpdialog.h
-    IpcChannel.h
     interactivecamera.h
     qtlogger.h
     mainwindow.h
@@ -35,19 +48,18 @@ qt4_wrap_cpp(moc_srcs
     shadereditor.h
     shader.h
 )
-set(srcs
-    ${shared_srcs}
-    ${moc_srcs}
+set(gui_srcs
+    ${util_srcs}
+    ${ipc_srcs}
+    ${gui_moc_srcs}
     datasetui.cpp
     DrawCostModel.cpp
     geometry.cpp
     geometrycollection.cpp
     glutil.cpp
     hcloudview.cpp
-    InterProcessLock.cpp
-    IpcChannel.cpp
     qtlogger.cpp
-    main.cpp
+    guimain.cpp
     mainwindow.cpp
     mesh.cpp
     ply_io.cpp
@@ -61,10 +73,16 @@ set(srcs
     ../thirdparty/polypartition/polypartition.cpp
 )
 
+set(cli_srcs
+    ${util_srcs}
+    ${ipc_srcs}
+    main.cpp
+)
+
 qt4_add_resources(RCC_GENERATED resource.qrc)
 
 if(WIN32)
-    list(APPEND srcs ../package/windows_resources.rc)
+    list(APPEND gui_srcs ../package/windows_resources.rc)
 endif()
 
 if(WIN32)
@@ -77,23 +95,27 @@ configure_file(config.h.in.cmake config.h @ONLY)
 include_directories(${PROJECT_BINARY_DIR})
 
 
-set(allTargets displaz)
-add_executable(displaz WIN32 ${srcs} ${RCC_GENERATED})
+set(allTargets displaz displaz-gui)
+add_executable(displaz ${cli_srcs})
+add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
     list(APPEND allTargets dvox)
     add_executable(dvox
+        ${util_srcs}
         dvox.cpp
         pointdbwriter.cpp
         pointdb.cpp
         voxelizer.cpp
-        ${shared_srcs}
     )
 endif()
 
 #-------------------------------------------------------------------------------
 # Library dependencies
 target_link_libraries(displaz
+    ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${ILMBASE_LIBRARIES}
+)
+target_link_libraries(displaz-gui
     ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
@@ -105,12 +127,12 @@ endif()
 
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
-        target_link_libraries (displaz ${PDAL_LIBRARIES})
+        target_link_libraries (displaz-gui ${PDAL_LIBRARIES})
         if (DISPLAZ_BUILD_DVOX)
             message(SEND_ERROR "experimental dvox utility doesn't support pdal as a backend")
         endif()
     else()
-        target_link_libraries (displaz ${LASLIB_LIBRARIES})
+        target_link_libraries (displaz-gui ${LASLIB_LIBRARIES})
         if (DISPLAZ_BUILD_DVOX)
             target_link_libraries (dvox ${LASLIB_LIBRARIES})
         endif()
@@ -119,7 +141,7 @@ endif()
 
 
 if(WIN32)
-    target_link_libraries(displaz
+    target_link_libraries(displaz-gui
         ${QT_QTMAIN_LIBRARY}
     )
     if(DISPLAZ_STATIC)
@@ -133,7 +155,8 @@ endif()
 
 
 # Install
-install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
+install(TARGETS displaz     DESTINATION "${DISPLAZ_BIN_DIR}")
+install(TARGETS displaz-gui DESTINATION "${DISPLAZ_BIN_DIR}")
 if (DISPLAZ_BUILD_DVOX)
     install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
 endif()

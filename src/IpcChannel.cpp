@@ -8,7 +8,7 @@
 #include <QElapsedTimer>
 
 #include "util.h"
-#include "qtlogger.h"
+#include "qtutil.h"
 
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),

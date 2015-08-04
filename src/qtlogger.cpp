@@ -41,17 +41,3 @@ void LogViewer::appendLogMessage(int logLevel, QString msg)
     ensureCursorVisible();
 }
 
-
-//------------------------------------------------------------------------------
-std::ostream& operator<<(std::ostream& out, const QByteArray& s)
-{
-    out.write(s.constData(), s.size());
-    return out;
-}
-
-
-std::ostream& operator<<(std::ostream& out, const QString& s)
-{
-    out << s.toUtf8();
-    return out;
-}
