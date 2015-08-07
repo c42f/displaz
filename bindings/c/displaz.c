@@ -98,14 +98,11 @@ int launch_displaz(const char* fileName, const char* options)
     if (!options)
         options = "-add";
     char cmd[1024];
-    // TODO: Make displaz itself do the fork & launch in the background
-    // internally for consistency between first time startup and sending data
-    // via the socket?
 #ifdef _WIN32
     // needs testing
-    _snprintf(cmd, 1024, "start /b displaz %s %s", options, fileName);
+    _snprintf(cmd, 1024, "displaz -background %s %s", options, fileName);
 #else
-    snprintf(cmd, 1024, "displaz %s %s &", options, fileName);
+    snprintf(cmd, 1024, "displaz -background %s %s", options, fileName);
 #endif
     cmd[1023] = '\0';
     //printf("%s\n", cmd);

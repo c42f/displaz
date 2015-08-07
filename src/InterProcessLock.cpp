@@ -1,5 +1,7 @@
 #include "InterProcessLock.h"
 
+#include <stdexcept>
+
 #ifdef _WIN32
 #   ifndef WIN32_LEAN_AND_MEAN
 #       define WIN32_LEAN_AND_MEAN
@@ -66,6 +68,24 @@ class InterProcessLock::Impl
             return m_mutex != NULL;
         }
 
+        bool inherit(const std::string& /*lockId*/)
+        {
+            // See tryLock() for an explanation
+            m_mutex = CreateMutexW(NULL, FALSE, m_lockName.c_str());
+            if (!m_mutex)
+            {
+                std::cerr << "Unexpected CreateMutex() failure: " << GetLastError() << "\n";
+                return false;
+            }
+            // In contrast to tryLock(), want mutex to already exist
+            if (GetLastError() != ERROR_ALREADY_EXISTS)
+            {
+                CloseHandle(m_mutex);
+                m_mutex = NULL;
+            }
+            return m_mutex != NULL;
+        }
+
         void unlock()
         {
             if (m_mutex)
@@ -73,6 +93,15 @@ class InterProcessLock::Impl
                 CloseHandle(m_mutex);
                 m_mutex = NULL;
             }
+        }
+
+        std::string makeLockId() const
+        {
+            if (!m_mutex)
+                return std::string();
+            // On windows, we don't need any extra information other than the
+            // lock name to reacquire it from a child process.
+            return "id";
         }
 
     private:
@@ -145,16 +174,43 @@ class InterProcessLock::Impl
             return true;
         }
 
+        bool inherit(const std::string& lockId)
+        {
+            if (m_fd != -1)
+                return false;
+            // Reacquire the lock in a child process.  This assumes the
+            // parent process has called execve(), with the file descriptor
+            // remaining open in the child, so we can just pick it back up.
+            int fd = -1;
+            if (sscanf(lockId.c_str(), "fd:%d", &fd) != 1 || fd < 0)
+                return false;
+            if (fcntl(fd, F_GETFD) == -1)
+                return false;
+            m_fd = fd;
+            return true;
+        }
+
         void unlock()
         {
+            // NB: We don't call flock(m_fd, LOCK_UN) here - simply close m_fd
+            // instead, and the locks will be released automatically when the
+            // process holds the last reference to the file descriptor.
+            //
+            // m_fd is only duplicated after a call to fork() or execve(), in
+            // which case both parent and child will share a copy of the lock,
+            // and explicitly unlocking would cause both to loose the lock.
             if (m_fd == -1)
                 return;
-            while (flock(m_fd, LOCK_UN) == -1 && errno == EINTR)
-                ;
             while (close(m_fd) == -1 && errno == EINTR)
                 ;
-            unlink(m_lockPath.c_str());
             m_fd = -1;
+        }
+
+        std::string makeLockId() const
+        {
+            if (m_fd == -1)
+                return std::string();
+            return tfm::format("fd:%d", m_fd);
         }
 
     private:
@@ -182,4 +238,14 @@ bool InterProcessLock::tryLock()
 void InterProcessLock::unlock()
 {
     m_impl->unlock();
+}
+
+bool InterProcessLock::inherit(const std::string& lockId)
+{
+    return m_impl->inherit(lockId);
+}
+
+std::string InterProcessLock::makeLockId() const
+{
+    return m_impl->makeLockId();
 }

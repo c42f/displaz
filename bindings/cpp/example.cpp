@@ -32,7 +32,7 @@ int main()
                   1000,
                   0, 0, 255);
 
-    //displaz.setShader("generic_points.glsl");
+    displaz.setShader("generic_points.glsl");
 
     displaz.plot(points);
 

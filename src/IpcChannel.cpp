@@ -5,10 +5,11 @@
 
 #include <cstdint>
 
+#include <QCoreApplication>
 #include <QElapsedTimer>
 
 #include "util.h"
-#include "qtlogger.h"
+#include "qtutil.h"
 
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),
@@ -80,11 +81,38 @@ void IpcChannel::sendMessage(const QByteArray& message)
     m_socket->flush();
 }
 
-void IpcChannel::disconnectFromServer(int timeoutMsecs)
+bool IpcChannel::disconnectFromServer(int timeoutMsecs)
 {
     m_socket->disconnectFromServer();
-    if (m_socket->state() != QLocalSocket::UnconnectedState)
-        m_socket->waitForDisconnected(timeoutMsecs);
+    return waitForDisconnected(timeoutMsecs);
+}
+
+
+bool IpcChannel::waitForDisconnected(int timeoutMsecs)
+{
+#   ifdef _WIN32
+    // Aaaarghhh.  QLocalSocket::waitForDisconnected() seems like it's meant to
+    // be a synchronous version for use without an event loop.  However,
+    // qt-4.8.6 on windows (and it appears many other versions, including
+    // latest qt-5) have a bug in waitForDisconnected(): it uses a separate
+    // thread to do the actual write via an internal QWindowsPipeWriter.
+    // QLocalSocket is notified when the data has has been written via a
+    // connection, but this is a QueuedConnection due to being in a separate
+    // thread, so the signal never gets seen unless an event loop is used.
+    QElapsedTimer timer;
+    timer.start();
+    while (m_socket->state() != QLocalSocket::UnconnectedState &&
+           (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
+    {
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        milliSleep(1); // Crude, but whatever.  This is a workaround.
+    }
+    return m_socket->state() == QLocalSocket::UnconnectedState;
+#   else
+    if (m_socket->state() == QLocalSocket::UnconnectedState)
+        return true;
+    return m_socket->waitForDisconnected(timeoutMsecs);
+#   endif
 }
 
 

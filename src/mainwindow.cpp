@@ -43,7 +43,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
-    m_maxPointCount(100000000),
+    m_maxPointCount(200000000),
     m_geometries(0),
     m_ipcServer(0)
 {
@@ -414,6 +414,14 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else if (commandTokens[0] == "QUIT")
     {
         close();
+    }
+    else if (commandTokens[0] == "SET_MAX_POINT_COUNT")
+    {
+        m_maxPointCount = commandTokens[1].toLongLong();
+    }
+    else if (commandTokens[0] == "OPEN_SHADER")
+    {
+        openShaderFile(commandTokens[1]);
     }
     else
     {
