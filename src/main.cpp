@@ -6,6 +6,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QProcess>
 #include <QtCore/QTextCodec>
+#include <QtCore/QUuid>
 
 #include "argparse.h"
 #include "config.h"
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
-    bool useServer = true;  // FIXME!
+    bool noServer = false;
 
     bool clearFiles = false;
     bool addFiles = false;
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 
         "<SEPARATOR>", "\nInitial settings / remote commands:",
         "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
-        "-noserver %!",  &useServer,     "Don't attempt to open files in existing window",
+        "-noserver",     &noServer,      "Don't attempt to open files in existing window",
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
-        "-background",   &background,    "Put process in background - do not wait for displaz GUI to exit",
+        "-background",   &background,    "Put process in background - do not wait for displaz GUI to exit before returning",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -107,6 +108,13 @@ int main(int argc, char *argv[])
     QCoreApplication application(argc, argv);
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 
+    if (noServer)
+    {
+        // Use unique random server name if -noserver specified: the GUI still
+        // needs arguments passed to it.
+        serverName = QUuid::createUuid().toByteArray().constData();
+    }
+
     std::string ipcResourceName = displazIpcName(serverName);
     QString socketName = QString::fromStdString(ipcResourceName);
 
@@ -114,7 +122,7 @@ int main(int argc, char *argv[])
     InterProcessLock instanceLock(lockName);
     bool startedGui = false;
     qint64 guiPid = -1;
-    if (!useServer || instanceLock.tryLock())
+    if (instanceLock.tryLock())
     {
         // Check that the user hasn't made a mess of the command line options
         if (queryCursor)
@@ -129,12 +137,9 @@ int main(int argc, char *argv[])
 
         // Launch the main GUI window in a separate process.
         QStringList args;
-        if (useServer)
-        {
-            args << "-instancelock" << QString::fromStdString(lockName)
-                                    << QString::fromStdString(instanceLock.makeLockId())
-                 << "-socketname"   << socketName;
-        }
+        args << "-instancelock" << QString::fromStdString(lockName)
+                                << QString::fromStdString(instanceLock.makeLockId())
+             << "-socketname"   << socketName;
         QString guiExe = QDir(QCoreApplication::applicationDirPath())
                          .absoluteFilePath("displaz-gui");
         if (!QProcess::startDetached(guiExe, args,
