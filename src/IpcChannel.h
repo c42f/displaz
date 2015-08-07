@@ -40,12 +40,16 @@ class IpcChannel : public QObject
         QByteArray receiveMessage(int timeoutMsecs = 10000);
 
         /// Synchronous disconnect from server
-        void disconnectFromServer(int timeoutMsecs = 10000);
+        ///
+        /// If the connection was disconnected, return true.
+        bool disconnectFromServer(int timeoutMsecs = 10000);
 
         /// Synchronous wait for server to disconnect
         ///
+        /// If the connection was disconnected, return true.
+        ///
         /// If timeoutMsecs is -1, wait indefinitely.
-        void waitForDisconnected(int timeoutMsecs = 10000);
+        bool waitForDisconnected(int timeoutMsecs = 10000);
 
     public slots:
         /// Send message asynchronously
