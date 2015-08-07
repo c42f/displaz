@@ -286,12 +286,7 @@ class Displaz
             std::string opts = options;
             if (!m_windowName.empty())
                 opts += " -server \"" + m_windowName + "\"";
-#           ifdef _WIN32
-            // needs testing
-            cmd = "start /b displaz " + opts;
-#           else
-            cmd = "displaz " + opts + " &";
-#           endif
+            cmd = "displaz -background " + opts;
             if (m_debug)
                 std::cout << cmd << "\n";
             if (system(cmd.c_str()) != 0)
