@@ -35,7 +35,7 @@ def _interpret_spec(specstr):
 
 
 def _call_displaz(*args):
-    subprocess.Popen(['displaz'] + list(args))
+    subprocess.call(['displaz'] + list(args))
 
 
 def _write_ply(plyfile, position, color):
@@ -84,7 +84,7 @@ def plot(position, plotspec='b.', color=None):
     plyfile = os.fdopen(fd, 'w')
     _write_ply(plyfile, position, color)
     plyfile.close()
-    args = ['-shader', 'generic_points.glsl', '-rmtemp', filename]
+    args = ['-background', '-shader', 'generic_points.glsl', '-rmtemp', filename]
     if __hold_plot:
         args = ['-add'] + args
     _call_displaz(*args)
