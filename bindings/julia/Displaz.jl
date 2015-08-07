@@ -114,14 +114,14 @@ function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0])
                      (:markershape, array_semantic, markershape),
                      ))
     hold = _hold ? "-add" : []
-    @async run(`displaz $hold -shader generic_points.glsl -rmtemp $fileName`)
+    run(`displaz -background $hold -shader generic_points.glsl -rmtemp $fileName`)
     #print("displaz $holdStr -shader generic_points.glsl -rmtemp $fileName\n")
     nothing
 end
 
 
 function clf()
-    run(`displaz -shader generic_points.glsl -clear`)
+    run(`displaz -clear`)
     nothing
 end
 
