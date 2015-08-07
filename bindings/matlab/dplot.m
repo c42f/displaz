@@ -120,7 +120,7 @@ function dplot(position, varargin)
         % libraries used when building displaz.
         fixLdLibPath = 'env LD_LIBRARY_PATH=""';
     end
-    displazCall=sprintf('%s displaz %s -shader generic_points.glsl -rmtemp %s %s &', ...
+    displazCall=sprintf('%s displaz -background %s -shader generic_points.glsl -rmtemp %s %s', ...
                         fixLdLibPath, holdStr, tmpPointFileName, tmpLineFileName);
     % disp(displazCall);
     system(displazCall);
