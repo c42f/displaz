@@ -32,7 +32,7 @@
 /// codebase to avoid any need for linking in a separate library - just include
 /// this header and away you go.
 
-namespace dpz {
+namespace displaz {
 
 namespace detail {
 
@@ -140,6 +140,13 @@ class PointList
             return *this;
         }
 
+        /// Remove all points from the list, keeping the attribute list fixed
+        void clear()
+        {
+            for (size_t i = 0; i < m_data.size(); ++i)
+                m_data[i].clear();
+        }
+
         /// Append a new point to the list
         ///
         /// The values of all attributes added using `addAttribute()` must be
@@ -224,7 +231,7 @@ class PointList
 
 
 /// Class representing a remote displaz process
-class Displaz
+class Window
 {
     private:
         /// Smart pointer to C file.  We're using C file IO, since we then have
@@ -233,15 +240,11 @@ class Displaz
 
     public:
         /// Set up interface to talk to displaz instance named `windowName`
-        Displaz(const std::string& windowName = "")
+        Window(const std::string& windowName = "")
             : m_windowName(windowName),
             m_hold(true),
             m_debug(false)
-        {
-            // FIXME: Bug: can't yet start displaz window here, due to race
-            // condition on socket...
-            //sendMessage("");
-        }
+        { }
 
         /// Set plotting hold state so that plots will be overwritten or
         /// concatenated into the window depending on the value of `holdPlots`
@@ -270,6 +273,12 @@ class Displaz
             if (!m_shaderName.empty())
                 opts += " -shader \"" + m_shaderName + "\"";
             sendMessage(opts);
+        }
+
+        /// Remove all datasets from the plot window
+        void clear()
+        {
+            sendMessage("-clear");
         }
 
         /// Enable debug logging and disable deletion of temporary files
@@ -320,7 +329,7 @@ class Displaz
 };
 
 
-} // namespace dpz
+} // namespace displaz
 
 
 #endif // DISPLAZ_BINDING_H_INCLUDED

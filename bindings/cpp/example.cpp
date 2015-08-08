@@ -8,11 +8,11 @@
 // Compile in C++11 mode.
 int main()
 {
-    dpz::Displaz displaz;
-    displaz.hold(false);
-    displaz.setDebug(true);
+    displaz::Window win;
+    win.hold(false);
+    win.setDebug(true);
 
-    dpz::PointList points;
+    displaz::PointList points;
     points.addAttribute<double>("position", 3)
           .addAttribute<float>("intensity", 1)
           .addAttribute<uint8_t>("color", 3);
@@ -32,9 +32,9 @@ int main()
                   1000,
                   0, 0, 255);
 
-    displaz.setShader("generic_points.glsl");
+    win.setShader("generic_points.glsl");
 
-    displaz.plot(points);
+    win.plot(points);
 
     return 0;
 }
