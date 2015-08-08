@@ -18,8 +18,8 @@ void GeomField::format(std::ostream& out, size_t index) const
             case TypeSpec::Float:
                 switch (spec.elsize)
                 {
-                    case 4:  tfm::format(out, "%g", *(float*)val);  break;
-                    case 8:  tfm::format(out, "%g", *(double*)val); break;
+                    case 4:  tfm::format(out, "%.7g", *(float*)val);  break;
+                    case 8:  tfm::format(out, "%.16g", *(double*)val); break;
                     default: tfm::format(out, "?"); break;
                 }
                 break;
