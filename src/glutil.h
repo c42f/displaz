@@ -152,6 +152,7 @@ struct Texture
     mutable GLuint texture;
 };
 
+
 //------------------------------------------------------------------------------
 // Shader utilities
 

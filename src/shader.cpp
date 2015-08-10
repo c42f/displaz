@@ -11,6 +11,33 @@
 #include <QtGui/QComboBox>
 
 
+/// Make shader #define flags for hardware or driver-dependent blacklisted
+/// features.  Current list:
+///
+/// NO_GL_FRAG_DEPTH
+///
+static QByteArray makeBlacklistDefines()
+{
+    bool isWindows = false;
+#   ifdef _WIN32
+    isWindows = true;
+#   endif
+    bool isIntel = false;
+    // Extremely useful list of GL_VENDOR strings seen in the wild:
+    // http://feedback.wildfiregames.com/report/opengl/feature/GL_VENDOR
+    QString vendorStr = (const char*)glGetString(GL_VENDOR);
+    if (vendorStr.contains("intel", Qt::CaseInsensitive))
+        isIntel = true;
+    QByteArray defines;
+    // Blacklist use of gl_FragDepth with Intel drivers on windows - for some
+    // reason, this interacts badly with any use of gl_FragCoord, leading to
+    // gross rendering artifacts.
+    if (isWindows && isIntel)
+        defines += "#define NO_GL_FRAG_DEPTH\n";
+    return defines;
+}
+
+
 //------------------------------------------------------------------------------
 // Shader implementation
 bool Shader::compileSourceCode(const QByteArray& src)
@@ -23,6 +50,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
         case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
         case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
     }
+    defines += makeBlacklistDefines();
     QByteArray modifiedSrc = src;
     // Add defines.  Some shader compilers require #version to come first (even
     // before any #defines) so detect #version if it's present and put the
