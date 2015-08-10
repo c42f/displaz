@@ -14,7 +14,7 @@
 /// Make shader #define flags for hardware or driver-dependent blacklisted
 /// features.  Current list:
 ///
-/// NO_GL_FRAG_DEPTH
+/// BROKEN_GL_FRAG_COORD
 ///
 static QByteArray makeBlacklistDefines()
 {
@@ -29,11 +29,11 @@ static QByteArray makeBlacklistDefines()
     if (vendorStr.contains("intel", Qt::CaseInsensitive))
         isIntel = true;
     QByteArray defines;
-    // Blacklist use of gl_FragDepth with Intel drivers on windows - for some
-    // reason, this interacts badly with any use of gl_FragCoord, leading to
-    // gross rendering artifacts.
+    // Blacklist use of gl_FragCoord/gl_FragDepth with Intel drivers on
+    // windows.  For some reason, this interacts badly with any use of
+    // gl_PointCoord, leading to gross rendering artifacts.
     if (isWindows && isIntel)
-        defines += "#define NO_GL_FRAG_DEPTH\n";
+        defines += "#define BROKEN_GL_FRAG_COORD\n";
     return defines;
 }
 

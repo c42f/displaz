@@ -108,7 +108,9 @@ void main()
     if (stippleThresholds[int(gl_FragCoord.x) % 4 + 4*(int(gl_FragCoord.y) % 4)] > fragCoverage)
         discard;
         */
-    float fragDepth = gl_FragCoord.z;
+#   ifndef BROKEN_GL_FRAG_COORD
+    gl_FragDepth = gl_FragCoord.z;
+#   endif
     if (fragMarkerShape > 0 && pointScreenSize > pointScreenSizeLimit)
     {
         vec2 p = 2*(gl_PointCoord - 0.5);
@@ -117,14 +119,13 @@ void main()
             discard;
         if (fragMarkerShape == 1) // shape: sphere
         {
-            fragDepth += projectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
-                         // TODO: Why is the factor of 0.5 required here?
-                         * 0.5*modifiedPointRadius*sqrt(1-r*r);
+#           ifndef BROKEN_GL_FRAG_COORD
+            gl_FragDepth += projectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
+                            // TODO: Why is the factor of 0.5 required here?
+                            * 0.5*modifiedPointRadius*sqrt(1-r*r);
+#           endif
         }
     }
-#   ifndef NO_GL_FRAG_DEPTH
-    gl_FragDepth = fragDepth;
-#   endif
     fragColor = vec4(pointColor, 1);
 }
 
