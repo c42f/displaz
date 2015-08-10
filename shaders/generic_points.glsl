@@ -88,7 +88,9 @@ void main()
     if (markerShape2 < 0) // markerShape2 == -1: discarded.
         discard;
     // (markerShape2 == 1: Square shape)
-    float fragDepth = gl_FragCoord.z;
+#   ifndef BROKEN_GL_FRAG_COORD
+    gl_FragDepth = gl_FragCoord.z;
+#   endif
     if (markerShape2 != 1 && pointScreenSize > pointScreenSizeLimit)
     {
         float w = markerWidth;
@@ -103,9 +105,11 @@ void main()
             float r = length(p);
             if (r > 1)
                 discard;
-            fragDepth += projectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
-                         // TODO: Why is the factor of 0.5 required here?
-                         * 0.5*modifiedPointRadius*sqrt(1-r*r);
+#           ifndef BROKEN_GL_FRAG_COORD
+            gl_FragDepth += projectionMatrix[3][2] * gl_FragCoord.w*gl_FragCoord.w
+                            // TODO: Why is the factor of 0.5 required here?
+                            * 0.5*modifiedPointRadius*sqrt(1-r*r);
+#           endif
         }
         else if (markerShape2 == 2) // shape: o
         {
@@ -126,9 +130,6 @@ void main()
                 discard;
         }
     }
-#   ifndef NO_GL_FRAG_DEPTH
-    gl_FragDepth = fragDepth;
-#   endif
     fragColor = vec4(pointColor, 1);
 }
 
