@@ -210,6 +210,13 @@ void View3D::initializeGL()
         m_badOpenGL = true;
         return;
     }
+    g_logger.info("OpenGL implementation:\n"
+                  "GL_VENDOR   = %s\n"
+                  "GL_RENDERER = %s\n"
+                  "GL_VERSION  = %s",
+                  (const char*)glGetString(GL_VENDOR),
+                  (const char*)glGetString(GL_RENDERER),
+                  (const char*)glGetString(GL_VERSION));
     m_shaderProgram->setContext(context());
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
