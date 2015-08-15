@@ -260,18 +260,21 @@ class Window
         }
 
         /// Plot a list of points into the displaz window
-        void plot(PointList& points)
+        void plot(PointList& points, const std::string& dataSetName = std::string())
         {
             std::string fileName;
             FilePtr ply = openTempPly(fileName);
             points.writeToFile(ply.get());
-            std::string opts = fileName;
+            std::string opts;
             if (m_hold)
                 opts += " -add";
             if (!m_debug)
                 opts += " -rmtemp";
             if (!m_shaderName.empty())
                 opts += " -shader \"" + m_shaderName + "\"";
+            if (!dataSetName.empty())
+                opts += " -dataname \"" + dataSetName + "\"";
+            opts += " " + fileName;
             sendMessage(opts);
         }
 

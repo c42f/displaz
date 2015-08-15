@@ -29,20 +29,30 @@ static std::string displazIpcName(const std::string& suffix = "")
 }
 
 
-/// Callback for argument parsing
-static QStringList g_initialFileNames;
+/// Callback and globals for positional argument parsing
+struct PositionalArg
+{
+    std::string filePath;
+    std::string dataSetName;
+};
+
+static std::string g_dataSetName;
+static std::vector<PositionalArg> g_initialFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
-    for(int i = 0; i < argc; ++i)
-        g_initialFileNames.push_back (argv[i]);
+    assert(argc == 1);
+    PositionalArg arg;
+    arg.filePath = argv[0];
+    arg.dataSetName = g_dataSetName;
+    g_initialFileNames.push_back(arg);
+    // Dataset name must be explicitly specified for each file
+    g_dataSetName.clear();
     return 0;
 }
 
 
 int main(int argc, char *argv[])
 {
-    bool printVersion = false;
-    bool printHelp = false;
     int maxPointCount = -1;
     std::string serverName = "default";
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
@@ -58,11 +68,17 @@ int main(int argc, char *argv[])
     bool queryCursor = false;
     bool background = false;
 
+    bool printVersion = false;
+    bool printHelp = false;
+
     ArgParse::ArgParse ap;
     ap.options(
         "displaz - A lidar point cloud viewer\n"
         "Usage: displaz [opts] [file1.las ...]",
         "%*", storeFileName, "",
+
+        "<SEPARATOR>", "\nData set tagging",
+        "-dataname %s",  &g_dataSetName, "Override the displayed dataset name for the next data file on the command line with the given name",
 
         "<SEPARATOR>", "\nInitial settings / remote commands:",
         "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
@@ -169,13 +185,25 @@ int main(int argc, char *argv[])
     {
         QByteArray command;
         QDir currentDir = QDir::current();
-        command = addFiles ? "ADD_FILES" : "OPEN_FILES";
-        if (rmTemp)
-            command += "\nRMTEMP";
-        for (int i = 0; i < g_initialFileNames.size(); ++i)
+        command = "OPEN_FILES\n";
+        if (!addFiles)
         {
-            command += "\n";
-            command += currentDir.absoluteFilePath(g_initialFileNames[i]).toUtf8();
+            command += QByteArray("CLEAR");
+            command += '\0';
+        }
+        if (rmTemp)
+        {
+            command += QByteArray("RMTEMP");
+            command += '\0';
+        }
+        for (size_t i = 0; i < g_initialFileNames.size(); ++i)
+        {
+            const PositionalArg& arg = g_initialFileNames[i];
+            std::string dataSetName = !arg.dataSetName.empty() ? arg.dataSetName : arg.filePath;
+            command += '\n';
+            command += currentDir.absoluteFilePath(QString::fromStdString(arg.filePath)).toUtf8();
+            command += '\0';
+            command += QByteArray(dataSetName.data(), dataSetName.size());
         }
         channel->sendMessage(command);
     }

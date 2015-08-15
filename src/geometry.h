@@ -47,6 +47,9 @@ class Geometry : public QObject
         /// Create geometry of a type which is able to read the given file
         static std::shared_ptr<Geometry> create(QString fileName);
 
+        /// Set user-defined name for the geometry
+        void setName(const QString& name) { m_name = name; }
+
         //--------------------------------------------------
         /// Load geometry from file
         ///
@@ -127,6 +130,9 @@ class Geometry : public QObject
                                 std::string* info = 0) const = 0;
 
         //--------------------------------------------------
+        /// Get the arbitrary user-defined name for the geometry.
+        const QString& name() const { return m_name; }
+
         /// Get file name describing the source of the geometry
         const QString& fileName() const { return m_fileName; }
 
@@ -156,6 +162,7 @@ class Geometry : public QObject
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
 
     private:
+        QString m_name;
         QString m_fileName;
         V3d m_offset;
         V3d m_centroid;

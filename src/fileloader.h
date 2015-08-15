@@ -7,11 +7,37 @@
 #include <memory>
 
 #include <QFile>
+#include <QFileInfo>
 #include <QObject>
 #include <QStringList>
 
 #include "geometry.h"
 #include "qtlogger.h"
+
+
+/// Information passed along when a file is loaded
+struct FileLoadInfo
+{
+    QString filePath;     /// Path to the file on disk
+    QString dataSetName;  /// Human readable name of the dataset
+    bool deleteAfterLoad; /// Delete file after load - for use with temporary files.
+
+    FileLoadInfo() : deleteAfterLoad(false) {}
+    FileLoadInfo(const QString& filePath_, const QString& dataSetName_ = "",
+                 bool deleteAfterLoad_ = false)
+        : filePath(filePath_),
+        dataSetName(dataSetName_),
+        deleteAfterLoad(deleteAfterLoad_)
+    {
+        if (dataSetName.isEmpty())
+        {
+            QFileInfo fileInfo(filePath);
+            dataSetName = fileInfo.fileName();
+        }
+    }
+};
+
+Q_DECLARE_METATYPE(FileLoadInfo)
 
 
 /// Loader for data files supported by displaz
@@ -26,24 +52,26 @@ class FileLoader : public QObject
         FileLoader(size_t maxPointsPerFile, QObject* parent = 0)
             : QObject(parent),
             m_maxPointsPerFile(maxPointsPerFile)
-        { }
-
-    public slots:
-        /// Load file given by `fileName` asynchronously.  Threadsafe.
-        ///
-        /// -- NOTE WELL --
-        /// If `deleteAfterLoad` is true, *delete* the file after loading.
-        /// This is here so that temporary files typically loaded via a socket
-        /// can be deleted in a clean way.
-        void loadFile(QString fileName, bool deleteAfterLoad = false)
         {
-            asyncLoadFile(fileName, deleteAfterLoad, false);
+            qRegisterMetaType<FileLoadInfo>("FileLoadInfo");
         }
 
-        /// Reload file `fileName` asynchronously.  Threadsafe.
-        void reloadFile(QString fileName)
+    public slots:
+        /// Load file given by `loadInfo.filePath` asynchronously.  Threadsafe.
+        ///
+        /// -- NOTE WELL --
+        /// If `loadInfo.deleteAfterLoad` is true, *delete* the file after loading.
+        /// This is here so that temporary files typically loaded via a socket
+        /// can be deleted in a clean way.
+        void loadFile(const FileLoadInfo& loadInfo)
         {
-            asyncLoadFile(fileName, false, true);
+            asyncLoadFile(loadInfo, false);
+        }
+
+        /// Reload file `loadInfo.filePath` asynchronously.  Threadsafe.
+        void reloadFile(const FileLoadInfo& loadInfo)
+        {
+            asyncLoadFile(loadInfo, true);
         }
 
     signals:
@@ -61,49 +89,47 @@ class FileLoader : public QObject
                             bool reloaded);
 
     private slots:
-        void asyncLoadFile(QString fileName, bool deleteAfterLoad,
-                           bool reloaded)
+        void asyncLoadFile(const FileLoadInfo& loadInfo, bool reloaded)
         {
             // Queued connection guff makes this async (+threadsafe)
             QMetaObject::invokeMethod(this, "loadFileImpl", Qt::QueuedConnection,
-                                      Q_ARG(QString, fileName),
-                                      Q_ARG(bool, deleteAfterLoad),
+                                      Q_ARG(FileLoadInfo, loadInfo),
                                       Q_ARG(bool, reloaded));
         }
 
-        void loadFileImpl(QString fileName, bool deleteAfterLoad,
-                          bool reloaded)
+        void loadFileImpl(const FileLoadInfo& loadInfo, bool reloaded)
         {
-            std::shared_ptr<Geometry> geom = Geometry::create(fileName);
+            std::shared_ptr<Geometry> geom = Geometry::create(loadInfo.filePath);
+            geom->setName(loadInfo.dataSetName);
             connect(geom.get(), SIGNAL(loadProgress(int)),
                     this, SIGNAL(loadProgress(int)));
             connect(geom.get(), SIGNAL(loadStepStarted(QString)),
                     this, SIGNAL(loadStepStarted(QString)));
             try
             {
-                if (geom->loadFile(fileName, m_maxPointsPerFile))
+                if (geom->loadFile(loadInfo.filePath, m_maxPointsPerFile))
                 {
                     emit geometryLoaded(geom, reloaded);
-                    if (deleteAfterLoad)
+                    if (loadInfo.deleteAfterLoad)
                     {
                         // Only delete after successful load:  Load errors
                         // are somewhat likely to be user error trying to load
                         // something they didn't mean to.
-                        QFile::remove(fileName);
+                        QFile::remove(loadInfo.filePath);
                     }
                 }
                 else
                 {
-                    g_logger.error("Could not load %s", fileName);
+                    g_logger.error("Could not load %s", loadInfo.filePath);
                 }
             }
             catch(std::bad_alloc& /*e*/)
             {
-                g_logger.error("Ran out of memory trying to load %s", fileName);
+                g_logger.error("Ran out of memory trying to load %s", loadInfo.filePath);
             }
             catch(std::exception& e)
             {
-                g_logger.error("Error loading %s: %s", fileName, e.what());
+                g_logger.error("Error loading %s: %s", loadInfo.filePath, e.what());
             }
         }
 

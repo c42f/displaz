@@ -330,7 +330,7 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
     for (int i = 0; i < urls.size(); ++i)
     {
          if (urls[i].isLocalFile())
-             m_fileLoader->loadFile(urls[i].toLocalFile());
+             m_fileLoader->loadFile(FileLoadInfo(urls[i].toLocalFile()));
     }
 }
 
@@ -346,19 +346,23 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     QList<QByteArray> commandTokens = message.split('\n');
     if (commandTokens.empty())
         return;
-    if (commandTokens[0] == "OPEN_FILES" || commandTokens[0] == "ADD_FILES")
+    if (commandTokens[0] == "OPEN_FILES")
     {
-        bool rmTemp = false;
-        int firstFileIdx = 1;
-        if (commandTokens[1] == "RMTEMP")
-        {
-            rmTemp = true;
-            firstFileIdx = 2;
-        }
-        if (commandTokens[0] == "OPEN_FILES")
+        QList<QByteArray> flags = commandTokens[1].split('\0');
+        if (flags.contains("CLEAR"))
             m_geometries->clear();
-        for (int i = firstFileIdx; i < commandTokens.size(); ++i)
-            m_fileLoader->loadFile(commandTokens[i], rmTemp);
+        bool rmTemp = flags.contains("RMTEMP");
+        for (int i = 2; i < commandTokens.size(); ++i)
+        {
+            QList<QByteArray> pathAndName = commandTokens[i].split('\0');
+            if (pathAndName.size() != 2)
+            {
+                g_logger.error("Unrecognized OPEN_FILES token: %s",
+                               QString(commandTokens[i]));
+                continue;
+            }
+            m_fileLoader->loadFile(FileLoadInfo(pathAndName[0], pathAndName[1], rmTemp));
+        }
     }
     else if (commandTokens[0] == "CLEAR_FILES")
     {
@@ -456,7 +460,7 @@ void PointViewerMainWindow::openFiles()
         return;
     m_geometries->clear();
     for (int i = 0; i < files.size(); ++i)
-        m_fileLoader->loadFile(files[i]);
+        m_fileLoader->loadFile(FileLoadInfo(files[i]));
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
 }
@@ -475,7 +479,7 @@ void PointViewerMainWindow::addFiles()
     if (files.empty())
         return;
     for (int i = 0; i < files.size(); ++i)
-        m_fileLoader->loadFile(files[i]);
+        m_fileLoader->loadFile(FileLoadInfo(files[i]));
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
 }
@@ -544,7 +548,7 @@ void PointViewerMainWindow::reloadFiles()
 {
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (auto g = geoms.begin(); g != geoms.end(); ++g)
-        m_fileLoader->reloadFile((*g)->fileName());
+        m_fileLoader->reloadFile(FileLoadInfo((*g)->fileName()));
 }
 
 

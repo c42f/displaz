@@ -35,7 +35,7 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
     if (!index.isValid())
         return QVariant();
     if (role == Qt::DisplayRole)
-        return m_geometries[index.row()]->fileName();
+        return m_geometries[index.row()]->name();
     return QVariant();
 }
 
@@ -73,10 +73,15 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
 {
     if (reloaded)
     {
+        // FIXME: Doing it this way seems a bit nasty.  The geometry should
+        // probably reload itself (or provide a way to create a new clone of
+        // the geometry object containing the required metadata which is then
+        // reloaded?)
         for (size_t i = 0; i < m_geometries.size(); ++i)
         {
             if (m_geometries[i]->fileName() == geom->fileName())
             {
+                geom->setName(m_geometries[i]->name());
                 m_geometries[i] = geom;
                 QModelIndex idx = createIndex((int)i, 0);
                 emit dataChanged(idx, idx);
