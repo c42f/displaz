@@ -69,6 +69,11 @@ void main()
         pointScreenSize = 0;
         fragMarkerShape = -1;
     }
+    else if (pointScreenSize < 1)
+    {
+        // Clamp to minimum size of 1 to avoid aliasing with some drivers
+        pointScreenSize = 1;
+    }
     fragCoverage = coverage;
     gl_PointSize = pointScreenSize;
     gl_Position = p;

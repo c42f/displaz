@@ -62,6 +62,11 @@ void main()
         pointScreenSize = 0;
         markerShape2 = -1;
     }
+    else if (pointScreenSize < 1)
+    {
+        // Clamp to minimum size of 1 to avoid aliasing with some drivers
+        pointScreenSize = 1;
+    }
     gl_PointSize = pointScreenSize;
     gl_Position = p;
 }
