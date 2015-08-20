@@ -439,8 +439,18 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
 
 void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
 {
-    if(event->key() == Qt::Key_Escape)
-        close();
+    switch(event->key())
+    {
+        case Qt::Key_Escape:
+            close();
+            break;
+        case Qt::Key_F11:
+            if (windowState()&Qt::WindowMaximized)
+                showNormal();
+            else
+                showMaximized();
+            break;
+    }
 }
 
 
