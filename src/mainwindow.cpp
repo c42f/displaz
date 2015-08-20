@@ -43,7 +43,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
-    m_maxPointCount(200000000),
+    m_maxPointCount(200*1000*1000), // 200 million 
     m_geometries(0),
     m_ipcServer(0)
 {
