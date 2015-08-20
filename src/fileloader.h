@@ -81,6 +81,9 @@ class FileLoader : public QObject
         /// Emitted to report progress percent for current load step
         void loadProgress(int percent);
 
+        /// No more progress expected, task completed
+        void resetProgress();
+
         /// Emitted on successfully loaded geometry
         ///
         /// If reloaded is true, the load signal is the result of calling
@@ -105,6 +108,8 @@ class FileLoader : public QObject
                     this, SIGNAL(loadProgress(int)));
             connect(geom.get(), SIGNAL(loadStepStarted(QString)),
                     this, SIGNAL(loadStepStarted(QString)));
+            connect(geom.get(), SIGNAL(resetProgress()),
+                    this, SIGNAL(resetProgress()));
             try
             {
                 if (geom->loadFile(loadInfo.filePath, m_maxPointsPerFile))

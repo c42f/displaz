@@ -228,6 +228,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             this, SLOT(setProgressBarText(QString)));
     connect(m_fileLoader, SIGNAL(loadProgress(int)),
             m_progressBar, SLOT(setValue(int)));
+    connect(m_fileLoader, SIGNAL(resetProgress()),
+            m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     //logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
@@ -294,6 +296,7 @@ void PointViewerMainWindow::handleIpcConnection()
 
 void PointViewerMainWindow::setProgressBarText(QString text)
 {
+    m_progressBar->show();
     m_progressBar->setFormat(text + " (%p%)");
 }
 
