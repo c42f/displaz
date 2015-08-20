@@ -13,7 +13,7 @@
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totPoints,
+                         size_t& npoints, uint64_t& totalPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     g_logger.error("Cannot load %s: Displaz built without las support!", fileName);
@@ -65,7 +65,7 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totPoints,
+                         size_t& npoints, uint64_t& totalPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     V3d Psum(0);
@@ -96,14 +96,14 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     pdal::QuickInfo quickinfo = reader->preview();
 
     // Figure out how much to decimate the point cloud.
-    totPoints = quickinfo.m_pointCount;
-    size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
+    totalPoints = quickinfo.m_pointCount;
+    size_t decimate = totalPoints == 0 ? 1 : 1 + (totalPoints - 1) / maxPointCount;
     if(decimate > 1)
     {
         g_logger.info("Decimating \"%s\" by factor of %d",
                       fileName.toStdString(), decimate);
     }
-    npoints = (totPoints + decimate - 1) / decimate;
+    npoints = (totalPoints + decimate - 1) / decimate;
     pdal::BOX3D pdal_bounds = quickinfo.m_bounds;
     offset = V3d(0.5*(pdal_bounds.minx + pdal_bounds.maxx),
                  0.5*(pdal_bounds.miny + pdal_bounds.maxy),
@@ -177,11 +177,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
             {
                 // Randomize selected point within block to avoid repeated patterns
                 nextStore += (qrand() % decimate);
-                if(nextDecimateBlock <= totPoints && nextStore > totPoints)
-                    nextStore = totPoints;
+                if(nextDecimateBlock <= totalPoints && nextStore > totalPoints)
+                    nextStore = totalPoints;
             }
         }
-        emit loadProgress(100*readCount/totPoints);
+        emit loadProgress(100*readCount/totalPoints);
     }
 #else
     LASreadOpener lasReadOpener;
@@ -200,15 +200,15 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 
     //std::ofstream dumpFile("points.txt");
     // Figure out how much to decimate the point cloud.
-    totPoints = std::max<uint64_t>(lasReader->header.extended_number_of_point_records,
+    totalPoints = std::max<uint64_t>(lasReader->header.extended_number_of_point_records,
                                    lasReader->header.number_of_point_records);
-    size_t decimate = totPoints == 0 ? 1 : 1 + (totPoints - 1) / maxPointCount;
+    size_t decimate = totalPoints == 0 ? 1 : 1 + (totalPoints - 1) / maxPointCount;
     if(decimate > 1)
     {
         g_logger.info("Decimating \"%s\" by factor of %d",
                         fileName.toStdString(), decimate);
     }
-    npoints = (totPoints + decimate - 1) / decimate;
+    npoints = (totalPoints + decimate - 1) / decimate;
     offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
     // Attempt to place all data on the same vertical scale, but allow other
     // offsets if the magnitude of z is too large (and we would therefore loose
@@ -221,7 +221,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     fields.push_back(GeomField(TypeSpec::uint8_i(), "numberOfReturns", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "pointSourceId", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "classification", npoints));
-    if (totPoints == 0)
+    if (totalPoints == 0)
     {
         g_logger.warning("File %s has zero points", fileName);
         return true;
@@ -252,7 +252,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         // Read a point from the las file
         ++readCount;
         if(readCount % 10000 == 0)
-            emit loadProgress(100*readCount/totPoints);
+            emit loadProgress(100*readCount/totalPoints);
         V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
         bbox.extendBy(P);
         Psum += P;
@@ -287,26 +287,26 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         {
             // Randomize selected point within block to avoid repeated patterns
             nextStore += (qrand() % decimate);
-            if(nextDecimateBlock <= totPoints && nextStore > totPoints)
-                nextStore = totPoints;
+            if(nextDecimateBlock <= totalPoints && nextStore > totalPoints)
+                nextStore = totalPoints;
         }
     }
     while(lasReader->read_point());
     lasReader->close();
 #endif
-    if (readCount < totPoints)
+    if (readCount < totalPoints)
     {
         g_logger.warning("Expected %d points in file \"%s\", got %d",
-                         totPoints, fileName, readCount);
+                         totalPoints, fileName, readCount);
         npoints = storeCount;
         // Shrink all fields to fit - these will have wasted space at the end,
         // but that will be fixed during reordering.
         for (size_t i = 0; i < fields.size(); ++i)
             fields[i].size = npoints;
-        totPoints = readCount;
+        totalPoints = readCount;
     }
-    if (totPoints > 0)
-        centroid = (1.0/totPoints)*Psum;
+    if (totalPoints > 0)
+        centroid = (1.0/totalPoints)*Psum;
     return true;
 }
 
