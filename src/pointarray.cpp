@@ -406,9 +406,6 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
 
-    // Reset progress bar
-    emit resetProgress();
-
     return true;
 }
 

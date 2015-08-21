@@ -108,8 +108,6 @@ class FileLoader : public QObject
                     this, SIGNAL(loadProgress(int)));
             connect(geom.get(), SIGNAL(loadStepStarted(QString)),
                     this, SIGNAL(loadStepStarted(QString)));
-            connect(geom.get(), SIGNAL(resetProgress()),
-                    this, SIGNAL(resetProgress()));
             try
             {
                 if (geom->loadFile(loadInfo.filePath, m_maxPointsPerFile))
@@ -136,6 +134,11 @@ class FileLoader : public QObject
             {
                 g_logger.error("Error loading %s: %s", loadInfo.filePath, e.what());
             }
+
+            geom->disconnect();
+
+            // Reset progress bar
+            emit resetProgress();
         }
 
     private:
