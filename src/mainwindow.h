@@ -73,8 +73,6 @@ class PointViewerMainWindow : public QMainWindow
         void handleIpcConnection();
 
     private:
-        QColor backgroundColFromName(const QString& name) const;
-
         // Gui objects
         QProgressBar* m_progressBar;
         View3D* m_pointView;
