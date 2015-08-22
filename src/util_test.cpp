@@ -1,12 +1,13 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+#include <catch.hpp>
+
 #include "util.h"
-#include "unittest.h"
 
 int identity(int i) { return i; }
 
-void multi_partition_test()
+TEST_CASE("Simple test for multi_partition")
 {
     // Test multi_partition()
     int v[] = { 1, 1, 1, 0, 1, 2, 0, 0, 3, 3, 3 };
@@ -18,17 +19,10 @@ void multi_partition_test()
 
     int vExpect[] = { 0, 0, 0, 1, 1, 1, 1, 2, 3, 3, 3 };
     for (int i = 0; i < N; ++i)
-        CHECK_EQUAL(v[i], vExpect[i]);
+        CHECK(v[i] == vExpect[i]);
 
     int classEndInds[] = { 3, 7, 8, 11 };
     for (int i = 0; i < M; ++i)
-        CHECK_EQUAL(&v[0] + classEndInds[i], endIters[i]);
+        CHECK(classEndInds[i] == endIters[i] - &v[0]);
 }
 
-
-int main()
-{
-    multi_partition_test();
-
-    return 0;
-}

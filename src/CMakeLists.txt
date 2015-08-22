@@ -95,12 +95,10 @@ configure_file(config.h.in.cmake config.h @ONLY)
 include_directories(${PROJECT_BINARY_DIR})
 
 
-set(allTargets displaz displaz-gui)
 add_executable(displaz ${cli_srcs})
 add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
-    list(APPEND allTargets dvox)
     add_executable(dvox
         ${util_srcs}
         dvox.cpp
@@ -173,13 +171,16 @@ endif()
 #------------------------------------------------------------------------------
 # Tests
 if (DISPLAZ_USE_TESTS)
-    add_executable(util_test util_test.cpp)
-    add_executable(streampagecache_test streampagecache_test.cpp)
+    add_executable(unit_tests
+        streampagecache_test.cpp
+        util_test.cpp
+        test_main.cpp
+    )
+    add_test(unit_tests unit_tests)
+
+    # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
     target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
-    add_test(util_test util_test)
-    add_test(streampagecache_test streampagecache_test)
     add_test(InterProcessLock_test InterProcessLock_test master)
-    list(APPEND allTargets util_test streampagecache_test)
 endif()
 
