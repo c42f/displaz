@@ -1,37 +1,14 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+#include <catch.hpp>
 
-#include <cassert>
-#include <cstdlib>
 #include <cstring>
 #include <iostream>
 
-#include <tinyformat.h>
 #include "streampagecache.h"
 
-#define CHECK(cond)                                                         \
-if(!(cond))                                                                 \
-{                                                                           \
-    std::cout << "test CHECK(" #cond ") failed, line " << __LINE__ << "\n"; \
-    std::abort();                                                           \
-}
-
-//void checkEqual(char* a, char* b, size_t len)
-//{
-//    if (std::memcmp(a, b, len) != 0)
-//    {
-//        tfm::printf("Buffers not equal\n");
-//        for (size_t i = 0; i < len; ++i)
-//        {
-//            if (a[i] != b[i])
-//                tfm::printf("a[%d] = %d, b[%d] = %d\n", i, a[i], i, b[i]);
-//        }
-//        std::abort();
-//    }
-//}
-
-int main()
+TEST_CASE("Test page cache for std::istream")
 {
     const size_t size = 12345;
     char buf[size];
@@ -48,7 +25,7 @@ int main()
 
     char buf2[size] = {0};
 
-    CHECK(!cache.prefetch(900, 200));
+    CHECK_FALSE(cache.prefetch(900, 200));
     cache.fetchNow(2);
     CHECK(cache.read(buf2, 900, 200));
     //checkEqual(buf + 900, buf2, 200);
@@ -61,7 +38,5 @@ int main()
         CHECK(cache.read(buf2, i, 3));
         CHECK(std::memcmp(buf + i, buf2, 3) == 0);
     }
-
-    return 0;
 }
 
