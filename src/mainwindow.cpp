@@ -14,7 +14,6 @@
 #include "shadereditor.h"
 #include "shader.h"
 #include "view3d.h"
-#include "qtmaximise.h"
 
 #include <QtCore/QSignalMapper>
 #include <QtCore/QThread>
@@ -268,10 +267,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
 
-    // Check box and F11 shortcut for toggling maximisation
-    viewMenu->addSeparator();
-    viewMenu->addAction(new QActionMaximise(this));
-
     //--------------------------------------------------
     // Final setup
     openShaderFile("shaders:las_points.glsl");
@@ -438,17 +433,6 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else
     {
         g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));
-    }
-}
-
-
-void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
-{
-    switch(event->key())
-    {
-        case Qt::Key_Escape:
-            close();
-            break;
     }
 }
 

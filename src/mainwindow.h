@@ -52,7 +52,6 @@ class PointViewerMainWindow : public QMainWindow
         void openShaderFile(const QString& shaderFileName);
 
     protected:
-        void keyReleaseEvent(QKeyEvent* event);
         void dragEnterEvent(QDragEnterEvent *event);
         void dropEvent(QDropEvent *event);
 

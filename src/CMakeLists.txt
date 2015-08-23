@@ -42,7 +42,6 @@ qt4_wrap_cpp(gui_moc_srcs
     helpdialog.h
     interactivecamera.h
     qtlogger.h
-    qtmaximise.h
     mainwindow.h
     view3d.h
     pointarray.h
