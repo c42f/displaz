@@ -88,10 +88,14 @@ class OctreeBuilder
     public:
         OctreeBuilder(std::ostream& output, int brickRes, int leafDepth,
                       const Imath::V3d& positionOffset,
-                      const Imath::Box3d& rootBound, Logger& logger)
+                      const Imath::Box3d& rootBound,
+                      const Imath::V3f& rootRelMin, float rootWidth,
+                      Logger& logger)
             : m_output(output),
             m_brickRes(brickRes),
             m_levelInfo(leafDepth+2),
+            m_rootRelMin(rootRelMin),
+            m_rootWidth(rootWidth),
             m_logger(logger)
         {
             // Fill as much of the header in as possible; we will fill the rest
@@ -230,7 +234,10 @@ class OctreeBuilder
             VoxelBrick* brickChildren[8] = {0};
             for (int i = 0; i < 8; ++i)
                 brickChildren[i] = levelInfo.pendingNodes[i].get();
-            std::unique_ptr<VoxelBrick> brick(new VoxelBrick(m_brickRes));
+            float levelWidth = m_rootWidth/(1 << (level-1));
+            V3f parentMin = levelWidth*V3f(zOrderToVec3(levelInfo.parentMortonIndex)) +
+                            m_rootRelMin;
+            std::unique_ptr<VoxelBrick> brick(new VoxelBrick(m_brickRes, parentMin, levelWidth));
             brick->renderFromBricks(brickChildren);
             // Serialize brick to queue
             std::unique_ptr<IndexNode> indexNode =
@@ -299,6 +306,8 @@ class OctreeBuilder
         bool m_hasNodes;
         std::vector<OctreeLevelInfo> m_levelInfo;
         std::unique_ptr<IndexNode> m_rootNode;
+        Imath::V3f m_rootRelMin;
+        float m_rootWidth;
 
         Logger& m_logger;
 };

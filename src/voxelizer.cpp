@@ -8,18 +8,17 @@
 #include "octreebuilder.h"
 #include "pointdb.h"
 
-void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
-                                float pointRadius,
-                                const float* position, const float* intensity,
+void VoxelBrick::voxelizePoints(float pointRadius, const float* position,
+                                const float* intensity,
                                 const size_t* pointIndices, int npoints)
 {
-    float invVoxelWidth = m_brickRes/brickWidth;
+    float invVoxelWidth = m_brickRes/m_brickWidth;
     // Sort points into brick voxel layers according to their position
     std::vector<std::vector<size_t>> layerInds(m_brickRes);
     for (int i = 0; i < npoints; ++i)
     {
         float pz = position[3*pointIndices[i] + 2];
-        int layer = Imath::clamp((int)floor(invVoxelWidth*(pz - lowerCorner.z)),
+        int layer = Imath::clamp((int)floor(invVoxelWidth*(pz - m_minCorner.z)),
                                  0, m_brickRes-1);
         layerInds[layer].push_back(pointIndices[i]);
     }
@@ -35,12 +34,12 @@ void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
     // TODO: Could use all eight cube normals for improved viewing from
     // other angles.  This is probably only useful for appreciable vertical
     // structure - need some nicely scanned cliffs or some such to test.
-    float pixelSize = brickWidth/rasterWidth;
+    float pixelSize = m_brickWidth/rasterWidth;
     int coveredCount = 0;
     for (int z = 0; z < m_brickRes; ++z)
     {
         orthoZRender(raster.data(), zbuf.data(), rasterWidth,
-                     lowerCorner.x, lowerCorner.y, pixelSize,
+                     m_minCorner.x, m_minCorner.y, pixelSize,
                      position, intensity, pointRadius,
                      layerInds[z].data(), (int)layerInds[z].size());
         for (int y = 0; y < m_brickRes; ++y)
@@ -70,8 +69,8 @@ void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
             if (sampCount != 0)
             {
                 this->color(x,y,z) = colToIntensity(1.0f/sampCount * colSum);
-                this->position(x,y,z) = V3f(xsum/sampCount + lowerCorner.x,
-                                            ysum/sampCount + lowerCorner.y,
+                this->position(x,y,z) = V3f(xsum/sampCount + m_minCorner.x,
+                                            ysum/sampCount + m_minCorner.y,
                                             zsum/sampCount);
                 ++coveredCount;
             }
@@ -218,7 +217,7 @@ void voxelizePointCloud(std::ostream& outputStream,
 
     logger.progress("Render chunks");
     OctreeBuilder builder(outputStream, brickRes, leafDepth, pointDb.offset(),
-                          rootBound, logger);
+                          rootBound, V3f(origin - pointDb.offset()), rootNodeWidth, logger);
     // Traverse chunks in z order
     for (int chunkIdx = 0; chunkIdx < numChunks; ++chunkIdx)
     {
@@ -292,11 +291,11 @@ void voxelizePointCloud(std::ostream& outputStream,
                 continue;
             double leafWidth = chunkWidth/chunkLeafRes;
             Imath::V3f leafMin = relOrigin + leafWidth*V3d(leafPos);
-            std::unique_ptr<VoxelBrick> brick(new VoxelBrick(brickRes));
-            brick->voxelizePoints(leafMin, (float)leafWidth, pointRadius,
-                                  position.data(), intensity.data(),
+            std::unique_ptr<VoxelBrick> brick(new VoxelBrick(brickRes, leafMin, (float)leafWidth));
+            brick->voxelizePoints(pointRadius, position.data(), intensity.data(),
                                   bufferedInds.data(), (int)bufferedInds.size());
-            LeafPointData leafPointData(position.data(), intensity.data(),
+            LeafPointData leafPointData(leafMin, (float)leafWidth,
+                                        position.data(), intensity.data(),
                                         inds.data(), inds.size());
             int64_t leafMortonIndex = chunkIdx*leavesPerChunk + leafIdx;
             builder.addNode(leafDepth, leafMortonIndex, std::move(brick),

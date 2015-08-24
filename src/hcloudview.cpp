@@ -21,9 +21,9 @@ struct HCloudNode
     bool isLeaf;
 
     // List of non-empty voxels inside the node
-    std::unique_ptr<float[]> position;
+    std::unique_ptr<uint8_t[]> position;
     std::unique_ptr<float[]> intensity;
-    std::unique_ptr<float[]> coverage;
+    std::unique_ptr<uint8_t[]> coverage;
 
     HCloudNode(const Box3f& bbox)
         : bbox(bbox),
@@ -43,22 +43,39 @@ struct HCloudNode
 
     float radius() const { return bbox.max.x - bbox.min.x; }
 
-    /// Allocate arrays for storing point data
-    ///
-    /// (TODO: need some sort of LRU cache)
-    void allocateArrays()
-    {
-        position.reset(new float[3*idata.numPoints]);
-        intensity.reset(new float[idata.numPoints]);
-        if (idata.flags == IndexFlags_Voxels)
-            coverage.reset(new float[idata.numPoints]);
-    }
-
     void freeArrays()
     {
         position.reset();
         intensity.reset();
         coverage.reset();
+    }
+
+    /// Read hcloud point data for node
+    ///
+    /// If the underlying data isn't cached, return false.
+    bool readNodeData(StreamPageCache& inputCache, double priority)
+    {
+        uint64_t offset = idata.dataOffset;
+        PageCacheReader reader(inputCache, offset);
+        int numPoints = idata.numPoints;
+        reader.read(position, 3*numPoints);
+        if (idata.flags == IndexFlags_Voxels)
+            reader.read(coverage, numPoints);
+        reader.read(intensity, numPoints);
+        if (reader.bad())
+        {
+            inputCache.prefetch(offset, reader.attemptedBytesRead(), priority);
+            freeArrays();
+            return false;
+        }
+        return true;
+    }
+
+    size_t sizeBytes() const
+    {
+        return idata.numPoints * (3*sizeof(uint8_t) +
+                                  1*sizeof(uint8_t) +
+                                  1*sizeof(float));
     }
 };
 
@@ -151,30 +168,6 @@ static void drawBounds(HCloudNode* node, const TransformState& transState)
 }
 
 
-/// Read hcloud point data for node
-///
-/// If the underlying data isn't cached, return false.
-static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
-                         StreamPageCache& inputCache, double priority)
-{
-    node->allocateArrays();
-    uint64_t offset = node->idata.dataOffset;
-    PageCacheReader reader(inputCache, offset);
-    int numPoints = node->idata.numPoints;
-    reader.read(node->position, 3*numPoints);
-    if (node->idata.flags == IndexFlags_Voxels)
-        reader.read(node->coverage, numPoints);
-    reader.read(node->intensity, numPoints);
-    if (reader.bad())
-    {
-        inputCache.prefetch(offset, reader.attemptedBytesRead(), priority);
-        node->freeArrays();
-        return false;
-    }
-    return true;
-}
-
-
 //void HCloudView::draw(const TransformState& transStateIn, double quality) const
 DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
                                  const TransformState& transStateIn,
@@ -226,11 +219,11 @@ DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
         levelStack.push_back(0);
         nodeStack.push_back(m_rootNode.get());
     }
-    else if (readNodeData(m_rootNode.get(), m_header, *m_inputCache, rootPriority))
+    else if (m_rootNode->readNodeData(*m_inputCache, rootPriority))
     {
         nodeStack.push_back(m_rootNode.get());
         levelStack.push_back(0);
-        m_sizeBytes += 5*sizeof(float)*m_rootNode->idata.numPoints;
+        m_sizeBytes += m_rootNode->sizeBytes();
     }
     while (!nodeStack.empty())
     {
@@ -253,8 +246,8 @@ DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
                 HCloudNode* n = node->children[i];
                 if (n && !n->isCached())
                 {
-                    if (readNodeData(n, m_header, *m_inputCache, angularSize))
-                        m_sizeBytes += 5*sizeof(float)*node->idata.numPoints;
+                    if (n->readNodeData(*m_inputCache, angularSize))
+                        m_sizeBytes += node->sizeBytes();
                     else
                         drawNode = true;
                 }
@@ -290,7 +283,7 @@ DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
             else
             {
                 prog.setUniformValue("lodMultiplier", GLfloat(0.5*node->radius()/m_header.brickSize));
-                prog.setAttributeArray("coverage",  node->coverage.get(),  1);
+                prog.setAttributeArray("coverage",  GL_UNSIGNED_BYTE, node->coverage.get(),  1, 1);
                 // Draw voxels as billboards (not spheres) when drawing MIP
                 // levels: the point radius represents a screen coverage in
                 // this case, with no sensible interpreation as a radius toward
@@ -301,7 +294,14 @@ DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
             }
             // Debug - draw octree levels
             // prog.setUniformValue("level", level);
-            prog.setAttributeArray("position",  node->position.get(),  3);
+            float nodeWidth = node->bbox.max.x - node->bbox.min.x;
+            float halfQuantWidth = 0.5*nodeWidth/256;
+            prog.setUniformValue("positionOffset",
+                                 node->bbox.min.x + halfQuantWidth,
+                                 node->bbox.min.y + halfQuantWidth,
+                                 node->bbox.min.z + halfQuantWidth);
+            prog.setUniformValue("positionScale", nodeWidth);
+            prog.setAttributeArray("position",  GL_UNSIGNED_BYTE, node->position.get(),  3, 3);
             if (m_header.version == 1)
                 prog.setAttributeArray("intensity", node->intensity.get(), 1);
             else
@@ -379,6 +379,7 @@ bool HCloudView::pickVertex(const V3d& cameraPos,
     levelStack.push_back(0);
     if (m_rootNode->isCached())
         nodeStack.push_back(m_rootNode.get());
+    std::vector<V3f> nodePositions;
     while (!nodeStack.empty())
     {
         HCloudNode* node = nodeStack.back();
@@ -402,14 +403,21 @@ bool HCloudView::pickVertex(const V3d& cameraPos,
         if (useNode)
         {
             double dist = DBL_MAX;
-            const V3f* P = reinterpret_cast<const V3f*>(node->position.get());
-            size_t idx = closestPointToRay(P, node->idata.numPoints,
+            float positionScale = (node->bbox.max.x - node->bbox.min.x)/256;
+            nodePositions.resize(node->idata.numPoints);
+            for (size_t i = 0; i < nodePositions.size(); ++i)
+            {
+                nodePositions[i] = positionScale*V3f(node->position[3*i+0],
+                                         node->position[3*i+1],
+                                         node->position[3*i+2]) + node->bbox.min;
+            }
+            size_t idx = closestPointToRay(nodePositions.data(), node->idata.numPoints,
                                            rayOrigin - offset(), rayDirection,
                                            longitudinalScale, &dist);
             if (dist < minDist)
             {
                 minDist = dist;
-                pickedVertex = V3d(P[idx]) + offset();
+                pickedVertex = V3d(nodePositions[idx]) + offset();
                 foundVertex = true;
             }
         }

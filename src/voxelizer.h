@@ -52,8 +52,10 @@ void voxelizePointCloud(std::ostream& outputStream,
 class VoxelBrick
 {
     public:
-        VoxelBrick(int brickRes)
+        VoxelBrick(int brickRes, const V3f& minCorner, float brickWidth)
             : m_brickRes(brickRes),
+            m_minCorner(minCorner),
+            m_brickWidth(brickWidth),
             m_mipColor(m_brickRes*m_brickRes*m_brickRes, 0),
             m_mipCoverage(m_brickRes*m_brickRes*m_brickRes, 0),
             m_mipPosition(3*m_brickRes*m_brickRes*m_brickRes, 0)
@@ -80,9 +82,8 @@ class VoxelBrick
         float color(int i) const               { return m_mipColor[i]; }
 
         /// Render given point set into the brick as voxels
-        void voxelizePoints(const V3f& lowerCorner, float brickWidth,
-                            float pointRadius,
-                            const float* position, const float* intensity,
+        void voxelizePoints(float pointRadius, const float* position,
+                            const float* intensity,
                             const size_t* pointIndices, int npoints);
 
         /// Render brick from a Morton ordered set of child bricks
@@ -94,22 +95,30 @@ class VoxelBrick
         NodeIndexData serialize(std::ostream& out) const
         {
             // Serialize all voxels with nonzero coverage
-            std::vector<float> positions;
-            std::vector<float> coverage;
+            std::vector<uint8_t> positions;
+            std::vector<uint8_t> coverage;
             std::vector<float> intensity;
+            float quantizeMult = (1<<8)/m_brickWidth;
             for (int i = 0, iend = numVoxels(); i < iend; ++i)
             {
-                float cov = m_mipCoverage[i];
+                uint8_t cov = (uint8_t)round(255*m_mipCoverage[i]);
                 if (cov != 0)
                 {
-                    positions.insert(positions.end(), &m_mipPosition[3*i],
-                                     &m_mipPosition[3*i] + 3);
+                    V3f qpos = quantizeMult * (V3f(m_mipPosition[3*i+0],
+                                                   m_mipPosition[3*i+1],
+                                                   m_mipPosition[3*i+2]) - m_minCorner);
+                    uint8_t p[] = {
+                        (uint8_t)Imath::clamp(qpos.x, 0.0f, 255.0f),
+                        (uint8_t)Imath::clamp(qpos.y, 0.0f, 255.0f),
+                        (uint8_t)Imath::clamp(qpos.z, 0.0f, 255.0f)
+                    };
+                    positions.insert(positions.end(), p, p+3);
                     coverage.push_back(cov);
                     intensity.push_back(m_mipColor[i]);
                 }
             }
-            out.write((const char*)positions.data(), positions.size()*sizeof(float));
-            out.write((const char*)coverage.data(),  coverage.size()*sizeof(float));
+            out.write((const char*)positions.data(), positions.size()*sizeof(uint8_t));
+            out.write((const char*)coverage.data(),  coverage.size()*sizeof(uint8_t));
             out.write((const char*)intensity.data(), intensity.size()*sizeof(float));
             NodeIndexData indexData;
             indexData.numPoints = (uint32_t)coverage.size();
@@ -119,6 +128,8 @@ class VoxelBrick
 
     private:
         int m_brickRes;
+        V3f m_minCorner;
+        float m_brickWidth;
         // Attributes for all voxels inside brick
         std::vector<float> m_mipColor;
         std::vector<float> m_mipCoverage;
@@ -145,15 +156,33 @@ class VoxelBrick
 class LeafPointData
 {
     public:
-        LeafPointData(const float* position, const float* intensity,
+        LeafPointData(const V3f& minCorner, float brickWidth,
+                      const float* position, const float* intensity,
                       const size_t* indices, size_t npoints)
-            : m_position(position), m_intensity(intensity), m_indices(indices), m_npoints(npoints)
+            : m_minCorner(minCorner),
+            m_brickWidth(brickWidth),
+            m_position(position),
+            m_intensity(intensity),
+            m_indices(indices),
+            m_npoints(npoints)
         { }
 
         NodeIndexData serialize(std::ostream& out) const
         {
+            // FIXME: Properly factor the quantizer code
+            float quantizeMult = (1<<8)/m_brickWidth;
             for (size_t i = 0; i < m_npoints; ++i)
-                out.write((const char*)&m_position[3*m_indices[i]], 3*sizeof(float));
+            {
+                V3f qpos = quantizeMult * (V3f(m_position[3*m_indices[i]+0],
+                                               m_position[3*m_indices[i]+1],
+                                               m_position[3*m_indices[i]+2]) - m_minCorner);
+                uint8_t p[] = {
+                    (uint8_t)Imath::clamp(qpos.x, 0.0f, 255.0f),
+                    (uint8_t)Imath::clamp(qpos.y, 0.0f, 255.0f),
+                    (uint8_t)Imath::clamp(qpos.z, 0.0f, 255.0f)
+                };
+                out.write((char*)p, 3*sizeof(uint8_t));
+            }
             for (size_t i = 0; i < m_npoints; ++i)
                 out.write((const char*)&m_intensity[m_indices[i]], sizeof(float));
             NodeIndexData indexData;
@@ -163,6 +192,8 @@ class LeafPointData
         }
 
     private:
+        V3f m_minCorner;
+        float m_brickWidth;
         const float* m_position;
         const float* m_intensity;
         const size_t* m_indices;

@@ -28,6 +28,8 @@ uniform vec3 cursorPos = vec3(0);
 uniform int fileNumber = 0;
 in float intensity;
 in float simplifyThreshold;
+uniform float positionScale = 1.0;
+uniform vec3 positionOffset = vec3(0.0);
 in vec3 position;
 in vec3 color;
 
@@ -46,11 +48,8 @@ float tonemap(float x, float exposure, float contrast)
 
 void main()
 {
-    vec4 p = modelViewProjectionMatrix * vec4(position,1.0);
-    float r = length(position.xy - cursorPos.xy);
-    float trimFalloffLen = min(5, trimRadius/2);
-    float trimScale = min(1, (trimRadius - r)/trimFalloffLen);
-    modifiedPointRadius = sqrt(coverage) * pointRadius * trimScale * lodMultiplier;
+    vec4 p = modelViewProjectionMatrix * vec4(positionScale*position + positionOffset, 1.0);
+    modifiedPointRadius = sqrt(coverage) * pointRadius * lodMultiplier;
     pointScreenSize = clamp(2*pointPixelScale*modifiedPointRadius / p.w, minPointSize, maxPointSize);
     fragMarkerShape = markerShape;
     // Compute vertex color
