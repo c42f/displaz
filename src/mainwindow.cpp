@@ -43,7 +43,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
-    m_maxPointCount(200000000),
+    m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
     m_ipcServer(0)
 {
@@ -228,6 +228,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             this, SLOT(setProgressBarText(QString)));
     connect(m_fileLoader, SIGNAL(loadProgress(int)),
             m_progressBar, SLOT(setValue(int)));
+    connect(m_fileLoader, SIGNAL(resetProgress()),
+            m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     //logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
@@ -294,6 +296,7 @@ void PointViewerMainWindow::handleIpcConnection()
 
 void PointViewerMainWindow::setProgressBarText(QString text)
 {
+    m_progressBar->show();
     m_progressBar->setFormat(text + " (%p%)");
 }
 
@@ -431,13 +434,6 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));
     }
-}
-
-
-void PointViewerMainWindow::keyReleaseEvent(QKeyEvent* event)
-{
-    if(event->key() == Qt::Key_Escape)
-        close();
 }
 
 

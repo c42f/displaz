@@ -81,6 +81,9 @@ class FileLoader : public QObject
         /// Emitted to report progress percent for current load step
         void loadProgress(int percent);
 
+        /// No more progress expected, task completed
+        void resetProgress();
+
         /// Emitted on successfully loaded geometry
         ///
         /// If reloaded is true, the load signal is the result of calling
@@ -131,6 +134,11 @@ class FileLoader : public QObject
             {
                 g_logger.error("Error loading %s: %s", loadInfo.filePath, e.what());
             }
+
+            geom->disconnect();
+
+            // Reset progress bar
+            emit resetProgress();
         }
 
     private:

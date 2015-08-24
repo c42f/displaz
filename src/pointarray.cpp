@@ -208,7 +208,7 @@ PointArray::~PointArray()
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
                           std::vector<GeomField>& fields, V3d& offset,
-                          size_t& npoints, uint64_t& totPoints,
+                          size_t& npoints, uint64_t& totalPoints,
                           Imath::Box3d& bbox, V3d& centroid)
 {
     V3d Psum(0);
@@ -232,12 +232,12 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
             emit loadProgress(int(100*ftell(inFile)/numBytes));
     }
     fclose(inFile);
-    totPoints = points.size();
+    totalPoints = points.size();
     npoints = points.size();
     // Zero points + nonzero bytes => bad text file
-    if (totPoints == 0 && numBytes != 0)
+    if (totalPoints == 0 && numBytes != 0)
         return false;
-    if (totPoints > 0)
+    if (totalPoints > 0)
         offset = points[0];
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     V3f* position = (V3f*)fields[0].as<float>();
@@ -256,7 +256,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totPoints,
+                         size_t& npoints, uint64_t& totalPoints,
                          Imath::Box3d& bbox, V3d& centroid)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
@@ -275,7 +275,7 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
         if (!loadDisplazNativePly(fileName, ply.get(), fields, offset, npoints))
             return false;
     }
-    totPoints = npoints;
+    totalPoints = npoints;
 
     // Compute bounding box and centroid
     const V3f* P = (V3f*)fields[0].as<float>();
@@ -301,7 +301,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     setFileName(fileName);
     // Read file into point data fields.  Use very basic file type detection
     // based on extension.
-    uint64_t totPoints = 0;
+    uint64_t totalPoints = 0;
     Imath::Box3d bbox;
     V3d offset(0);
     V3d centroid(0);
@@ -309,7 +309,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
     {
         if (!loadLas(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totPoints, bbox, centroid))
+                     m_npoints, totalPoints, bbox, centroid))
         {
             return false;
         }
@@ -317,7 +317,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     else if (fileName.endsWith(".ply"))
     {
         if (!loadPly(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totPoints, bbox, centroid))
+                     m_npoints, totalPoints, bbox, centroid))
         {
             return false;
         }
@@ -328,13 +328,13 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         // Load crappy db format for debugging
         std::ifstream file(fileName.toUtf8(), std::ios::binary);
         file.seekg(0, std::ios::end);
-        totPoints = file.tellg()/(4*sizeof(float));
+        totalPoints = file.tellg()/(4*sizeof(float));
         file.seekg(0);
-        m_fields.push_back(GeomField(TypeSpec::vec3float32(), "position", totPoints));
-        m_fields.push_back(GeomField(TypeSpec::float32(), "intensity", totPoints));
+        m_fields.push_back(GeomField(TypeSpec::vec3float32(), "position", totalPoints));
+        m_fields.push_back(GeomField(TypeSpec::float32(), "intensity", totalPoints));
         float* position = m_fields[0].as<float>();
         float* intensity = m_fields[1].as<float>();
-        for (size_t i = 0; i < totPoints; ++i)
+        for (size_t i = 0; i < totalPoints; ++i)
         {
             file.read((char*)position, 3*sizeof(float));
             file.read((char*)intensity, 1*sizeof(float));
@@ -342,14 +342,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
             position += 3;
             intensity += 1;
         }
-        m_npoints = totPoints;
+        m_npoints = totalPoints;
     }
 #endif
     else
     {
         // Last resort: try loading as text
         if (!loadText(fileName, maxPointCount, m_fields, offset,
-                      m_npoints, totPoints, bbox, centroid))
+                      m_npoints, totalPoints, bbox, centroid))
         {
             return false;
         }
@@ -375,8 +375,8 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     setCentroid(centroid);
     emit loadProgress(100);
     g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
-                  m_npoints, totPoints, fileName, loadTimer.elapsed()/1000.0);
-    if (totPoints == 0)
+                  m_npoints, totalPoints, fileName, loadTimer.elapsed()/1000.0);
+    if (totalPoints == 0)
     {
         m_rootNode.reset(new OctreeNode(V3f(0), 1));
         return true;
