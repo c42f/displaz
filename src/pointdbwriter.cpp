@@ -227,7 +227,8 @@ void convertLasToPointDb(const std::string& outDirName,
                 logger.debug("Cache size: %.2fMB", dbWriter.cacheSizeBytes()/1000000.0);
             if (useBounds && !boundingBox.intersects(P))
                 continue;
-            dbWriter.writePoint(P, point.intensity);
+            C3f col = 1.0f/USHRT_MAX * C3f(point.rgb[0], point.rgb[1], point.rgb[2]);
+            dbWriter.writePoint(P, colToIntensity(col));
         }
     }
     dbWriter.close();

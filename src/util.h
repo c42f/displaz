@@ -48,6 +48,30 @@ using Imath::C3f;
 using Imath::Box3f;
 
 
+inline C3f intensityToCol(float intensity)
+{
+    union {
+        uint8_t rgb[3];
+        float intensity;
+    } u;
+    u.intensity = intensity;
+    return C3f(u.rgb[0]/255.0, u.rgb[1]/255.0, u.rgb[2]/255.0);
+}
+
+
+inline float colToIntensity(C3f col)
+{
+    union {
+        uint8_t rgb[3];
+        float intensity;
+    } u;
+    u.rgb[0] = (int)Imath::clamp(255*col.x, 0.0f, 255.0f);
+    u.rgb[1] = (int)Imath::clamp(255*col.y, 0.0f, 255.0f);
+    u.rgb[2] = (int)Imath::clamp(255*col.z, 0.0f, 255.0f);
+    return u.intensity;
+}
+
+
 /// Return index of closest point to the given ray, favouring points near ray
 /// origin.
 ///

@@ -49,7 +49,8 @@ void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
             // Average rendered color over the voxel surface, and insert
             // into brick along with coverage
             int sampCount = 0;
-            float colSum = 0;
+            C3f colSum(0);
+            //float colSum = 0;
             float zsum = 0;
             float xsum = 0;
             float ysum = 0;
@@ -59,7 +60,7 @@ void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
                 int idx = x*pixPerVoxel + i + (y*pixPerVoxel + j)*rasterWidth;
                 if (zbuf[idx] != -FLT_MAX)
                 {
-                    colSum += raster[idx];
+                    colSum += intensityToCol(raster[idx]);
                     zsum += zbuf[idx];
                     xsum += pixelSize*(x*pixPerVoxel + i + 0.5f);
                     ysum += pixelSize*(y*pixPerVoxel + j + 0.5f);
@@ -68,7 +69,7 @@ void VoxelBrick::voxelizePoints(const V3f& lowerCorner, float brickWidth,
             }
             if (sampCount != 0)
             {
-                this->color(x,y,z) = colSum/sampCount;
+                this->color(x,y,z) = colToIntensity(1.0f/sampCount * colSum);
                 this->position(x,y,z) = V3f(xsum/sampCount + lowerCorner.x,
                                             ysum/sampCount + lowerCorner.y,
                                             zsum/sampCount);
@@ -104,7 +105,8 @@ void VoxelBrick::renderFromBricks(VoxelBrick* children[8])
             // layer can partially hide another.  In principle, this
             // introduces view dependence into the mipmap; here we assume
             // the viewer is roughly looking downward.
-            float colSum = 0;
+            //float colSum = 0;
+            C3f colSum(0);
             V3f posSum = V3f(0);
             float coverageSum = 0;
             for (int j = 0; j < 2; ++j)
@@ -127,7 +129,7 @@ void VoxelBrick::renderFromBricks(VoxelBrick* children[8])
                 // the rules.
                 c0 = std::min(1-c1, c0);
                 //c0 = (1-c1)*c0;  // Usual compositing rule for incoherent geometry
-                colSum += c0*child->color(x1,y1,z)    + c1*child->color(x1,y1,z+1);
+                colSum += c0*intensityToCol(child->color(x1,y1,z))    + c1*intensityToCol(child->color(x1,y1,z+1));
                 posSum += c0*child->position(x1,y1,z) + c1*child->position(x1,y1,z+1);
                 coverageSum += c0 + c1;
             }
@@ -137,7 +139,7 @@ void VoxelBrick::renderFromBricks(VoxelBrick* children[8])
                 int y1 = y/2+yoff;
                 int z1 = z/2+zoff;
                 float w = 1.0f/coverageSum;
-                this->color(x1, y1, z1)    = w*colSum;
+                this->color(x1, y1, z1)    = colToIntensity(w*colSum);
                 this->position(x1, y1, z1) = w*posSum;
                 // Note: Coverage is a special case: it's the average of
                 // coverage in the four child cells.

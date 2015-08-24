@@ -191,14 +191,14 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
                                                       transState.projMatrix[0][0]));
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("coverage");
-    prog.enableAttributeArray("intensity");
+    prog.enableAttributeArray("color");
     prog.enableAttributeArray("simplifyThreshold");
 
     // TODO: Ultimately should scale angularSizeLimit with the quality, something
     // like this:
     // const double angularSizeLimit = 0.01/std::min(1.0, quality);
     // g_logger.info("quality = %f", quality);
-    const double pixelsPerVoxel = 2;
+    const double pixelsPerVoxel = 4;
     const double fieldOfView = 60*M_PI/180; // FIXME - shouldn't be hardcoded...
     double pixelsPerRadian = transStateIn.viewSize.y / fieldOfView;
     const double angularSizeLimit = pixelsPerVoxel*m_header.brickSize/pixelsPerRadian;
@@ -296,7 +296,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
             // Debug - draw octree levels
             // prog.setUniformValue("level", level);
             prog.setAttributeArray("position",  node->position.get(),  3);
-            prog.setAttributeArray("intensity", node->intensity.get(), 1);
+            prog.setAttributeArray("color", GL_UNSIGNED_BYTE, node->intensity.get(), 3, 4);
             prog.setAttributeArray("simplifyThreshold", m_simplifyThreshold.data(), 1);
             glDrawArrays(GL_POINTS, 0, nvox);
             if (node->idata.flags == IndexFlags_Points)
@@ -320,7 +320,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
 
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("coverage");
-    prog.disableAttributeArray("intensity");
+    prog.disableAttributeArray("color");
     prog.disableAttributeArray("simplifyThreshold");
 
     glDisable(GL_POINT_SPRITE);

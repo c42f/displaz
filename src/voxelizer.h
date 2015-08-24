@@ -57,7 +57,9 @@ class VoxelBrick
             m_mipColor(m_brickRes*m_brickRes*m_brickRes, 0),
             m_mipCoverage(m_brickRes*m_brickRes*m_brickRes, 0),
             m_mipPosition(3*m_brickRes*m_brickRes*m_brickRes, 0)
-        { }
+        {
+            memset(m_mipColor.data(), 0, sizeof(float)*m_mipColor.size());
+        }
 
         /// Return resolution of brick (ie, N, where brick has N*N*N voxels)
         int resolution() const { return m_brickRes; }

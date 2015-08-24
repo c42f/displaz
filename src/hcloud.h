@@ -14,7 +14,7 @@
 /// Magic number at start of each hcloud file, and size in bytes
 #define HCLOUD_MAGIC "HierarchicalPointCloud\n\x0c"
 #define HCLOUD_MAGIC_SIZE 24
-#define HCLOUD_VERSION 1
+#define HCLOUD_VERSION 99
 
 
 /// Collection of header metadata stored in a hcloud file
