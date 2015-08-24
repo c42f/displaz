@@ -729,7 +729,7 @@ Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
     //
     // This works pretty well, except when there are noise points intervening
     // between the reference position and the user's actual point of interest.
-    V3d refPos = 0.7*m_camera.position() + 0.3*m_camera.center();
+    V3d refPos = 0.3*m_camera.position() + 0.7*m_camera.center();
     M44d mat = m_camera.viewMatrix()*m_camera.projectionMatrix()*m_camera.viewportMatrix();
     double refZ = (refPos * mat).z;
     V3d newPointProj(clickPos.x(), clickPos.y(), refZ);
