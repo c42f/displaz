@@ -16,6 +16,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "util.h"
+
 /// Application controlled page cache for access to raw file data
 ///
 /// This interface allows the application to specify data to be fetched, along
@@ -33,7 +35,7 @@ class StreamPageCache
             m_fileSize = static_cast<PosType>(m_input.tellg());
             m_input.seekg(0);
             if (!m_input)
-                throw std::runtime_error("Page cache could not open file");
+                throw DisplazError("Page cache could not open file");
         }
 
         /// Mark pages overlapping the given range for fetching
@@ -47,7 +49,10 @@ class StreamPageCache
         bool prefetch(PosType offset, PosType length, double priority = 0)
         {
             if (offset + length > m_fileSize)
-                throw std::runtime_error("Prefetch request past end of file");
+            {
+                throw DisplazError("Prefetch request at %d past end of file %d",
+                                   offset+length, m_fileSize);
+            }
             PosType pagesBegin = pageIndex(offset);
             PosType pagesEnd = pageIndex(offset + length - 1) + 1;
             bool inCache = true;

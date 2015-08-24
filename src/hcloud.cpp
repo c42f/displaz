@@ -51,11 +51,11 @@ void HCloudHeader::read(std::istream& in)
     if (in.gcount() != HCLOUD_MAGIC_SIZE ||
         memcmp(magic, HCLOUD_MAGIC, HCLOUD_MAGIC_SIZE) != 0)
     {
-        throw std::runtime_error("Bad magic number: not a hierarchical point cloud");
+        throw DisplazError("Bad magic number: not a hierarchical point cloud");
     }
     version = readLE<uint16_t>(in);
     if (version != HCLOUD_VERSION)
-        throw std::runtime_error("Unknown hcloud version");
+        throw DisplazError("Unknown hcloud version: %d", version);
     headerSize = readLE<uint32_t>(in);
     numPoints  = readLE<uint64_t>(in);
     numVoxels  = readLE<uint64_t>(in);
