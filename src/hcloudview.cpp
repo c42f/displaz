@@ -175,14 +175,17 @@ static bool readNodeData(HCloudNode* node, const HCloudHeader& header,
 }
 
 
-void HCloudView::draw(const TransformState& transStateIn, double quality) const
+//void HCloudView::draw(const TransformState& transStateIn, double quality) const
+DrawCount HCloudView::drawPoints(QGLShaderProgram& prog,
+                                 const TransformState& transStateIn,
+                                 double quality, bool /*incrementalDraw*/) const
 {
     TransformState transState = transStateIn.translate(offset());
     //drawBounds(m_rootNode.get(), transState);
 
     V3f cameraPos = V3d(0) * transState.modelViewMatrix.inverse();
-    QGLShaderProgram& prog = m_shader->shaderProgram();
-    prog.bind();
+    // QGLShaderProgram& prog = m_shader->shaderProgram();
+    // prog.bind();
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
@@ -191,14 +194,17 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
                                                       transState.projMatrix[0][0]));
     prog.enableAttributeArray("position");
     prog.enableAttributeArray("coverage");
-    prog.enableAttributeArray("color");
+    if (m_header.version == 1)
+        prog.enableAttributeArray("intensity");
+    else
+        prog.enableAttributeArray("color");
     prog.enableAttributeArray("simplifyThreshold");
 
     // TODO: Ultimately should scale angularSizeLimit with the quality, something
     // like this:
     // const double angularSizeLimit = 0.01/std::min(1.0, quality);
     // g_logger.info("quality = %f", quality);
-    const double pixelsPerVoxel = 4;
+    const double pixelsPerVoxel = 2;
     const double fieldOfView = 60*M_PI/180; // FIXME - shouldn't be hardcoded...
     double pixelsPerRadian = transStateIn.viewSize.y / fieldOfView;
     const double angularSizeLimit = pixelsPerVoxel*m_header.brickSize/pixelsPerRadian;
@@ -296,7 +302,10 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
             // Debug - draw octree levels
             // prog.setUniformValue("level", level);
             prog.setAttributeArray("position",  node->position.get(),  3);
-            prog.setAttributeArray("color", GL_UNSIGNED_BYTE, node->intensity.get(), 3, 4);
+            if (m_header.version == 1)
+                prog.setAttributeArray("intensity", node->intensity.get(), 1);
+            else
+                prog.setAttributeArray("color", GL_UNSIGNED_BYTE, node->intensity.get(), 3, 4);
             prog.setAttributeArray("simplifyThreshold", m_simplifyThreshold.data(), 1);
             glDrawArrays(GL_POINTS, 0, nvox);
             if (node->idata.flags == IndexFlags_Points)
@@ -320,7 +329,10 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
 
     prog.disableAttributeArray("position");
     prog.disableAttributeArray("coverage");
-    prog.disableAttributeArray("color");
+    if (m_header.version == 1)
+        prog.disableAttributeArray("intensity");
+    else
+        prog.disableAttributeArray("color");
     prog.disableAttributeArray("simplifyThreshold");
 
     glDisable(GL_POINT_SPRITE);
@@ -330,13 +342,14 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     g_logger.info("hcloud: %.1fMB, #nodes = %d, fetched pages = %d, mean voxel size = %.0f",
                   m_sizeBytes/1e6, nodesRendered, fetchedPages,
                   double(voxelsRendered)/nodesRendered);
+    return DrawCount();
 }
 
 
 size_t HCloudView::pointCount() const
 {
     // FIXME
-    return 0;
+    return 1;
 }
 
 

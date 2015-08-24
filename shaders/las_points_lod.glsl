@@ -9,11 +9,11 @@ uniform mat4 modelViewProjectionMatrix;
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointRadius = 1.3;     //# uiname=Point Radius (m); min=0.001; max=10
-uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
-uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
-uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
-const int colorMode = 1;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Number|Number Of Returns|Point Source|Classification|File Number
+uniform float pointRadius = 1.3;    //# uiname=Point Radius (m); min=0.001; max=10
+uniform float trimRadius = 1000000; //# uiname=Trim Radius; min=1; max=1000000
+uniform float exposure = 1.0;       //# uiname=Exposure; min=0.01; max=10000
+uniform float contrast = 1.0;       //# uiname=Contrast; min=0.01; max=10000
+uniform int colorMode = 0;          //# uiname=Colour Mode; enum=Intensity|Colour
 uniform int markerShape = 0;
 uniform int level = -1;
 uniform float minPointSize = 0;
@@ -57,7 +57,10 @@ void main()
     vec3 baseColor = vec3(1);
     if (level > 0)
         baseColor = vec3((1 + level%3)/3.0, (1 + level%5)/5.0, (1 + level%7)/7.0);
-    pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
+    if (colorMode == 0)
+        pointColor = tonemap(intensity/400.0, exposure, contrast) * baseColor;
+    else if (colorMode == 1)
+        pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     // Ensure zero size points are discarded.  The actual minimum point size is
     // hardware and driver dependent, so set the fragMarkerShape to discarded for
     // good measure.

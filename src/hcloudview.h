@@ -30,7 +30,11 @@ class HCloudView : public Geometry
 
         virtual void initializeGL();
 
-        virtual void draw(const TransformState& transState, double quality) const;
+        virtual DrawCount drawPoints(QGLShaderProgram& prog,
+                                    const TransformState& transState,
+                                    double quality, bool incrementalDraw) const;
+
+        //virtual void draw(const TransformState& transState, double quality) const;
 
         virtual size_t pointCount() const;
 
