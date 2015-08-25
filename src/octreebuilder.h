@@ -116,6 +116,8 @@ class OctreeBuilder
                      LeafPointData& leafPointData)
         {
             assert(level < (int)m_levelInfo.size() + 1);
+            assert(level >= 0);
+            assert(mortonIndex >= 0);
             std::unique_ptr<IndexNode> brickIndex =
                 writeNodeData(m_levelInfo[level].outputQueue, level, *voxelBrick);
             std::unique_ptr<IndexNode> pointsIndex =

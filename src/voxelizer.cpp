@@ -213,7 +213,7 @@ void voxelizePointCloud(std::ostream& outputStream,
     double invLeafNodeWidth = 1/leafNodeWidth;
     double fractionalPointRadius = pointRadius/leafNodeWidth;
 
-    int leavesPerChunk = chunkLeafRes*chunkLeafRes*chunkLeafRes;
+    int64_t leavesPerChunk = chunkLeafRes*chunkLeafRes*chunkLeafRes;
 
     logger.progress("Render chunks");
     OctreeBuilder builder(outputStream, brickRes, leafDepth, pointDb.offset(),
