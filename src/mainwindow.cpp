@@ -86,7 +86,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
     QAction* addAct = fileMenu->addAction(tr("&Add"));
     addAct->setToolTip(tr("Add a data set"));
-    addAct->setShortcuts(QKeySequence::Open);
     connect(addAct, SIGNAL(triggered()), this, SLOT(addFiles()));
     QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
     reloadAct->setStatusTip(tr("Reload point files from disk"));
