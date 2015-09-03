@@ -6,6 +6,7 @@
 
 #include <QtGui/QPlainTextEdit>
 
+/// Very basic shader editor widget
 class ShaderEditor : public QPlainTextEdit
 {
     Q_OBJECT
@@ -13,11 +14,18 @@ class ShaderEditor : public QPlainTextEdit
     public:
         ShaderEditor(QWidget* parent = 0);
 
-    signals:
-        void sendShader(QString src);
+        /// Get the shader Compile action
+        ///
+        /// This action may be triggered from the editor context menu or by the
+        /// keyboard shortcut.
+        QAction* compileAction() { return m_compileShaderAct; }
 
     protected:
         void keyPressEvent(QKeyEvent *event);
+        void contextMenuEvent(QContextMenuEvent *event);
+
+    private:
+        QAction* m_compileShaderAct;
 };
 
 #endif // DISPLAZ_SHADER_EDITOR_H_INCLUDED

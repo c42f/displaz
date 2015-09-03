@@ -60,6 +60,7 @@ class PointViewerMainWindow : public QMainWindow
         void addFiles();
         void openShaderFile();
         void saveShaderFile();
+        void compileShaderFile();
         void reloadFiles();
         void screenShot();
         void helpDialog();

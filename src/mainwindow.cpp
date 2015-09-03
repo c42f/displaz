@@ -94,14 +94,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
 
     fileMenu->addSeparator();
-    QAction* openShaderAct = fileMenu->addAction(tr("Open &Shader"));
-    openShaderAct->setToolTip(tr("Open a shader file"));
-    connect(openShaderAct, SIGNAL(triggered()), this, SLOT(openShaderFile()));
-    QAction* saveShaderAct = fileMenu->addAction(tr("Sa&ve Shader"));
-    saveShaderAct->setToolTip(tr("Save current shader file"));
-    connect(saveShaderAct, SIGNAL(triggered()), this, SLOT(saveShaderFile()));
-
-    fileMenu->addSeparator();
     QAction* screenShotAct = fileMenu->addAction(tr("Scree&nshot"));
     screenShotAct->setStatusTip(tr("Save screen shot of 3D window"));
     screenShotAct->setShortcut(Qt::Key_F9);
@@ -158,6 +150,18 @@ PointViewerMainWindow::PointViewerMainWindow()
     drawAxes->setCheckable(true);
     drawAxes->setChecked(true);
 
+    // Shader menu
+    QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
+    QAction* openShaderAct = shaderMenu->addAction(tr("&Open"));
+    openShaderAct->setToolTip(tr("Open a shader file"));
+    connect(openShaderAct, SIGNAL(triggered()), this, SLOT(openShaderFile()));
+    QAction* editShaderAct = shaderMenu->addAction(tr("&Edit"));
+    editShaderAct->setToolTip(tr("Open shader editor window"));
+    QAction* saveShaderAct = shaderMenu->addAction(tr("&Save"));
+    saveShaderAct->setToolTip(tr("Save current shader file"));
+    connect(saveShaderAct, SIGNAL(triggered()), this, SLOT(saveShaderFile()));
+    shaderMenu->addSeparator();
+
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
     QAction* helpAct = helpMenu->addAction(tr("User &Guide"));
@@ -203,12 +207,15 @@ PointViewerMainWindow::PointViewerMainWindow()
                                       Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
     m_shaderEditor = new ShaderEditor(shaderEditorUI);
-    connect(m_shaderEditor, SIGNAL(sendShader(QString)),
-            &m_pointView->shaderProgram(), SLOT(setShader(QString)));
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
     shaderEditorLayout->setContentsMargins(2,2,2,2);
     shaderEditorLayout->addWidget(m_shaderEditor, 0, 0, 1, 1);
+    connect(editShaderAct, SIGNAL(triggered()), shaderEditorDock, SLOT(show()));
     shaderEditorDock->setWidget(shaderEditorUI);
+
+    shaderMenu->addAction(m_shaderEditor->compileAction());
+    connect(m_shaderEditor->compileAction(), SIGNAL(triggered()),
+            this, SLOT(compileShaderFile()));
 
     // Log viewer UI
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
@@ -263,7 +270,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     // Add dock widget toggles to view menu
     viewMenu->addSeparator();
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
-    viewMenu->addAction(shaderEditorDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
 
@@ -537,6 +543,12 @@ void PointViewerMainWindow::saveShaderFile()
         g_logger.error("Couldn't open shader file \"%s\": %s",
                        shaderFileName, shaderFile.errorString());
     }
+}
+
+
+void PointViewerMainWindow::compileShaderFile()
+{
+    m_pointView->shaderProgram().setShader(m_shaderEditor->toPlainText());
 }
 
 
