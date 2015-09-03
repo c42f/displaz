@@ -223,7 +223,7 @@ PointViewerMainWindow::PointViewerMainWindow()
     m_progressBar = new QProgressBar(logUI);
     m_progressBar->setRange(0,100);
     m_progressBar->setValue(0);
-    //m_progressBar->hide();
+    m_progressBar->hide();
     connect(m_fileLoader, SIGNAL(loadStepStarted(QString)),
             this, SLOT(setProgressBarText(QString)));
     connect(m_fileLoader, SIGNAL(loadProgress(int)),
