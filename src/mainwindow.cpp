@@ -191,8 +191,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     QDockWidget* shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
     shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable);
-    shaderParamsDock->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                      Qt::RightDockWidgetArea);
     QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
     shaderParamsDock->setWidget(shaderParamsUI);
     m_pointView->setShaderParamsUIWidget(shaderParamsUI);
@@ -202,8 +200,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     shaderEditorDock->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable |
                                   QDockWidget::DockWidgetFloatable);
-    shaderEditorDock->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                      Qt::RightDockWidgetArea);
     QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
     m_shaderEditor = new ShaderEditor(shaderEditorUI);
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
@@ -220,7 +216,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
     logDock->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
-    logDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     QWidget* logUI = new QWidget(logDock);
     m_logTextView = new LogViewer(logUI);
     m_logTextView->setReadOnly(true);
@@ -248,7 +243,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
-    dataSetDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     DataSetUI* dataSetUI = new DataSetUI(this);
     dataSetDock->setWidget(dataSetUI);
     QAbstractItemView* dataSetOverview = dataSetUI->view();
