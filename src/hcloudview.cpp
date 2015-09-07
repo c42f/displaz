@@ -349,9 +349,7 @@ void HCloudView::estimateCost(const TransformState& transState,
 
 
 bool HCloudView::pickVertex(const V3d& cameraPos,
-                            const V3d& rayOrigin,
-                            const V3d& rayDirection,
-                            const double longitudinalScale,
+                            const EllipticalDist& distFunc,
                             V3d& pickedVertex,
                             double* distance,
                             std::string* info) const
@@ -390,9 +388,7 @@ bool HCloudView::pickVertex(const V3d& cameraPos,
         {
             double dist = DBL_MAX;
             const V3f* P = reinterpret_cast<const V3f*>(node->position.get());
-            size_t idx = closestPointToRay(P, node->idata.numPoints,
-                                           rayOrigin - offset(), rayDirection,
-                                           longitudinalScale, &dist);
+            size_t idx = distFunc.closestPoint(offset(), P, node->idata.numPoints, &dist);
             if (dist < minDist)
             {
                 minDist = dist;

@@ -753,6 +753,7 @@ bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
     // Ray out from the camera to the given point
     V3d cameraPos = m_camera.position();
     V3d viewDir = (pos - cameraPos).normalized();
+    EllipticalDist distFunc(pos, viewDir, normalScaling);
     double nearestDist = DBL_MAX;
     // Snap cursor to position of closest point and center on it
     QModelIndexList sel = m_selectionModel->selectedRows();
@@ -762,7 +763,7 @@ bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
         V3d pickedVertex;
         double dist = 0;
         std::string info;
-        if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, pos, viewDir, normalScaling,
+        if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, distFunc,
                                                     pickedVertex, &dist,
                                                     (pointInfo != 0) ? &info : 0))
         {

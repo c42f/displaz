@@ -76,17 +76,13 @@ struct OctreeNode
         return sinA/cosA < diagRadius/l;
     }
 
-    size_t closestPoint(
-        const V3f *const p,
-        const V3f& rayOrigin,
-        const V3f& rayDirection,
-        const double longitudinalScale,
-        double& thisRClosest) const
+    size_t closestPoint(const EllipticalDist& distFunc,
+                        const V3d& offset, const V3f* const p,
+                        double& thisRClosest) const
     {
-         // calls utils closestPointToRay for the points within this octree node
-         return beginIndex + closestPointToRay(p + beginIndex, endIndex - beginIndex,
-                                               rayOrigin, rayDirection,
-                                               longitudinalScale, &thisRClosest);
+         return beginIndex + distFunc.closestPoint(offset, p + beginIndex,
+                                                   endIndex - beginIndex,
+                                                   &thisRClosest);
     }
 
     size_t size() const { return endIndex - beginIndex; }
@@ -412,9 +408,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
 
 bool PointArray::pickVertex(const V3d& cameraPos,
-                            const V3d& rayOrigin,
-                            const V3d& rayDirection,
-                            const double longitudinalScale,
+                            const EllipticalDist& distFunc,
                             V3d& pickedVertex,
                             double* distance,
                             std::string* info) const
@@ -422,7 +416,7 @@ bool PointArray::pickVertex(const V3d& cameraPos,
     if (m_npoints == 0)
         return false;
 
-    const V3d rayOriginOffset = rayOrigin - offset();
+    const V3d rayOriginOffset = distFunc.origin() - offset();
 
     double rClosest = DBL_MAX;
     size_t idx = 0;
@@ -434,7 +428,7 @@ bool PointArray::pickVertex(const V3d& cameraPos,
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
 
-        if(!node->rayPassesNearOrThrough(rayOriginOffset, rayDirection))
+        if(!node->rayPassesNearOrThrough(rayOriginOffset, distFunc.axis()))
             continue;
 
         if (!node->isLeaf())
@@ -449,7 +443,7 @@ bool PointArray::pickVertex(const V3d& cameraPos,
         }
 
         double thisRClosest;
-        size_t thisIdx = node->closestPoint(m_P, rayOriginOffset, rayDirection, longitudinalScale, thisRClosest);
+        size_t thisIdx = node->closestPoint(distFunc, offset(), m_P, thisRClosest);
         if(thisRClosest < rClosest)
         {
             rClosest = thisRClosest;

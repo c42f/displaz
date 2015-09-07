@@ -42,9 +42,7 @@ class PointArray : public Geometry
                                   DrawCount* drawCounts, int numEstimates) const;
 
         virtual bool pickVertex(const V3d& cameraPos,
-                                const V3d& rayOrigin,
-                                const V3d& rayDirection,
-                                const double longitudinalScale,
+                                const EllipticalDist& distFunc,
                                 V3d& pickedVertex,
                                 double* distance = 0,
                                 std::string* info = 0) const;

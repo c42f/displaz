@@ -48,16 +48,41 @@ using Imath::C3f;
 using Imath::Box3f;
 
 
-/// Return index of closest point to the given ray, favouring points near ray
-/// origin.
+/// Axially symmetric elliptical distance function
 ///
-/// The distance function is the euclidian distance from the ray origin to the
-/// point, where the space has been scaled along the ray direction by the amout
-/// longitudinalScale.  Also return the distance to the nearest point if the
-/// input distance parameter is non-null.
-size_t closestPointToRay(const V3f* points, size_t nPoints,
-                         const V3f& rayOrigin, const V3f& rayDirection,
-                         double longitudinalScale, double* distance = 0);
+/// Distance function equal to the usual Euclidian distance from an origin to a
+/// point, but where the space has been scaled along a given axis.
+class EllipticalDist
+{
+    public:
+        /// Construct elliptical distance from given `origin` where the
+        /// component of any vector along `axis` is scaled by `scale`.
+        ///
+        /// For example, if axis == [1,0,0] and scale == 0.1, distances are
+        /// calculated as sqrt(0.01*x*x + y*y + z*z).
+        EllipticalDist(const V3d& origin, const V3d& axis, double scale)
+            : m_origin(origin), m_axis(axis.normalized()), m_scale(scale)
+        { }
+
+        /// Return index of closest point to the given ray.
+        ///
+        /// The input point set is offset so that the true positions are
+        /// (points[i] + offset) for i in [0,nPoints).
+        ///
+        /// Also return the distance to the nearest point if the input distance
+        /// parameter is non-null.
+        size_t closestPoint(const V3d& offset, const V3f* points,
+                            size_t nPoints, double* distance = 0) const;
+
+        V3d origin()   const { return m_origin; }
+        V3d axis()     const { return m_axis; }
+        double scale() const { return m_scale; }
+
+    private:
+        V3d m_origin;
+        V3d m_axis;
+        double m_scale;
+};
 
 
 /// In-place partition of elements into multiple classes.

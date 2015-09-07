@@ -20,18 +20,17 @@
 
 #include "tinyformat.h"
 
-size_t closestPointToRay(const V3f* points, size_t nPoints,
-                         const V3f& rayOrigin, const V3f& rayDirection,
-                         double longitudinalScale, double* distance)
+size_t EllipticalDist::closestPoint(const V3d& offset, const V3f* points,
+                                    size_t nPoints, double* distance) const
 {
-    const V3f T = rayDirection.normalized();
-    const double f = longitudinalScale*longitudinalScale - 1;
+    V3f offsetOrigin = V3f(m_origin - offset);
+    const double f = m_scale*m_scale - 1;
     size_t nearestIdx = -1;
     double nearestDist2 = DBL_MAX;
     for(size_t i = 0; i < nPoints; ++i)
     {
-        const V3f v = points[i] - rayOrigin; // vector from ray origin to point
-        const double a = v.dot(T); // distance along ray to point of closest approach to test point
+        const V3f v = points[i] - offsetOrigin; // vector from ray origin to point
+        const double a = m_axis.dot(v); // distance along ray to point of closest approach to test point
         const double r2 = v.length2() + f*a*a;
 
         if(r2 < nearestDist2)

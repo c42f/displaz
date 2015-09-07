@@ -335,9 +335,7 @@ void TriMesh::estimateCost(const TransformState& transState,
 
 
 bool TriMesh::pickVertex(const V3d& cameraPos,
-                         const V3d& rayOrigin,
-                         const V3d& rayDirection,
-                         const double longitudinalScale,
+                         const EllipticalDist& distFunc,
                          V3d& pickedVertex,
                          double* distance,
                          std::string* info) const
@@ -345,9 +343,8 @@ bool TriMesh::pickVertex(const V3d& cameraPos,
     if (m_verts.empty())
         return false;
 
-    size_t idx = closestPointToRay((V3f*)&m_verts[0], m_verts.size()/3,
-                                   rayOrigin - offset(), rayDirection,
-                                   longitudinalScale, distance);
+    size_t idx = distFunc.closestPoint(offset(), (V3f*)&m_verts[0],
+                                       m_verts.size()/3, distance);
 
     pickedVertex = V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
 
