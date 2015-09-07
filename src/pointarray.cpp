@@ -45,11 +45,11 @@ struct OctreeNode
     mutable size_t nextBeginIndex; ///< Next index for incremental rendering
     Imath::Box3f bbox;       ///< Actual bounding box of points in node
     V3f center;              ///< center of the node
-    float radius;            ///< Distance to center to node edge along an axis
+    float halfWidth;         ///< Half the axis-aligned width of the node.
 
-    OctreeNode(const V3f& center, float radius)
+    OctreeNode(const V3f& center, float halfWidth)
         : beginIndex(0), endIndex(0), nextBeginIndex(0),
-        center(center), radius(radius)
+        center(center), halfWidth(halfWidth)
     {
         for (int i = 0; i < 8; ++i)
             children[i] = 0;
@@ -148,9 +148,9 @@ struct ProgressFunc
 static OctreeNode* makeTree(int depth, size_t* inds,
                             size_t beginIndex, size_t endIndex,
                             const V3f* P, const V3f& center,
-                            float radius, ProgressFunc& progressFunc)
+                            float halfWidth, ProgressFunc& progressFunc)
 {
-    OctreeNode* node = new OctreeNode(center, radius);
+    OctreeNode* node = new OctreeNode(center, halfWidth);
     const size_t pointsPerNode = 100000;
     // Limit max depth of tree to prevent infinite recursion when
     // greater than pointsPerNode points lie at the same position in
@@ -161,6 +161,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
     size_t* endPtr = inds + endIndex;
     if (endIndex - beginIndex <= pointsPerNode || depth >= maxDepth)
     {
+        // Leaf node: set up indices into point list
         std::random_shuffle(beginPtr, endPtr);
         for (size_t i = beginIndex; i < endIndex; ++i)
             node->bbox.extendBy(P[inds[i]]);
@@ -174,18 +175,18 @@ static OctreeNode* makeTree(int depth, size_t* inds,
     multi_partition(beginPtr, endPtr, OctreeChildIdx(P, center), childRanges+1, 8);
     childRanges[0] = beginPtr;
     // Recursively generate child nodes
-    float r = radius/2;
+    float h = halfWidth/2;
     for (int i = 0; i < 8; ++i)
     {
         size_t childBeginIndex = childRanges[i]   - inds;
         size_t childEndIndex   = childRanges[i+1] - inds;
         if (childEndIndex == childBeginIndex)
             continue;
-        V3f c = center + V3f((i     % 2 == 0) ? -r : r,
-                             ((i/2) % 2 == 0) ? -r : r,
-                             ((i/4) % 2 == 0) ? -r : r);
+        V3f c = center + V3f((i     % 2 == 0) ? -h : h,
+                             ((i/2) % 2 == 0) ? -h : h,
+                             ((i/4) % 2 == 0) ? -h : h);
         node->children[i] = makeTree(depth+1, inds, childBeginIndex,
-                                     childEndIndex, P, c, r, progressFunc);
+                                     childEndIndex, P, c, h, progressFunc);
         node->bbox.extendBy(node->children[i]->bbox);
     }
     return node;
@@ -528,8 +529,8 @@ void PointArray::estimateCost(const TransformState& transState,
 
 static void drawTree(const TransformState& transState, const OctreeNode* node)
 {
-    Imath::Box3f bbox(node->center - Imath::V3f(node->radius),
-                        node->center + Imath::V3f(node->radius));
+    Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
+                      node->center + Imath::V3f(node->halfWidth));
     drawBoundingBox(transState, bbox, Imath::C3f(1));
     drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0));
     for (int i = 0; i < 8; ++i)
