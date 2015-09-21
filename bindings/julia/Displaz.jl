@@ -62,15 +62,15 @@ end
 function write_ply_lines(fileName, position, color)
 	vertexValid = ~all(isnan(position),2)
 	lineStarts = find(x -> x == 1, diff([false;vertexValid],1))
-    nvalidvertices = sum(x -> x == true,vertexValid);
+	nvalidvertices = sum(x -> x == true, vertexValid)
 
 	# Create and write to ply file
-	fid = open(fileName, "w") 
+	fid = open(fileName, "w")
 	write(fid, "ply\n")
 	write(fid, "format binary_little_endian 1.0\n")
 	write(fid,"element vertex $nvalidvertices\n")
 	write(fid,"property double x\n")
-    write(fid,"property double y\n")
+	write(fid,"property double y\n")
 	write(fid,"property double z\n")
 	write(fid,"element color $nvalidvertices\n")
 	write(fid,"property float r\n")
