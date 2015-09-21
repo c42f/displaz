@@ -50,11 +50,11 @@ function write_ply_points(fileName, nvertices, fields)
             for i = 1:size(value,2)
                 propName = ply_property_name(semantic, i)
                 write(fid, "property $typeName $propName\n")
-            end
+        	end
         end
         write(fid, "end_header\n")
         for (_,value) in convertedFields
-			write(fid, value')
+	    	write(fid, value')
         end
     end
 end
