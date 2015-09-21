@@ -17,8 +17,8 @@ ply_type_convert(a::AbstractArray{Float32})  = ("float32", a)
 ply_type_convert(a::AbstractArray{Float64})  = ("float64", a)
 # Generic cases - actually do a conversion
 ply_type_convert{T<:Unsigned}(a::AbstractArray{T}) = ("uint32",  map(UInt32,a))
-ply_type_convert{T<:Integer }(a::AbstractArray{T}) = ("int32",   map(Int32,a))
-ply_type_convert{T<:Real    }(a::AbstractArray{T}) = ("float64", map(Float64,a))
+ply_type_convert{T<:Integer }(a::AbstractArray{T}) = ("int32",   map(int32,a))
+ply_type_convert{T<:Real    }(a::AbstractArray{T}) = ("float64", map(float64,a))
 
 
 const array_semantic = 0
@@ -39,7 +39,7 @@ end
 # Write a set of points to displaz-native ply format
 function write_ply_points(fileName, nvertices, fields)
     convertedFields = [ply_type_convert(value) for (_,__,value) in fields]
-    open(fileName, "w") do fid
+	open(fileName, "w") do fid
         write(fid, "ply\n")
         write(fid, "format binary_little_endian 1.0\n")
         write(fid, "comment Displaz native\n")
@@ -54,11 +54,50 @@ function write_ply_points(fileName, nvertices, fields)
         end
         write(fid, "end_header\n")
         for (_,value) in convertedFields
-            write(fid, value')
+			write(fid, value')
         end
     end
 end
 
+function write_ply_lines(fileName, position, color)
+	vertexValid = ~all(isnan(position),2)
+	lineStarts = find(x -> x == 1, diff([false;vertexValid],1))
+    nvalidvertices = sum(x -> x == true,vertexValid);
+
+	# Create and write to ply file
+	fid = open(fileName, "w") 
+	write(fid, "ply\n")
+	write(fid, "format binary_little_endian 1.0\n")
+	write(fid,"element vertex $nvalidvertices\n")
+	write(fid,"property double x\n")
+    write(fid,"property double y\n")
+	write(fid,"property double z\n")
+	write(fid,"element color $nvalidvertices\n")
+	write(fid,"property float r\n")
+	write(fid,"property float g\n")
+	write(fid,"property float b\n")
+	write(fid,"element edge $(length(lineStarts))\n")
+	write(fid,"property list int int vertex_index\n")
+	write(fid,"end_header\n")
+	idx = find(x-> x== true,vertexValid)	
+	write(fid,position[idx,:]')
+	write(fid,color[idx,:]')
+
+	# Write out line connectivity
+    nvertices = size(position,1)
+    realStart = 0
+    for i = lineStarts'
+        j = i
+        while j <= nvertices && vertexValid[j]
+            j = j + 1
+        end
+        lineLen = j-i
+		write(fid,int32(lineLen))
+        write(fid,int32(realStart:realStart+lineLen-1))
+        realStart = realStart + lineLen
+	  end
+    close(fid);
+end
 
 #const standard_elements = [:position  => (vector_semantic,3),
 #                           :color     => (color_semantic,3),
@@ -79,14 +118,24 @@ interpret_color(s::String) = length(s) == 1 ? interpret_color(s[1]) : error("Unk
 interpret_color(c::Char) = color_names[c]
 
 
+const shape_names = @compat Dict('.' => [0],
+                                 's' => [1],
+                                 'o' => [2],
+                                 'x' => [3],
+                                 '+' => [4],
+								 '-' =>	[5])
+
+interpret_shape(markershape) = markershape
+interpret_shape(c::Char) = shape_names[c]
+
 # True if plots are to be plotted over the previous data, false to clear before
 # plotting new data sets.
 _hold = false
 
-
 # Basic 3D plotting function for points
 function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0])
     color = interpret_color(color)
+	markershape = interpret_shape(markershape)
     size(position, 2) == 3 || error("position must be a Nx3 array")
     size(color, 2)    == 3 || error("color must be a Nx3 array")
     nvertices = size(position, 1)
@@ -102,29 +151,31 @@ function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0])
     end
     # Ensure all fields are floats for now, to avoid surprising scaling in the
     # shader
-    color = map(Float32,color)
-    markersize = map(Float32,markersize)
+    color = map(float32,color)
+    markersize = map(float32,markersize)
     size(color,1) == nvertices || error("color must have same number of rows as position array")
     #fileName = "_julia_tmp.ply"
     fileName = tempname()*".ply"
-    write_ply_points(fileName, nvertices, (
-                     (:position, vector_semantic, position),
-                     (:color, color_semantic, color),
-                     (:markersize, array_semantic, markersize),
-                     (:markershape, array_semantic, markershape),
-                     ))
-    hold = _hold ? "-add" : []
+	if isequal(markershape[1],5) # Plot lines
+		write_ply_lines(fileName, position, color)
+	else # Plot points
+		write_ply_points(fileName, nvertices, (
+			             (:position, vector_semantic, position),
+				         (:color, color_semantic, color),
+					     (:markersize, array_semantic, markersize),
+						 (:markershape, array_semantic, markershape),
+						))
+    end
+	hold = _hold ? "-add" : []
     run(`displaz -background $hold -shader generic_points.glsl -rmtemp $fileName`)
     #print("displaz $holdStr -shader generic_points.glsl -rmtemp $fileName\n")
     nothing
 end
 
-
 function clf()
     run(`displaz -clear`)
     nothing
 end
-
 
 function hold()
     global _hold
@@ -132,8 +183,7 @@ function hold()
 end
 function hold(h)
     global _hold
-    _hold = Bool(h)
+    _hold = bool(h)
 end
-
 
 end
