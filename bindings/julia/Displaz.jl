@@ -20,7 +20,6 @@ ply_type_convert{T<:Unsigned}(a::AbstractArray{T}) = ("uint32",  map(UInt32,a))
 ply_type_convert{T<:Integer }(a::AbstractArray{T}) = ("int32",   map(Int32,a))
 ply_type_convert{T<:Real    }(a::AbstractArray{T}) = ("float64", map(Float64,a))
 
-
 const array_semantic = 0
 const vector_semantic = 1
 const color_semantic = 2
@@ -54,7 +53,7 @@ function write_ply_points(fileName, nvertices, fields)
         end
         write(fid, "end_header\n")
         for (_,value) in convertedFields
-	    	write(fid, value')
+			write(fid, value')
         end
     end
 end
@@ -95,7 +94,7 @@ function write_ply_lines(fileName, position, color)
 		write(fid,int32(lineLen))
         write(fid,int32(realStart:realStart+lineLen-1))
         realStart = realStart + lineLen
-	  end
+	end
     close(fid);
 end
 
