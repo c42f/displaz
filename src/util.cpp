@@ -20,8 +20,8 @@
 
 #include "tinyformat.h"
 
-size_t EllipticalDist::closestPoint(const V3d& offset, const V3f* points,
-                                    size_t nPoints, double* distance) const
+size_t EllipticalDist::findNearest(const V3d& offset, const V3f* points,
+                                   size_t nPoints, double* distance) const
 {
     V3f offsetOrigin = V3f(m_origin - offset);
     const double f = m_scale*m_scale - 1;
@@ -50,6 +50,80 @@ size_t EllipticalDist::closestPoint(const V3d& offset, const V3f* points,
     return nearestIdx;
 }
 
+
+double EllipticalDist::boundNearest(const Box3d& box) const
+{
+    assert(fabs(rayDir.length() - 1) < 1e-10);
+
+    // We want the minimum elliptical distance from the origin to a point in
+    // the box.  Unfortunately this is pretty hard to compute in general, but
+    // it's quite easy to approximate with a bounding cylinder with axis along
+    // the direction m_axis.
+
+    // Offset to be relative to m_origin
+    Box3d offsetBox = box;
+    offsetBox.min -= m_origin;
+    offsetBox.max -= m_origin;
+
+    // Compute bounding cylinder
+    double dmin = 0, dmax = 0, radius = 0;
+    makeBoundingCylinder(offsetBox, m_axis, dmin, dmax, radius);
+    V3d center = offsetBox.center();
+
+    // Compute distance components from origin to cylinder, parallel and
+    // perpendicular to axis.
+    double parallelDist = 0;
+    if (dmin > 0)
+        parallelDist = dmin;
+    else if (dmax < 0)
+        parallelDist = dmax;
+    double centerPerpDist = (center - m_axis.dot(center)*m_axis).length();
+    double perpDist = std::max(centerPerpDist - radius, 0.0);
+
+    parallelDist *= m_scale; // Add elliptical scale factor
+    return sqrt(pow(parallelDist,2) + pow(perpDist,2));
+}
+
+
+void makeBoundingCylinder(const Box3d& box, const V3d& axis,
+                          double& dmin, double& dmax, double& radius)
+{
+    assert(fabs(axis.length() - 1) < 1e-15);
+
+    // List of box vertices. Any point inside is a convex combination of these.
+    V3d verts[] = {
+        V3d(box.min.x, box.min.y, box.min.z),
+        V3d(box.min.x, box.max.y, box.min.z),
+        V3d(box.max.x, box.max.y, box.min.z),
+        V3d(box.max.x, box.min.y, box.min.z),
+        V3d(box.min.x, box.min.y, box.max.z),
+        V3d(box.min.x, box.max.y, box.max.z),
+        V3d(box.max.x, box.max.y, box.max.z),
+        V3d(box.max.x, box.min.y, box.max.z),
+    };
+
+    // Compute bounding cylinder with axis through box center, and dmin, dmax,
+    // radius relative to box center.
+    V3d center = box.center();
+
+    // d = dimension along cylinder
+    double halfLength = -DBL_MAX;
+    double cradius2 = 0;
+    for (int i = 0; i < 8; ++i)
+    {
+        V3d v = verts[i] - center;
+        double d = axis.dot(v);
+        halfLength = std::max(halfLength, d);
+        cradius2 = std::max(cradius2, v.length2() - d*d);
+    }
+    radius = sqrt(cradius2);
+    double dc = axis.dot(center);
+    dmax = dc + halfLength;
+    dmin = dc - halfLength;
+}
+
+
+//------------------------------------------------------------------------------
 
 void milliSleep(int msecs)
 {

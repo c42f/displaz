@@ -46,6 +46,7 @@ using Imath::M44f;
 using Imath::M44d;
 using Imath::C3f;
 using Imath::Box3f;
+using Imath::Box3d;
 
 
 /// Axially symmetric elliptical distance function
@@ -64,15 +65,18 @@ class EllipticalDist
             : m_origin(origin), m_axis(axis.normalized()), m_scale(scale)
         { }
 
-        /// Return index of closest point to the given ray.
+        /// Return index of point nearest to the origin
         ///
         /// The input point set is offset so that the true positions are
         /// (points[i] + offset) for i in [0,nPoints).
         ///
         /// Also return the distance to the nearest point if the input distance
         /// parameter is non-null.
-        size_t closestPoint(const V3d& offset, const V3f* points,
-                            size_t nPoints, double* distance = 0) const;
+        size_t findNearest(const V3d& offset, const V3f* points,
+                           size_t nPoints, double* distance = 0) const;
+
+        /// Return lower bound on elliptical distance to any point in `box`
+        double boundNearest(const Box3d& box) const;
 
         V3d origin()   const { return m_origin; }
         V3d axis()     const { return m_axis; }
@@ -83,6 +87,16 @@ class EllipticalDist
         V3d m_axis;
         double m_scale;
 };
+
+
+/// Encapsulate `box` in a cylinder with normalized axis vector `axis`.
+///
+/// The cylinder axis goes through `box.center()`, with the returned axial
+/// extent given by the interval `[dmin,dmax]`, where the coordinate d for a
+/// vector `x` is given by `d = axis.dot(x)`.  `radius` is the computed radius.
+void makeBoundingCylinder(const Box3d& box, const V3d& axis,
+                          double& dmin, double& dmax,
+                          double& radius);
 
 
 /// In-place partition of elements into multiple classes.

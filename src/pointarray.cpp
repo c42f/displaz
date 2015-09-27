@@ -12,6 +12,7 @@
 
 #include <unordered_map>
 #include <fstream>
+#include <queue>
 
 #include "ply_io.h"
 
@@ -61,28 +62,13 @@ struct OctreeNode
             delete children[i];
     }
 
-    bool rayPassesNearOrThrough(const V3d& rayOrigin, const V3d& rayDir) const
+    size_t findNearest(const EllipticalDist& distFunc,
+                       const V3d& offset, const V3f* p,
+                       double& dist) const
     {
-        const double diagRadius = 1.2*bbox.size().length()/2; // Sphere diameter is length of box diagonal
-        const V3d o2c = bbox.center() - rayOrigin; // vector from rayOrigin to box center
-        const double l = o2c.length();
-        if(l < diagRadius)
-            return true; // rayOrigin lies within bounding sphere
-        // rayOrigin lies outside of bounding sphere
-        const double cosA = o2c.dot(rayDir)/l;  // cosine of angle between rayDir and vector from origin to center
-        if(cosA < DBL_MIN)
-            return false; // rayDir points to side or behind with respect to direction from origin to center of box
-        const double sinA = sqrt(1 - cosA*cosA); // sine of angle between rayDir and vector from origin to center
-        return sinA/cosA < diagRadius/l;
-    }
-
-    size_t closestPoint(const EllipticalDist& distFunc,
-                        const V3d& offset, const V3f* const p,
-                        double& thisRClosest) const
-    {
-         return beginIndex + distFunc.closestPoint(offset, p + beginIndex,
-                                                   endIndex - beginIndex,
-                                                   &thisRClosest);
+         return beginIndex + distFunc.findNearest(offset, p + beginIndex,
+                                                  endIndex - beginIndex,
+                                                  &dist);
     }
 
     size_t size() const { return endIndex - beginIndex; }
@@ -407,6 +393,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 }
 
 
+
 bool PointArray::pickVertex(const V3d& cameraPos,
                             const EllipticalDist& distFunc,
                             V3d& pickedVertex,
@@ -416,20 +403,34 @@ bool PointArray::pickVertex(const V3d& cameraPos,
     if (m_npoints == 0)
         return false;
 
-    const V3d rayOriginOffset = distFunc.origin() - offset();
+    double closestDist = DBL_MAX;
+    size_t closestIdx = 0;
 
-    double rClosest = DBL_MAX;
-    size_t idx = 0;
+    typedef std::pair<double, const OctreeNode*> PriorityNode;
 
-    std::vector<const OctreeNode*> nodeStack;
-    nodeStack.push_back(m_rootNode.get());
-    while (!nodeStack.empty())
+    auto makePriortyNode = [&](const OctreeNode* node)
     {
-        const OctreeNode* node = nodeStack.back();
-        nodeStack.pop_back();
+        // Create (priority,node) pair with priority given by lower bound of
+        // distance for pickVertex() vertex search.
+        Box3d bbox(offset() + node->bbox.min, offset() + node->bbox.max);
+        return PriorityNode(distFunc.boundNearest(bbox), node);
+    };
 
-        if(!node->rayPassesNearOrThrough(rayOriginOffset, distFunc.axis()))
-            continue;
+    // Search for the closest point by putting nodes into a priority queue,
+    // with closer nodes having higher priority.  Keep track of the current
+    // closest point; as soon as the next priority node is further away than
+    // this, we're done.
+    std::priority_queue<PriorityNode, std::vector<PriorityNode>,
+                        std::greater<PriorityNode>> pendingNodes;
+    pendingNodes.push(makePriortyNode(m_rootNode.get()));
+    while (!pendingNodes.empty())
+    {
+        auto nextNode = pendingNodes.top();
+        double nextMinDist = nextNode.first;
+        if (nextMinDist > closestDist)
+            break;
+        const OctreeNode* node = nextNode.second;
+        pendingNodes.pop();
 
         if (!node->isLeaf())
         {
@@ -437,25 +438,26 @@ bool PointArray::pickVertex(const V3d& cameraPos,
             {
                 OctreeNode* n = node->children[i];
                 if (n)
-                    nodeStack.push_back(n);
+                    pendingNodes.push(makePriortyNode(n));
             }
-            continue;
         }
-
-        double thisRClosest;
-        size_t thisIdx = node->closestPoint(distFunc, offset(), m_P, thisRClosest);
-        if(thisRClosest < rClosest)
+        else
         {
-            rClosest = thisRClosest;
-            idx = thisIdx;
+            double dist = 0;
+            size_t idx = node->findNearest(distFunc, offset(), m_P, dist);
+            if(dist < closestDist)
+            {
+                closestDist = dist;
+                closestIdx = idx;
+            }
         }
     }
 
-    if(rClosest == DBL_MAX)
+    if(closestDist == DBL_MAX)
         return false;
 
-    *distance = rClosest;
-    pickedVertex = V3d(m_P[idx]) + offset();
+    *distance = closestDist;
+    pickedVertex = V3d(m_P[closestIdx]) + offset();
 
     if (info)
     {
@@ -469,13 +471,13 @@ bool PointArray::pickVertex(const V3d& cameraPos,
             if (field.name == "position")
             {
                 // Special case for position, since it has an associated offset
-                const float* p = (float*)(field.data.get() + idx*field.spec.size());
+                const float* p = (float*)(field.data.get() + closestIdx*field.spec.size());
                 tfm::format(out, "%.3f %.3f %.3f\n",
                             p[0] + offset().x, p[1] + offset().y, p[2] + offset().z);
             }
             else
             {
-                field.format(out, idx);
+                field.format(out, closestIdx);
                 tfm::format(out, "\n");
             }
         }

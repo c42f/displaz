@@ -26,3 +26,82 @@ TEST_CASE("Simple test for multi_partition")
         CHECK(classEndInds[i] == endIters[i] - &v[0]);
 }
 
+
+TEST_CASE("Bounding cylinder computation")
+{
+    Box3d box(V3d(1,-1,-1), V3d(2,1,1));
+    double dmin = 0, dmax = 0, radius = 0;
+    SECTION("axis == x")
+    {
+        makeBoundingCylinder(box, V3d(1,0,0), dmin, dmax, radius);
+        CHECK(dmin == 1);
+        CHECK(dmax == 2);
+        CHECK(fabs(radius - sqrt(2)) < 1e-15);
+    }
+
+    SECTION("axis == y")
+    {
+        makeBoundingCylinder(box, V3d(0,1,0), dmin, dmax, radius);
+        CHECK(dmin == -1);
+        CHECK(dmax == 1);
+        CHECK(fabs(radius - sqrt(1.25)) < 1e-15);
+    }
+
+    SECTION("axis == z")
+    {
+        makeBoundingCylinder(box, V3d(0,0,1), dmin, dmax, radius);
+        CHECK(dmin == -1);
+        CHECK(dmax == 1);
+        CHECK(fabs(radius - sqrt(1.25)) < 1e-15);
+    }
+
+    SECTION("axis along 1,1,-1")
+    {
+        V3d axis = V3d(1,1,-1).normalized();
+        makeBoundingCylinder(box, axis, dmin, dmax, radius);
+        CHECK(fabs(dmin - -0.5773502691896258) < 1e-15);
+        CHECK(fabs(dmax -  2.3094010767585034) < 1e-15);
+        CHECK(fabs(radius - 1.4719601443879744) < 1e-15);
+    }
+}
+
+
+TEST_CASE("Isotropic EllipticalDist bound tests")
+{
+    EllipticalDist dist(V3d(0), V3d(1,0,0), 1);
+
+    // origin inside box
+    CHECK(dist.boundNearest(Box3d(V3d(-1,-1,-1), V3d(1,1,1))) == 0);
+    // origin on boundary
+    CHECK(dist.boundNearest(Box3d(V3d(0,0,0), V3d(1,1,1))) == 0);
+
+    // origin outside
+    // box translated along x axis
+    CHECK(dist.boundNearest(Box3d(V3d(10,-1,-1), V3d(20,1,1))) == 10);
+    // box translated along y axis
+    CHECK(dist.boundNearest(Box3d(V3d(-1,-5,-1), V3d(1,-3,1))) <= 3);
+    // box translated equally in y,z
+    CHECK(dist.boundNearest(Box3d(V3d(-1,-5,-5), V3d(1,-3,-3))) <= 3*sqrt(2));
+    // degenerate box in general position
+    CHECK(fabs(dist.boundNearest(Box3d(V3d(1,2,3), V3d(1,2,3))) - sqrt(14)) < 1e-15);
+}
+
+
+TEST_CASE("Anisotropic EllipticalDist bound tests")
+{
+    // Anisotropic, with factor of 10 reduction along x
+    EllipticalDist dist(V3d(0), V3d(1,0,0), 0.1);
+
+    // origin inside box
+    CHECK(dist.boundNearest(Box3d(V3d(-1,-1,-1), V3d(1,1,1))) == 0);
+    // origin on boundary
+    CHECK(dist.boundNearest(Box3d(V3d(0,0,0), V3d(1,1,1))) == 0);
+
+    // origin outside
+    // box translated along x axis
+    CHECK(dist.boundNearest(Box3d(V3d(10,-1,-1), V3d(20,1,1))) == 1);
+    // box translated equally in y,z
+    CHECK(dist.boundNearest(Box3d(V3d(-1,-5,-5), V3d(1,-3,-3))) <= 3*sqrt(2));
+    // degenerate box in general position
+    CHECK(fabs(dist.boundNearest(Box3d(V3d(1,2,3), V3d(1,2,3))) - sqrt(0.1*0.1*1*1 + 2*2 + 3*3)) < 1e-15);
+}

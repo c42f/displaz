@@ -172,6 +172,7 @@ endif()
 # Tests
 if (DISPLAZ_USE_TESTS)
     add_executable(unit_tests
+        ${util_srcs}
         streampagecache_test.cpp
         util_test.cpp
         test_main.cpp

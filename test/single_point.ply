@@ -1,0 +1,9 @@
+ply
+format ascii 1.0
+comment Test reasonable behaviour when only a single point is loaded
+element vertex 1
+property float x
+property float y
+property float z
+end_header
+1 2 3

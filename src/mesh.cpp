@@ -343,8 +343,8 @@ bool TriMesh::pickVertex(const V3d& cameraPos,
     if (m_verts.empty())
         return false;
 
-    size_t idx = distFunc.closestPoint(offset(), (V3f*)&m_verts[0],
-                                       m_verts.size()/3, distance);
+    size_t idx = distFunc.findNearest(offset(), (V3f*)&m_verts[0],
+                                      m_verts.size()/3, distance);
 
     pickedVertex = V3d(m_verts[3*idx], m_verts[3*idx+1], m_verts[3*idx+2]) + offset();
 

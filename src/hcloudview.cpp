@@ -388,7 +388,7 @@ bool HCloudView::pickVertex(const V3d& cameraPos,
         {
             double dist = DBL_MAX;
             const V3f* P = reinterpret_cast<const V3f*>(node->position.get());
-            size_t idx = distFunc.closestPoint(offset(), P, node->idata.numPoints, &dist);
+            size_t idx = distFunc.findNearest(offset(), P, node->idata.numPoints, &dist);
             if (dist < minDist)
             {
                 minDist = dist;
