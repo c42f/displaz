@@ -29,6 +29,11 @@ set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
 #------------------------------------------------------------------------------
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
+# More handy location for intermediate build artifacts
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 if (DISPLAZ_USE_TESTS)
     enable_testing()
 endif()
