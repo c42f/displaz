@@ -15,8 +15,8 @@ void* select_3_2_mac_visual(GDHandle handle, int depthBufferSize)
     attribs[cnt++] = NSOpenGLPFADoubleBuffer;
 
     attribs[cnt++] = NSOpenGLPFADepthSize;
-    //attribs[cnt++] = (NSOpenGLPixelFormatAttribute)(depthBufferSize==-1)?32:depthBufferSize;
-    attribs[cnt++] = (NSOpenGLPixelFormatAttribute)32;
+    attribs[cnt++] = (NSOpenGLPixelFormatAttribute)(depthBufferSize==-1)?32:depthBufferSize;
+    //attribs[cnt++] = (NSOpenGLPixelFormatAttribute)32;
 
     // attribs[cnt++] = NSOpenGLPFAAllowOfflineRenderers;
     attribs[cnt++] = NSOpenGLPFANoRecovery;

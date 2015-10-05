@@ -89,11 +89,10 @@ if(WIN32)
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-set(objc_srcs
-    coreprofileattr.mm
-)
-
 if(APPLE)
+    set(objc_srcs
+        coreprofileattr.mm
+    )
     find_library(COCOA_LIBRARY Cocoa)
     find_library(FOUNDATION_LIBRARY Foundation)
 endif()
