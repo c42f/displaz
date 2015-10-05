@@ -177,11 +177,11 @@ if (DISPLAZ_USE_TESTS)
         util_test.cpp
         test_main.cpp
     )
-    add_test(unit_tests unit_tests)
+    add_test(NAME unit_tests COMMAND unit_tests)
 
     # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
     target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
-    add_test(InterProcessLock_test InterProcessLock_test master)
+    add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
 
