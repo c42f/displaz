@@ -32,12 +32,13 @@
 #include <QtGui/QDesktopWidget>
 #include <QtGui/QDropEvent>
 #include <QtNetwork/QLocalServer>
+#include <QtOpenGL/QGLFormat>
 
 
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
-PointViewerMainWindow::PointViewerMainWindow()
+PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     : m_progressBar(0),
     m_pointView(0),
     m_shaderEditor(0),
@@ -172,7 +173,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new View3D(m_geometries, this);
+    m_pointView = new View3D(m_geometries, format, this);
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));

@@ -12,6 +12,7 @@
 #include <QtOpenGL/QGLFramebufferObject>
 #include <QMessageBox>
 //#include <QtOpenGL/QGLBuffer>
+#include <QtOpenGL/QGLFormat>
 
 #include "config.h"
 #include "fileloader.h"
@@ -21,10 +22,11 @@
 #include "shader.h"
 #include "tinyformat.h"
 #include "util.h"
+#include "corecontext.h"
 
 //------------------------------------------------------------------------------
-View3D::View3D(GeometryCollection* geometries, QWidget *parent)
-    : QGLWidget(parent),
+View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
+    : QGLWidget(new CoreContext(format), parent),
     m_camera(false, false),
     m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),

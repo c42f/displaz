@@ -21,6 +21,7 @@ class QGLShaderProgram;
 class QGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
+class QGLFormat;
 
 class ShaderProgram;
 struct TransformState;
@@ -31,7 +32,7 @@ class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
-        View3D(GeometryCollection* geometries, QWidget *parent = NULL);
+        View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
         ~View3D();
 
         /// Return shader used for displaying points

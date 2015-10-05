@@ -16,6 +16,7 @@ class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
 class QModelIndex;
+class QGLFormat;
 
 class HelpDialog;
 class View3D;
@@ -33,7 +34,7 @@ class PointViewerMainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        PointViewerMainWindow();
+        PointViewerMainWindow(const QGLFormat& format);
 
         /// Hint at an appropriate size
         QSize sizeHint() const;
