@@ -45,9 +45,9 @@ matrix:
     exclude:
         # Only check gcc on linux and clang on OS X
         - os: linux
-            compiler: clang
+          compiler: clang
         - os: osx
-            compiler: gcc
+          compiler: gcc
     allow_failures:
         # For now ignore every OS X build issues
         - os: osx
