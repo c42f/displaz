@@ -19,7 +19,6 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LASlib
-    FOUND_VAR LASLIB_FOUND
     REQUIRED_VARS LASLIB_INCLUDE_DIRS LASLIB_LIBRARY
     VERSION_VAR LASLIB_VERSION_STRING
 )

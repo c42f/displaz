@@ -18,7 +18,6 @@ string(REGEX MATCH "[0-9]+.[0-9]+.[0-9]+" ILMBASE_VERSION_STRING ${version_line}
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Ilmbase
-    FOUND_VAR ILMBASE_FOUND
     REQUIRED_VARS ILMBASE_INCLUDE_DIRS ILMBASE_IMATH_LIBRARY ILMBASE_IEX_LIBRARY
     VERSION_VAR ILMBASE_VERSION_STRING
     )
