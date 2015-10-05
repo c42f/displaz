@@ -1,4 +1,17 @@
 language: cpp
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
+
+branches:
+  only:
+    - master
+
 script:
 #- cmake --version
 # Build external tools
@@ -20,3 +33,14 @@ install:
  - wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb
  - wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+files/cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb
  - sudo dpkg -i cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb
+
+matrix:
+    exclude:
+      # Only check gcc on linux and clang on OS X
+      - os: linux
+        compiler: clang
+      - os: osx
+        compiler: gcc
+    allow_failures:
+     # For now ignore every OS X build issues
+     - os: osx
