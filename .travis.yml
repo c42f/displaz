@@ -43,11 +43,11 @@ script:
 
 matrix:
     exclude:
-      # Only check gcc on linux and clang on OS X
-      - os: linux
-        compiler: clang
-      - os: osx
-        compiler: gcc
+        # Only check gcc on linux and clang on OS X
+        - os: linux
+            compiler: clang
+        - os: osx
+            compiler: gcc
     allow_failures:
-     # For now ignore every OS X build issues
-     - os: osx
+        # For now ignore every OS X build issues
+        - os: osx
