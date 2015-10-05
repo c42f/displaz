@@ -1,22 +1,53 @@
 language: cpp
-script:
-#- cmake --version
-# Build external tools
-#- pwd
-- mkdir build_external
-- cd build_external
-- cmake ../thirdparty/external
-- make -j4
-- cd ..
-# Build displaz
-#- pwd
-- mkdir build
-- cd build
-- cmake ..
-- make -j4
-- cd ..
+
+os:
+    - linux
+    - osx
+
+compiler:
+    - gcc
+    - clang
+
+# either whitelist or blacklist branches
+# branches:
+#     only:
+#         - master
+#     except:
+#         - experimental
+
+before_install:
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+files/cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
+
 install:
- - sudo apt-get install wget git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils
- - wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb
- - wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+files/cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb
- - sudo dpkg -i cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install wget git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo dpkg -i cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt4; fi
+
+before_script:
+    # Build external tools
+    - mkdir build_external
+    - cd build_external
+    - cmake ../thirdparty/external
+    - make -j4
+    - cd ..
+
+script:
+    # Build displaz
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make -j4
+    - cd ..
+
+matrix:
+    exclude:
+        # Only check gcc on linux and clang on OS X
+        - os: linux
+          compiler: clang
+        - os: osx
+          compiler: gcc
+    allow_failures:
+        # For now ignore every OS X build issues
+        - os: osx
