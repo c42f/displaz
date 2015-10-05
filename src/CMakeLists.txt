@@ -89,6 +89,15 @@ if(WIN32)
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
+set(objc_srcs
+    coreprofileattr.mm
+)
+
+if(APPLE)
+    find_library(COCOA_LIBRARY Cocoa)
+    find_library(FOUNDATION_LIBRARY Foundation)
+endif()
+
 # Create config.h
 set(DISPLAZ_VERSION_STRING "${displazVersion}")
 configure_file(config.h.in.cmake config.h @ONLY)
@@ -96,7 +105,7 @@ include_directories(${PROJECT_BINARY_DIR})
 
 
 add_executable(displaz ${cli_srcs})
-add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
+add_executable(displaz-gui WIN32 ${gui_srcs} ${objc_srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
     add_executable(dvox
@@ -118,6 +127,13 @@ target_link_libraries(displaz-gui
     ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
+
+if(APPLE)
+target_link_libraries(displaz-gui
+    ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
+)
+endif()
+
 if (DISPLAZ_BUILD_DVOX)
     # TODO: Remove this dependency
     target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
