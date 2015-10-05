@@ -1,44 +1,43 @@
 language: cpp
 
 os:
-  - linux
-  - osx
+    - linux
+    - osx
 
 compiler:
-  - gcc
-  - clang
+    - gcc
+    - clang
 
 branches:
   only:
     - master
     - travis-osx
 
-before_script:
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt4; fi
+before_install:
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+files/cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
 
-script:
-    #- cmake --version
+install:
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install wget git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo dpkg -i cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt4; fi
+
+before_script:
     # Build external tools
-    #- pwd
     - mkdir build_external
     - cd build_external
     - cmake ../thirdparty/external
     - make -j4
     - cd ..
+
+script:
     # Build displaz
-    #- pwd
     - mkdir build
     - cd build
     - cmake ..
     - make -j4
     - cd ..
-
-install:
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install wget git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb; fi
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+files/cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo dpkg -i cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb cmake-data_2.8.11.2-1ubuntu2~precise1_all.deb; fi
 
 matrix:
     exclude:
