@@ -8,10 +8,12 @@ compiler:
     - gcc
     - clang
 
-branches:
-  only:
-    - master
-    - travis-osx
+# either whitelist or blacklist branches
+# branches:
+#     only:
+#         - master
+#     except:
+#         - experimental
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" == "linux" ]; then wget https://launchpad.net/~kalakris/+archive/ubuntu/cmake/+build/4892863/+files/cmake_2.8.11.2-1ubuntu2~precise1_amd64.deb; fi
