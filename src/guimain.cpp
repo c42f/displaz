@@ -3,10 +3,10 @@
 
 #include "mainwindow.h"
 
-//#include <QtCore/QDataStream>
-#include <QtCore/QTextCodec>
-#include <QtGui/QApplication>
-#include <QtOpenGL/QGLFormat>
+//#include <QDataStream>
+#include <QTextCodec>
+#include <QApplication>
+#include <QSurfaceFormat>
 
 #include "argparse.h"
 #include "config.h"
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
+    // Qt5: no longer required // QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 
     setupQFileSearchPaths();
 

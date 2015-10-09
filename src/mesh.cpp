@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "glutil.h"
-#include <QtOpenGL/QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 
 #include "tinyformat.h"
 #include "rply/rply.h"
@@ -281,7 +281,7 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     return true;
 }
 
-void TriMesh::drawFaces(QGLShaderProgram& prog,
+void TriMesh::drawFaces(QOpenGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     transState.translate(offset()).setUniforms(prog.programId());
@@ -304,7 +304,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
 }
 
 
-void TriMesh::drawEdges(QGLShaderProgram& prog,
+void TriMesh::drawEdges(QOpenGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     transState.translate(offset()).setUniforms(prog.programId());

@@ -7,8 +7,8 @@
 #include "dragspinbox.h"
 #include "qtlogger.h"
 
-#include <QtGui/QFormLayout>
-#include <QtGui/QComboBox>
+#include <QFormLayout>
+#include <QComboBox>
 
 
 /// Make shader #define flags for hardware or driver-dependent blacklisted
@@ -47,8 +47,8 @@ bool Shader::compileSourceCode(const QByteArray& src)
     QByteArray defines;
     switch (m_shader.shaderType())
     {
-        case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
-        case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
+        case QOpenGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
+        case QOpenGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
     }
     defines += makeBlacklistDefines();
     QByteArray modifiedSrc = src;
@@ -78,7 +78,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
     {
         if (!re.exactMatch(lines[lineIdx]))
             continue;
-        QByteArray typeStr = re.cap(1).toAscii();
+        QByteArray typeStr = re.cap(1).toLatin1();
         QVariant defaultValue;
         ShaderParam::Type type;
         if (typeStr == "float")
@@ -98,7 +98,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
         }
         else
             continue;
-        ShaderParam param(type, re.cap(2).toAscii(), defaultValue);
+        ShaderParam param(type, re.cap(2).toLatin1(), defaultValue);
         QMap<QString, QString>& kvPairs = param.kvPairs;
         QStringList pairList = re.cap(4).split(';');
         for (int i = 0; i < pairList.size(); ++i)
@@ -135,7 +135,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
 
 //------------------------------------------------------------------------------
 // ShaderProgram implementation
-ShaderProgram::ShaderProgram(const QGLContext * context, QObject* parent)
+ShaderProgram::ShaderProgram(const QOpenGLContext * context, QObject* parent)
     : QObject(parent),
     m_context(context),
     m_pointSize(5),
@@ -240,22 +240,22 @@ bool ShaderProgram::setShaderFromSourceFile(QString fileName)
 
 bool ShaderProgram::setShader(QString src)
 {
-    std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment, m_context));
-    std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex, m_context));
+    std::unique_ptr<Shader> vertexShader(new Shader(QOpenGLShader::Fragment));
+    std::unique_ptr<Shader> fragmentShader(new Shader(QOpenGLShader::Vertex));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
-    if(!vertexShader->compileSourceCode(src.toAscii()))
+    if(!vertexShader->compileSourceCode(src.toLatin1()))
     {
         g_logger.error("Could not compile shader:\n%s",
                        vertexShader->shader()->log().toStdString());
         return false;
     }
-    if(!fragmentShader->compileSourceCode(src.toAscii()))
+    if(!fragmentShader->compileSourceCode(src.toLatin1()))
     {
         g_logger.error("Could not compile shader:\n%s",
                        fragmentShader->shader()->log().toStdString());
         return false;
     }
-    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram(m_context));
+    std::unique_ptr<QOpenGLShaderProgram> newProgram(new QOpenGLShaderProgram());
     if (!newProgram->addShader(vertexShader->shader()) ||
         !newProgram->addShader(fragmentShader->shader()))
     {
@@ -285,7 +285,7 @@ void ShaderProgram::setUniformValue(double value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toAscii());
+        ShaderParam key(ShaderParam::Float, sender()->objectName().toLatin1());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -304,7 +304,7 @@ void ShaderProgram::setUniformValue(int value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toAscii());
+        ShaderParam key(ShaderParam::Int, sender()->objectName().toLatin1());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -375,7 +375,7 @@ void ShaderProgram::setUniforms()
 }
 
 
-void ShaderProgram::setContext(const QGLContext* context)
+void ShaderProgram::setContext(const QOpenGLContext* context)
 {
     m_context = context;
     setShader(shaderSource());

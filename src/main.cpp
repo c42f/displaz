@@ -1,12 +1,12 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-//#include <QtCore/QDataStream>
-#include <QtCore/QCoreApplication>
-#include <QtCore/QDir>
-#include <QtCore/QProcess>
-#include <QtCore/QTextCodec>
-#include <QtCore/QUuid>
+//#include <QDataStream>
+#include <QCoreApplication>
+#include <QDir>
+#include <QProcess>
+#include <QTextCodec>
+#include <QUuid>
 
 #include "argparse.h"
 #include "config.h"
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     // require GUI resources which can get exhaused if a lot of instances are
     // started at once.
     QCoreApplication application(argc, argv);
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
+    // Qt5: no longer required // QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 
     if (noServer)
     {
