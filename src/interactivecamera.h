@@ -13,10 +13,10 @@
 #endif
 #include <cmath>
 
-#include <QtGui/QQuaternion>
-#include <QtGui/QVector3D>
-#include <QtGui/QMatrix4x4>
-#include <QtCore/QRect>
+#include <QQuaternion>
+#include <QVector3D>
+#include <QMatrix4x4>
+#include <QRect>
 
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathMatrix.h>

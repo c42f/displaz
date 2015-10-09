@@ -7,12 +7,12 @@
 #include <vector>
 #include <memory>
 
-#include <QtCore/QString>
-#include <QtCore/QMetaType>
+#include <QString>
+#include <QMetaType>
 
 #include "geometry.h"
 
-class QGLShaderProgram;
+class QOpenGLShaderProgram;
 
 
 /// Mesh of triangles or line segment edges, in indexed format for OpenGL
@@ -21,9 +21,9 @@ class TriMesh : public Geometry
     public:
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual void drawFaces(QGLShaderProgram& prog,
+        virtual void drawFaces(QOpenGLShaderProgram& prog,
                                const TransformState& transState) const;
-        virtual void drawEdges(QGLShaderProgram& prog,
+        virtual void drawEdges(QOpenGLShaderProgram& prog,
                                const TransformState& transState) const;
 
         virtual size_t pointCount() const { return 0; }

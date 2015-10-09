@@ -4,14 +4,14 @@
 #include "glutil.h"
 #include "view3d.h"
 
-#include <QtCore/QTimer>
-#include <QtCore/QTime>
-#include <QtGui/QKeyEvent>
-#include <QtGui/QLayout>
+#include <QTimer>
+#include <QTime>
+#include <QKeyEvent>
+#include <QLayout>
 #include <QItemSelectionModel>
-#include <QtOpenGL/QGLFramebufferObject>
+#include <QOpenGLFramebufferObject>
 #include <QMessageBox>
-//#include <QtOpenGL/QGLBuffer>
+//#include <QOpenGLBuffer>
 #include <QtOpenGL/QGLFormat>
 
 #include "config.h"
@@ -226,20 +226,20 @@ void View3D::resizeGL(int w, int h)
 }
 
 
-std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
+std::unique_ptr<QOpenGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
 {
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    const QGLFormat fmt = context()->format();
-    QGLFramebufferObjectFormat fboFmt;
-    fboFmt.setAttachment(QGLFramebufferObject::Depth);
+    const QSurfaceFormat fmt = context()->format();
+    QOpenGLFramebufferObjectFormat fboFmt;
+    fboFmt.setAttachment(QOpenGLFramebufferObject::Depth);
     // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
     // for samples==1, so work around it by forcing 0, if possible
     fboFmt.setSamples(fmt.samples() > 1 ? fmt.samples() : 0);
     //fboFmt.setTextureTarget();
-    std::unique_ptr<QGLFramebufferObject> fbo;
-    fbo.reset(new QGLFramebufferObject(w, h, fboFmt));
-    if (fbo.get() && fbo->attachment()==QGLFramebufferObject::NoAttachment)
+    std::unique_ptr<QOpenGLFramebufferObject> fbo;
+    fbo.reset(new QOpenGLFramebufferObject(w, h, fboFmt));
+    if (fbo.get() && fbo->attachment()==QOpenGLFramebufferObject::NoAttachment)
         g_logger.error("%s", "Failed to attach FBO depth buffer.");
     return fbo;
 }
@@ -314,7 +314,7 @@ void View3D::paintGL()
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
 
     m_incrementalFramebuffer->release();
-    QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
+    QOpenGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
                                           m_incrementalFramebuffer.get(),
                                           QRect(0,0,width(),height()),
                                           GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -347,7 +347,7 @@ void View3D::drawMeshes(const TransformState& transState,
     // Draw faces
     if (m_meshFaceShader->isValid())
     {
-        QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+        QOpenGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
         meshFaceShader.bind();
         M44d worldToEyeVecTransform = m_camera.viewMatrix();
         worldToEyeVecTransform[3][0] = 0;
@@ -363,7 +363,7 @@ void View3D::drawMeshes(const TransformState& transState,
     // Draw edges
     if (m_meshEdgeShader->isValid())
     {
-        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+        QOpenGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1);
         meshEdgeShader.bind();
         for(size_t i = 0; i < geoms.size(); ++i)
@@ -698,7 +698,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
-    QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
+    QOpenGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
     QModelIndexList selection = m_selectionModel->selectedRows();

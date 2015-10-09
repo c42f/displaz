@@ -3,8 +3,12 @@ project(viewer)
 include_directories(BEFORE
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
-    ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5GUI_INCLUDE_DIRS}
+    ${Qt5Network_INCLUDE_DIRS}
+    ${Qt5OpenGL_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
     ${THIRDPARTY_INSTALL_DIR}/include
 )
 
@@ -22,7 +26,7 @@ set(util_srcs
 )
 
 # Interprocess communication
-qt4_wrap_cpp(ipc_moc_srcs
+qt5_wrap_cpp(ipc_moc_srcs
     IpcChannel.h
 )
 set(ipc_srcs
@@ -32,7 +36,7 @@ set(ipc_srcs
 )
 
 # GUI
-qt4_wrap_cpp(gui_moc_srcs
+qt5_wrap_cpp(gui_moc_srcs
     datasetui.h
     dragspinbox.h
     fileloader.h
@@ -79,7 +83,7 @@ set(cli_srcs
     main.cpp
 )
 
-qt4_add_resources(RCC_GENERATED resource.qrc)
+qt5_add_resources(RCC_GENERATED resource.qrc)
 
 if(WIN32)
     list(APPEND gui_srcs ../package/windows_resources.rc)
@@ -119,11 +123,13 @@ endif()
 #-------------------------------------------------------------------------------
 # Library dependencies
 target_link_libraries(displaz
-    ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${ILMBASE_LIBRARIES}
+    ${Qt5Core_LIBRARIES} ${Qt5Network_LIBRARIES} ${Qt5Widgets_LIBRARIES}
+    ${ILMBASE_LIBRARIES}
 )
 target_link_libraries(displaz-gui
-    ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+    ${Qt5Core_LIBRARIES} ${Qt5Gui_LIBRARIES} ${Qt5OpenGL_LIBRARIES}
+    ${Qt5Network_LIBRARIES} ${Qt5Widgets_LIBRARIES}
+    ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
     ${ILMBASE_LIBRARIES}
 )
 
@@ -135,7 +141,7 @@ endif()
 
 if (DISPLAZ_BUILD_DVOX)
     # TODO: Remove this dependency
-    target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
+    target_link_libraries(dvox ${Qt5Core_LIBRARIES})
 endif()
 
 if (DISPLAZ_USE_LAS)
@@ -154,6 +160,7 @@ endif()
 
 
 if(WIN32)
+    # TODO: test windows version - is this still required ?
     target_link_libraries(displaz-gui
         ${QT_QTMAIN_LIBRARY}
     )
@@ -178,7 +185,7 @@ if(WIN32)
     # Install required qt libraries
     install(CODE "
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${Qt5Core_LIBRARY_DIR}\")
     ")
 endif()
 
@@ -196,7 +203,7 @@ if (DISPLAZ_USE_TESTS)
 
     # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
-    target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
+    target_link_libraries(InterProcessLock_test ${Qt5Core_LIBRARIES})
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
 

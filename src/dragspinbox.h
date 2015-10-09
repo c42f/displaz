@@ -6,10 +6,10 @@
 
 #include <math.h>
 
-#include <QtGui/QDoubleSpinBox>
-#include <QtGui/QMouseEvent>
-#include <QtGui/QApplication>
-#include <QtGui/QDesktopWidget>
+#include <QDoubleSpinBox>
+#include <QMouseEvent>
+#include <QApplication>
+#include <QDesktopWidget>
 
 /// Hacked version of QDoubleSpinBox which allows vertical mouse dragging to
 /// change the current value.

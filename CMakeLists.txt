@@ -75,7 +75,20 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
+
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Gui REQUIRED)
+find_package(Qt5Network REQUIRED)
+find_package(Qt5OpenGL REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+add_definitions(${Qt5Core_DEFINITIONS})
+add_definitions(${Qt5Gui_DEFINITIONS})
+add_definitions(${Qt5Network_DEFINITIONS})
+add_definitions(${Qt5Widgets_DEFINITIONS})
+
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
+endif()
 
 include_directories(${ILMBASE_INCLUDE_DIRS})
 

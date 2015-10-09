@@ -9,7 +9,7 @@
 #include <memory>
 
 #include <GL/glew.h>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
@@ -17,8 +17,8 @@
 #include "geometrycollection.h"
 #include "glutil.h"
 
-class QGLShaderProgram;
-class QGLFramebufferObject;
+class QOpenGLShaderProgram;
+class QOpenGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
@@ -28,7 +28,7 @@ struct TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
-class View3D : public QGLWidget
+class View3D : public QOpenGLWidget
 {
     Q_OBJECT
     public:
@@ -81,7 +81,7 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
-        std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+        std::unique_ptr<QOpenGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
         void drawCursor(const TransformState& transState, const V3d& P,
                         float cursorRadius, float centerPointRadius) const;
@@ -130,7 +130,7 @@ class View3D : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
+        std::unique_ptr<QOpenGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;

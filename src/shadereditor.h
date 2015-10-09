@@ -4,7 +4,7 @@
 #ifndef DISPLAZ_SHADER_EDITOR_H_INCLUDED
 #define DISPLAZ_SHADER_EDITOR_H_INCLUDED
 
-#include <QtGui/QPlainTextEdit>
+#include <QPlainTextEdit>
 
 /// Very basic shader editor widget
 class ShaderEditor : public QPlainTextEdit
