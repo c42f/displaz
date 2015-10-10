@@ -9,6 +9,8 @@
 #include <memory>
 
 #include <GL/glew.h>
+#define QT_NO_OPENGL_ES_2
+
 #include <QOpenGLWidget>
 #include <QModelIndex>
 
@@ -50,6 +52,9 @@ class View3D : public QOpenGLWidget
         const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
+
+    signals:
+        void initialisedGL();
 
     public slots:
         /// Set the backgroud color

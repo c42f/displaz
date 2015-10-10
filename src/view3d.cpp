@@ -80,7 +80,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
-    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+    // connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
 
@@ -203,7 +203,7 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_VENDOR),
                   (const char*)glGetString(GL_RENDERER),
                   (const char*)glGetString(GL_VERSION));
-    m_shaderProgram->setContext(context());
+    // m_shaderProgram->setContext(context());
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
@@ -212,6 +212,8 @@ void View3D::initializeGL()
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
         geoms[i]->initializeGL();
+
+    emit initialisedGL();
 }
 
 
