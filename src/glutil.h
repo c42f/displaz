@@ -5,6 +5,7 @@
 #define GLUTIL_H_INCLUDED
 
 #include <GL/glew.h>
+#define QT_NO_OPENGL_ES_2
 
 #include <QImage>
 

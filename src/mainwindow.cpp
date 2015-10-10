@@ -79,6 +79,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     //--------------------------------------------------
     // Menus
+    menuBar()->setNativeMenuBar(false); // OS X doesn't activate the native menu bar under Qt5
+
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     QAction* openAct = fileMenu->addAction(tr("&Open"));
@@ -269,7 +271,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     //--------------------------------------------------
     // Final setup
-    openShaderFile("shaders:las_points.glsl");
+    connect(m_pointView, SIGNAL(initialisedGL()), this, SLOT(finalSetup()));
 }
 
 
@@ -498,6 +500,13 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     QByteArray src = shaderFile.readAll();
     m_shaderEditor->setPlainText(src);
     m_pointView->shaderProgram().setShader(src);
+}
+
+void PointViewerMainWindow::finalSetup()
+{
+    openShaderFile("shaders:las_points.glsl");
+    //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
+    //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 }
 
 
