@@ -27,7 +27,6 @@ class QGLFormat;
 
 class ShaderProgram;
 struct TransformState;
-struct CoreContext;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
@@ -145,8 +144,6 @@ class View3D : public QOpenGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
-
-        CoreContext* m_context;
 };
 
 

@@ -187,9 +187,9 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
-
 void View3D::initializeGL()
 {
+    glewExperimental = true;
     if (glewInit() != GLEW_OK)
     {
         g_logger.error("%s", "Failed to initialize GLEW");
@@ -197,13 +197,15 @@ void View3D::initializeGL()
         return;
     }
     g_logger.info("OpenGL implementation:\n"
-                  "GL_VENDOR   = %s\n"
-                  "GL_RENDERER = %s\n"
-                  "GL_VERSION  = %s",
+                  "GL_VENDOR    = %s\n"
+                  "GL_RENDERER  = %s\n"
+                  "GL_VERSION   = %s\n"
+                  "GLSL_VERSION = %s\n",
                   (const char*)glGetString(GL_VENDOR),
                   (const char*)glGetString(GL_RENDERER),
-                  (const char*)glGetString(GL_VERSION));
-    // m_shaderProgram->setContext(context());
+                  (const char*)glGetString(GL_VERSION),
+                  (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+
     m_meshFaceShader.reset(new ShaderProgram(context()));
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
     m_meshEdgeShader.reset(new ShaderProgram(context()));
