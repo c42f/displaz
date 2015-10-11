@@ -482,6 +482,13 @@ void PointViewerMainWindow::addFiles()
     m_currFileDir.makeAbsolute();
 }
 
+void PointViewerMainWindow::finalSetup()
+{
+    openShaderFile("shaders:las_points.glsl");
+    //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
+    //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
+}
+
 
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
 {
