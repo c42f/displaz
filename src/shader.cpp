@@ -135,9 +135,8 @@ bool Shader::compileSourceCode(const QByteArray& src)
 
 //------------------------------------------------------------------------------
 // ShaderProgram implementation
-ShaderProgram::ShaderProgram(const QOpenGLContext * context, QObject* parent)
+ShaderProgram::ShaderProgram(QObject* parent)
     : QObject(parent),
-    m_context(context),
     m_pointSize(5),
     m_exposure(1),
     m_contrast(1),
@@ -373,14 +372,6 @@ void ShaderProgram::setUniforms()
         }
     }
 }
-
-
-void ShaderProgram::setContext(const QOpenGLContext* context)
-{
-    m_context = context;
-    setShader(shaderSource());
-}
-
 
 QByteArray ShaderProgram::shaderSource() const
 {

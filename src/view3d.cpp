@@ -12,7 +12,7 @@
 #include <QOpenGLFramebufferObject>
 #include <QMessageBox>
 //#include <QOpenGLBuffer>
-#include <QtOpenGL/QGLFormat>
+#include <QGLFormat>
 
 #include "config.h"
 #include "fileloader.h"
@@ -70,7 +70,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
     makeCurrent();
-    m_shaderProgram.reset(new ShaderProgram(context()));
+    m_shaderProgram.reset(new ShaderProgram());
     connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
             this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
@@ -206,9 +206,9 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_VERSION),
                   (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    m_meshFaceShader.reset(new ShaderProgram(context()));
+    m_meshFaceShader.reset(new ShaderProgram());
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
-    m_meshEdgeShader.reset(new ShaderProgram(context()));
+    m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
@@ -234,7 +234,7 @@ std::unique_ptr<QOpenGLFramebufferObject> View3D::allocIncrementalFramebuffer(in
 {
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    const QSurfaceFormat fmt = context()->format();
+    const QGLFormat fmt = context()->format();
     QOpenGLFramebufferObjectFormat fboFmt;
     fboFmt.setAttachment(QOpenGLFramebufferObject::Depth);
     // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
