@@ -8,8 +8,9 @@
 #include <vector>
 #include <memory>
 
-#include <GL/glew.h>
+#include "glutil.h"
 #define QT_NO_OPENGL_ES_2
+
 
 #include <QOpenGLWidget>
 #include <QModelIndex>
@@ -17,7 +18,6 @@
 #include "DrawCostModel.h"
 #include "interactivecamera.h"
 #include "geometrycollection.h"
-#include "glutil.h"
 
 class QOpenGLShaderProgram;
 class QOpenGLFramebufferObject;
@@ -27,6 +27,7 @@ class QGLFormat;
 
 class ShaderProgram;
 struct TransformState;
+struct CoreContext;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
@@ -144,6 +145,8 @@ class View3D : public QOpenGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
+
+        CoreContext* m_context;
 };
 
 
