@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     QGLFormat f = QGLFormat::defaultFormat();
     f.setVersion( 3, 2 );
     f.setProfile( QGLFormat::CoreProfile ); // Requires >=Qt-4.8.0
-    //f.setSampleBuffers(true);
+    f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window(f);
