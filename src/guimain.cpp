@@ -6,7 +6,7 @@
 //#include <QDataStream>
 #include <QTextCodec>
 #include <QApplication>
-#include <QSurfaceFormat>
+#include <QGLFormat>
 
 #include "argparse.h"
 #include "config.h"

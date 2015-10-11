@@ -124,7 +124,7 @@ class ShaderProgram : public QObject
     Q_OBJECT
 
     public:
-        ShaderProgram(const QOpenGLContext * context, QObject* parent = 0);
+        ShaderProgram(QObject* parent = 0);
 
         /// Access to the underlying shader program
         QOpenGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
@@ -133,9 +133,6 @@ class ShaderProgram : public QObject
         void setupParameterUI(QWidget* parentWidget);
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
-
-        /// Reset the context
-        void setContext(const QOpenGLContext* context);
 
         /// Read shader source from given file and call setShader()
         bool setShaderFromSourceFile(QString fileName);
