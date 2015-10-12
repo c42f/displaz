@@ -135,7 +135,7 @@ bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
 
 void HCloudView::initializeGL()
 {
-    m_shader.reset(new ShaderProgram(QOpenGLContext::currentContext()));
+    m_shader.reset(new ShaderProgram());
     m_shader->setShaderFromSourceFile("shaders:las_points_lod.glsl");
 }
 
