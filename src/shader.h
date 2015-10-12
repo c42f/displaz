@@ -9,7 +9,6 @@
 #include <QMap>
 #include <QOpenGLShader>
 #include <QOpenGLShaderProgram>
-#include <QOpenGLContext>
 
 /// Representation of a shader "parameter" (uniform variable or attribute)
 struct ShaderParam
@@ -177,7 +176,6 @@ class ShaderProgram : public QObject
     private:
         void setupParameters();
 
-        const QOpenGLContext* m_context;
         double m_pointSize;
         double m_exposure;
         double m_contrast;
