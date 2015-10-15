@@ -21,6 +21,9 @@
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathMatrix.h>
 
+// TMP DEBUG
+#include "tinyformat.h"
+
 /// Camera controller for mouse-based scene navigation
 ///
 /// The camera model used here is for inspecting objects, so we have a location

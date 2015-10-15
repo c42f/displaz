@@ -13,7 +13,7 @@
 #include "typespec.h"
 #include "geomfield.h"
 
-class QOpenGLShaderProgram;
+class QGLShaderProgram;
 
 struct OctreeNode;
 struct TransformState;
@@ -31,7 +31,7 @@ class PointArray : public Geometry
         // Overridden Geometry functions
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
 
-        virtual DrawCount drawPoints(QOpenGLShaderProgram& prog,
+        virtual DrawCount drawPoints(QGLShaderProgram& prog,
                                     const TransformState& transState,
                                     double quality, bool incrementalDraw) const;
 
@@ -50,7 +50,7 @@ class PointArray : public Geometry
         /// Draw a representation of the point hierarchy.
         ///
         /// Probably only useful for debugging.
-        void drawTree(const TransformState& transState) const;
+        void drawTree(QGLShaderProgram& prog, const TransformState& transState) const;
 
     private:
         bool loadLas(QString fileName, size_t maxPointCount,

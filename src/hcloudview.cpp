@@ -140,13 +140,13 @@ void HCloudView::initializeGL()
 }
 
 
-static void drawBounds(HCloudNode* node, const TransformState& transState)
+static void drawBounds(QGLShaderProgram& prog, HCloudNode* node, const TransformState& transState)
 {
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1));
+    drawBoundingBox(transState, node->bbox, Imath::C3f(1), prog.programId());
     for (int i = 0; i < 8; ++i)
     {
         if (node->children[i])
-            drawBounds(node->children[i], transState);
+            drawBounds(prog, node->children[i], transState);
     }
 }
 
@@ -181,7 +181,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     //drawBounds(m_rootNode.get(), transState);
 
     V3f cameraPos = V3d(0) * transState.modelViewMatrix.inverse();
-    QOpenGLShaderProgram& prog = m_shader->shaderProgram();
+    QGLShaderProgram& prog = m_shader->shaderProgram();
     prog.bind();
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -325,7 +325,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
 
     glDisable(GL_POINT_SPRITE);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    prog.release();
+    // prog.release();
 
     g_logger.info("hcloud: %.1fMB, #nodes = %d, fetched pages = %d, mean voxel size = %.0f",
                   m_sizeBytes/1e6, nodesRendered, fetchedPages,

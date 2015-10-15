@@ -47,8 +47,8 @@ bool Shader::compileSourceCode(const QByteArray& src)
     QByteArray defines;
     switch (m_shader.shaderType())
     {
-        case QOpenGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
-        case QOpenGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
+        case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
+        case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
     }
     defines += makeBlacklistDefines();
     QByteArray modifiedSrc = src;
@@ -239,8 +239,8 @@ bool ShaderProgram::setShaderFromSourceFile(QString fileName)
 
 bool ShaderProgram::setShader(QString src)
 {
-    std::unique_ptr<Shader> vertexShader(new Shader(QOpenGLShader::Fragment));
-    std::unique_ptr<Shader> fragmentShader(new Shader(QOpenGLShader::Vertex));
+    std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment));
+    std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
     if(!vertexShader->compileSourceCode(src.toLatin1()))
     {
@@ -254,7 +254,7 @@ bool ShaderProgram::setShader(QString src)
                        fragmentShader->shader()->log().toStdString());
         return false;
     }
-    std::unique_ptr<QOpenGLShaderProgram> newProgram(new QOpenGLShaderProgram());
+    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram());
     if (!newProgram->addShader(vertexShader->shader()) ||
         !newProgram->addShader(fragmentShader->shader()))
     {
