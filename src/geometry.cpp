@@ -40,7 +40,8 @@ Geometry::Geometry()
     : m_fileName(),
     m_offset(0,0,0),
     m_centroid(0,0,0),
-    m_bbox()
+    m_bbox()//,
+    //m_bboxVertexArray(0)
 { }
 
 
@@ -60,3 +61,35 @@ bool Geometry::reloadFile(size_t maxVertexCount)
     return loadFile(m_fileName, maxVertexCount);
 }
 
+
+/*void Geometry::initializeGL()
+{
+    GLfloat verts[] = {
+            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
+            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
+            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
+            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
+            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z,
+            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
+            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
+            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z
+    };
+    unsigned char inds[] = {
+            // rows: bottom, sides, top
+            0,1, 1,2, 2,3, 3,0,
+            0,4, 1,5, 2,6, 3,7,
+            4,5, 5,6, 6,7, 7,4
+    };
+
+
+    // create VBA VBO for rendering ...
+    glGenVertexArrays(1, &m_bboxVertexArray);
+    glBindVertexArray(m_bboxVertexArray);
+
+    GLuint geomVertexArray;
+    glGenBuffers(1, &geomVertexArray);
+    glBindBuffer(GL_ARRAY_BUFFER, geomVertexArray);
+    glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), verts, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}*/

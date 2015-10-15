@@ -11,7 +11,7 @@
 #include <QString>
 #include <QMetaType>
 
-class QOpenGLShaderProgram;
+class QGLShaderProgram;
 struct TransformState;
 
 
@@ -84,15 +84,15 @@ class Geometry : public QObject
         /// The returned DrawCount should be filled with an estimate of the
         /// actual amount of geometry shaded and whether there's any more to be
         /// drawn.
-        virtual DrawCount drawPoints(QOpenGLShaderProgram& pointShaderProg,
+        virtual DrawCount drawPoints(QGLShaderProgram& pointShaderProg,
                                      const TransformState& transState, double quality,
                                      bool incrementalDraw) const { return DrawCount(); }
 
         /// Draw edges with the given shader
-        virtual void drawEdges(QOpenGLShaderProgram& edgeShaderProg,
+        virtual void drawEdges(QGLShaderProgram& edgeShaderProg,
                                const TransformState& transState) const {}
         /// Draw faces with the given shader
-        virtual void drawFaces(QOpenGLShaderProgram& faceShaderProg,
+        virtual void drawFaces(QGLShaderProgram& faceShaderProg,
                                const TransformState& transState) const {}
 
         /// Return total number of vertices
@@ -147,6 +147,9 @@ class Geometry : public QObject
         /// Get axis aligned bounding box containing the geometry
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
+        /// Get vertex array handle
+        //const unsigned int bboxVertexArray() const { return m_bboxVertexArray; }
+
     signals:
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
@@ -165,6 +168,8 @@ class Geometry : public QObject
         V3d m_offset;
         V3d m_centroid;
         Imath::Box3d m_bbox;
+
+        //unsigned int m_bboxVertexArray;
 };
 
 

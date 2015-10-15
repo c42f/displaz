@@ -7,7 +7,7 @@
 
 #include "glutil.h"
 
-#include <QOpenGLShaderProgram>
+#include <QGLShaderProgram>
 #include <QTime>
 
 #include <unordered_map>
@@ -523,27 +523,27 @@ void PointArray::estimateCost(const TransformState& transState,
 }
 
 
-static void drawTree(const TransformState& transState, const OctreeNode* node)
+static void drawTree(QGLShaderProgram& prog, const TransformState& transState, const OctreeNode* node)
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
                       node->center + Imath::V3f(node->halfWidth));
-    drawBoundingBox(transState, bbox, Imath::C3f(1));
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0));
+    drawBoundingBox(transState, bbox, Imath::C3f(1), prog.programId());
+    drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
     for (int i = 0; i < 8; ++i)
     {
         OctreeNode* n = node->children[i];
         if (n)
-            drawTree(transState, n);
+            drawTree(prog, transState, n);
     }
 }
 
-void PointArray::drawTree(const TransformState& transState) const
+void PointArray::drawTree(QGLShaderProgram& prog, const TransformState& transState) const
 {
-    ::drawTree(transState, m_rootNode.get());
+    ::drawTree(prog, transState, m_rootNode.get());
 }
 
 
-DrawCount PointArray::drawPoints(QOpenGLShaderProgram& prog, const TransformState& transState,
+DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
     TransformState relativeTrans = transState.translate(offset());

@@ -4,7 +4,14 @@
 #ifndef GLUTIL_H_INCLUDED
 #define GLUTIL_H_INCLUDED
 
-#include <GL/glew.h>
+#ifdef __APPLE__
+    #include <GL/glew.h>
+    #include <OpenGL/glext.h>
+#else
+    #include <GL/glew.h>
+    #include <GL/gl.h>
+#endif
+
 #define QT_NO_OPENGL_ES_2
 
 #include <QImage>
@@ -38,6 +45,12 @@ struct TransformState
     /// Translate model by given offset
     TransformState translate(const Imath::V3d& offset) const;
 
+    /// Scale model by given scalar
+    TransformState scale(const Imath::V3d& scalar) const;
+
+    /// Rotate model by given rotation vector
+    TransformState rotate(const Imath::V4d& rotation) const;
+
     /// Load matrix uniforms onto the currently bound shader program:
     ///
     ///   "projectionMatrix"
@@ -45,6 +58,9 @@ struct TransformState
     ///   "modelViewProjectionMatrix"
     ///
     void setUniforms(GLuint prog) const;
+    void setProjUniform(GLuint prog) const;
+
+    void setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal);
 
     /// Load matrices into traditional openGL transform stack
     ///
@@ -56,9 +72,9 @@ struct TransformState
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
 void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3f& bbox, const Imath::C3f& col);
+                     const Imath::Box3f& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3d& bbox, const Imath::C3f& col);
+                     const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 
 /// Draw a sphere using the given shader.  May be semitransparent.
 ///
@@ -129,7 +145,7 @@ struct Texture
         }
     }
 
-    void bind() const
+    void bind(int sampler) const
     {
         if (!texture)
         {
@@ -144,8 +160,18 @@ struct Texture
         }
         else
         {
+            glActiveTexture(GL_TEXTURE0 + texture);
             glBindTexture(target, texture);
+            if (sampler >= 0)
+            {
+                glBindSampler(GL_TEXTURE0 + texture, sampler);
+            }
         }
+    }
+
+    void bind() const
+    {
+        bind(-1);
     }
 
             QImage image;

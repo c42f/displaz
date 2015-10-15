@@ -11,6 +11,20 @@ TransformState TransformState::translate(const Imath::V3d& offset) const
     return res;
 }
 
+TransformState TransformState::scale(const Imath::V3d& scalar) const
+{
+    TransformState res(*this);
+    res.modelViewMatrix =  M44d().setScale(scalar) * modelViewMatrix;
+    return res;
+}
+
+TransformState TransformState::rotate(const Imath::V4d& rotation) const
+{
+    TransformState res(*this);
+    res.modelViewMatrix =  M44d().rotate(V3d(rotation.x*rotation.w,rotation.y*rotation.w,rotation.z*rotation.w)) * modelViewMatrix;
+    return res;
+}
+
 
 static void setUniform(GLuint prog, const char* name, const M44d& mat)
 {
@@ -32,13 +46,51 @@ void TransformState::setUniforms(GLuint prog) const
     setUniform(prog, "modelViewProjectionMatrix", mvproj);
 }
 
+void TransformState::setProjUniform(GLuint prog) const
+{
+    setUniform(prog, "projectionMatrix", projMatrix);
+}
+
+void TransformState::setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal)
+{
+    // Note: Create an orthographic matrix from input values
+    if (left == right) {
+        right = left+1.0; // TODO: should throw an error here
+    }
+    if (bottom == top) {
+        bottom = top+1.0; // TODO: should throw an error here
+    }
+    if (nearVal == farVal) {
+        nearVal = farVal+1.0; // TODO: should throw an error here
+    }
+
+    double xx = 2.0/(right-left);
+    double yy = 2.0/(top-bottom);
+    double zz = -2.0/(farVal-nearVal);
+
+    double tx = -(right+left)/(right-left);
+    double ty = -(top+bottom)/(top-bottom);
+    double tz = -(farVal+nearVal)/(farVal-nearVal);
+
+    this->projMatrix = M44d(xx,0.0,0.0,tx,
+                            0.0,yy,0.0,ty,
+                            0.0,0.0,zz,tz,
+                            0.0,0.0,0.0,1.0);
+
+    this->projMatrix = M44d(xx,0.0,0.0,0.0,
+                            0.0,yy,0.0,0.0,
+                            0.0,0.0,zz,0.0,
+                            tx,ty,tz,1.0);
+}
 
 void TransformState::load() const
 {
+#ifdef OPEN_GL_2
     glMatrixMode(GL_PROJECTION);
     glLoadMatrix(M44f(projMatrix));
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrix(M44f(modelViewMatrix));
+#endif
 }
 
 
@@ -46,25 +98,23 @@ void TransformState::load() const
 
 void drawBoundingBox(const TransformState& transState,
                      const Imath::Box3d& bbox,
-                     const Imath::C3f& col)
+                     const Imath::C3f& col,
+                     const GLuint& shaderProg)
 {
     // Transform to box min for stability with large offsets
     TransformState trans2 = transState.translate(bbox.min);
     Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
-    drawBoundingBox(trans2, box2, col);
+    drawBoundingBox(trans2, box2, col, shaderProg);
 }
 
 
 void drawBoundingBox(const TransformState& transState,
                      const Imath::Box3f& bbox,
-                     const Imath::C3f& col)
+                     const Imath::C3f& col,
+                     const GLuint& shaderProg)
 {
-    transState.load();
-    glEnable(GL_LINE_SMOOTH);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor3f(col.x, col.y, col.z);
-    glLineWidth(1);
+    tfm::printfln("drawBoundingBox :: shaderProg: %i", shaderProg);
+
     GLfloat verts[] = {
         bbox.min.x, bbox.min.y, bbox.min.z,
         bbox.min.x, bbox.max.y, bbox.min.z,
@@ -81,6 +131,15 @@ void drawBoundingBox(const TransformState& transState,
         0,4, 1,5, 2,6, 3,7,
         4,5, 5,6, 6,7, 7,4
     };
+
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glLineWidth(1);
+
+//#ifdef OPEN_GL_2
+    transState.load();
+    glColor3f(col.x, col.y, col.z);
     // TODO: Use shaders here
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, 0, verts);
@@ -89,6 +148,23 @@ void drawBoundingBox(const TransformState& transState,
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
+//#else
+
+    /*glUseProgram(shaderProg);
+    transState.setUniforms(shaderProg);
+    //GLint colorLoc = glGetUniformLocation(shaderProg, "color");
+    //assert(colorLoc >= 0);
+    //glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
+    GLint positionLoc = glGetAttribLocation(shaderProg, "position");
+    assert(positionLoc >= 0);
+    glEnableVertexAttribArray(positionLoc);
+    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts);
+
+    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
+                   GL_UNSIGNED_BYTE, inds);
+
+    glDisableVertexAttribArray(positionLoc);*/
+//#endif
 }
 
 
@@ -144,12 +220,14 @@ void drawSphere(const TransformState& transState,
     glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
     GLint positionLoc = glGetAttribLocation(shaderProg, "position");
     assert(positionLoc >= 0);
-    glEnableVertexAttribArray(positionLoc);
     glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts.get());
+    glEnableVertexAttribArray(positionLoc);
     glDrawElements(GL_TRIANGLES, (GLint)triInds.size(),
                    GL_UNSIGNED_SHORT, triInds.data());
     glDisableVertexAttribArray(positionLoc);
+#ifdef OPEN_GL_2
     glUseProgram(0);
+#endif
 }
 
 

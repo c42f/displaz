@@ -99,6 +99,8 @@ if(APPLE)
     )
     find_library(COCOA_LIBRARY Cocoa)
     find_library(FOUNDATION_LIBRARY Foundation)
+    # add_definitions("-x objective-c++")
+    # set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa")
 endif()
 
 # Create config.h

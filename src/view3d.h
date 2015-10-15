@@ -19,8 +19,8 @@
 #include "interactivecamera.h"
 #include "geometrycollection.h"
 
-class QOpenGLShaderProgram;
-class QOpenGLFramebufferObject;
+class QGLShaderProgram;
+class QGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
@@ -86,11 +86,13 @@ class View3D : public QOpenGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
-        std::unique_ptr<QOpenGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+        std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
 
+        void initCursor(float cursorRadius, float centerPointRadius);
         void drawCursor(const TransformState& transState, const V3d& P,
                         float cursorRadius, float centerPointRadius) const;
 
+        void initAxes();
         void drawAxes() const;
 
         DrawCount drawPoints(const TransformState& transState,
@@ -135,7 +137,7 @@ class View3D : public QOpenGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        std::unique_ptr<QOpenGLFramebufferObject> m_incrementalFramebuffer;
+        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
@@ -144,6 +146,17 @@ class View3D : public QOpenGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
+
+        /// Shaders for interface geometry
+        std::unique_ptr<ShaderProgram> m_cursorShader;
+        std::unique_ptr<ShaderProgram> m_axesShader;
+        std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
+        std::unique_ptr<ShaderProgram> m_axesLabelShader;
+        std::unique_ptr<ShaderProgram> m_boundingBoxShader;
+
+        unsigned int m_cursorVertexArray;
+        unsigned int m_axesVertexArray;
+        unsigned int m_quadVertexArray;
 };
 
 
