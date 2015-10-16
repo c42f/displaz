@@ -165,7 +165,7 @@ void drawSphere(const TransformState& transState,
             triInds.push_back(i1); triInds.push_back(i3); triInds.push_back(i4);
         }
     }
-
+#ifdef OPEN_GL_2
     // Draw computed sphere mesh.
     glUseProgram(shaderProg);
     newTrans.setUniforms(shaderProg);
@@ -179,8 +179,8 @@ void drawSphere(const TransformState& transState,
     glDrawElements(GL_TRIANGLES, (GLint)triInds.size(),
                    GL_UNSIGNED_SHORT, triInds.data());
     glDisableVertexAttribArray(positionLoc);
-#ifdef OPEN_GL_2
-    glUseProgram(0);
+
+    //glUseProgram(0);
 #endif
 }
 

@@ -303,7 +303,7 @@ void TriMesh::initializeGL()
 
 void TriMesh::initializeFaceGL()
 {
-    this->initializeVertexGL("meshface", "position");
+    this->initializeVertexGL("meshface", "position", "normal", "color");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -316,7 +316,7 @@ void TriMesh::initializeFaceGL()
 
 void TriMesh::initializeEdgeGL()
 {
-    this->initializeVertexGL("meshedge", "position");
+    this->initializeVertexGL("meshedge", "position", "normal", "color");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -327,8 +327,7 @@ void TriMesh::initializeEdgeGL()
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName)
-{
+void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName) {
     unsigned int vertexShaderId = this->shaderId(vertArrayName);
 
     if (!vertexShaderId) {
@@ -346,13 +345,47 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     GLuint vertexBuffer;
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, m_verts.size()*sizeof(float), &m_verts[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, m_verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
 
     GLuint positionAttribute = glGetAttribLocation(vertexShaderId, vertAttrName);
-    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(positionAttribute);
 
-    //glDisableVertexAttribArray(positionLoc);
+    //glDisableVertexAttribArray(positionAttribute);
+
+    GLuint normalBuffer;
+    glGenBuffers(1, &normalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
+
+    GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
+    glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+    glEnableVertexAttribArray(normalAttribute);
+
+    //glDisableVertexAttribArray(normalAttribute);
+
+    //tfm::printfln("TriMesh :: initializeVertexGL : color array size: %i", m_colors.size());
+
+    if (m_colors.size() > 0)
+    {
+        GLuint colorBuffer;
+        glGenBuffers(1, &colorBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+
+        if (m_colors.size() == m_verts.size()) {
+            glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
+        }
+        else {
+            std::vector<float> tmp_colors(m_verts.size(), 1.0f);
+            glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
+        }
+
+        GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
+        glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+        glEnableVertexAttribArray(colorAttribute);
+    }
+
+    //glDisableVertexAttribArray(colorAttribute);
 }
 
 void TriMesh::drawFaces(QGLShaderProgram& prog,
@@ -362,37 +395,15 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
     unsigned int vertexArray = this->vertexArray("meshface");
 
     transState.translate(offset()).setUniforms(vertexShaderId);
-    //transState.setUniforms(vertexShaderId);
 
     /*
-    GLint colorLoc = glGetUniformLocation(shaderProg, "color");
+    GLint colorLoc = glGetUniformLocation(vertexShaderId, "color");
     //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
-    glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
+    glUniform4f(colorLoc, GLfloat(1), GLfloat(1), GLfloat(1), 1.0); // , col.a
      */
 
     glBindVertexArray(vertexArray);
-    //glDrawArrays( GL_TRIANGLES, 0, m_triangles.size() );
     glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(), GL_UNSIGNED_INT, 0);
-
-#ifdef OPEN_GL_2
-    transState.translate(offset()).setUniforms(prog.programId());
-    prog.enableAttributeArray("position");
-    prog.enableAttributeArray("normal");
-    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    prog.setAttributeArray("normal", GL_FLOAT, &m_normals[0], 3);
-    if (m_colors.size() == m_verts.size())
-    {
-        prog.enableAttributeArray("color");
-        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
-    }
-    else
-        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(),
-                   GL_UNSIGNED_INT, &m_triangles[0]);
-    prog.disableAttributeArray("color");
-    prog.disableAttributeArray("position");
-    prog.disableAttributeArray("normal");
-#endif //OPEN_GL_2
 }
 
 
@@ -406,23 +417,6 @@ void TriMesh::drawEdges(QGLShaderProgram& prog,
 
     glBindVertexArray(vertexArray);
     glDrawElements(GL_LINES, (GLsizei)m_edges.size(), GL_UNSIGNED_INT, 0);
-
-#ifdef OPEN_GL_2
-    transState.translate(offset()).setUniforms(prog.programId());
-    prog.enableAttributeArray("position");
-    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    if (m_colors.size() == m_verts.size())
-    {
-        prog.enableAttributeArray("color");
-        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
-    }
-    else
-        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
-                   GL_UNSIGNED_INT, &m_edges[0]);
-    prog.disableAttributeArray("color");
-    prog.disableAttributeArray("position");
-#endif //OPEN_GL_2
 }
 
 

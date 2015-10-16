@@ -433,7 +433,7 @@ void View3D::paintGL()
         }
     }
 
-#ifdef NOT_WORKING
+
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
     const double targetMillisecs = 40;
     double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
@@ -449,7 +449,7 @@ void View3D::paintGL()
 
     if (!geoms.empty())
         m_drawCostModel.addSample(drawCount, frameTime);
-#endif
+
 
     // Debug: print bar showing how well we're sticking to the frame time
 //    int barSize = 40;
@@ -485,14 +485,12 @@ void View3D::paintGL()
         drawAxes();
     }
 
-#ifdef NOT_WORKING
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
     else
         m_incrementalFrameTimer->start(10);
     m_incrementalDraw = true;
-#endif
 
 #ifdef GL_CHECK_RENDER
     //glFrameBufferStatus(m_incrementalFramebuffer->handle());
