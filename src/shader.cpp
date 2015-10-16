@@ -78,7 +78,11 @@ bool Shader::compileSourceCode(const QByteArray& src)
     {
         if (!re.exactMatch(lines[lineIdx]))
             continue;
-        QByteArray typeStr = re.cap(1).toLatin1();
+#ifdef DISPLAZ_USE_QT4
+        QByteArray typeStr = re.cap(1).toAscii().constData();
+#else
+        QByteArray typeStr = re.cap(1).toLatin1().constData();
+#endif
         QVariant defaultValue;
         ShaderParam::Type type;
         if (typeStr == "float")
@@ -98,7 +102,11 @@ bool Shader::compileSourceCode(const QByteArray& src)
         }
         else
             continue;
-        ShaderParam param(type, re.cap(2).toLatin1(), defaultValue);
+#ifdef DISPLAZ_USE_QT4
+        ShaderParam param(type, re.cap(2).toAscii().constData(), defaultValue);
+#else
+        ShaderParam param(type, re.cap(2).toLatin1().constData(), defaultValue);
+#endif
         QMap<QString, QString>& kvPairs = param.kvPairs;
         QStringList pairList = re.cap(4).split(';');
         for (int i = 0; i < pairList.size(); ++i)
@@ -141,7 +149,11 @@ ShaderProgram::ShaderProgram(QObject* parent)
     m_exposure(1),
     m_contrast(1),
     m_selector(0)
-{ }
+{
+    m_vertexShader = NULL;
+    m_fragmentShader = NULL;
+    m_shaderProgram = NULL;
+}
 
 
 bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
@@ -232,7 +244,10 @@ bool ShaderProgram::setShaderFromSourceFile(QString fileName)
 {
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly))
+    {
+        //g_logger.error("Could not read Shader:\n%s", fileName.toStdString());
         return false;
+    }
     return setShader(file.readAll());
 }
 
@@ -242,13 +257,18 @@ bool ShaderProgram::setShader(QString src)
     std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment));
     std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
-    if(!vertexShader->compileSourceCode(src.toLatin1()))
+#ifdef DISPLAZ_USE_QT4
+    QByteArray src_ba = src.toAscii();
+#else
+    QByteArray src_ba = src.toLatin1();
+#endif
+    if(!vertexShader->compileSourceCode(src_ba))
     {
         g_logger.error("Could not compile shader:\n%s",
                        vertexShader->shader()->log().toStdString());
         return false;
     }
-    if(!fragmentShader->compileSourceCode(src.toLatin1()))
+    if(!fragmentShader->compileSourceCode(src_ba))
     {
         g_logger.error("Could not compile shader:\n%s",
                        fragmentShader->shader()->log().toStdString());
@@ -284,7 +304,11 @@ void ShaderProgram::setUniformValue(double value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toLatin1());
+#ifdef DISPLAZ_USE_QT4
+        ShaderParam key(ShaderParam::Float, sender()->objectName().toAscii().constData());
+#else
+        ShaderParam key(ShaderParam::Float, sender()->objectName().toLatin1().constData());
+#endif
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -303,7 +327,11 @@ void ShaderProgram::setUniformValue(int value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toLatin1());
+#ifdef DISPLAZ_USE_QT4
+        ShaderParam key(ShaderParam::Int, sender()->objectName().toAscii().constData());
+#else
+        ShaderParam key(ShaderParam::Int, sender()->objectName().toLatin1().constData());
+#endif
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {

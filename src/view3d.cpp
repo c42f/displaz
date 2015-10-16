@@ -22,11 +22,16 @@
 #include "shader.h"
 #include "tinyformat.h"
 #include "util.h"
-//#include "corecontext.h"
-
+#ifdef DISPLAZ_USE_QT4
+    #include "corecontext.h"
+#endif
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
-    : QGLWidget(format, parent), // new CoreContext(format)
+#ifdef DISPLAZ_USE_QT4
+    : QGLWidget(new CoreContext(format), parent),
+#else
+    : QGLWidget(format, parent),
+#endif
     m_camera(false, false),
     m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),
@@ -244,13 +249,16 @@ void View3D::initializeGL()
     initAxes();
 
     m_boundingBoxShader.reset(new ShaderProgram());
-    m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
+    bool bbox_shader_init = m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
 
     m_meshFaceShader.reset(new ShaderProgram());
-    m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
+    bool meshface_shader_init = m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
+
     m_meshEdgeShader.reset(new ShaderProgram());
-    m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
+    bool meshedge_shader_init = m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
+
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
         geoms[i]->initializeGL();
@@ -327,7 +335,7 @@ void View3D::paintGL()
 
             for (size_t i = 0; i < geoms.size(); ++i)
             {
-                drawBoundingBox(transState, geoms[i]->boundingBox(), Imath::C3f(1), boundingBoxShader.programId());
+                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), Imath::C3f(1), boundingBoxShader.programId());
             }
 
             // boundingBoxShader.release();
@@ -401,7 +409,7 @@ void View3D::paintGL()
 void View3D::drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const
 {
-    tfm::printfln("View3D::drawMeshes");
+    //tfm::printfln("View3D::drawMeshes");
 
     // Draw faces
     if (m_meshFaceShader->isValid())
@@ -423,7 +431,7 @@ void View3D::drawMeshes(const TransformState& transState,
     if (m_meshEdgeShader->isValid())
     {
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-        glLineWidth(1);
+        glLineWidth(1.0f);
         meshEdgeShader.bind();
         for(size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawEdges(meshEdgeShader, transState);
@@ -516,7 +524,13 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
                                0.0, -r2*s, 0.0  };
 
     m_cursorShader.reset(new ShaderProgram());
-    m_cursorShader->setShaderFromSourceFile("shaders:cursor.glsl");
+    bool cursor_shader_init = m_cursorShader->setShaderFromSourceFile("shaders:cursor.glsl");
+
+    if (!cursor_shader_init)
+    {
+        g_logger.error("Could not read cursor shader.");
+        return;
+    }
 
     glGenVertexArrays(1, &m_cursorVertexArray);
     glBindVertexArray(m_cursorVertexArray);
@@ -593,7 +607,7 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_LINE_SMOOTH);
 
-        glLineWidth(2);
+        glLineWidth(2.0f);
 
         // draw white lines
         transState = transState.translate( V3d(p2.x, p2.y, 0) );
@@ -614,11 +628,17 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
 void View3D::initAxes()
 {
     m_axesBackgroundShader.reset(new ShaderProgram());
-    m_axesBackgroundShader->setShaderFromSourceFile("shaders:axes_quad.glsl");
+    bool axesb_shader_init = m_axesBackgroundShader->setShaderFromSourceFile("shaders:axes_quad.glsl");
     m_axesLabelShader.reset(new ShaderProgram());
-    m_axesLabelShader->setShaderFromSourceFile("shaders:axes_label.glsl");
+    bool axesl_shader_init = m_axesLabelShader->setShaderFromSourceFile("shaders:axes_label.glsl");
     m_axesShader.reset(new ShaderProgram());
-    m_axesShader->setShaderFromSourceFile("shaders:axes_lines.glsl");
+    bool axes_shader_init = m_axesShader->setShaderFromSourceFile("shaders:axes_lines.glsl");
+
+    if (!axes_shader_init || !axesb_shader_init || !axesl_shader_init)
+    {
+        g_logger.error("Could not read axes shaders");
+        return;
+    }
 
     const GLfloat w = 64.0;    // Width of axes widget
     const GLfloat o = 8.0;     // Axes widget offset in x and y
@@ -729,7 +749,7 @@ void View3D::drawAxes() const
 
     TransformState transState(Imath::V2i(width(), height()),
                               m_camera.projectionMatrix(),
-                              m_camera.viewMatrix());
+                              m_camera.viewMatrix()); //m_camera.viewMatrix()
 
     // Draw Background texture
     if (m_axesBackgroundShader->isValid())
@@ -764,10 +784,14 @@ void View3D::drawAxes() const
         glBindVertexArray(m_axesVertexArray);
         // matrix stack
         axesShader.setUniformValue("center", center.x, center.y, center.z);
-        transState.setUniforms(axesShader.programId());
-        projState.setProjUniform(axesShader.programId());
+        //transState.setUniforms(axesShader.programId());
+        //M44d mvproj = transState.modelViewMatrix * transState.projMatrix;
+        //setUniform(axesShader.programId(), "modelViewProjectionMatrix", mvproj);
+
+        setUniform(axesShader.programId(), "modelViewMatrix", transState.modelViewMatrix);
+        setUniform(axesShader.programId(), "projectionMatrix", projState.projMatrix);
         // draw
-        glLineWidth(4);
+        glLineWidth(4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         // axesShader.release();
@@ -875,7 +899,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw)
 {
-    tfm::printfln("View3D::drawPoints -- incrementalDraw: %i", incrementalDraw);
+    //tfm::printfln("View3D::drawPoints -- incrementalDraw: %i", incrementalDraw);
 
     DrawCount totDrawCount;
     if (geoms.empty())

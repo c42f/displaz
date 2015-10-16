@@ -9,6 +9,9 @@
 
 #include <rply/rply.h>
 
+//TMP DEBUG
+#include "tinyformat.h"
+
 /// Determine whether a ply file has mesh or line segment elements
 ///
 /// (If not, assume it's a point cloud.)
@@ -62,8 +65,20 @@ bool Geometry::reloadFile(size_t maxVertexCount)
 }
 
 
-/*void Geometry::initializeGL()
+void Geometry::initializeGL()
 {
+    tfm::printfln("Geometry::initializeGL");
+    tfm::printfln("Geometry::bbox:\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n",
+                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
+                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
+                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
+                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
+                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z,
+                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
+                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
+                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z
+    );
+
     GLfloat verts[] = {
             (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
             (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
@@ -89,7 +104,13 @@ bool Geometry::reloadFile(size_t maxVertexCount)
     GLuint geomVertexArray;
     glGenBuffers(1, &geomVertexArray);
     glBindBuffer(GL_ARRAY_BUFFER, geomVertexArray);
-    glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), verts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
+    //GLuint geomElementBuffer;
+    //glGenBuffers(1, &geomElementBuffer);
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
+
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-}*/
+}

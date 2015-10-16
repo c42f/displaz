@@ -26,16 +26,6 @@ TransformState TransformState::rotate(const Imath::V4d& rotation) const
 }
 
 
-static void setUniform(GLuint prog, const char* name, const M44d& mat)
-{
-    GLint loc = glGetUniformLocation(prog, name);
-    if (loc == -1)
-        return;
-    M44f M(mat);
-    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
-}
-
-
 void TransformState::setUniforms(GLuint prog) const
 {
     // Note: The matrices must have a sensible representation in float32
@@ -44,11 +34,6 @@ void TransformState::setUniforms(GLuint prog) const
     setUniform(prog, "modelViewMatrix", modelViewMatrix);
     M44d mvproj = modelViewMatrix * projMatrix;
     setUniform(prog, "modelViewProjectionMatrix", mvproj);
-}
-
-void TransformState::setProjUniform(GLuint prog) const
-{
-    setUniform(prog, "projectionMatrix", projMatrix);
 }
 
 void TransformState::setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal)
@@ -96,48 +81,31 @@ void TransformState::load() const
 
 //------------------------------------------------------------------------------
 
-void drawBoundingBox(const TransformState& transState,
+/*void drawBoundingBox(const TransformState& transState,
                      const Imath::Box3d& bbox,
                      const Imath::C3f& col,
                      const GLuint& shaderProg)
 {
     // Transform to box min for stability with large offsets
     TransformState trans2 = transState.translate(bbox.min);
-    Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
+    //Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
     drawBoundingBox(trans2, box2, col, shaderProg);
-}
+}*/
 
 
 void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3f& bbox,
+                     const GLuint& bboxVertexArray,
                      const Imath::C3f& col,
                      const GLuint& shaderProg)
 {
-    tfm::printfln("drawBoundingBox :: shaderProg: %i", shaderProg);
-
-    GLfloat verts[] = {
-        bbox.min.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.min.y, bbox.max.z,
-        bbox.min.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.min.y, bbox.max.z
-    };
-    unsigned char inds[] = {
-        // rows: bottom, sides, top
-        0,1, 1,2, 2,3, 3,0,
-        0,4, 1,5, 2,6, 3,7,
-        4,5, 5,6, 6,7, 7,4
-    };
+    //tfm::printfln("drawBoundingBox :: shaderProg: %i", shaderProg);
 
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glLineWidth(1);
 
-//#ifdef OPEN_GL_2
+#ifdef OPEN_GL_2
     transState.load();
     glColor3f(col.x, col.y, col.z);
     // TODO: Use shaders here
@@ -148,23 +116,26 @@ void drawBoundingBox(const TransformState& transState,
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
-//#else
+#endif
 
-    /*glUseProgram(shaderProg);
+    // should already be bound ...
+    //glUseProgram(shaderProg);
+
     transState.setUniforms(shaderProg);
-    //GLint colorLoc = glGetUniformLocation(shaderProg, "color");
-    //assert(colorLoc >= 0);
-    //glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
+    GLint colorLoc = glGetUniformLocation(shaderProg, "color");
+    assert(colorLoc >= 0);
+    glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
+
     GLint positionLoc = glGetAttribLocation(shaderProg, "position");
     assert(positionLoc >= 0);
+    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3, (const GLvoid *)0);
     glEnableVertexAttribArray(positionLoc);
-    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts);
 
-    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
-                   GL_UNSIGNED_BYTE, inds);
+    glBindVertexArray(bboxVertexArray);
+    glDrawArrays( GL_LINES, 0, 8 );
+    //glDrawElements(GL_LINES, 8, GL_UNSIGNED_BYTE, 0);
 
-    glDisableVertexAttribArray(positionLoc);*/
-//#endif
+    glDisableVertexAttribArray(positionLoc);
 }
 
 
