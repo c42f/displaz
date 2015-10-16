@@ -57,10 +57,10 @@ void TransformState::setOrthoProjection(double left, double right, double bottom
     double ty = -(top+bottom)/(top-bottom);
     double tz = -(farVal+nearVal)/(farVal-nearVal);
 
-    this->projMatrix = M44d(xx,0.0,0.0,tx,
+    /*this->projMatrix = M44d(xx,0.0,0.0,tx,
                             0.0,yy,0.0,ty,
                             0.0,0.0,zz,tz,
-                            0.0,0.0,0.0,1.0);
+                            0.0,0.0,0.0,1.0);*/
 
     this->projMatrix = M44d(xx,0.0,0.0,0.0,
                             0.0,yy,0.0,0.0,
@@ -98,44 +98,27 @@ void drawBoundingBox(const TransformState& transState,
                      const Imath::C3f& col,
                      const GLuint& shaderProg)
 {
-    //tfm::printfln("drawBoundingBox :: shaderProg: %i", shaderProg);
+    //tfm::printfln("drawBoundingBox :: shaderProg: %i, vertexArray: %i", shaderProg, bboxVertexArray);
 
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glLineWidth(1);
 
-#ifdef OPEN_GL_2
-    transState.load();
-    glColor3f(col.x, col.y, col.z);
-    // TODO: Use shaders here
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, verts);
-    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
-                   GL_UNSIGNED_BYTE, inds);
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisable(GL_BLEND);
-    glDisable(GL_LINE_SMOOTH);
-#endif
-
     // should already be bound ...
     //glUseProgram(shaderProg);
 
     transState.setUniforms(shaderProg);
     GLint colorLoc = glGetUniformLocation(shaderProg, "color");
-    assert(colorLoc >= 0);
+    //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
     glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
 
-    GLint positionLoc = glGetAttribLocation(shaderProg, "position");
-    assert(positionLoc >= 0);
-    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, sizeof(float)*3, (const GLvoid *)0);
-    glEnableVertexAttribArray(positionLoc);
-
     glBindVertexArray(bboxVertexArray);
-    glDrawArrays( GL_LINES, 0, 8 );
-    //glDrawElements(GL_LINES, 8, GL_UNSIGNED_BYTE, 0);
+    //glDrawArrays( GL_LINES, 0, 8 );
+    glDrawElements(GL_LINES, 3*8, GL_UNSIGNED_BYTE, 0);
 
-    glDisableVertexAttribArray(positionLoc);
+    glDisable(GL_BLEND);
+    glDisable(GL_LINE_SMOOTH);
 }
 
 

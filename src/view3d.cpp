@@ -38,9 +38,10 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_cursorPos(0),
     m_prevCursorSnap(0),
     m_backgroundColor(60, 50, 50),
-    m_drawBoundingBoxes(true), //true
-    m_drawCursor(true), //true
-    m_drawAxes(true), //true
+    m_drawBoundingBoxes(true),
+    m_drawCursor(true),
+    m_drawAxes(true),
+    m_drawGrid(false),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
@@ -54,6 +55,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawAxesLabelZ(QImage(":/resource/z.png")),
     m_cursorVertexArray(0),
     m_axesVertexArray(0),
+    m_gridVertexArray(0),
     m_quadVertexArray(0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
@@ -114,7 +116,15 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
 {
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (int i = firstRow; i <= lastRow; ++i)
-        geoms[i]->initializeGL();
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            geoms[i]->setBboxShaderId(m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->initializeGL();
+        }
+    }
     geometryChanged();
 }
 
@@ -180,6 +190,12 @@ void View3D::toggleDrawAxes()
     restartRender();
 }
 
+void View3D::toggleDrawGrid()
+{
+    m_drawGrid = !m_drawGrid;
+    restartRender();
+}
+
 void View3D::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
@@ -195,10 +211,10 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
-// #define TEST_RENDER
-#ifdef TEST_RENDER
+// #define GL_CHECK_RENDER
+#ifdef GL_CHECK_RENDER
 
-void glError(const char *file, int line) {
+void _glError(const char *file, int line) {
     GLenum err (glGetError());
 
     while(err!=GL_NO_ERROR) {
@@ -217,13 +233,45 @@ void glError(const char *file, int line) {
     }
 }
 
-#define glCheckError() glError(__FILE__,__LINE__)
+#define glCheckError() _glError(__FILE__,__LINE__)
 
-#endif
+void _glFrameBufferStatus(GLenum target, const char *file, int line) {
+
+    GLenum fb_status(glCheckFramebufferStatus(target));
+
+    std::string status;
+
+    switch(fb_status) {
+        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
+        case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";      break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: status="INCOMPLETE_MULTISAMPLE";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: status="INCOMPLETE_LAYER_TARGETS";  break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
+        default:                        status="INCOMPLETE";    break;
+    }
+
+    tfm::printfln("GL_FRAMEBUFFER_%s - %s:%i", status, file, line);
+}
+
+#define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
+
+#endif //GL_CHECK_RENDER
 
 
 void View3D::initializeGL()
 {
+    // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS)​,
+    // which causes GL_INVALID_ENUM on GL 3.2+ core context as soon as glewInit()​ is called.
+    // It also doesn't fetch the function pointers. The solution is for GLEW to use glGetStringi​ instead.
+    // The current version of GLEW is 1.10.0 but they still haven't corrected it.
+    // The only fix is to use glewExperimental​ for now.
+    // https://www.opengl.org/wiki/OpenGL_Loading_Library
     glewExperimental = true;
     if (glewInit() != GLEW_OK)
     {
@@ -239,14 +287,26 @@ void View3D::initializeGL()
                   "GL_VENDOR    = %s\n"
                   "GL_RENDERER  = %s\n"
                   "GL_VERSION   = %s\n"
-                  "GLSL_VERSION = %s\n",
+                  "GLSL_VERSION = %s\n"
+                  "GLEW_VERSION = %s\n",
                   (const char*)glGetString(GL_VENDOR),
                   (const char*)glGetString(GL_RENDERER),
                   (const char*)glGetString(GL_VERSION),
-                  (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+                  (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
+                  (const char*)glewGetString(GLEW_VERSION));
+
+#ifdef GL_CHECK_RENDER
+    glCheckError();
+#endif
 
     initCursor(10, 1);
     initAxes();
+    initGrid(2.0f);
+
+#ifdef GL_CHECK_RENDER
+    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
+    glCheckError();
+#endif
 
     m_boundingBoxShader.reset(new ShaderProgram());
     bool bbox_shader_init = m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
@@ -259,9 +319,22 @@ void View3D::initializeGL()
 
     m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
 
+#ifdef GL_CHECK_RENDER
+    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
+    glCheckError();
+#endif
+
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
-        geoms[i]->initializeGL();
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            geoms[i]->setBboxShaderId(m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->initializeGL();
+        }
+    }
 
     emit initialisedGL();
 }
@@ -275,6 +348,10 @@ void View3D::resizeGL(int w, int h)
     glViewport(0, 0, w, h);
     m_camera.setViewport(QRect(0,0,w,h));
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
+
+#ifdef GL_CHECK_RENDER
+    glCheckError();
+#endif
 }
 
 
@@ -335,7 +412,7 @@ void View3D::paintGL()
 
             for (size_t i = 0; i < geoms.size(); ++i)
             {
-                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), Imath::C3f(1), boundingBoxShader.programId());
+                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), Imath::C3f(1), geoms[i]->bboxShaderId()); //boundingBoxShader.programId()
             }
 
             // boundingBoxShader.release();
@@ -345,16 +422,18 @@ void View3D::paintGL()
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
-        drawMeshes(transState, geoms);
-
+        this->drawMeshes(transState, geoms);
         // Generic draw for any other geometry
         // (TODO: make all geometries use this interface, or something similar)
         // FIXME - Do generic quality scaling
         const double quality = 1;
         for (size_t i = 0; i < geoms.size(); ++i)
+        {
             geoms[i]->draw(transState, quality);
+        }
     }
 
+#ifdef NOT_WORKING
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
     const double targetMillisecs = 40;
     double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
@@ -370,6 +449,7 @@ void View3D::paintGL()
 
     if (!geoms.empty())
         m_drawCostModel.addSample(drawCount, frameTime);
+#endif
 
     // Debug: print bar showing how well we're sticking to the frame time
 //    int barSize = 40;
@@ -385,6 +465,13 @@ void View3D::paintGL()
                                           QRect(0,0,width(),height()),
                                           GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+    // Draw a grid for orientation purposes
+    if (m_drawGrid)
+    {
+        drawGrid();
+    }
+
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
     {
@@ -398,12 +485,19 @@ void View3D::paintGL()
         drawAxes();
     }
 
+#ifdef NOT_WORKING
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
     else
         m_incrementalFrameTimer->start(10);
     m_incrementalDraw = true;
+#endif
+
+#ifdef GL_CHECK_RENDER
+    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
+    glCheckError();
+#endif
 }
 
 void View3D::drawMeshes(const TransformState& transState,
@@ -749,7 +843,7 @@ void View3D::drawAxes() const
 
     TransformState transState(Imath::V2i(width(), height()),
                               m_camera.projectionMatrix(),
-                              m_camera.viewMatrix()); //m_camera.viewMatrix()
+                              m_camera.viewMatrix());
 
     // Draw Background texture
     if (m_axesBackgroundShader->isValid())
@@ -893,6 +987,89 @@ void View3D::drawAxes() const
 #endif //OPEN_GL_2
 }
 
+
+void View3D::initGrid(const float scale)
+{
+    m_gridShader.reset(new ShaderProgram());
+    bool grid_shader_init = m_gridShader->setShaderFromSourceFile("shaders:grid.glsl");
+
+    if (!grid_shader_init)
+    {
+        g_logger.error("Could not read grid shader.");
+        return;
+    }
+
+    //const GLfloat scale = 1.0f;    // Width and Height of grid
+
+    float gridLines[] = { -0.5f*scale, -0.5f*scale, 0.0f,  0.5f*scale, -0.5f*scale, 0.0f,
+                          -0.5f*scale, -0.4f*scale, 0.0f,  0.5f*scale, -0.4f*scale, 0.0f,
+                          -0.5f*scale, -0.3f*scale, 0.0f,  0.5f*scale, -0.3f*scale, 0.0f,
+                          -0.5f*scale, -0.2f*scale, 0.0f,  0.5f*scale, -0.2f*scale, 0.0f,
+                          -0.5f*scale, -0.1f*scale, 0.0f,  0.5f*scale, -0.1f*scale, 0.0f,
+                          -0.5f*scale,  0.0f,       0.0f,  0.5f*scale,  0.0f,       0.0f,
+                          -0.5f*scale,  0.1f*scale, 0.0f,  0.5f*scale,  0.1f*scale, 0.0f,
+                          -0.5f*scale,  0.2f*scale, 0.0f,  0.5f*scale,  0.2f*scale, 0.0f,
+                          -0.5f*scale,  0.3f*scale, 0.0f,  0.5f*scale,  0.3f*scale, 0.0f,
+                          -0.5f*scale,  0.4f*scale, 0.0f,  0.5f*scale,  0.4f*scale, 0.0f,
+                          -0.5f*scale,  0.5f*scale, 0.0f,  0.5f*scale,  0.5f*scale, 0.0f,
+
+                          -0.5f*scale, -0.5f*scale, 0.0f, -0.5f*scale,  0.5f*scale, 0.0f,
+                          -0.4f*scale, -0.5f*scale, 0.0f, -0.4f*scale,  0.5f*scale, 0.0f,
+                          -0.3f*scale, -0.5f*scale, 0.0f, -0.3f*scale,  0.5f*scale, 0.0f,
+                          -0.2f*scale, -0.5f*scale, 0.0f, -0.2f*scale,  0.5f*scale, 0.0f,
+                          -0.1f*scale, -0.5f*scale, 0.0f, -0.1f*scale,  0.5f*scale, 0.0f,
+                           0.0f*scale, -0.5f*scale, 0.0f,  0.0f,        0.5f*scale, 0.0f,
+                           0.1f*scale, -0.5f*scale, 0.0f,  0.1f*scale,  0.5f*scale, 0.0f,
+                           0.2f*scale, -0.5f*scale, 0.0f,  0.2f*scale,  0.5f*scale, 0.0f,
+                           0.3f*scale, -0.5f*scale, 0.0f,  0.3f*scale,  0.5f*scale, 0.0f,
+                           0.4f*scale, -0.5f*scale, 0.0f,  0.4f*scale,  0.5f*scale, 0.0f,
+                           0.5f*scale, -0.5f*scale, 0.0f,  0.5f*scale,  0.5f*scale, 0.0f,
+                            };
+
+    glGenVertexArrays(1, &m_gridVertexArray);
+    glBindVertexArray(m_gridVertexArray);
+
+    GLuint gridVertexBuffer;
+    glGenBuffers(1, &gridVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, gridVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (22 * 2) * 3 * sizeof(float), gridLines, GL_STATIC_DRAW);
+
+    GLuint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void View3D::drawGrid() const {
+    //tfm::printfln("drawGrid() ");
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    TransformState transState(Imath::V2i(width(), height()),
+                              m_camera.projectionMatrix(),
+                              m_camera.viewMatrix());
+
+    // Draw grid
+    if (m_gridShader->isValid()) {
+        //tfm::printfln("drawing with m_gridShader");
+        QGLShaderProgram &gridShader = m_gridShader->shaderProgram();
+        // shader
+        gridShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_gridVertexArray);
+        // matrix stack
+        transState.setUniforms(gridShader.programId());
+        // draw
+        glLineWidth(2.0f);
+        glDrawArrays(GL_LINES, 0, (22 * 2));
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+        // gridShader.release();
+    }
+}
 
 /// Draw point cloud
 DrawCount View3D::drawPoints(const TransformState& transState,

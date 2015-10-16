@@ -43,8 +43,9 @@ Geometry::Geometry()
     : m_fileName(),
     m_offset(0,0,0),
     m_centroid(0,0,0),
-    m_bbox()//,
-    //m_bboxVertexArray(0)
+    m_bbox(),
+    m_bboxVertexArray(0),
+    m_bboxShader(0)
 { }
 
 
@@ -64,20 +65,21 @@ bool Geometry::reloadFile(size_t maxVertexCount)
     return loadFile(m_fileName, maxVertexCount);
 }
 
-
 void Geometry::initializeGL()
 {
-    tfm::printfln("Geometry::initializeGL");
-    tfm::printfln("Geometry::bbox:\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n",
-                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
-                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
-                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
-                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
-                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z,
-                  (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
-                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
-                  (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z
-    );
+    this->initializeBboxGL();
+}
+
+void Geometry::initializeBboxGL()
+{
+
+    // tfm::printfln("Geometry :: initializeGL - %i", m_bboxShader);
+
+    if (!m_bboxShader)
+    {
+        tfm::printfln("Bounding box shader was not defined for geometry.");
+        return;
+    }
 
     GLfloat verts[] = {
             (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
@@ -101,16 +103,25 @@ void Geometry::initializeGL()
     glGenVertexArrays(1, &m_bboxVertexArray);
     glBindVertexArray(m_bboxVertexArray);
 
+    // tfm::printfln("Geometry :: bboxVertexArray - %i", m_bboxVertexArray);
+
     GLuint geomVertexArray;
     glGenBuffers(1, &geomVertexArray);
     glBindBuffer(GL_ARRAY_BUFFER, geomVertexArray);
     glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
-    //GLuint geomElementBuffer;
-    //glGenBuffers(1, &geomElementBuffer);
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
+    GLuint positionAttribute = glGetAttribLocation(m_bboxShader, "position");
+
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    //glDisableVertexAttribArray(positionLoc);
+
+    GLuint geomElementBuffer;
+    glGenBuffers(1, &geomElementBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
 
     //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

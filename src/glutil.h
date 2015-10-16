@@ -173,7 +173,7 @@ struct Texture
             glBindTexture(target, texture);
             if (sampler >= 0)
             {
-                glBindSampler(GL_TEXTURE0 + texture, sampler);
+                glBindSampler(texture, sampler);
             }
         }
     }
