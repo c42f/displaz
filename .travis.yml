@@ -19,8 +19,8 @@ before_install:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
 
 install:
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install wget git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt4; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt5; fi
 
 before_script:
     # Build external tools
@@ -34,7 +34,8 @@ script:
     # Build displaz
     - mkdir build
     - cd build
-    - cmake ..
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then cmake -DDISPLAZ_USE_QT4=1 ..; fi
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then cmake ..; fi
     - make -j4
     - cd ..
 
