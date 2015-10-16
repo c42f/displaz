@@ -151,6 +151,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
     drawAxes->setCheckable(true);
     drawAxes->setChecked(true);
+    QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
+    drawGrid->setCheckable(true);
+    drawGrid->setChecked(false);
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -183,6 +186,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
             m_pointView, SLOT(toggleDrawCursor()));
     connect(drawAxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawAxes()));
+    connect(drawGrid, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawGrid()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),

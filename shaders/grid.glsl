@@ -6,7 +6,7 @@ uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewProjectionMatrix;
 
-uniform vec4 color;
+uniform vec3 color;
 
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
@@ -18,10 +18,9 @@ out vec4 lineColor;
 
 void main()
 {
-    //gl_Position = vec4(position,1.0);
+    lineColor = vec4(1.0,1.0,1.0,0.25);
 
     gl_Position = modelViewProjectionMatrix * vec4(position,1.0);
-    lineColor = vec4(color);
 }
 
 

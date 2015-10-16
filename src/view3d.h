@@ -12,7 +12,7 @@
 #define QT_NO_OPENGL_ES_2
 
 
-#include <QOpenGLWidget>
+#include <QGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
@@ -30,7 +30,7 @@ struct TransformState;
 
 //------------------------------------------------------------------------------
 /// OpenGL-based viewer widget for point clouds
-class View3D : public QOpenGLWidget
+class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
@@ -62,6 +62,7 @@ class View3D : public QOpenGLWidget
         void toggleDrawBoundingBoxes();
         void toggleDrawCursor();
         void toggleDrawAxes();
+        void toggleDrawGrid();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
@@ -95,6 +96,9 @@ class View3D : public QOpenGLWidget
         void initAxes();
         void drawAxes() const;
 
+        void initGrid(const float scale);
+        void drawGrid() const;
+
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
@@ -123,6 +127,7 @@ class View3D : public QOpenGLWidget
         bool m_drawBoundingBoxes;
         bool m_drawCursor;
         bool m_drawAxes;
+        bool m_drawGrid;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
@@ -150,12 +155,14 @@ class View3D : public QOpenGLWidget
         /// Shaders for interface geometry
         std::unique_ptr<ShaderProgram> m_cursorShader;
         std::unique_ptr<ShaderProgram> m_axesShader;
+        std::unique_ptr<ShaderProgram> m_gridShader;
         std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
         std::unique_ptr<ShaderProgram> m_axesLabelShader;
         std::unique_ptr<ShaderProgram> m_boundingBoxShader;
 
         unsigned int m_cursorVertexArray;
         unsigned int m_axesVertexArray;
+        unsigned int m_gridVertexArray;
         unsigned int m_quadVertexArray;
 };
 

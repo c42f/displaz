@@ -5,12 +5,15 @@
 #define DISPLAZ_GEOMETRY_H_INCLUDED
 
 #include <memory>
+#include <vector>
+#include <map>
 
 #include "glutil.h"
 #include "util.h"
 #include <QString>
 #include <QMetaType>
 
+class ShaderProgram;
 class QGLShaderProgram;
 struct TransformState;
 
@@ -147,8 +150,21 @@ class Geometry : public QObject
         /// Get axis aligned bounding box containing the geometry
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
-        /// Get vertex array handle
+        /// Get bbox vertex array handle
         const unsigned int bboxVertexArray() const { return m_bboxVertexArray; }
+
+        /// Set / Get bbox shader handle
+        void setBboxShaderId(const unsigned int bboxShader) { m_bboxShader = bboxShader; }
+        const unsigned int bboxShaderId() const { return m_bboxShader; }
+
+        /// Get vertex array size (apart form the default bbox)
+        const unsigned int vertexArrayCount() const { return m_vertArrays.size(); }
+        void setVertexArray(const char * vertexArrayName, const unsigned int vertArrayId) { m_vertArrays[vertexArrayName] = vertArrayId; }
+        const unsigned int vertexArray(const char * vertexArrayName) const { return m_vertArrays.at(vertexArrayName); }
+
+        /// Set / Get shader handles (apart from default bbox)
+        void setShaderId(const char * shaderName, const unsigned int shaderId) { m_Shaders[shaderName] = shaderId; }
+        const unsigned int shaderId(const char * shaderName) const { return m_Shaders.at(shaderName); }
 
     signals:
         /// Emitted at the start of a point loading step
@@ -162,6 +178,8 @@ class Geometry : public QObject
         void setCentroid(const V3d& centroid) { m_centroid = centroid; }
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
 
+        void initializeBboxGL();
+
     private:
         QString m_name;
         QString m_fileName;
@@ -170,6 +188,10 @@ class Geometry : public QObject
         Imath::Box3d m_bbox;
 
         unsigned int m_bboxVertexArray;
+        unsigned int m_bboxShader;
+
+        std::map<const char *, unsigned int> m_vertArrays;
+        std::map<const char *, unsigned int> m_Shaders;
 };
 
 
