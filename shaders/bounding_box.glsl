@@ -6,11 +6,12 @@ uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewProjectionMatrix;
 
+uniform vec4 color;
+
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
 in vec3 position;
-in vec4 color;
 
 // Point color which will be picked up by the fragment shader
 out vec4 lineColor;

@@ -24,6 +24,15 @@
 
 //------------------------------------------------------------------------------
 /// Utility to handle transformation state
+static void setUniform(GLuint prog, const char* name, const M44d& mat)
+{
+    GLint loc = glGetUniformLocation(prog, name);
+    if (loc == -1)
+        return;
+    M44f M(mat);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
+}
+
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -72,9 +81,9 @@ struct TransformState
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
 void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3f& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
-void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
+                     const GLuint& bboxVertexArray, const Imath::C3f& col, const GLuint& shaderProgram);
+//void drawBoundingBox(const TransformState& transState,
+//                     const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 
 /// Draw a sphere using the given shader.  May be semitransparent.
 ///

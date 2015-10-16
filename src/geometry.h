@@ -68,7 +68,7 @@ class Geometry : public QObject
 
         /// Initialize (or reinitialize) any openGL state associated with the
         /// geometry
-        virtual void initializeGL() {}
+        virtual void initializeGL();
 
         //--------------------------------------------------
         /// Draw points using given openGL shader program
@@ -148,7 +148,7 @@ class Geometry : public QObject
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
         /// Get vertex array handle
-        //const unsigned int bboxVertexArray() const { return m_bboxVertexArray; }
+        const unsigned int bboxVertexArray() const { return m_bboxVertexArray; }
 
     signals:
         /// Emitted at the start of a point loading step
@@ -169,7 +169,7 @@ class Geometry : public QObject
         V3d m_centroid;
         Imath::Box3d m_bbox;
 
-        //unsigned int m_bboxVertexArray;
+        unsigned int m_bboxVertexArray;
 };
 
 

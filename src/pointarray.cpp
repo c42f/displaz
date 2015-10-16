@@ -527,8 +527,10 @@ static void drawTree(QGLShaderProgram& prog, const TransformState& transState, c
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
                       node->center + Imath::V3f(node->halfWidth));
+#ifdef OPEN_GL_2
     drawBoundingBox(transState, bbox, Imath::C3f(1), prog.programId());
     drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
+#endif //TODO: FIX ME
     for (int i = 0; i < 8; ++i)
     {
         OctreeNode* n = node->children[i];

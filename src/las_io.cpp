@@ -71,7 +71,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     V3d Psum(0);
 #ifdef DISPLAZ_USE_PDAL
     // Open file
+#ifdef DISPLAZ_USE_QT4
+    if (!pdal::FileUtils::fileExists(fileName.toAscii().constData()))
+#else
     if (!pdal::FileUtils::fileExists(fileName.toLatin1().constData()))
+#endif
     {
         g_logger.info("File \"%s\" does not exist", fileName.toStdString() );
         return false;
@@ -189,7 +193,11 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     // Hack: liblas doesn't like forward slashes as path separators on windows
     fileName = fileName.replace('/', '\\');
 #endif
+#ifdef DISPLAZ_USE_QT4
+    lasReadOpener.set_file_name(fileName.toAscii().constData());
+#else
     lasReadOpener.set_file_name(fileName.toLatin1().constData());
+#endif
     std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
 
     if(!lasReader)
