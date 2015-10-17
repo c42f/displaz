@@ -164,6 +164,7 @@ class View3D : public QGLWidget
         unsigned int m_axesVertexArray;
         unsigned int m_gridVertexArray;
         unsigned int m_quadVertexArray;
+        unsigned int m_quadLabelVertexArray;
 };
 
 

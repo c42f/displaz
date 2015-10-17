@@ -6,6 +6,9 @@ uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewProjectionMatrix;
 
+uniform vec3 center;
+uniform vec3 offset;
+
 uniform sampler2D texture0;
 
 //------------------------------------------------------------------------------
@@ -21,8 +24,10 @@ void main()
 {
     textureCoords = texCoord;
 
-    //gl_Position = vec4(projectionMatrix * vec4(position,0.0,1.0));
-    gl_Position = vec4(position,0.0,1.0);
+    vec3 axes_pos = offset;
+    vec4 rot_pos = vec4(position,0.0,0.0) + modelViewMatrix * vec4(axes_pos, 1.0);
+
+    gl_Position = projectionMatrix * vec4(rot_pos.xy + center.xy,0.0,1.0);
 }
 
 
