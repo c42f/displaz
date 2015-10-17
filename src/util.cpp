@@ -53,8 +53,6 @@ size_t EllipticalDist::findNearest(const V3d& offset, const V3f* points,
 
 double EllipticalDist::boundNearest(const Box3d& box) const
 {
-    assert(fabs(rayDir.length() - 1) < 1e-10);
-
     // We want the minimum elliptical distance from the origin to a point in
     // the box.  Unfortunately this is pretty hard to compute in general, but
     // it's quite easy to approximate with a bounding cylinder with axis along
