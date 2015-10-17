@@ -186,6 +186,9 @@ else()
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
         ${ILMBASE_LIBRARIES}
     )
+    if (Qt5_POSITION_INDEPENDENT_CODE)
+        set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+    endif()
 endif()
 
 if(APPLE)

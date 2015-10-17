@@ -8,6 +8,10 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
+if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
+endif()
+
 project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
@@ -79,7 +83,7 @@ if (DISPLAZ_USE_QT4)
     add_definitions(-DDISPLAZ_USE_QT4)
 
     if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -fPIC" CACHE STRING "Flags used by the compiler during all build types.")
+        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
     endif()
 else ()
     find_package(Qt5Core REQUIRED)
@@ -93,7 +97,7 @@ else ()
     add_definitions(${Qt5Widgets_DEFINITIONS})
 
     if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -fPIC ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
+        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
     endif()
 endif()
 
