@@ -79,7 +79,6 @@ find_package(OpenGL REQUIRED)
 
 if (DISPLAZ_USE_QT4)
     find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtNetwork QtOpenGL REQUIRED)
-    add_definitions(${Qt5Core_DEFINITIONS})
     add_definitions(-DDISPLAZ_USE_QT4)
 
     if(NOT WIN32)

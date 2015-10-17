@@ -901,7 +901,6 @@ void View3D::drawAxes() const
         //transState.setUniforms(axesShader.programId());
         //M44d mvproj = transState.modelViewMatrix * transState.projMatrix;
         //setUniform(axesShader.programId(), "modelViewProjectionMatrix", mvproj);
-
         //setUniform(axesShader.programId(), "modelViewMatrix", m_camera.rotationMatrix()); // transState.modelViewMatrix); //m_camera.viewMatrix()
         //setUniform(axesShader.programId(), "projectionMatrix", projState.projMatrix);
 

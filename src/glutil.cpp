@@ -4,6 +4,17 @@
 #include "glutil.h"
 #include "tinyformat.h"
 
+//------------------------------------------------------------------------------
+/// Utility to handle transformation state
+void TransformState::setUniform(GLuint prog, const char* name, const M44d& mat)
+{
+    GLint loc = glGetUniformLocation(prog, name);
+    if (loc == -1)
+        return;
+    M44f M(mat);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
+}
+
 TransformState TransformState::translate(const Imath::V3d& offset) const
 {
     TransformState res(*this);

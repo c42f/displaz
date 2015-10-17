@@ -22,17 +22,6 @@
 #include "util.h"
 #include "typespec.h"
 
-//------------------------------------------------------------------------------
-/// Utility to handle transformation state
-static void setUniform(GLuint prog, const char* name, const M44d& mat)
-{
-    GLint loc = glGetUniformLocation(prog, name);
-    if (loc == -1)
-        return;
-    M44f M(mat);
-    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
-}
-
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -66,6 +55,7 @@ struct TransformState
     ///   "modelViewMatrix"
     ///   "modelViewProjectionMatrix"
     ///
+    static void setUniform(GLuint prog, const char* name, const M44d& mat);
     void setUniforms(GLuint prog) const;
     void setProjUniform(GLuint prog) const;
 
