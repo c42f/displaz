@@ -160,11 +160,11 @@ class Geometry : public QObject
         /// Get vertex array size (apart form the default bbox)
         const unsigned int vertexArrayCount() const { return m_vertArrays.size(); }
         void setVertexArray(const char * vertexArrayName, const unsigned int vertArrayId) { m_vertArrays[vertexArrayName] = vertArrayId; }
-        const unsigned int vertexArray(const char * vertexArrayName) const { return m_vertArrays.at(vertexArrayName); }
+        const unsigned int vertexArray(const char * vertexArrayName) const;
 
         /// Set / Get shader handles (apart from default bbox)
         void setShaderId(const char * shaderName, const unsigned int shaderId) { m_Shaders[shaderName] = shaderId; }
-        const unsigned int shaderId(const char * shaderName) const { return m_Shaders.at(shaderName); }
+        const unsigned int shaderId(const char * shaderName) const;
 
     signals:
         /// Emitted at the start of a point loading step

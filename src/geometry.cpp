@@ -125,3 +125,23 @@ void Geometry::initializeBboxGL()
     //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
+
+const unsigned int Geometry::vertexArray(const char * vertexArrayName) const
+{
+    if(m_vertArrays.find(vertexArrayName) != m_vertArrays.end())
+    {
+        return m_vertArrays.at(vertexArrayName);
+    }
+    tfm::printfln("Geometry :: vertexArray not found - %s", vertexArrayName);
+    return 0;
+}
+
+const unsigned int Geometry::shaderId(const char * shaderName) const
+{
+    if(m_Shaders.find(shaderName) != m_Shaders.end())
+    {
+        return m_Shaders.at(shaderName);
+    }
+    tfm::printfln("Geometry :: shaderId not found - %s", shaderName);
+    return 0;
+}
