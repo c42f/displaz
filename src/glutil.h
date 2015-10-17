@@ -166,10 +166,14 @@ struct Texture
                 glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
             glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            //tfm::printfln("CREATED TEXTURE id: %i", texture);
         }
         else
         {
-            glActiveTexture(GL_TEXTURE0 + texture);
+            //tfm::printfln("BINDING TEXTURE id: %i", texture);
+
+            glActiveTexture(GL_TEXTURE0); // + texture);
             glBindTexture(target, texture);
             if (sampler >= 0)
             {

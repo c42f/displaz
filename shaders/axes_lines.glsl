@@ -25,7 +25,6 @@ void main()
     vec4 rot_pos = modelViewMatrix * vec4(org_pos, 1.0);
 
     gl_Position = projectionMatrix * vec4(rot_pos.xy + center.xy,0.0,1.0);
-    //gl_Position = vec4(rot_pos.xyz,1.0);
 }
 
 

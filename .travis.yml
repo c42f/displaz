@@ -31,6 +31,7 @@ before_script:
     - cmake ../thirdparty/external
     - make -j4
     - cd ..
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then export PATH=/usr/local/opt/qt5/bin:$PATH; fi
 
 script:
     # Build displaz

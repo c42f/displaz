@@ -90,6 +90,17 @@ class InteractiveCamera : public QObject
             return qt2exr(m);
         }
 
+        /// Get view rotation-only matrix
+        Imath::M44d rotationMatrix() const
+        {
+            QMatrix4x4 m;
+            //m.translate(0, 0, -m_dist);
+            m.rotate(m_rot);
+            if(m_reverseHandedness)
+                m.scale(1,1,-1);
+            return qt2exr(m); //.translate(-m_center);
+        }
+
         /// Get the 2D region associated with the camera
         QRect viewport() const     { return m_viewport; }
         /// Get depth of near clipping plane

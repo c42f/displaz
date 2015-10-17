@@ -56,7 +56,8 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_cursorVertexArray(0),
     m_axesVertexArray(0),
     m_gridVertexArray(0),
-    m_quadVertexArray(0)
+    m_quadVertexArray(0),
+    m_quadLabelVertexArray(0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -756,22 +757,41 @@ void View3D::initAxes()
     glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    /*positionAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "position");
-
-    glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
-    glEnableVertexAttribArray(positionAttribute);*/
-
     GLuint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
     glEnableVertexAttribArray(texCoordAttribute);
 
-    /*texCoordAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "texCoord");
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    const GLint l = 16;     // Label is 16 pixels wide
+
+    float labelQuad[] = { -l/2, l/2, 0.0f, 0.0f,
+                           l/2, l/2, 1.0f, 0.0f,
+                           l/2,-l/2, 1.0f, 1.0f,
+                          -l/2, l/2, 0.0f, 0.0f,
+                           l/2,-l/2, 1.0f, 1.0f,
+                          -l/2,-l/2, 0.0f, 1.0f };
+
+    glGenVertexArrays(1, &m_quadLabelVertexArray);
+    glBindVertexArray(m_quadLabelVertexArray);
+
+    GLuint labelQuadVertexBuffer;
+    glGenBuffers(1, &labelQuadVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, labelQuadVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (2 + 2) * 6 * sizeof(float), labelQuad, GL_STATIC_DRAW);
+
+    positionAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    texCoordAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "texCoord");
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
-    glEnableVertexAttribArray(texCoordAttribute);*/
+    glEnableVertexAttribArray(texCoordAttribute);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Center of axis overlay
     const V3f center(o+w/2,o+w/2,0.0); //(0.0,0.0,0.0); //
@@ -782,15 +802,15 @@ void View3D::initAxes()
     const float t = 0.5f*(1+transparency);
     const float r = 0.6f;  // 60% towards edge of circle
 
-    const float l = r*w/2; //1.0f;  // we'll scale this later to match with the 60% sizing
+    const float le = r*w/2; //1.0f;  // we'll scale this later to match with the 60% sizing
 
     // just make up some lines for now ... this has to be updated later on ... unless we want to use rotations ?
     float axesLines[] = { center.x, center.y, center.z, c,d,d,t,
-                          center.x+l, center.y, center.z, c,d,d,t,
+                          center.x+le, center.y, center.z, c,d,d,t,
                           center.x, center.y, center.z, d,c,d,t,
-                          center.x, center.y+l, center.z, d,c,d,t,
+                          center.x, center.y+le, center.z, d,c,d,t,
                           center.x, center.y, center.z, d,d,c,t,
-                          center.x, center.y, center.z+l, d,d,c,t, };
+                          center.x, center.y, center.z+le, d,d,c,t, };
 
     glGenVertexArrays(1, &m_axesVertexArray);
     glBindVertexArray(m_axesVertexArray);
@@ -847,7 +867,7 @@ void View3D::drawAxes() const
     if (m_axesBackgroundShader->isValid())
     {
         QGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
-        GLint textureSampler = glGetAttribLocation(axesBackgroundShader.programId(), "texture0");
+        GLint textureSampler = glGetUniformLocation(axesBackgroundShader.programId(), "texture0");
         // texture
         m_drawAxesBackground.bind(textureSampler);
         // shader
@@ -860,6 +880,7 @@ void View3D::drawAxes() const
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         // axesBackgroundShader.release();
+        glBindVertexArray(0);
     }
 
     // Draw axes
@@ -876,12 +897,17 @@ void View3D::drawAxes() const
         glBindVertexArray(m_axesVertexArray);
         // matrix stack
         axesShader.setUniformValue("center", center.x, center.y, center.z);
+
         //transState.setUniforms(axesShader.programId());
         //M44d mvproj = transState.modelViewMatrix * transState.projMatrix;
         //setUniform(axesShader.programId(), "modelViewProjectionMatrix", mvproj);
 
-        setUniform(axesShader.programId(), "modelViewMatrix", transState.modelViewMatrix);
-        setUniform(axesShader.programId(), "projectionMatrix", projState.projMatrix);
+        //setUniform(axesShader.programId(), "modelViewMatrix", m_camera.rotationMatrix()); // transState.modelViewMatrix); //m_camera.viewMatrix()
+        //setUniform(axesShader.programId(), "projectionMatrix", projState.projMatrix);
+
+        projState.modelViewMatrix = m_camera.rotationMatrix();
+        projState.setUniforms(axesShader.programId());
+
         // draw
         glLineWidth(4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
@@ -944,7 +970,6 @@ void View3D::drawAxes() const
     // Draw Labels
 
     const double r = 0.8;   // 80% towards edge of circle
-    const GLint l = 16;     // Label is 16 pixels wide
 
     // Note that V3d -> V3i (double to integer precision)
     // conversion is intentionally snapping the label to
@@ -952,13 +977,48 @@ void View3D::drawAxes() const
     // artifacts.  This is also the reason that matrix
     // transformations are not being used for this.
 
-    const V3d px = center+x*r*w/2;
-    const V3d py = center+y*r*w/2;
-    const V3d pz = center+z*r*w/2;
 
-    // TODO !!!!!! render the labels again !!!!!
+    //const V3d px = center+x*r*w/2;
+    //const V3d py = center+y*r*w/2;
+    //const V3d pz = center+z*r*w/2;
+
+    const V3d px = V3d(1.0,0.0,0.0)*r*w/2;
+    const V3d py = V3d(0.0,1.0,0.0)*r*w/2;
+    const V3d pz = V3d(0.0,0.0,1.0)*r*w/2;
+
     if (m_axesLabelShader->isValid())
     {
+        QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
+        GLint textureSampler = glGetUniformLocation(axesLabelShader.programId(), "texture0");
+
+        //tfm::printfln("TEX sampler attr id: %i", textureSampler);
+
+        // shader
+        axesLabelShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_quadLabelVertexArray);
+        // matrix stack
+        projState.setUniforms(axesLabelShader.programId());
+        // adjust positions
+        axesLabelShader.setUniformValue("center", center.x, center.y, center.z);
+        // offset
+        axesLabelShader.setUniformValue("offset", px.x, px.y, px.z);
+        // texture
+        m_drawAxesLabelX.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        axesLabelShader.setUniformValue("offset", py.x, py.y, py.z);
+        // texture
+        m_drawAxesLabelY.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        axesLabelShader.setUniformValue("offset", pz.x, pz.y, pz.z);
+        // texture
+        m_drawAxesLabelZ.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+        // axesBackgroundShader.release();
     }
 
 #ifdef OPEN_GL_2
