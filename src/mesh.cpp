@@ -366,24 +366,21 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
 
     //tfm::printfln("TriMesh :: initializeVertexGL : color array size: %i", m_colors.size());
 
-    if (m_colors.size() > 0)
-    {
-        GLuint colorBuffer;
-        glGenBuffers(1, &colorBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+    GLuint colorBuffer;
+    glGenBuffers(1, &colorBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
 
-        if (m_colors.size() == m_verts.size()) {
-            glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
-        }
-        else {
-            std::vector<float> tmp_colors(m_verts.size(), 1.0f);
-            glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
-        }
-
-        GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
-        glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
-        glEnableVertexAttribArray(colorAttribute);
+    if (m_colors.size() == m_verts.size()) {
+        glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
     }
+    else {
+        std::vector<float> tmp_colors(m_verts.size(), 1.0f);
+        glBufferData(GL_ARRAY_BUFFER, tmp_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
+    }
+
+    GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
+    glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+    glEnableVertexAttribArray(colorAttribute);
 
     //glDisableVertexAttribArray(colorAttribute);
 }
