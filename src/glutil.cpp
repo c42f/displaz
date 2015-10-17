@@ -99,17 +99,21 @@ void TransformState::load() const
 {
     // Transform to box min for stability with large offsets
     TransformState trans2 = transState.translate(bbox.min);
-    //Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
+    Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
     drawBoundingBox(trans2, box2, col, shaderProg);
 }*/
 
 
 void drawBoundingBox(const TransformState& transState,
                      const GLuint& bboxVertexArray,
+                     const Imath::V3f& offset,
                      const Imath::C3f& col,
                      const GLuint& shaderProg)
 {
     //tfm::printfln("drawBoundingBox :: shaderProg: %i, vertexArray: %i", shaderProg, bboxVertexArray);
+
+    // Transform to box min for stability with large offsets
+    TransformState trans2 = transState.translate(offset);
 
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
@@ -119,7 +123,7 @@ void drawBoundingBox(const TransformState& transState,
     // should already be bound ...
     //glUseProgram(shaderProg);
 
-    transState.setUniforms(shaderProg);
+    trans2.setUniforms(shaderProg);
     GLint colorLoc = glGetUniformLocation(shaderProg, "color");
     //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
     glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a

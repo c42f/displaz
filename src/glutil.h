@@ -70,8 +70,8 @@ struct TransformState
 
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
-void drawBoundingBox(const TransformState& transState,
-                     const GLuint& bboxVertexArray, const Imath::C3f& col, const GLuint& shaderProgram);
+void drawBoundingBox(const TransformState& transState, const GLuint& bboxVertexArray,
+                     const Imath::V3f& offset, const Imath::C3f& col, const GLuint& shaderProgram);
 //void drawBoundingBox(const TransformState& transState,
 //                     const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 

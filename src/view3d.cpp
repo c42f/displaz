@@ -413,7 +413,8 @@ void View3D::paintGL()
 
             for (size_t i = 0; i < geoms.size(); ++i)
             {
-                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), Imath::C3f(1), geoms[i]->bboxShaderId()); //boundingBoxShader.programId()
+                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), geoms[i]->boundingBox().min,
+                                Imath::C3f(1), geoms[i]->bboxShaderId()); //boundingBoxShader.programId()
             }
 
             // boundingBoxShader.release();
@@ -700,7 +701,7 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_LINE_SMOOTH);
 
-        glLineWidth(2.0f);
+        glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
 
         // draw white lines
         transState = transState.translate( V3d(p2.x, p2.y, 0) );
@@ -908,7 +909,7 @@ void View3D::drawAxes() const
         projState.setUniforms(axesShader.programId());
 
         // draw
-        glLineWidth(4.0f);
+        glLineWidth(1); // this won't work anymore for values larger than 1 (4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         // axesShader.release();
@@ -1121,7 +1122,7 @@ void View3D::drawGrid() const {
         // matrix stack
         transState.setUniforms(gridShader.programId());
         // draw
-        glLineWidth(2.0f);
+        glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
         glDrawArrays(GL_LINES, 0, (22 * 2));
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         // gridShader.release();

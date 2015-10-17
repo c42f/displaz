@@ -81,15 +81,18 @@ void Geometry::initializeBboxGL()
         return;
     }
 
+    // Transform to box min for stability with large offsets
+    Imath::Box3f box2(V3f(0), V3f(m_bbox.max - m_bbox.min));
+
     GLfloat verts[] = {
-            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
-            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
-            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.min.z,
-            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.min.z,
-            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z,
-            (GLfloat)m_bbox.min.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
-            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.max.y, (GLfloat)m_bbox.max.z,
-            (GLfloat)m_bbox.max.x, (GLfloat)m_bbox.min.y, (GLfloat)m_bbox.max.z
+            (GLfloat)box2.min.x, (GLfloat)box2.min.y, (GLfloat)box2.min.z,
+            (GLfloat)box2.min.x, (GLfloat)box2.max.y, (GLfloat)box2.min.z,
+            (GLfloat)box2.max.x, (GLfloat)box2.max.y, (GLfloat)box2.min.z,
+            (GLfloat)box2.max.x, (GLfloat)box2.min.y, (GLfloat)box2.min.z,
+            (GLfloat)box2.min.x, (GLfloat)box2.min.y, (GLfloat)box2.max.z,
+            (GLfloat)box2.min.x, (GLfloat)box2.max.y, (GLfloat)box2.max.z,
+            (GLfloat)box2.max.x, (GLfloat)box2.max.y, (GLfloat)box2.max.z,
+            (GLfloat)box2.max.x, (GLfloat)box2.min.y, (GLfloat)box2.max.z
     };
     unsigned char inds[] = {
             // rows: bottom, sides, top
