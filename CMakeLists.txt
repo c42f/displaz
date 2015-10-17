@@ -8,10 +8,6 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
 
-if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
-endif()
-
 project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
