@@ -544,10 +544,61 @@ void PointArray::drawTree(QGLShaderProgram& prog, const TransformState& transSta
     ::drawTree(prog, transState, m_rootNode.get());
 }
 
+void PointArray::initializeGL()
+{
+    Geometry::initializeGL();
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    this->setVAO("points", vao);
+
+    //TODO: we could preload all vertices to GPU memory here, but only for data that fits into memory
+
+    GLuint vbo;
+
+    // we can at least try to pre-generate the GL array buffers here, so we don't have to generate them during the draw call
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        const GeomField& field = m_fields[i];
+        if (field.spec.isArray())
+        {
+            for (int j = 0; j < field.spec.count; ++j)
+            {
+                std::string name = tfm::format("%s[%d]", field.name, j);
+
+                //tfm::printf("Generating buffer: %s\n", name.c_str());
+
+                glGenBuffers(1, &vbo);
+                this->setVBO(name.c_str(), vbo);
+            }
+        }
+        else
+        {
+            std::string name = tfm::format("%s[%d]", field.name, 0);
+
+            //tfm::printf("Generating buffer: %s\n", name.c_str());
+
+            glGenBuffers(1, &vbo);
+
+            this->setVBO(name.c_str(), vbo);
+        }
+    }
+
+}
+
+void PointArray::draw(const TransformState& transState, double quality) const
+{
+}
 
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
+
+    GLuint vao = this->getVAO("points");
+    glBindVertexArray(vao);
+
     TransformState relativeTrans = transState.translate(offset());
     relativeTrans.setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
@@ -597,6 +648,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
     {
+
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
         if (clipBox.canCull(node->bbox))
@@ -621,6 +673,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         idx = node->nextBeginIndex;
         if (nodeDrawCount.numVertices == 0)
             continue;
+
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
@@ -633,19 +686,38 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                     continue;
                 char* data = field.data.get() + idx*field.spec.size() +
                              j*field.spec.elsize;
+
+                // TODO: using one buffer per attribute right now - that may not be the best solution
+                // alternative we may want to generate a single array with all attributes needed for the currently rendered vertices and upload that only, but this works, too
+                // TODO: for large datasets we may have to delete these buffers again
+                // buffers are currently being reused for the same "attr->location", though, so we should be good
+
+                // tfm::printf("VBO count: %i\n", this->vboCount());
+
+                std::string vbo_name = tfm::format("%s[%d]", field.name, j);
+
+                GLuint vbo = this->getVBO(vbo_name.c_str());
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, vecSize * nodeDrawCount.numVertices * sizeof(glBaseType(field.spec)), data, GL_STREAM_DRAW);
+
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
                     glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, data);
+                                           glBaseType(field.spec), 0, (const GLvoid *)0); //data //stride = sizeof(int) * (3)
                 }
                 else
                 {
                     glVertexAttribPointer(attr->location, vecSize,
                                           glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, data);
+                                          field.spec.fixedPoint, 0, (const GLvoid *)0); //data //stride = sizeof(float) * (3)
                 }
+
+                glEnableVertexAttribArray(attr->location);
             }
         }
+
+        //tfm::printf("Draw vertex count: %i\n", (GLsizei)nodeDrawCount.numVertices);
+
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
         node->nextBeginIndex += nodeDrawCount.numVertices;
     }
@@ -658,6 +730,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
+
+    //glBindVertexArray(0);
+
     return drawCount;
 }
 

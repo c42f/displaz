@@ -120,7 +120,7 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
     {
         if (m_boundingBoxShader->isValid())
         {
-            geoms[i]->setBboxShaderId(m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
             geoms[i]->initializeGL();
@@ -330,7 +330,7 @@ void View3D::initializeGL()
     {
         if (m_boundingBoxShader->isValid())
         {
-            geoms[i]->setBboxShaderId(m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
             geoms[i]->initializeGL();
@@ -413,8 +413,8 @@ void View3D::paintGL()
 
             for (size_t i = 0; i < geoms.size(); ++i)
             {
-                drawBoundingBox(transState, geoms[i]->bboxVertexArray(), geoms[i]->boundingBox().min,
-                                Imath::C3f(1), geoms[i]->bboxShaderId()); //boundingBoxShader.programId()
+                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
+                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
             }
 
             // boundingBoxShader.release();
@@ -915,6 +915,8 @@ void View3D::drawAxes() const
         // axesShader.release();
     }
 
+#ifdef OPEN_GL_2
+    // This is now done with shaders
 
     // Compute perspective correct x,y,z axis directions at position of the
     // axis widget centre.  The full 3->window coordinate transformation is
@@ -966,6 +968,7 @@ void View3D::drawAxes() const
 
     // Ignore z component for drawing overlay
     x.z = y.z = z.z = 0.0;
+#endif
 
     // Draw Labels
 
@@ -1020,29 +1023,6 @@ void View3D::drawAxes() const
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         // axesBackgroundShader.release();
     }
-
-#ifdef OPEN_GL_2
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(px+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(px+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(px+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(px+V3d( l/2, l/2,0)));
-    glEnd();
-
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(py+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(py+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(py+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(py+V3d( l/2, l/2,0)));
-    glEnd();
-
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(pz+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(pz+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(pz+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(pz+V3d( l/2, l/2,0)));
-    glEnd();
-#endif //OPEN_GL_2
 }
 
 
@@ -1076,7 +1056,7 @@ void View3D::initGrid(const float scale)
                           -0.3f*scale, -0.5f*scale, 0.0f, -0.3f*scale,  0.5f*scale, 0.0f,
                           -0.2f*scale, -0.5f*scale, 0.0f, -0.2f*scale,  0.5f*scale, 0.0f,
                           -0.1f*scale, -0.5f*scale, 0.0f, -0.1f*scale,  0.5f*scale, 0.0f,
-                           0.0f*scale, -0.5f*scale, 0.0f,  0.0f,        0.5f*scale, 0.0f,
+                           0.0f,       -0.5f*scale, 0.0f,  0.0f,        0.5f*scale, 0.0f,
                            0.1f*scale, -0.5f*scale, 0.0f,  0.1f*scale,  0.5f*scale, 0.0f,
                            0.2f*scale, -0.5f*scale, 0.0f,  0.2f*scale,  0.5f*scale, 0.0f,
                            0.3f*scale, -0.5f*scale, 0.0f,  0.3f*scale,  0.5f*scale, 0.0f,

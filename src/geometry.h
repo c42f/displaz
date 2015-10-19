@@ -150,21 +150,16 @@ class Geometry : public QObject
         /// Get axis aligned bounding box containing the geometry
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
-        /// Get bbox vertex array handle
-        const unsigned int bboxVertexArray() const { return m_bboxVertexArray; }
-
-        /// Set / Get bbox shader handle
-        void setBboxShaderId(const unsigned int bboxShader) { m_bboxShader = bboxShader; }
-        const unsigned int bboxShaderId() const { return m_bboxShader; }
-
-        /// Get vertex array size (apart form the default bbox)
-        const unsigned int vertexArrayCount() const { return m_vertArrays.size(); }
-        void setVertexArray(const char * vertexArrayName, const unsigned int vertArrayId) { m_vertArrays[vertexArrayName] = vertArrayId; }
-        const unsigned int vertexArray(const char * vertexArrayName) const;
-
-        /// Set / Get shader handles (apart from default bbox)
+        /// Set / Get shader handles
         void setShaderId(const char * shaderName, const unsigned int shaderId) { m_Shaders[shaderName] = shaderId; }
         const unsigned int shaderId(const char * shaderName) const;
+
+        /// Get VAO
+        const unsigned int getVAO(const char * vertexArrayName) const;
+        const unsigned int vaoCount() const { return m_VAO.size(); }
+        /// Get VBO
+        const unsigned int getVBO(const char * vertexBufferName) const;
+        const unsigned int vboCount() const { return m_VBO.size(); }
 
     signals:
         /// Emitted at the start of a point loading step
@@ -178,7 +173,13 @@ class Geometry : public QObject
         void setCentroid(const V3d& centroid) { m_centroid = centroid; }
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
 
-        void initializeBboxGL();
+        void destroyBuffers();
+        void initializeBboxGL(unsigned int bboxShader);
+
+        /// Set VAO
+        void setVAO(const char * vertexArrayName, const unsigned int vertArrayId) { m_VAO[std::string(vertexArrayName)] = vertArrayId; }
+        /// Set VBO
+        void setVBO(const char * vertexBufferName, const unsigned int vertBufferId) { m_VBO[std::string(vertexBufferName)] = vertBufferId; }
 
     private:
         QString m_name;
@@ -187,11 +188,9 @@ class Geometry : public QObject
         V3d m_centroid;
         Imath::Box3d m_bbox;
 
-        unsigned int m_bboxVertexArray;
-        unsigned int m_bboxShader;
-
-        std::map<const char *, unsigned int> m_vertArrays;
-        std::map<const char *, unsigned int> m_Shaders;
+        std::map<std::string, unsigned int> m_VAO;
+        std::map<std::string, unsigned int> m_VBO;
+        std::map<std::string, unsigned int> m_Shaders;
 };
 
 

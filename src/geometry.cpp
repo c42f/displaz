@@ -44,8 +44,8 @@ Geometry::Geometry()
     m_offset(0,0,0),
     m_centroid(0,0,0),
     m_bbox(),
-    m_bboxVertexArray(0),
-    m_bboxShader(0)
+    m_VBO(),
+    m_VAO()
 { }
 
 
@@ -67,15 +67,42 @@ bool Geometry::reloadFile(size_t maxVertexCount)
 
 void Geometry::initializeGL()
 {
-    this->initializeBboxGL();
+    this->destroyBuffers();
+
+    this->initializeBboxGL(this->shaderId("boundingbox"));
 }
 
-void Geometry::initializeBboxGL()
+void Geometry::destroyBuffers()
+{
+    // destroy any previously created buffers (in case we are re-initializing this geometry)
+    // this should avoid recreating more and more opengl buffers
+
+    //tfm::printfln("Geometry :: destroyBuffers");
+
+    for (std::map<std::string,unsigned int>::iterator it=m_VBO.begin(); it!=m_VBO.end(); ++it)
+    {
+        GLuint vbo = it->second;
+        glDeleteBuffers(1, &vbo);
+    }
+
+    m_VBO.clear();
+
+    for (std::map<std::string,unsigned int>::iterator it=m_VAO.begin(); it!=m_VAO.end(); ++it)
+    {
+        GLuint vao = it->second;
+        glDeleteBuffers(1, &vao);
+    }
+
+    m_VAO.clear();
+
+}
+
+void Geometry::initializeBboxGL(unsigned int bboxShader)
 {
 
-    // tfm::printfln("Geometry :: initializeGL - %i", m_bboxShader);
+    // tfm::printfln("Geometry :: initializeGL - %i", bboxShader);
 
-    if (!m_bboxShader)
+    if (!bboxShader)
     {
         tfm::printfln("Bounding box shader was not defined for geometry.");
         return;
@@ -103,17 +130,23 @@ void Geometry::initializeBboxGL()
 
 
     // create VBA VBO for rendering ...
-    glGenVertexArrays(1, &m_bboxVertexArray);
-    glBindVertexArray(m_bboxVertexArray);
+    GLuint bboxVertexArray;
+    glGenVertexArrays(1, &bboxVertexArray);
+    glBindVertexArray(bboxVertexArray);
+
+    this->setVAO("boundingbox", bboxVertexArray);
 
     // tfm::printfln("Geometry :: bboxVertexArray - %i", m_bboxVertexArray);
 
-    GLuint geomVertexArray;
-    glGenBuffers(1, &geomVertexArray);
-    glBindBuffer(GL_ARRAY_BUFFER, geomVertexArray);
+    GLuint geomVertexBuffer;
+    glGenBuffers(1, &geomVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geomVertexBuffer);
+
+    this->setVBO("bbox_vertex", geomVertexBuffer);
+    
     glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_bboxShader, "position");
+    GLuint positionAttribute = glGetAttribLocation(bboxShader, "position");
 
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
@@ -122,6 +155,9 @@ void Geometry::initializeBboxGL()
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
+
+    this->setVBO("bbox_index", geomElementBuffer);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
 
@@ -129,14 +165,34 @@ void Geometry::initializeBboxGL()
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-const unsigned int Geometry::vertexArray(const char * vertexArrayName) const
+const unsigned int Geometry::getVAO(const char * vertexArrayName) const
 {
-    if(m_vertArrays.find(vertexArrayName) != m_vertArrays.end())
+    // always call this from an active OpenGL context
+    if(m_VAO.find(std::string(vertexArrayName)) != m_VAO.end())
     {
-        return m_vertArrays.at(vertexArrayName);
+        return m_VAO.at(std::string(vertexArrayName));
     }
-    tfm::printfln("Geometry :: vertexArray not found - %s", vertexArrayName);
-    return 0;
+    tfm::printfln("Geometry :: vertexArrayObject was not found and will be created - %s", vertexArrayName);
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+
+    return vao;
+}
+
+const unsigned int Geometry::getVBO(const char * vertexBufferName) const
+{
+    // always call this from an active OpenGL context
+    if(m_VBO.find(std::string(vertexBufferName)) != m_VBO.end())
+    {
+        return m_VBO.at(std::string(vertexBufferName));
+    }
+    tfm::printfln("Geometry :: vertexBufferObject was not found and will be created - %s", vertexBufferName);
+
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+
+    return vbo;
 }
 
 const unsigned int Geometry::shaderId(const char * shaderName) const

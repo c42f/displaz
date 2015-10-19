@@ -283,7 +283,7 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
 
 void TriMesh::draw(const TransformState& transState, double quality) const
 {
-    // unsigned int vertArray = this->vertexArray("vertexArray");
+    // unsigned int vertArray = this->getVAO("vertexArray");
     // unsigned int shaderId = this->shaderId("vertexArray");
 }
 
@@ -340,7 +340,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     glBindVertexArray(vertexArray);
 
     // store this vertex array id
-    this->setVertexArray(vertArrayName, vertexArray);
+    this->setVAO(vertArrayName, vertexArray);
 
     GLuint vertexBuffer;
     glGenBuffers(1, &vertexBuffer);
@@ -389,7 +389,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     unsigned int vertexShaderId = this->shaderId("meshface");
-    unsigned int vertexArray = this->vertexArray("meshface");
+    unsigned int vertexArray = this->getVAO("meshface");
 
     transState.translate(offset()).setUniforms(vertexShaderId);
 
@@ -408,7 +408,7 @@ void TriMesh::drawEdges(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     unsigned int vertexShaderId = this->shaderId("meshedge");
-    unsigned int vertexArray = this->vertexArray("meshedge");
+    unsigned int vertexArray = this->getVAO("meshedge");
 
     transState.translate(offset()).setUniforms(vertexShaderId);
 
