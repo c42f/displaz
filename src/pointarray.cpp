@@ -612,6 +612,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     GLuint vao = this->getVAO("points");
     glBindVertexArray(vao);
 
+    GLuint vbo = this->getVBO("point_buffer");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
     TransformState relativeTrans = transState.translate(offset());
     relativeTrans.setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
@@ -661,6 +664,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
     {
+        // tfm::printfln("========================================");
+        // tfm::printfln("iterate OCTREE NODE (STACK)");
 
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
@@ -680,6 +685,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
 
+        // tfm::printfln("OCTREE NODE (STACK) begin idx: %i", idx);
+
         DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
         drawCount += nodeDrawCount;
 
@@ -697,18 +704,18 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
 
-            tfm::printf("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i\n", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
+            // tfm::printfln("FIELD-NAME: %s", field.name);
+            // tfm::printfln("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
 
-            // see below why we don't use the arraySize to estimate the total bufferSize here ...
-            bufferSize += vecSize * sizeof(glBaseType(field.spec));
+            bufferSize += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
         }
 
         bufferSize = bufferSize * (GLsizei)nodeDrawCount.numVertices;
 
-        GLuint vbo = this->getVBO("point_buffer");
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // TODO: might be able to do something more efficient here, for example use glBufferSubData to avoid re-allocation of memory by glBufferData
         // INITIALIZE THE BUFFER TO FULL SIZE
+        // tfm::printfln("INIT BUFFER: %i, BS: %i", vbo, bufferSize);
+
         glBufferData(GL_ARRAY_BUFFER, bufferSize, NULL, GL_STREAM_DRAW);
         /// ========================================================================
         /// ========================================================================
@@ -723,8 +730,12 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data
             // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
             // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
-            bufferSize = vecSize * sizeof(glBaseType(field.spec)) * (GLsizei)nodeDrawCount.numVertices;
-            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, field.data.get());
+            bufferSize = arraySize * vecSize * field.spec.elsize * (GLsizei)nodeDrawCount.numVertices; //sizeof(glBaseType(field.spec))
+
+            char* bufferData = field.data.get() + idx*field.spec.size();
+            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, bufferData);
+
+            // tfm::printfln("UPDATE BUFFER: %i, BS: %i", vbo, bufferSize);
 
             for (int j = 0; j < arraySize; ++j)
             {
@@ -734,10 +745,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                 char* data = field.data.get() + idx*field.spec.size() +
                              j*field.spec.elsize;
 
-                // I might be mistaken, but is it possible that the vecSize == arraySize, whenever arraySize != 1 ?
-                // that means we can't calculate the buffer offset with arraySize * vecSize or am I missing something here?
-                // instead, we have to create intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
-                int intermediate_bufferOffset = bufferOffset + idx*field.spec.size() + j*field.spec.elsize;
+                // we have to create an intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
+                int intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
@@ -756,6 +765,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
 
             bufferOffset += bufferSize;
         }
+
+        // tfm::printfln("DRAW BUFFER: %i, NC: %i", vbo, nodeDrawCount.numVertices);
 
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
         node->nextBeginIndex += nodeDrawCount.numVertices;
