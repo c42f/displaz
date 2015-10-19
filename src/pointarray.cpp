@@ -557,11 +557,23 @@ void PointArray::initializeGL()
     //TODO: we could preload all vertices to GPU memory here, but only for data that fits into memory
 
     GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    this->setVBO("point_buffer", vbo);
 
     // we can at least try to pre-generate the GL array buffers here, so we don't have to generate them during the draw call
-    for (size_t i = 0; i < m_fields.size(); ++i)
+    /*for (size_t i = 0; i < m_fields.size(); ++i)
     {
         const GeomField& field = m_fields[i];
+
+        std::string vbo_name = tfm::format("%s", field.name);
+
+        tfm::printf("Generating buffer: %s\n", vbo_name.c_str());
+
+        glGenBuffers(1, &vbo);
+        this->setVBO(vbo_name.c_str(), vbo);
+
+        /*
         if (field.spec.isArray())
         {
             for (int j = 0; j < field.spec.count; ++j)
@@ -584,7 +596,8 @@ void PointArray::initializeGL()
 
             this->setVBO(name.c_str(), vbo);
         }
-    }
+         * /
+    }*/
 
 }
 
@@ -674,11 +687,42 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (nodeDrawCount.numVertices == 0)
             continue;
 
+        if (m_fields.size() < 1)
+            continue;
+
+        unsigned int bufferSize = 0;
+        for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
+        {
+            const GeomField &field = m_fields[i];
+            int arraySize = field.spec.arraySize();
+            int vecSize = field.spec.vectorSize();
+
+            bufferSize += vecSize * sizeof(glBaseType(field.spec));
+        }
+
+        bufferSize = bufferSize * (GLsizei)nodeDrawCount.numVertices;
+
+        GLuint vbo = this->getVBO("point_buffer");
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        // TODO: might be able to do something more efficient here, for example use glBufferSubData to avoid re-allocation of memory by glBufferData
+        // INITIALIZE THE BUFFER TO FULL SIZE
+        glBufferData(GL_ARRAY_BUFFER, bufferSize, NULL, GL_STREAM_DRAW);
+        /// ========================================================================
+        /// ========================================================================
+        int bufferOffset = 0;
+
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
+
+            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data
+            // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
+            // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
+            bufferSize = vecSize * sizeof(glBaseType(field.spec)) * (GLsizei)nodeDrawCount.numVertices;
+            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, field.data.get());
+
             for (int j = 0; j < arraySize; ++j)
             {
                 const ShaderAttribute* attr = attributes[k+j];
@@ -687,36 +731,25 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                 char* data = field.data.get() + idx*field.spec.size() +
                              j*field.spec.elsize;
 
-                // TODO: using one buffer per attribute right now - that may not be the best solution
-                // alternative we may want to generate a single array with all attributes needed for the currently rendered vertices and upload that only, but this works, too
-                // TODO: for large datasets we may have to delete these buffers again
-                // buffers are currently being reused for the same "attr->location", though, so we should be good
-
-                // tfm::printf("VBO count: %i\n", this->vboCount());
-
-                std::string vbo_name = tfm::format("%s[%d]", field.name, j);
-
-                GLuint vbo = this->getVBO(vbo_name.c_str());
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, vecSize * nodeDrawCount.numVertices * sizeof(glBaseType(field.spec)), data, GL_STREAM_DRAW);
+                int intermediate_bufferOffset = bufferOffset + idx*field.spec.size() + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
                     glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, (const GLvoid *)0); //data //stride = sizeof(int) * (3)
+                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset); //(const GLvoid *)0 //data //stride = sizeof(int) * (3)
                 }
                 else
                 {
                     glVertexAttribPointer(attr->location, vecSize,
                                           glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, (const GLvoid *)0); //data //stride = sizeof(float) * (3)
+                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset); //(const GLvoid *)0 //data //stride = sizeof(float) * (3)
                 }
 
                 glEnableVertexAttribArray(attr->location);
             }
-        }
 
-        //tfm::printf("Draw vertex count: %i\n", (GLsizei)nodeDrawCount.numVertices);
+            bufferOffset += bufferSize;
+        }
 
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
         node->nextBeginIndex += nodeDrawCount.numVertices;
