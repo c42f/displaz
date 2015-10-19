@@ -691,12 +691,15 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             continue;
 
         unsigned int bufferSize = 0;
-        for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
+        for (size_t i = 0; i < m_fields.size(); ++i)
         {
             const GeomField &field = m_fields[i];
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
 
+            tfm::printf("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i\n", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
+
+            // see below why we don't use the arraySize to estimate the total bufferSize here ...
             bufferSize += vecSize * sizeof(glBaseType(field.spec));
         }
 
@@ -731,6 +734,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                 char* data = field.data.get() + idx*field.spec.size() +
                              j*field.spec.elsize;
 
+                // I might be mistaken, but is it possible that the vecSize == arraySize, whenever arraySize != 1 ?
+                // that means we can't calculate the buffer offset with arraySize * vecSize or am I missing something here?
+                // instead, we have to create intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
                 int intermediate_bufferOffset = bufferOffset + idx*field.spec.size() + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
