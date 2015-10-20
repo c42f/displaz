@@ -272,6 +272,13 @@ if (DISPLAZ_USE_TESTS)
     )
     add_test(NAME unit_tests COMMAND unit_tests)
 
+    if (DISPLAZ_USE_QT4)
+    else ()
+        if (Qt5_POSITION_INDEPENDENT_CODE)
+            set_target_properties(unit_tests PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        endif()
+    endif ()
+
     # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
     if (DISPLAZ_USE_QT4)
