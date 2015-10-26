@@ -53,7 +53,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_gridVertexArray(0),
     m_quadVertexArray(0),
     m_quadLabelVertexArray(0),
-    m_devicePixelRatio(0.0)
+    m_devicePixelRatio(1.0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -255,7 +255,11 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 
+#ifdef DISPLAZ_USE_QT4
+    double dPR = 1.0;
+#else
     double dPR = devicePixelRatio();
+#endif
     int w = width() * dPR;
     int h = height() * dPR;
 
@@ -299,7 +303,11 @@ void View3D::resizeGL(int w, int h)
     // Draw on full window
     glViewport(0, 0, w, h);
 
+#ifdef DISPLAZ_USE_QT4
+    double dPR = 1.0;
+#else
     double dPR = devicePixelRatio();
+#endif
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
@@ -361,7 +369,11 @@ void View3D::paintGL()
     frameTimer.start();
 
     // Get window size
+#ifdef DISPLAZ_USE_QT4
+    double dPR = 1.0;
+#else
     double dPR = devicePixelRatio();
+#endif
     int w = width() * dPR;
     int h = height() * dPR;
 
@@ -1018,7 +1030,11 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     if (!m_shaderProgram->isValid())
         return DrawCount();
 
+#ifdef DISPLAZ_USE_QT4
+    double dPR = 1.0;
+#else
     double dPR = devicePixelRatio();
+#endif
 
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
