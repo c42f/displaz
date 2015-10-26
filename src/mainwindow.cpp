@@ -193,6 +193,10 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 
+    // this fixes render issues when switching HiDPI (resolution) screens (common under OS X)
+    //connect(window(), SIGNAL(screenChanged(QScreen*)),
+    //        m_pointView, SLOT(updateGL()));
+
     //--------------------------------------------------
     // Docked widgets
     // Shader parameters UI

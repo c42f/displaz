@@ -283,8 +283,8 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
 
 void TriMesh::draw(const TransformState& transState, double quality) const
 {
-    // unsigned int vertArray = this->getVAO("vertexArray");
-    // unsigned int shaderId = this->shaderId("vertexArray");
+    // unsigned int vertArray = getVAO("vertexArray");
+    // unsigned int shaderId = shaderId("vertexArray");
 }
 
 void TriMesh::initializeGL()
@@ -297,13 +297,13 @@ void TriMesh::initializeGL()
     }
 
     // init our own vertex arrays here
-    this->initializeFaceGL();
-    this->initializeEdgeGL();
+    initializeFaceGL();
+    initializeEdgeGL();
 }
 
 void TriMesh::initializeFaceGL()
 {
-    this->initializeVertexGL("meshface", "position", "normal", "color");
+    initializeVertexGL("meshface", "position", "normal", "color");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -316,7 +316,7 @@ void TriMesh::initializeFaceGL()
 
 void TriMesh::initializeEdgeGL()
 {
-    this->initializeVertexGL("meshedge", "position", "normal", "color");
+    initializeVertexGL("meshedge", "position", "normal", "color");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -328,7 +328,7 @@ void TriMesh::initializeEdgeGL()
 }
 
 void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName) {
-    unsigned int vertexShaderId = this->shaderId(vertArrayName);
+    unsigned int vertexShaderId = shaderId(vertArrayName);
 
     if (!vertexShaderId) {
         return;
@@ -340,7 +340,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     glBindVertexArray(vertexArray);
 
     // store this vertex array id
-    this->setVAO(vertArrayName, vertexArray);
+    setVAO(vertArrayName, vertexArray);
 
     GLuint vertexBuffer;
     glGenBuffers(1, &vertexBuffer);
@@ -388,8 +388,8 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
 void TriMesh::drawFaces(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
-    unsigned int vertexShaderId = this->shaderId("meshface");
-    unsigned int vertexArray = this->getVAO("meshface");
+    unsigned int vertexShaderId = shaderId("meshface");
+    unsigned int vertexArray = getVAO("meshface");
 
     transState.translate(offset()).setUniforms(vertexShaderId);
 
@@ -407,8 +407,8 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
 void TriMesh::drawEdges(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
-    unsigned int vertexShaderId = this->shaderId("meshedge");
-    unsigned int vertexArray = this->getVAO("meshedge");
+    unsigned int vertexShaderId = shaderId("meshedge");
+    unsigned int vertexArray = getVAO("meshedge");
 
     transState.translate(offset()).setUniforms(vertexShaderId);
 

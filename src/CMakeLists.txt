@@ -133,16 +133,6 @@ if(WIN32)
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-if(APPLE)
-    set(objc_srcs
-        coreprofileattr.mm
-    )
-    find_library(COCOA_LIBRARY Cocoa)
-    find_library(FOUNDATION_LIBRARY Foundation)
-    # add_definitions("-x objective-c++")
-    # set(CMAKE_EXE_LINKER_FLAGS "-framework ServiceManagement -framework Foundation -framework Cocoa")
-endif()
-
 # Create config.h
 set(DISPLAZ_VERSION_STRING "${displazVersion}")
 configure_file(config.h.in.cmake config.h @ONLY)
@@ -150,7 +140,7 @@ include_directories(${PROJECT_BINARY_DIR})
 
 
 add_executable(displaz ${cli_srcs})
-add_executable(displaz-gui WIN32 ${gui_srcs} ${objc_srcs} ${RCC_GENERATED})
+add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
     add_executable(dvox

@@ -202,11 +202,7 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
             if (vec3ComponentPattern.exactMatch(propName))
             {
                 displazName = vec3ComponentPattern.cap(1).toStdString();
-#ifdef DISPLAZ_USE_QT4
-                index = vec3ComponentPattern.cap(2)[0].toAscii() - 'x';
-#else
                 index = vec3ComponentPattern.cap(2)[0].toLatin1() - 'x';
-#endif
                 semantics = TypeSpec::Vector;
             }
             else if(arrayComponentPattern.exactMatch(propName))

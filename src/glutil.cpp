@@ -50,15 +50,8 @@ void TransformState::setUniforms(GLuint prog) const
 void TransformState::setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal)
 {
     // Note: Create an orthographic matrix from input values
-    if (left == right) {
-        right = left+1.0; // TODO: should throw an error here
-    }
-    if (bottom == top) {
-        bottom = top+1.0; // TODO: should throw an error here
-    }
-    if (nearVal == farVal) {
-        nearVal = farVal+1.0; // TODO: should throw an error here
-    }
+    if ((left == right) || (bottom == top) || (nearVal == farVal))
+        throw DisplazError("Invalid input for orthographic projection.");
 
     double xx = 2.0/(right-left);
     double yy = 2.0/(top-bottom);
@@ -68,27 +61,11 @@ void TransformState::setOrthoProjection(double left, double right, double bottom
     double ty = -(top+bottom)/(top-bottom);
     double tz = -(farVal+nearVal)/(farVal-nearVal);
 
-    /*this->projMatrix = M44d(xx,0.0,0.0,tx,
-                            0.0,yy,0.0,ty,
-                            0.0,0.0,zz,tz,
-                            0.0,0.0,0.0,1.0);*/
-
-    this->projMatrix = M44d(xx,0.0,0.0,0.0,
-                            0.0,yy,0.0,0.0,
-                            0.0,0.0,zz,0.0,
-                            tx,ty,tz,1.0);
+    projMatrix = M44d(xx,0.0,0.0,0.0,
+                      0.0,yy,0.0,0.0,
+                      0.0,0.0,zz,0.0,
+                      tx,ty,tz,1.0);
 }
-
-void TransformState::load() const
-{
-#ifdef OPEN_GL_2
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrix(M44f(projMatrix));
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrix(M44f(modelViewMatrix));
-#endif
-}
-
 
 //------------------------------------------------------------------------------
 
@@ -180,7 +157,7 @@ void drawSphere(const TransformState& transState,
             triInds.push_back(i1); triInds.push_back(i3); triInds.push_back(i4);
         }
     }
-#ifdef OPEN_GL_2
+#if 0
     // Draw computed sphere mesh.
     glUseProgram(shaderProg);
     newTrans.setUniforms(shaderProg);
@@ -300,5 +277,48 @@ void printActiveShaderAttributes(GLuint prog)
         getGlTypeInfo(attr.type, typeName, rows, cols, tbase);
         tfm::printf("   %s[%d] %s\n", typeName, attr.count, attr.name);
     }
+}
+
+void _glError(const char *file, int line) {
+    GLenum err (glGetError());
+
+    while(err!=GL_NO_ERROR) {
+        std::string error;
+
+        switch(err) {
+            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
+            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
+            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
+            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+        }
+
+        tfm::printfln("GL_%s - %s:%i", error, file, line);
+        err=glGetError();
+    }
+}
+
+void _glFrameBufferStatus(GLenum target, const char *file, int line) {
+
+    GLenum fb_status(glCheckFramebufferStatus(target));
+
+    std::string status;
+
+    switch(fb_status) {
+        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
+        case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";      break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: status="INCOMPLETE_MULTISAMPLE";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: status="INCOMPLETE_LAYER_TARGETS";  break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
+        default:                        status="INCOMPLETE";    break;
+    }
+
+    tfm::printfln("GL_FRAMEBUFFER_%s - %s:%i", status, file, line);
 }
 

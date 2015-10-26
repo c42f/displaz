@@ -19,7 +19,7 @@ struct CoreContext : public QGLContext {
 #if defined(Q_OS_MAC)
 #if QT_VERSION < 0x050000 && QT_VERSION >= 0x040800 // if less than Qt 5.0.0
     virtual void* chooseMacVisual(GDHandle handle) {
-        return select_3_2_mac_visual(handle, this->format().depthBufferSize()); //TODO: check if we want to enable multiSampling
+        return select_3_2_mac_visual(handle, format().depthBufferSize()); //TODO: check if we want to enable multiSampling
     }
 #endif
 #endif

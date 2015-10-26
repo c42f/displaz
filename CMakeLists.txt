@@ -22,7 +22,11 @@ option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" TRUE)
+if(NOT APPLE)
 option(DISPLAZ_USE_QT4 "Build displaz with Qt4" FALSE)
+else()
+set(DISPLAZ_USE_QT4 FALSE)
+endif()
 
 set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
     CACHE PATH "Directory containing installed third party libraries (laslib, ilmbase, ...)")

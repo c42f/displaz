@@ -45,7 +45,7 @@ class Geometry : public QObject
     public:
         Geometry();
 
-        virtual ~Geometry() {};
+        virtual ~Geometry();
 
         /// Create geometry of a type which is able to read the given file
         static std::shared_ptr<Geometry> create(QString fileName);

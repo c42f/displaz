@@ -1,6 +1,8 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+// #define GL_CHECK 1
+
 #include "glutil.h"
 #include "view3d.h"
 
@@ -9,7 +11,6 @@
 #include <QKeyEvent>
 #include <QLayout>
 #include <QItemSelectionModel>
-#include <QGLFramebufferObject>
 #include <QMessageBox>
 // #include <QGLBuffer>
 #include <QGLFormat>
@@ -22,18 +23,11 @@
 #include "shader.h"
 #include "tinyformat.h"
 #include "util.h"
-#ifdef DISPLAZ_USE_QT4
-    #include "corecontext.h"
-#endif
+
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
-#ifdef DISPLAZ_USE_QT4
-    : QGLWidget(new CoreContext(format), parent),
-#else
     : QGLWidget(format, parent),
-#endif
     m_camera(false, false),
-    m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),
     m_cursorPos(0),
     m_prevCursorSnap(0),
@@ -53,11 +47,13 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
     m_drawAxesLabelZ(QImage(":/resource/z.png")),
+    m_incrementalFramebuffer(0),
     m_cursorVertexArray(0),
     m_axesVertexArray(0),
     m_gridVertexArray(0),
     m_quadVertexArray(0),
-    m_quadLabelVertexArray(0)
+    m_quadLabelVertexArray(0),
+    m_devicePixelRatio(0.0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -69,6 +65,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
 
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    setFocus();
 
     m_camera.setClipFar(FLT_MAX*0.5f); //using FLT_MAX appears to cause issues under OS X for Qt to handle
     // Setting a good value for the near camera clipping plane is difficult
@@ -212,59 +209,6 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
-// #define GL_CHECK_RENDER
-#ifdef GL_CHECK_RENDER
-
-void _glError(const char *file, int line) {
-    GLenum err (glGetError());
-
-    while(err!=GL_NO_ERROR) {
-        std::string error;
-
-        switch(err) {
-            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
-            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
-            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
-            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
-        }
-
-        tfm::printfln("GL_%s - %s:%i", error, file, line);
-        err=glGetError();
-    }
-}
-
-#define glCheckError() _glError(__FILE__,__LINE__)
-
-void _glFrameBufferStatus(GLenum target, const char *file, int line) {
-
-    GLenum fb_status(glCheckFramebufferStatus(target));
-
-    std::string status;
-
-    switch(fb_status) {
-        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
-        case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";      break;
-        //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: status="INCOMPLETE_MULTISAMPLE";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: status="INCOMPLETE_LAYER_TARGETS";  break;
-        //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
-        case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
-        default:                        status="INCOMPLETE";    break;
-    }
-
-    tfm::printfln("GL_FRAMEBUFFER_%s - %s:%i", status, file, line);
-}
-
-#define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
-
-#endif //GL_CHECK_RENDER
-
-
 void View3D::initializeGL()
 {
     // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS)​,
@@ -280,10 +224,7 @@ void View3D::initializeGL()
         m_badOpenGL = true;
         return;
     }
-    else
-    {
-        g_logger.info("%s", "Initialized GLEW");
-    }
+
     g_logger.info("OpenGL implementation:\n"
                   "GL_VENDOR    = %s\n"
                   "GL_RENDERER  = %s\n"
@@ -296,40 +237,39 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
                   (const char*)glewGetString(GLEW_VERSION));
 
-#ifdef GL_CHECK_RENDER
+    // GL_CHECK has to be defined for this to actually do something
     glCheckError();
-#endif
 
     initCursor(10, 1);
     initAxes();
     initGrid(2.0f);
 
-#ifdef GL_CHECK_RENDER
-    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
     glCheckError();
-#endif
 
     m_boundingBoxShader.reset(new ShaderProgram());
-    bool bbox_shader_init = m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
+    m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
 
     m_meshFaceShader.reset(new ShaderProgram());
-    bool meshface_shader_init = m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
+    m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
 
     m_meshEdgeShader.reset(new ShaderProgram());
-    bool meshedge_shader_init = m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
+    m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+    double dPR = devicePixelRatio();
+    int w = width() * dPR;
+    int h = height() * dPR;
 
-#ifdef GL_CHECK_RENDER
-    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
+    m_incrementalFramebuffer = allocIncrementalFramebuffer(w, h);
+
+    glFrameBufferStatus(m_incrementalFramebuffer);
     glCheckError();
-#endif
 
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
     {
         if (m_boundingBoxShader->isValid())
         {
+            // TODO: build a shader manager for this
             geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
@@ -338,40 +278,77 @@ void View3D::initializeGL()
     }
 
     emit initialisedGL();
+
+    setFocus();
+
+    resizeGL(w,h);
+    updateGL();
 }
 
 
 void View3D::resizeGL(int w, int h)
 {
+    //Note: This function receives "device pixel sizes" for correct OpenGL viewport setup
+    //      Under OS X with retina display, this becomes important as it is 2x the width() or height()
+    //      of the normal window (there is a devicePixelRatio() function to deal with this).
+
     if (m_badOpenGL)
         return;
+
     // Draw on full window
     glViewport(0, 0, w, h);
-    m_camera.setViewport(QRect(0,0,w,h));
+
+    double dPR = devicePixelRatio();
+    m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
+
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
 
-#ifdef GL_CHECK_RENDER
     glCheckError();
-#endif
+
+    // without this explicit call, we get very strange artifacts during resizing
+    //updateGL();
 }
 
 
-std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
+unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
 {
+    if (w < 1 || h < 1)
+        return 0;
+
+    //should we really delete this every time?
+    GLuint fb;
+    glDeleteFramebuffers(1, &fb);
+
+    const QGLFormat fmt = context()->format();
+
+    glGenFramebuffers(1, &fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    const QGLFormat fmt = context()->format();
-    QGLFramebufferObjectFormat fboFmt;
-    fboFmt.setAttachment(QGLFramebufferObject::Depth);
+    // * but why would you want to avoid binding to a texture? It should be more efficient than copying the fb
+
     // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
     // for samples==1, so work around it by forcing 0, if possible
-    fboFmt.setSamples(fmt.samples() > 1 ? fmt.samples() : 0);
-    //fboFmt.setTextureTarget();
-    std::unique_ptr<QGLFramebufferObject> fbo;
-    fbo.reset(new QGLFramebufferObject(w, h, fboFmt));
-    if (fbo.get() && fbo->attachment()==QGLFramebufferObject::NoAttachment)
-        g_logger.error("%s", "Failed to attach FBO depth buffer.");
-    return fbo;
+
+    // requires OpenGL 4
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, w);
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, h);
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, fmt.samples() > 1 ? fmt.samples() : 0);
+
+    GLuint c_buff;
+    glGenRenderbuffers(1, &c_buff);
+    glBindRenderbuffer(GL_RENDERBUFFER, c_buff);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, c_buff);
+
+    GLuint z_buff;
+    glGenRenderbuffers(1, &z_buff);
+    glBindRenderbuffer(GL_RENDERBUFFER, z_buff);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, z_buff);
+
+    return fb;
 }
 
 
@@ -382,11 +359,26 @@ void View3D::paintGL()
     QTime frameTimer;
     frameTimer.start();
 
-    m_incrementalFramebuffer->bind();
+    // Get window size
+    double dPR = devicePixelRatio();
+    int w = width() * dPR;
+    int h = height() * dPR;
+
+    // detecting a change in the device pixel ratio, since only the new QWindow (Qt5) would
+    // provide a signal for screen changes and this is the easiest solution
+    if (dPR != m_devicePixelRatio)
+    {
+        m_devicePixelRatio = dPR;
+        resizeGL(w, h);
+    }
+
+    // tfm::printfln("GL Window WIDTH: %i HEIGHT: %i, RATIO: %f", w, h, dPR);
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer);
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(Imath::V2i(width(), height()),
+    TransformState transState(Imath::V2i(w, h),
                               m_camera.projectionMatrix(),
                               m_camera.viewMatrix());
 
@@ -424,15 +416,13 @@ void View3D::paintGL()
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
-        this->drawMeshes(transState, geoms);
+        drawMeshes(transState, geoms);
         // Generic draw for any other geometry
         // (TODO: make all geometries use this interface, or something similar)
         // FIXME - Do generic quality scaling
         const double quality = 1;
         for (size_t i = 0; i < geoms.size(); ++i)
-        {
             geoms[i]->draw(transState, quality);
-        }
     }
 
 
@@ -460,44 +450,35 @@ void View3D::paintGL()
 //        s[barSize] = '|';
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
 
-
-    m_incrementalFramebuffer->release();
-    QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
-                                          m_incrementalFramebuffer.get(),
-                                          QRect(0,0,width(),height()),
-                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBlitFramebuffer(0,0,w,h, 0,0,w,h,
+                      GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
 
     // Draw a grid for orientation purposes
     if (m_drawGrid)
-    {
         drawGrid();
-    }
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
-    {
-        drawCursor(transState, m_cursorPos, 10, 1);
+        drawCursor(transState, m_cursorPos, 10);
         //drawCursor(transState, m_camera.center(), 10);
-    }
 
     // Draw overlay axes
     if (m_drawAxes)
-    {
         drawAxes();
-    }
 
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
     else
         m_incrementalFrameTimer->start(10);
+
     m_incrementalDraw = true;
 
-#ifdef GL_CHECK_RENDER
-    //glFrameBufferStatus(m_incrementalFramebuffer->handle());
+    glFrameBufferStatus(m_incrementalFramebuffer);
     glCheckError();
-#endif
 }
 
 void View3D::drawMeshes(const TransformState& transState,
@@ -577,9 +558,8 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
         restartRender();
     }
     else
-    {
         m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
-    }
+
     m_prevMousePos = event->pos();
 }
 
@@ -593,11 +573,9 @@ void View3D::wheelEvent(QWheelEvent* event)
 
 void View3D::keyPressEvent(QKeyEvent *event)
 {
+    // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
-    {
-        // Centre camera on current cursor location
         m_camera.setCenter(m_cursorPos);
-    }
     else
         event->ignore();
 }
@@ -643,14 +621,13 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
 }
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos,
-                        float cursorRadius, float centerPointRadius) const
+void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos, float centerPointRadius) const
 {
     V3d offset = transStateIn.cameraPos();
     TransformState transState = transStateIn.translate(offset);
     V3d relCursor = cursorPos - offset;
 
-    // Cull if behind camera -> doesn't work for now
+    // Cull if behind camera
     //if((relCursor * transState.projMatrix).z > 0)
     //    return;
 
@@ -658,15 +635,6 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     V3d screenP3 = relCursor * transState.modelViewMatrix * transState.projMatrix;
     // Position in ortho coord system
     V2f p2 = 0.5f * V2f(width(), height()) * (V2f(screenP3.x, screenP3.y) + V2f(1.0f));
-    float r1 = cursorRadius;
-    float r2 = r1 + cursorRadius;
-
-    GLfloat centerVert[] = { (GLfloat)relCursor.x, (GLfloat)relCursor.y, (GLfloat)relCursor.z };
-
-    GLfloat verts[] = {
-            r1, 0, r2, 0, -r1, 0, -r2, 0,
-             0, r1, 0, r2,  0, -r1, 0, -r2
-    };
 
     // Draw cursor
     if (m_cursorShader->isValid())
@@ -855,7 +823,6 @@ void View3D::drawAxes() const
 
     const GLint w = 64;    // Width of axes widget
     const GLint o = 8;     // Axes widget offset in x and y
-    float transparency = 0.5;
 
     // Center of axis overlay
     const V3d center(o+w/2,o+w/2,0.0);
@@ -889,8 +856,6 @@ void View3D::drawAxes() const
     {
         //tfm::printfln("drawing with m_axesShader");
 
-        const float r = 0.6f;  // 60% towards edge of circle
-
         QGLShaderProgram& axesShader = m_axesShader->shaderProgram();
         // shader
         axesShader.bind();
@@ -915,61 +880,6 @@ void View3D::drawAxes() const
         // axesShader.release();
     }
 
-#ifdef OPEN_GL_2
-    // This is now done with shaders
-
-    // Compute perspective correct x,y,z axis directions at position of the
-    // axis widget centre.  The full 3->window coordinate transformation is
-    //
-    //   c = a*M     // world -> clip coords
-    //   n = c/c[3]  // Perspective divide (clip->NDC)
-    //   e = n*W     // NDC -> window
-    //
-    // Taking the derivative de/da and rearranging gives the derivative:
-    //
-    //   de/da = (1/c[3]) * (M*W - outer_product(center, M[:,3]))
-    //
-    // The x-axis vector in the window coords is then [1,0,0,0] * de/da, etc.
-    //
-    // Using the projected axis directions can look a little weird, but so does
-    // an orthographic projection.  The projected version has the advantage
-    // that a line in the scene which is parallel to one of the x,y or z axes
-    // and passes through the location of the axis widget is parallel to the
-    // associated axis as drawn in the widget itself.
-    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
-
-    // NDC->Window transform for the y=up,x=right window coordinate convention
-    // used in the glOrtho() call above.  Note this is opposite of Qt's window
-    // coordinates, which has y=0 at the top.
-    //
-    // Use zScreenScale so the size of the component into the screen is
-    // comparable with x and y in the other directions.
-    //
-    // TODO: Fix the coordinate systems used so that they're consistently
-    // manipulated with a common set of utilities.
-    double zScreenScale = 0.5*std::max(width(),height());
-    const M44d W = m_camera.viewportMatrix() *
-                   Imath::M44d().setScale(V3d(1,-1,zScreenScale)) *
-                   Imath::M44d().setTranslation(V3d(0,height(),0));
-
-    const M44d A = M*W;
-    V3d x = V3d(A[0][0],A[0][1],A[0][2]) - center*M[0][3];
-    V3d y = V3d(A[1][0],A[1][1],A[1][2]) - center*M[1][3];
-    V3d z = V3d(A[2][0],A[2][1],A[2][2]) - center*M[2][3];
-
-    // Normalize axes to make them a predictable size in 2D.
-    //
-    // TODO: For a perspective transform this is actually a bit subtle, since
-    // the magnitude of the component into the screen is affected by the clip
-    // plane positions.
-    x.normalize();
-    y.normalize();
-    z.normalize();
-
-    // Ignore z component for drawing overlay
-    x.z = y.z = z.z = 0.0;
-#endif
-
     // Draw Labels
 
     const double r = 0.8;   // 80% towards edge of circle
@@ -979,11 +889,6 @@ void View3D::drawAxes() const
     // integer co-ordinates to eliminate subpixel aliasing
     // artifacts.  This is also the reason that matrix
     // transformations are not being used for this.
-
-
-    //const V3d px = center+x*r*w/2;
-    //const V3d py = center+y*r*w/2;
-    //const V3d pz = center+z*r*w/2;
 
     const V3d px = V3d(1.0,0.0,0.0)*r*w/2;
     const V3d py = V3d(0.0,1.0,0.0)*r*w/2;
@@ -1121,6 +1026,9 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         return DrawCount();
     if (!m_shaderProgram->isValid())
         return DrawCount();
+
+    double dPR = devicePixelRatio();
+
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
@@ -1136,7 +1044,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(selection[(int)i].row() + 1));
-        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()[0][0]));
+        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*dPR*m_camera.projectionMatrix()[0][0]));
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);

@@ -20,7 +20,6 @@
 #include "geometrycollection.h"
 
 class QGLShaderProgram;
-class QGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
@@ -87,11 +86,10 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
-        std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+        unsigned int allocIncrementalFramebuffer(int w, int h) const;
 
         void initCursor(float cursorRadius, float centerPointRadius);
-        void drawCursor(const TransformState& transState, const V3d& P,
-                        float cursorRadius, float centerPointRadius) const;
+        void drawCursor(const TransformState& transState, const V3d& P, float centerPointRadius) const;
 
         void initAxes();
         void drawAxes() const;
@@ -142,7 +140,7 @@ class View3D : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
+        unsigned int m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
@@ -165,6 +163,8 @@ class View3D : public QGLWidget
         unsigned int m_gridVertexArray;
         unsigned int m_quadVertexArray;
         unsigned int m_quadLabelVertexArray;
+
+        double m_devicePixelRatio;
 };
 
 

@@ -44,10 +44,15 @@ Geometry::Geometry()
     m_offset(0,0,0),
     m_centroid(0,0,0),
     m_bbox(),
+    m_VAO(),
     m_VBO(),
-    m_VAO()
+    m_Shaders()
 { }
 
+Geometry::~Geometry()
+{
+    destroyBuffers();
+}
 
 std::shared_ptr<Geometry> Geometry::create(QString fileName)
 {
@@ -67,9 +72,9 @@ bool Geometry::reloadFile(size_t maxVertexCount)
 
 void Geometry::initializeGL()
 {
-    this->destroyBuffers();
+    destroyBuffers();
 
-    this->initializeBboxGL(this->shaderId("boundingbox"));
+    initializeBboxGL(shaderId("boundingbox"));
 }
 
 void Geometry::destroyBuffers()
@@ -79,17 +84,17 @@ void Geometry::destroyBuffers()
 
     //tfm::printfln("Geometry :: destroyBuffers");
 
-    for (std::map<std::string,unsigned int>::iterator it=m_VBO.begin(); it!=m_VBO.end(); ++it)
+    for (auto& it: m_VBO)
     {
-        GLuint vbo = it->second;
+        GLuint vbo = it.second;
         glDeleteBuffers(1, &vbo);
     }
 
     m_VBO.clear();
 
-    for (std::map<std::string,unsigned int>::iterator it=m_VAO.begin(); it!=m_VAO.end(); ++it)
+    for (auto& it: m_VAO)
     {
-        GLuint vao = it->second;
+        GLuint vao = it.second;
         glDeleteBuffers(1, &vao);
     }
 
@@ -134,7 +139,7 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     glGenVertexArrays(1, &bboxVertexArray);
     glBindVertexArray(bboxVertexArray);
 
-    this->setVAO("boundingbox", bboxVertexArray);
+    setVAO("boundingbox", bboxVertexArray);
 
     // tfm::printfln("Geometry :: bboxVertexArray - %i", m_bboxVertexArray);
 
@@ -142,7 +147,7 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     glGenBuffers(1, &geomVertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, geomVertexBuffer);
 
-    this->setVBO("bbox_vertex", geomVertexBuffer);
+    setVBO("bbox_vertex", geomVertexBuffer);
     
     glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
@@ -156,7 +161,7 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
 
-    this->setVBO("bbox_index", geomElementBuffer);
+    setVBO("bbox_index", geomElementBuffer);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);

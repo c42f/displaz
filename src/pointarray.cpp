@@ -552,14 +552,14 @@ void PointArray::initializeGL()
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    this->setVAO("points", vao);
+    setVAO("points", vao);
 
     //TODO: we could preload all vertices to GPU memory here, but only for data that fits into memory
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    this->setVBO("point_buffer", vbo);
+    setVBO("point_buffer", vbo);
 
     // we can at least try to pre-generate the GL array buffers here, so we don't have to generate them during the draw call
     /*for (size_t i = 0; i < m_fields.size(); ++i)
@@ -571,7 +571,7 @@ void PointArray::initializeGL()
         tfm::printf("Generating buffer: %s\n", vbo_name.c_str());
 
         glGenBuffers(1, &vbo);
-        this->setVBO(vbo_name.c_str(), vbo);
+        setVBO(vbo_name.c_str(), vbo);
 
         /*
         if (field.spec.isArray())
@@ -583,7 +583,7 @@ void PointArray::initializeGL()
                 //tfm::printf("Generating buffer: %s\n", name.c_str());
 
                 glGenBuffers(1, &vbo);
-                this->setVBO(name.c_str(), vbo);
+                setVBO(name.c_str(), vbo);
             }
         }
         else
@@ -594,7 +594,7 @@ void PointArray::initializeGL()
 
             glGenBuffers(1, &vbo);
 
-            this->setVBO(name.c_str(), vbo);
+            setVBO(name.c_str(), vbo);
         }
          * /
     }*/
@@ -609,10 +609,10 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                                  double quality, bool incrementalDraw) const
 {
 
-    GLuint vao = this->getVAO("points");
+    GLuint vao = getVAO("points");
     glBindVertexArray(vao);
 
-    GLuint vbo = this->getVBO("point_buffer");
+    GLuint vbo = getVBO("point_buffer");
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
     TransformState relativeTrans = transState.translate(offset());

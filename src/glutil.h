@@ -60,11 +60,6 @@ struct TransformState
     void setProjUniform(GLuint prog) const;
 
     void setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal);
-
-    /// Load matrices into traditional openGL transform stack
-    ///
-    /// Should be removed eventually!
-    void load() const;
 };
 
 
@@ -214,5 +209,22 @@ void printActiveShaderAttributes(GLuint prog);
 const ShaderAttribute* findAttr(const std::string& name,
                                 const std::vector<ShaderAttribute>& attrs);
 
+
+void _glError(const char *file, int line);
+void _glFrameBufferStatus(GLenum target, const char *file, int line);
+
+
+// #define GL_CHECK
+#ifdef GL_CHECK
+
+    #define glCheckError() _glError(__FILE__,__LINE__)
+    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
+
+#else
+
+    #define glCheckError()
+    #define glFrameBufferStatus(TARGET)
+
+#endif //GL_CHECK
 
 #endif // GLUTIL_H_INCLUDED

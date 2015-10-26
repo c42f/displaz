@@ -78,11 +78,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
     {
         if (!re.exactMatch(lines[lineIdx]))
             continue;
-#ifdef DISPLAZ_USE_QT4
-        QByteArray typeStr = re.cap(1).toAscii().constData();
-#else
-        QByteArray typeStr = re.cap(1).toLatin1().constData();
-#endif
+        QByteArray typeStr = re.cap(1).toUtf8().constData();
         QVariant defaultValue;
         ShaderParam::Type type;
         if (typeStr == "float")
@@ -102,11 +98,7 @@ bool Shader::compileSourceCode(const QByteArray& src)
         }
         else
             continue;
-#ifdef DISPLAZ_USE_QT4
-        ShaderParam param(type, re.cap(2).toAscii().constData(), defaultValue);
-#else
-        ShaderParam param(type, re.cap(2).toLatin1().constData(), defaultValue);
-#endif
+        ShaderParam param(type, re.cap(2).toUtf8().constData(), defaultValue);
         QMap<QString, QString>& kvPairs = param.kvPairs;
         QStringList pairList = re.cap(4).split(';');
         for (int i = 0; i < pairList.size(); ++i)
@@ -150,9 +142,6 @@ ShaderProgram::ShaderProgram(QObject* parent)
     m_contrast(1),
     m_selector(0)
 {
-    m_vertexShader = NULL;
-    m_fragmentShader = NULL;
-    m_shaderProgram = NULL;
 }
 
 
@@ -166,8 +155,10 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
     QList<QPair<ShaderParam,QVariant> > paramsOrdered;
-    for (ParamMap::iterator p = m_params.begin(); p != m_params.end(); ++p)
+    for (auto p = m_params.begin(); p != m_params.end(); ++p)
+    {
         paramsOrdered.push_back(qMakePair(p.key(), p.value()));
+    }
     qSort(paramsOrdered.begin(), paramsOrdered.end(), paramOrderingLess);
     for (int i = 0; i < paramsOrdered.size(); ++i)
     {
@@ -257,11 +248,7 @@ bool ShaderProgram::setShader(QString src)
     std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment));
     std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
-#ifdef DISPLAZ_USE_QT4
-    QByteArray src_ba = src.toAscii();
-#else
-    QByteArray src_ba = src.toLatin1();
-#endif
+    QByteArray src_ba = src.toUtf8();
     if(!vertexShader->compileSourceCode(src_ba))
     {
         g_logger.error("Could not compile shader:\n%s",
@@ -304,11 +291,7 @@ void ShaderProgram::setUniformValue(double value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-#ifdef DISPLAZ_USE_QT4
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toAscii().constData());
-#else
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toLatin1().constData());
-#endif
+        ShaderParam key(ShaderParam::Float, sender()->objectName().toUtf8().constData());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -327,11 +310,7 @@ void ShaderProgram::setUniformValue(int value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-#ifdef DISPLAZ_USE_QT4
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toAscii().constData());
-#else
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toLatin1().constData());
-#endif
+        ShaderParam key(ShaderParam::Int, sender()->objectName().toUtf8().constData());
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
