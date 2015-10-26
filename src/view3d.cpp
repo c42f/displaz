@@ -88,7 +88,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
-    // connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+    connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
 
 
@@ -277,7 +277,8 @@ void View3D::initializeGL()
         }
     }
 
-    emit initialisedGL();
+    PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
+    pv_parent->openShaderFile("shaders:las_points.glsl");
 
     setFocus();
 
@@ -408,8 +409,6 @@ void View3D::paintGL()
                 drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
                                 Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
             }
-
-            // boundingBoxShader.release();
         }
     }
 
@@ -499,7 +498,6 @@ void View3D::drawMeshes(const TransformState& transState,
         meshFaceShader.setUniformValue("lightDir_eye", lightDir.x, lightDir.y, lightDir.z);
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawFaces(meshFaceShader, transState);
-        // meshFaceShader.release();
     }
 
     // Draw edges
@@ -510,7 +508,6 @@ void View3D::drawMeshes(const TransformState& transState,
         meshEdgeShader.bind();
         for(size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawEdges(meshEdgeShader, transState);
-        // meshEdgeShader.release();
     }
 }
 
@@ -628,8 +625,8 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     V3d relCursor = cursorPos - offset;
 
     // Cull if behind camera
-    //if((relCursor * transState.projMatrix).z > 0)
-    //    return;
+    if((relCursor * transState.modelViewMatrix).z > 0)
+        return;
 
     // Find position of cursor in screen space
     V3d screenP3 = relCursor * transState.modelViewMatrix * transState.projMatrix;
@@ -682,8 +679,6 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
         cursorShader.setUniformValue("color", 0.0f, 0.0f, 0.0f, 1.0f);
         transState.setUniforms(cursorShader.programId());
         glDrawArrays( GL_LINES, 0, 8 );
-
-        // cursorShader.release();
     }
 }
 
@@ -847,7 +842,6 @@ void View3D::drawAxes() const
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
-        // axesBackgroundShader.release();
         glBindVertexArray(0);
     }
 
@@ -877,7 +871,6 @@ void View3D::drawAxes() const
         glLineWidth(1); // this won't work anymore for values larger than 1 (4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
-        // axesShader.release();
     }
 
     // Draw Labels
@@ -926,7 +919,6 @@ void View3D::drawAxes() const
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
-        // axesBackgroundShader.release();
     }
 }
 
@@ -1010,7 +1002,6 @@ void View3D::drawGrid() const {
         glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
         glDrawArrays(GL_LINES, 0, (22 * 2));
         // do NOT release shader, this is no longer supported in OpenGL 3.2
-        // gridShader.release();
     }
 }
 

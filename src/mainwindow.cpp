@@ -224,6 +224,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     connect(m_shaderEditor->compileAction(), SIGNAL(triggered()),
             this, SLOT(compileShaderFile()));
 
+    //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
+    //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
+
     // Log viewer UI
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
     logDock->setFeatures(QDockWidget::DockWidgetMovable |
@@ -277,10 +280,6 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
-
-    //--------------------------------------------------
-    // Final setup
-    connect(m_pointView, SIGNAL(initialisedGL()), this, SLOT(finalSetup()));
 }
 
 
@@ -489,13 +488,6 @@ void PointViewerMainWindow::addFiles()
         m_fileLoader->loadFile(FileLoadInfo(files[i]));
     m_currFileDir = QFileInfo(files[0]).dir();
     m_currFileDir.makeAbsolute();
-}
-
-void PointViewerMainWindow::finalSetup()
-{
-    openShaderFile("shaders:las_points.glsl");
-    //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
-    //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 }
 
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
