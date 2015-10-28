@@ -42,12 +42,12 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
+    m_incrementalFramebuffer(0),
     m_incrementalDraw(false),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
     m_drawAxesLabelZ(QImage(":/resource/z.png")),
-    m_incrementalFramebuffer(0),
     m_cursorVertexArray(0),
     m_axesVertexArray(0),
     m_gridVertexArray(0),
@@ -209,6 +209,15 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
+double View3D::getDevicePixelRatio()
+{
+#ifdef DISPLAZ_USE_QT4
+    return 1.0;
+#else
+    return devicePixelRatio();
+#endif
+}
+
 void View3D::initializeGL()
 {
     // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS)​,
@@ -255,11 +264,7 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 
-#ifdef DISPLAZ_USE_QT4
-    double dPR = 1.0;
-#else
-    double dPR = devicePixelRatio();
-#endif
+    double dPR = getDevicePixelRatio();
     int w = width() * dPR;
     int h = height() * dPR;
 
@@ -286,8 +291,8 @@ void View3D::initializeGL()
 
     setFocus();
 
-    resizeGL(w,h);
-    updateGL();
+    // resizeGL(w,h);
+    // updateGL();
 }
 
 
@@ -303,11 +308,8 @@ void View3D::resizeGL(int w, int h)
     // Draw on full window
     glViewport(0, 0, w, h);
 
-#ifdef DISPLAZ_USE_QT4
-    double dPR = 1.0;
-#else
-    double dPR = devicePixelRatio();
-#endif
+    double dPR = getDevicePixelRatio();
+
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
@@ -335,7 +337,6 @@ unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
 
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    // * but why would you want to avoid binding to a texture? It should be more efficient than copying the fb
 
     // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
     // for samples==1, so work around it by forcing 0, if possible
@@ -369,11 +370,7 @@ void View3D::paintGL()
     frameTimer.start();
 
     // Get window size
-#ifdef DISPLAZ_USE_QT4
-    double dPR = 1.0;
-#else
-    double dPR = devicePixelRatio();
-#endif
+    double dPR = getDevicePixelRatio();
     int w = width() * dPR;
     int h = height() * dPR;
 
@@ -1030,11 +1027,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     if (!m_shaderProgram->isValid())
         return DrawCount();
 
-#ifdef DISPLAZ_USE_QT4
-    double dPR = 1.0;
-#else
-    double dPR = devicePixelRatio();
-#endif
+    double dPR = getDevicePixelRatio();
 
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);

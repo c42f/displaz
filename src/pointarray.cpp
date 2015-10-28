@@ -527,10 +527,10 @@ static void drawTree(QGLShaderProgram& prog, const TransformState& transState, c
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
                       node->center + Imath::V3f(node->halfWidth));
-#ifdef OPEN_GL_2
-    drawBoundingBox(transState, bbox, Imath::C3f(1), prog.programId());
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
-#endif //TODO: FIX ME
+
+    drawBox(transState, bbox, Imath::C3f(1), prog.programId());
+    drawBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
+
     for (int i = 0; i < 8; ++i)
     {
         OctreeNode* n = node->children[i];
@@ -573,7 +573,7 @@ void PointArray::initializeGL()
         glGenBuffers(1, &vbo);
         setVBO(vbo_name.c_str(), vbo);
 
-        /*
+        / *
         if (field.spec.isArray())
         {
             for (int j = 0; j < field.spec.count; ++j)
@@ -697,12 +697,12 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (m_fields.size() < 1)
             continue;
 
-        unsigned int bufferSize = 0;
+        long bufferSize = 0;
         for (size_t i = 0; i < m_fields.size(); ++i)
         {
             const GeomField &field = m_fields[i];
-            int arraySize = field.spec.arraySize();
-            int vecSize = field.spec.vectorSize();
+            unsigned int arraySize = field.spec.arraySize();
+            unsigned int vecSize = field.spec.vectorSize();
 
             // tfm::printfln("FIELD-NAME: %s", field.name);
             // tfm::printfln("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
@@ -716,10 +716,10 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         // INITIALIZE THE BUFFER TO FULL SIZE
         // tfm::printfln("INIT BUFFER: %i, BS: %i", vbo, bufferSize);
 
-        glBufferData(GL_ARRAY_BUFFER, bufferSize, NULL, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bufferSize, NULL, GL_STREAM_DRAW);
         /// ========================================================================
         /// ========================================================================
-        int bufferOffset = 0;
+        GLintptr bufferOffset = 0;
 
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
@@ -742,22 +742,20 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                 const ShaderAttribute* attr = attributes[k+j];
                 if (!attr)
                     continue;
-                char* data = field.data.get() + idx*field.spec.size() +
-                             j*field.spec.elsize;
 
                 // we have to create an intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
-                int intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
+                GLintptr intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
                     glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset); //(const GLvoid *)0 //data //stride = sizeof(int) * (3)
+                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset);
                 }
                 else
                 {
                     glVertexAttribPointer(attr->location, vecSize,
                                           glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset); //(const GLvoid *)0 //data //stride = sizeof(float) * (3)
+                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset);
                 }
 
                 glEnableVertexAttribArray(attr->location);

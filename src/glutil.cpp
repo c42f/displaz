@@ -69,23 +69,35 @@ void TransformState::setOrthoProjection(double left, double right, double bottom
 
 //------------------------------------------------------------------------------
 
-/*void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3d& bbox,
-                     const Imath::C3f& col,
-                     const GLuint& shaderProg)
+void drawBox(const TransformState& transState,
+             const Imath::Box3d& bbox,
+             const Imath::C3f& col,
+             const GLuint& shaderProgram)
 {
     // Transform to box min for stability with large offsets
+    // This function is allowing you to render any box, not necessarily having anything to do
+    // with the bounding box (e.g. hcloudview is using this in drawBounds)
     TransformState trans2 = transState.translate(bbox.min);
     Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
-    drawBoundingBox(trans2, box2, col, shaderProg);
-}*/
+    drawBox(trans2, box2, col, shaderProgram);
+}
 
+void drawBox(const TransformState& transState,
+             const Imath::Box3f& bbox,
+             const Imath::C3f& col,
+             const GLuint& shaderProgram)
+{
+    // This function is allowing you to render any box, not necessarily having anything to do
+    // with the bounding box (e.g. hcloudview is using this in drawBounds)
+    // TODO: FIX ME
+    tfm::printfln("drawBox :: has not been implemented, yet.");
+}
 
 void drawBoundingBox(const TransformState& transState,
                      const GLuint& bboxVertexArray,
                      const Imath::V3f& offset,
                      const Imath::C3f& col,
-                     const GLuint& shaderProg)
+                     const GLuint& shaderProgram)
 {
     //tfm::printfln("drawBoundingBox :: shaderProg: %i, vertexArray: %i", shaderProg, bboxVertexArray);
 
@@ -100,8 +112,8 @@ void drawBoundingBox(const TransformState& transState,
     // should already be bound ...
     //glUseProgram(shaderProg);
 
-    trans2.setUniforms(shaderProg);
-    GLint colorLoc = glGetUniformLocation(shaderProg, "color");
+    trans2.setUniforms(shaderProgram);
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
     //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
     glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
 

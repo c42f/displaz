@@ -65,10 +65,12 @@ struct TransformState
 
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
+void drawBox(const TransformState& transState,
+             const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
+void drawBox(const TransformState& transState,
+             const Imath::Box3f& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 void drawBoundingBox(const TransformState& transState, const GLuint& bboxVertexArray,
                      const Imath::V3f& offset, const Imath::C3f& col, const GLuint& shaderProgram);
-//void drawBoundingBox(const TransformState& transState,
-//                     const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 
 /// Draw a sphere using the given shader.  May be semitransparent.
 ///

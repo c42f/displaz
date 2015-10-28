@@ -139,19 +139,15 @@ void HCloudView::initializeGL()
     m_shader->setShaderFromSourceFile("shaders:las_points_lod.glsl");
 }
 
-
 static void drawBounds(QGLShaderProgram& prog, HCloudNode* node, const TransformState& transState)
 {
-#ifdef OPEN_GL_2
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1), prog.programId());
+    drawBox(transState, node->bbox, Imath::C3f(1), prog.programId());
     for (int i = 0; i < 8; ++i)
     {
         if (node->children[i])
             drawBounds(prog, node->children[i], transState);
     }
-#endif //TODO: FIX ME !
 }
-
 
 /// Read hcloud point data for node
 ///

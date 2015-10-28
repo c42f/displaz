@@ -295,8 +295,8 @@ class OctreeBuilder
         HCloudHeader m_header;
         std::ostream& m_output;
         int m_brickRes;
-        int64_t m_writtenNodeCount;
-        bool m_hasNodes;
+        // int64_t m_writtenNodeCount;
+        // bool m_hasNodes;
         std::vector<OctreeLevelInfo> m_levelInfo;
         std::unique_ptr<IndexNode> m_rootNode;
 

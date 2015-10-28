@@ -52,9 +52,6 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
-    signals:
-        void initialisedGL();
-
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -86,6 +83,7 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
+        double getDevicePixelRatio();
         unsigned int allocIncrementalFramebuffer(int w, int h) const;
 
         void initCursor(float cursorRadius, float centerPointRadius);
