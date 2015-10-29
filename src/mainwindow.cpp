@@ -220,6 +220,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     connect(m_shaderEditor->compileAction(), SIGNAL(triggered()),
             this, SLOT(compileShaderFile()));
 
+    // TODO: check if this is needed - test shader update functionality
     //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
     //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 

@@ -379,12 +379,6 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
 
     transState.translate(offset()).setUniforms(vertexShaderId);
 
-    /*
-    GLint colorLoc = glGetUniformLocation(vertexShaderId, "color");
-    //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
-    glUniform4f(colorLoc, GLfloat(1), GLfloat(1), GLfloat(1), 1.0); // , col.a
-     */
-
     glBindVertexArray(vertexArray);
     glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(), GL_UNSIGNED_INT, 0);
 }
