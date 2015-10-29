@@ -127,6 +127,7 @@ class Geometry : public QObject
                                 double* distance = 0,
                                 std::string* info = 0) const = 0;
 
+
         //--------------------------------------------------
         /// Get the arbitrary user-defined name for the geometry.
         const QString& name() const { return m_name; }
@@ -147,6 +148,9 @@ class Geometry : public QObject
         /// Get axis aligned bounding box containing the geometry
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
+        /// Get esimate for the smallest spatial scale of interest
+        float spatialResolution() const { return m_spatialResolution; }
+
     signals:
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
@@ -158,6 +162,8 @@ class Geometry : public QObject
         void setOffset(const V3d& offset) { m_offset = offset; }
         void setCentroid(const V3d& centroid) { m_centroid = centroid; }
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
+
+        float m_spatialResolution;
 
     private:
         QString m_name;

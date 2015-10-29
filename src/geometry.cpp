@@ -37,7 +37,8 @@ static bool plyHasMesh(QString fileName)
 
 //------------------------------------------------------------------------------
 Geometry::Geometry()
-    : m_fileName(),
+    : m_spatialResolution(1.0),
+    m_fileName(),
     m_offset(0,0,0),
     m_centroid(0,0,0),
     m_bbox()

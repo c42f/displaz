@@ -105,6 +105,16 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (int i = firstRow; i <= lastRow; ++i)
         geoms[i]->initializeGL();
+
+    float minSpatialResolution = geoms[0]->spatialResolution();
+    Imath::Box3d bbox = geoms[0]->boundingBox();
+    for(size_t i = 1; i < geoms.size(); ++i)
+    {
+        minSpatialResolution = std::min(minSpatialResolution, geoms[i]->spatialResolution());
+        bbox.extendBy(geoms[i]->boundingBox());
+    }
+    m_camera.setClipNear(minSpatialResolution);
+    m_camera.setClipFar(2*(bbox.max - bbox.min).length());
     geometryChanged();
 }
 
