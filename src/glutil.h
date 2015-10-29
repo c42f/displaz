@@ -4,11 +4,12 @@
 #ifndef GLUTIL_H_INCLUDED
 #define GLUTIL_H_INCLUDED
 
+
+#include <GL/glew.h>
+
 #ifdef __APPLE__
-    #include <GL/glew.h>
     #include <OpenGL/glext.h>
 #else
-    #include <GL/glew.h>
     #include <GL/gl.h>
 #endif
 
@@ -153,14 +154,11 @@ struct Texture
                 glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
             glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            //tfm::printfln("CREATED TEXTURE id: %i", texture);
         }
         else
         {
-            //tfm::printfln("BINDING TEXTURE id: %i", texture);
-
-            glActiveTexture(GL_TEXTURE0); // + texture);
+            // TODO: this has to become more sophisticated, if we ever want to have more than one texture bound
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(target, texture);
             if (sampler >= 0)
             {

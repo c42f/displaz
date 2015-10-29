@@ -82,8 +82,6 @@ void Geometry::destroyBuffers()
     // destroy any previously created buffers (in case we are re-initializing this geometry)
     // this should avoid recreating more and more opengl buffers
 
-    //tfm::printfln("Geometry :: destroyBuffers");
-
     for (auto& it: m_VBO)
     {
         GLuint vbo = it.second;
@@ -141,8 +139,6 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
 
     setVAO("boundingbox", bboxVertexArray);
 
-    // tfm::printfln("Geometry :: bboxVertexArray - %i", m_bboxVertexArray);
-
     GLuint geomVertexBuffer;
     glGenBuffers(1, &geomVertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, geomVertexBuffer);
@@ -156,8 +152,6 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    //glDisableVertexAttribArray(positionLoc);
-
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
 
@@ -165,9 +159,6 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
-
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 const unsigned int Geometry::getVAO(const char * vertexArrayName) const

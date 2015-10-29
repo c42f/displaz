@@ -551,54 +551,12 @@ void PointArray::initializeGL()
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
-
     setVAO("points", vao);
-
-    //TODO: we could preload all vertices to GPU memory here, but only for data that fits into memory
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     setVBO("point_buffer", vbo);
-
-    // we can at least try to pre-generate the GL array buffers here, so we don't have to generate them during the draw call
-    /*for (size_t i = 0; i < m_fields.size(); ++i)
-    {
-        const GeomField& field = m_fields[i];
-
-        std::string vbo_name = tfm::format("%s", field.name);
-
-        tfm::printf("Generating buffer: %s\n", vbo_name.c_str());
-
-        glGenBuffers(1, &vbo);
-        setVBO(vbo_name.c_str(), vbo);
-
-        / *
-        if (field.spec.isArray())
-        {
-            for (int j = 0; j < field.spec.count; ++j)
-            {
-                std::string name = tfm::format("%s[%d]", field.name, j);
-
-                //tfm::printf("Generating buffer: %s\n", name.c_str());
-
-                glGenBuffers(1, &vbo);
-                setVBO(name.c_str(), vbo);
-            }
-        }
-        else
-        {
-            std::string name = tfm::format("%s[%d]", field.name, 0);
-
-            //tfm::printf("Generating buffer: %s\n", name.c_str());
-
-            glGenBuffers(1, &vbo);
-
-            setVBO(name.c_str(), vbo);
-        }
-         * /
-    }*/
-
 }
 
 void PointArray::draw(const TransformState& transState, double quality) const
@@ -664,9 +622,6 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     nodeStack.push_back(m_rootNode.get());
     while (!nodeStack.empty())
     {
-        // tfm::printfln("========================================");
-        // tfm::printfln("iterate OCTREE NODE (STACK)");
-
         const OctreeNode* node = nodeStack.back();
         nodeStack.pop_back();
         if (clipBox.canCull(node->bbox))
@@ -684,8 +639,6 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
-
-        // tfm::printfln("OCTREE NODE (STACK) begin idx: %i", idx);
 
         DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
         drawCount += nodeDrawCount;
@@ -727,7 +680,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
 
-            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data
+            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data ?
             // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
             // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
             bufferSize = arraySize * vecSize * field.spec.elsize * (GLsizei)nodeDrawCount.numVertices; //sizeof(glBaseType(field.spec))
@@ -764,8 +717,6 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             bufferOffset += bufferSize;
         }
 
-        // tfm::printfln("DRAW BUFFER: %i, NC: %i", vbo, nodeDrawCount.numVertices);
-
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
         node->nextBeginIndex += nodeDrawCount.numVertices;
     }
@@ -778,8 +729,6 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
-
-    //glBindVertexArray(0);
 
     return drawCount;
 }

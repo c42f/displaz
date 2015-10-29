@@ -1,6 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+// DEBUG enable OpenGL error checking
 // #define GL_CHECK 1
 
 #include "glutil.h"
@@ -12,7 +13,6 @@
 #include <QLayout>
 #include <QItemSelectionModel>
 #include <QMessageBox>
-// #include <QGLBuffer>
 #include <QGLFormat>
 
 #include "config.h"
@@ -290,9 +290,6 @@ void View3D::initializeGL()
     pv_parent->openShaderFile("shaders:las_points.glsl");
 
     setFocus();
-
-    // resizeGL(w,h);
-    // updateGL();
 }
 
 
@@ -315,9 +312,6 @@ void View3D::resizeGL(int w, int h)
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
 
     glCheckError();
-
-    // without this explicit call, we get very strange artifacts during resizing
-    //updateGL();
 }
 
 
@@ -381,8 +375,6 @@ void View3D::paintGL()
         m_devicePixelRatio = dPR;
         resizeGL(w, h);
     }
-
-    // tfm::printfln("GL Window WIDTH: %i HEIGHT: %i, RATIO: %f", w, h, dPR);
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer);
 
@@ -492,8 +484,6 @@ void View3D::paintGL()
 void View3D::drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const
 {
-    //tfm::printfln("View3D::drawMeshes");
-
     // Draw faces
     if (m_meshFaceShader->isValid())
     {
@@ -810,8 +800,6 @@ void View3D::initAxes()
 
 void View3D::drawAxes() const
 {
-    //tfm::printfln("drawAxes() ");
-
     glDisable(GL_DEPTH_TEST);
 
     TransformState projState(Imath::V2i(width(), height()),
@@ -867,12 +855,6 @@ void View3D::drawAxes() const
         // matrix stack
         axesShader.setUniformValue("center", center.x, center.y, center.z);
 
-        //transState.setUniforms(axesShader.programId());
-        //M44d mvproj = transState.modelViewMatrix * transState.projMatrix;
-        //setUniform(axesShader.programId(), "modelViewProjectionMatrix", mvproj);
-        //setUniform(axesShader.programId(), "modelViewMatrix", m_camera.rotationMatrix()); // transState.modelViewMatrix); //m_camera.viewMatrix()
-        //setUniform(axesShader.programId(), "projectionMatrix", projState.projMatrix);
-
         projState.modelViewMatrix = m_camera.rotationMatrix();
         projState.setUniforms(axesShader.programId());
 
@@ -886,6 +868,7 @@ void View3D::drawAxes() const
 
     const double r = 0.8;   // 80% towards edge of circle
 
+    // TODO: check if we should do this again:
     // Note that V3d -> V3i (double to integer precision)
     // conversion is intentionally snapping the label to
     // integer co-ordinates to eliminate subpixel aliasing
@@ -900,8 +883,6 @@ void View3D::drawAxes() const
     {
         QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
         GLint textureSampler = glGetUniformLocation(axesLabelShader.programId(), "texture0");
-
-        //tfm::printfln("TEX sampler attr id: %i", textureSampler);
 
         // shader
         axesLabelShader.bind();
@@ -942,8 +923,6 @@ void View3D::initGrid(const float scale)
         g_logger.error("Could not read grid shader.");
         return;
     }
-
-    //const GLfloat scale = 1.0f;    // Width and Height of grid
 
     float gridLines[] = { -0.5f*scale, -0.5f*scale, 0.0f,  0.5f*scale, -0.5f*scale, 0.0f,
                           -0.5f*scale, -0.4f*scale, 0.0f,  0.5f*scale, -0.4f*scale, 0.0f,
@@ -986,9 +965,8 @@ void View3D::initGrid(const float scale)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void View3D::drawGrid() const {
-    //tfm::printfln("drawGrid() ");
-
+void View3D::drawGrid() const
+{
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -998,8 +976,8 @@ void View3D::drawGrid() const {
                               m_camera.viewMatrix());
 
     // Draw grid
-    if (m_gridShader->isValid()) {
-        //tfm::printfln("drawing with m_gridShader");
+    if (m_gridShader->isValid())
+    {
         QGLShaderProgram &gridShader = m_gridShader->shaderProgram();
         // shader
         gridShader.bind();
@@ -1019,8 +997,6 @@ DrawCount View3D::drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw)
 {
-    //tfm::printfln("View3D::drawPoints -- incrementalDraw: %i", incrementalDraw);
-
     DrawCount totDrawCount;
     if (geoms.empty())
         return DrawCount();
@@ -1048,7 +1024,6 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    // prog.release();
     return totDrawCount;
 }
 
