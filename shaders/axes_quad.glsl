@@ -20,10 +20,7 @@ out vec2 textureCoords;
 void main()
 {
     textureCoords = texCoord;
-
-    //gl_Position = vec4(position,0.0,1.0);
-    //gl_Position = projectionMatrix * vec4(position,0.0,1.0);
-    gl_Position = modelViewProjectionMatrix * vec4(position,0.0,1.0); //-vec2(0.375,0.375)
+    gl_Position = modelViewProjectionMatrix * vec4(position,0.0,1.0);
 }
 
 
@@ -40,11 +37,7 @@ void main()
 {
     // Trivial fragment shader reads from texture
     vec4 tex = texture(texture0, vec2(textureCoords));
-
     fragColor = tex;
-    //fragColor = vec4(1.0,1.0,1.0,tex.x);
-
-    //fragColor = vec4(textureCoords, 0.0,1);
 }
 
 #endif

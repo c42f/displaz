@@ -309,9 +309,6 @@ void TriMesh::initializeFaceGL()
     glGenBuffers(1, &geomElementBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_triangles.size()*sizeof(unsigned int), &m_triangles[0], GL_STATIC_DRAW);
-
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void TriMesh::initializeEdgeGL()
@@ -322,9 +319,6 @@ void TriMesh::initializeEdgeGL()
     glGenBuffers(1, &geomElementBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_edges.size()*sizeof(unsigned int), &m_edges[0], GL_STATIC_DRAW);
-
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName) {
@@ -351,8 +345,6 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(positionAttribute);
 
-    //glDisableVertexAttribArray(positionAttribute);
-
     GLuint normalBuffer;
     glGenBuffers(1, &normalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
@@ -361,10 +353,6 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
     glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(normalAttribute);
-
-    //glDisableVertexAttribArray(normalAttribute);
-
-    //tfm::printfln("TriMesh :: initializeVertexGL : color array size: %i", m_colors.size());
 
     GLuint colorBuffer;
     glGenBuffers(1, &colorBuffer);
@@ -381,8 +369,6 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
     glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(colorAttribute);
-
-    //glDisableVertexAttribArray(colorAttribute);
 }
 
 void TriMesh::drawFaces(QGLShaderProgram& prog,

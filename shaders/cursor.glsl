@@ -18,7 +18,6 @@ out vec4 lineColor;
 
 void main()
 {
-    //gl_Position = vec4(position,1.0); //modelViewProjectionMatrix *
     gl_Position = modelViewProjectionMatrix * vec4(position,1.0);
     lineColor = vec4(color);
 }

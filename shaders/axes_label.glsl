@@ -44,11 +44,7 @@ void main()
 {
     // Trivial fragment shader reads from texture
     vec4 tex = texture(texture0, vec2(textureCoords));
-
     fragColor = tex;
-    //fragColor = vec4(1.0,1.0,1.0,tex.x);
-
-    //fragColor = vec4(textureCoords, 0.0,1);
 }
 
 #endif
