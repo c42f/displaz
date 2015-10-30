@@ -10,6 +10,7 @@
 #include <QGLShaderProgram>
 #include <QTime>
 
+#include <functional>
 #include <unordered_map>
 #include <fstream>
 #include <queue>
