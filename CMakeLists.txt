@@ -99,7 +99,10 @@ else ()
     add_definitions(${Qt5Network_DEFINITIONS})
     add_definitions(${Qt5Widgets_DEFINITIONS})
 
-    if(NOT WIN32)
+    if(WIN32)
+        # cmake 3.3 needs this for Qt5 on Windows
+        cmake_policy(SET CMP0020 NEW)
+    else()
         set(CMAKE_CXX_FLAGS "-Wall -std=c++0x ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
     endif()
 endif()
