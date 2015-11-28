@@ -156,10 +156,10 @@ class Geometry : public QObject
 
         /// Get VAO
         const unsigned int getVAO(const char * vertexArrayName) const;
-        const unsigned int vaoCount() const { return m_VAO.size(); }
+        const unsigned int vaoCount() const { return (int)m_VAO.size(); }
         /// Get VBO
         const unsigned int getVBO(const char * vertexBufferName) const;
-        const unsigned int vboCount() const { return m_VBO.size(); }
+        const unsigned int vboCount() const { return (int)m_VBO.size(); }
 
     signals:
         /// Emitted at the start of a point loading step

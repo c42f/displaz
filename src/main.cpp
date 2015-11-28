@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
             command += '\n';
             command += currentDir.absoluteFilePath(QString::fromStdString(arg.filePath)).toUtf8();
             command += '\0';
-            command += QByteArray(dataSetName.data(), dataSetName.size());
+            command += QByteArray(dataSetName.data(), (int)dataSetName.size());
         }
         channel->sendMessage(command);
     }
