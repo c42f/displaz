@@ -3,10 +3,32 @@ project(viewer)
 include_directories(BEFORE
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
-    ${QT_INCLUDES}
     ${OPENGL_INCLUDE_DIR}
     ${THIRDPARTY_INSTALL_DIR}/include
 )
+
+if(DISPLAZ_USE_QT4)
+    set(QT_INCLUDE_DIR_EXTENDED)
+    foreach(l ${QT_INCLUDE_DIR})
+        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtCore )
+        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtGui )
+        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtNetwork )
+        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtOpenGL )
+    endforeach()
+    include_directories(
+        ${QT_INCLUDES}
+        ${QT_INCLUDE_DIR}
+        ${QT_INCLUDE_DIR_EXTENDED}
+    )
+else()
+    include_directories(
+        ${Qt5Core_INCLUDE_DIRS}
+        ${Qt5GUI_INCLUDE_DIRS}
+        ${Qt5Network_INCLUDE_DIRS}
+        ${Qt5OpenGL_INCLUDE_DIRS}
+        ${Qt5Widgets_INCLUDE_DIRS}
+    )
+endif()
 
 #------------------------------------------------------------------------------
 # Sources
@@ -21,10 +43,17 @@ set(util_srcs
     ../thirdparty/argparse.cpp
 )
 
+macro(displaz_qt_wrap_cpp moc_out_srcs)
+    if(DISPLAZ_USE_QT4)
+        qt4_wrap_cpp(${moc_out_srcs} ${ARGN})
+    else()
+        qt5_wrap_cpp(${moc_out_srcs} ${ARGN})
+    endif()
+endmacro()
+
 # Interprocess communication
-qt4_wrap_cpp(ipc_moc_srcs
-    IpcChannel.h
-)
+displaz_qt_wrap_cpp(ipc_moc_srcs IpcChannel.h)
+
 set(ipc_srcs
     ${ipc_moc_srcs}
     InterProcessLock.cpp
@@ -32,7 +61,7 @@ set(ipc_srcs
 )
 
 # GUI
-qt4_wrap_cpp(gui_moc_srcs
+displaz_qt_wrap_cpp(gui_moc_srcs
     datasetui.h
     dragspinbox.h
     fileloader.h
@@ -48,6 +77,7 @@ qt4_wrap_cpp(gui_moc_srcs
     shadereditor.h
     shader.h
 )
+
 set(gui_srcs
     ${util_srcs}
     ${ipc_srcs}
@@ -79,7 +109,11 @@ set(cli_srcs
     main.cpp
 )
 
-qt4_add_resources(RCC_GENERATED resource.qrc)
+if(DISPLAZ_USE_QT4)
+    qt4_add_resources(RCC_GENERATED resource.qrc)
+else()
+    qt5_add_resources(RCC_GENERATED resource.qrc)
+endif()
 
 if(WIN32)
     list(APPEND gui_srcs ../package/windows_resources.rc)
@@ -110,17 +144,46 @@ endif()
 
 #-------------------------------------------------------------------------------
 # Library dependencies
-target_link_libraries(displaz
-    ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${ILMBASE_LIBRARIES}
-)
-target_link_libraries(displaz-gui
-    ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-    ${QT_QTNETWORK_LIBRARY} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
-    ${ILMBASE_LIBRARIES}
-)
+if (DISPLAZ_USE_QT4)
+    target_link_libraries(displaz
+        ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY}
+        ${ILMBASE_LIBRARIES}
+    )
+    target_link_libraries(displaz-gui
+        ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
+        ${QT_QTNETWORK_LIBRARY} ${QT_QTWIDGETS_LIBRARY}
+        ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+        ${ILMBASE_LIBRARIES}
+    )
+else()
+    target_link_libraries(displaz
+        Qt5::Core Qt5::Network Qt5::Widgets
+        ${ILMBASE_LIBRARIES}
+    )
+    target_link_libraries(displaz-gui
+        Qt5::Core Qt5::Gui Qt5::OpenGL
+        Qt5::Network Qt5::Widgets
+        ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+        ${ILMBASE_LIBRARIES}
+    )
+    if (Qt5_POSITION_INDEPENDENT_CODE)
+        set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+    endif()
+endif()
+
+if(APPLE)
+    target_link_libraries(displaz-gui
+        ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
+    )
+endif()
+
 if (DISPLAZ_BUILD_DVOX)
     # TODO: Remove this dependency
-    target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
+    if (DISPLAZ_USE_QT4)
+        target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
+    else()
+        target_link_libraries(dvox Qt5::Core)
+    endif()
 endif()
 
 if (DISPLAZ_USE_LAS)
@@ -139,9 +202,6 @@ endif()
 
 
 if(WIN32)
-    target_link_libraries(displaz-gui
-        ${QT_QTMAIN_LIBRARY}
-    )
     if(DISPLAZ_STATIC)
         # These extra libraries are needed on windows when linking against a
         # static Qt-4.8.? which has been built with the default options.
@@ -161,10 +221,19 @@ endif()
 
 if(WIN32)
     # Install required qt libraries
-    install(CODE "
-        include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
-    ")
+    if (DISPLAZ_USE_QT4)
+        install(CODE "
+            include(BundleUtilities)
+            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
+        ")
+    else()
+        get_target_property(QtCore_location Qt5::Core LOCATION)
+        get_filename_component(QtCore_dir "${QtCore_location}" PATH)
+        install(CODE "
+            include(BundleUtilities)
+            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QtCore_dir}\")
+        ")
+    endif()
 endif()
 
 
@@ -179,9 +248,20 @@ if (DISPLAZ_USE_TESTS)
     )
     add_test(NAME unit_tests COMMAND unit_tests)
 
+    if (DISPLAZ_USE_QT4)
+    else ()
+        if (Qt5_POSITION_INDEPENDENT_CODE)
+            set_target_properties(unit_tests PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        endif()
+    endif ()
+
     # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
-    target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
+    if (DISPLAZ_USE_QT4)
+        target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
+    else ()
+        target_link_libraries(InterProcessLock_test Qt5::Core)
+    endif ()
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
 

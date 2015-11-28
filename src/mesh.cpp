@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "glutil.h"
-#include <QtOpenGL/QGLShaderProgram>
+#include <QGLShaderProgram>
 
 #include "tinyformat.h"
 #include "rply/rply.h"
@@ -281,46 +281,119 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     return true;
 }
 
+void TriMesh::draw(const TransformState& transState, double quality) const
+{
+    // unsigned int vertArray = getVAO("vertexArray");
+    // unsigned int shaderId = shaderId("vertexArray");
+}
+
+void TriMesh::initializeGL()
+{
+    Geometry::initializeGL();
+
+    if (m_verts.size()==0 || m_verts.size()%3!=0 || m_normals.size() != m_verts.size())
+    {
+        //return;
+    }
+
+    // init our own vertex arrays here
+    initializeFaceGL();
+    initializeEdgeGL();
+}
+
+void TriMesh::initializeFaceGL()
+{
+    initializeVertexGL("meshface", "position", "normal", "color");
+
+    GLuint geomElementBuffer;
+    glGenBuffers(1, &geomElementBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_triangles.size()*sizeof(unsigned int), &m_triangles[0], GL_STATIC_DRAW);
+}
+
+void TriMesh::initializeEdgeGL()
+{
+    initializeVertexGL("meshedge", "position", "normal", "color");
+
+    GLuint geomElementBuffer;
+    glGenBuffers(1, &geomElementBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_edges.size()*sizeof(unsigned int), &m_edges[0], GL_STATIC_DRAW);
+}
+
+void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName) {
+    unsigned int vertexShaderId = shaderId(vertArrayName);
+
+    if (!vertexShaderId) {
+        return;
+    }
+
+    // create VBA VBO for rendering ...
+    GLuint vertexArray;
+    glGenVertexArrays(1, &vertexArray);
+    glBindVertexArray(vertexArray);
+
+    // store this vertex array id
+    setVAO(vertArrayName, vertexArray);
+
+    GLuint vertexBuffer;
+    glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
+
+    GLuint positionAttribute = glGetAttribLocation(vertexShaderId, vertAttrName);
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    GLuint normalBuffer;
+    glGenBuffers(1, &normalBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
+
+    GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
+    glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+    glEnableVertexAttribArray(normalAttribute);
+
+    GLuint colorBuffer;
+    glGenBuffers(1, &colorBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+
+    if (m_colors.size() == m_verts.size()) {
+        glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
+    }
+    else {
+        std::vector<float> tmp_colors(m_verts.size(), 1.0f);
+        glBufferData(GL_ARRAY_BUFFER, tmp_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
+    }
+
+    GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
+    glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+    glEnableVertexAttribArray(colorAttribute);
+}
+
 void TriMesh::drawFaces(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
-    transState.translate(offset()).setUniforms(prog.programId());
-    prog.enableAttributeArray("position");
-    prog.enableAttributeArray("normal");
-    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    prog.setAttributeArray("normal", GL_FLOAT, &m_normals[0], 3);
-    if (m_colors.size() == m_verts.size())
-    {
-        prog.enableAttributeArray("color");
-        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
-    }
-    else
-        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(),
-                   GL_UNSIGNED_INT, &m_triangles[0]);
-    prog.disableAttributeArray("color");
-    prog.disableAttributeArray("position");
-    prog.disableAttributeArray("normal");
+    unsigned int vertexShaderId = shaderId("meshface");
+    unsigned int vertexArray = getVAO("meshface");
+
+    transState.translate(offset()).setUniforms(vertexShaderId);
+
+    glBindVertexArray(vertexArray);
+    glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(), GL_UNSIGNED_INT, 0);
 }
 
 
 void TriMesh::drawEdges(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
-    transState.translate(offset()).setUniforms(prog.programId());
-    prog.enableAttributeArray("position");
-    prog.setAttributeArray("position", GL_FLOAT, &m_verts[0], 3);
-    if (m_colors.size() == m_verts.size())
-    {
-        prog.enableAttributeArray("color");
-        prog.setAttributeArray("color", GL_FLOAT, &m_colors[0], 3);
-    }
-    else
-        prog.setAttributeValue("color", GLfloat(1), GLfloat(1), GLfloat(1));
-    glDrawElements(GL_LINES, (GLsizei)m_edges.size(),
-                   GL_UNSIGNED_INT, &m_edges[0]);
-    prog.disableAttributeArray("color");
-    prog.disableAttributeArray("position");
+    unsigned int vertexShaderId = shaderId("meshedge");
+    unsigned int vertexArray = getVAO("meshedge");
+
+    transState.translate(offset()).setUniforms(vertexShaderId);
+
+    glBindVertexArray(vertexArray);
+    glDrawElements(GL_LINES, (GLsizei)m_edges.size(), GL_UNSIGNED_INT, 0);
 }
 
 

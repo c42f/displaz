@@ -15,29 +15,30 @@
 #include "shader.h"
 #include "view3d.h"
 
-#include <QtCore/QSignalMapper>
-#include <QtCore/QThread>
-#include <QtCore/QUrl>
-#include <QtGui/QApplication>
-#include <QtGui/QColorDialog>
-#include <QtGui/QDockWidget>
-#include <QtGui/QFileDialog>
-#include <QtGui/QGridLayout>
-#include <QtGui/QMenuBar>
-#include <QtGui/QMessageBox>
-#include <QtGui/QPlainTextEdit>
-#include <QtGui/QProgressBar>
-#include <QtGui/QSplitter>
-#include <QtGui/QDoubleSpinBox>
-#include <QtGui/QDesktopWidget>
-#include <QtGui/QDropEvent>
-#include <QtNetwork/QLocalServer>
-
+#include <QSignalMapper>
+#include <QThread>
+#include <QUrl>
+#include <QApplication>
+#include <QColorDialog>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QGridLayout>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QPlainTextEdit>
+#include <QProgressBar>
+#include <QSplitter>
+#include <QDoubleSpinBox>
+#include <QDesktopWidget>
+#include <QDropEvent>
+#include <QLocalServer>
+#include <QMimeData>
+#include <QGLFormat>
 
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
-PointViewerMainWindow::PointViewerMainWindow()
+PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     : m_progressBar(0),
     m_pointView(0),
     m_shaderEditor(0),
@@ -78,6 +79,8 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Menus
+    menuBar()->setNativeMenuBar(false); // OS X doesn't activate the native menu bar under Qt5
+
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     QAction* openAct = fileMenu->addAction(tr("&Open"));
@@ -148,6 +151,9 @@ PointViewerMainWindow::PointViewerMainWindow()
     QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
     drawAxes->setCheckable(true);
     drawAxes->setChecked(true);
+    QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
+    drawGrid->setCheckable(true);
+    drawGrid->setChecked(false);
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -172,7 +178,7 @@ PointViewerMainWindow::PointViewerMainWindow()
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new View3D(m_geometries, this);
+    m_pointView = new View3D(m_geometries, format, this);
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
@@ -180,6 +186,8 @@ PointViewerMainWindow::PointViewerMainWindow()
             m_pointView, SLOT(toggleDrawCursor()));
     connect(drawAxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawAxes()));
+    connect(drawGrid, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawGrid()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -211,6 +219,10 @@ PointViewerMainWindow::PointViewerMainWindow()
     shaderMenu->addAction(m_shaderEditor->compileAction());
     connect(m_shaderEditor->compileAction(), SIGNAL(triggered()),
             this, SLOT(compileShaderFile()));
+
+    // TODO: check if this is needed - test shader update functionality
+    //connect(m_shaderEditor, SIGNAL(sendShader(QString)),
+    //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 
     // Log viewer UI
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
@@ -265,10 +277,6 @@ PointViewerMainWindow::PointViewerMainWindow()
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
-
-    //--------------------------------------------------
-    // Final setup
-    openShaderFile("shaders:las_points.glsl");
 }
 
 
@@ -479,7 +487,6 @@ void PointViewerMainWindow::addFiles()
     m_currFileDir.makeAbsolute();
 }
 
-
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
 {
     QFile shaderFile(shaderFileName);
@@ -498,7 +505,6 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     m_shaderEditor->setPlainText(src);
     m_pointView->shaderProgram().setShader(src);
 }
-
 
 void PointViewerMainWindow::openShaderFile()
 {

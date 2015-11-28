@@ -6,10 +6,9 @@
 
 #include <memory>
 
-#include <QtCore/QMap>
-#include <QtOpenGL/QGLShader>
-#include <QtOpenGL/QGLShaderProgram>
-
+#include <QMap>
+#include <QGLShader>
+#include <QGLShaderProgram>
 
 /// Representation of a shader "parameter" (uniform variable or attribute)
 struct ShaderParam
@@ -81,8 +80,8 @@ inline bool operator<(const ShaderParam& p1, const ShaderParam& p2)
 class Shader
 {
     public:
-        Shader(QGLShader::ShaderType type, const QGLContext* context)
-            : m_shader(type, context)
+        Shader(QGLShader::ShaderType type)
+            : m_shader(type)
         { }
 
         /// Return list of uniform shader parameters
@@ -124,7 +123,7 @@ class ShaderProgram : public QObject
     Q_OBJECT
 
     public:
-        ShaderProgram(const QGLContext * context, QObject* parent = 0);
+        ShaderProgram(QObject* parent = 0);
 
         /// Access to the underlying shader program
         QGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
@@ -133,9 +132,6 @@ class ShaderProgram : public QObject
         void setupParameterUI(QWidget* parentWidget);
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
-
-        /// Reset the context
-        void setContext(const QGLContext* context);
 
         /// Read shader source from given file and call setShader()
         bool setShaderFromSourceFile(QString fileName);
@@ -180,7 +176,6 @@ class ShaderProgram : public QObject
     private:
         void setupParameters();
 
-        const QGLContext* m_context;
         double m_pointSize;
         double m_exposure;
         double m_contrast;

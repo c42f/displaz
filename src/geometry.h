@@ -5,12 +5,15 @@
 #define DISPLAZ_GEOMETRY_H_INCLUDED
 
 #include <memory>
+#include <vector>
+#include <map>
 
 #include "glutil.h"
 #include "util.h"
 #include <QString>
 #include <QMetaType>
 
+class ShaderProgram;
 class QGLShaderProgram;
 struct TransformState;
 
@@ -42,7 +45,7 @@ class Geometry : public QObject
     public:
         Geometry();
 
-        virtual ~Geometry() {};
+        virtual ~Geometry();
 
         /// Create geometry of a type which is able to read the given file
         static std::shared_ptr<Geometry> create(QString fileName);
@@ -68,7 +71,7 @@ class Geometry : public QObject
 
         /// Initialize (or reinitialize) any openGL state associated with the
         /// geometry
-        virtual void initializeGL() {}
+        virtual void initializeGL();
 
         //--------------------------------------------------
         /// Draw points using given openGL shader program
@@ -147,6 +150,17 @@ class Geometry : public QObject
         /// Get axis aligned bounding box containing the geometry
         const Imath::Box3d& boundingBox() const { return m_bbox; }
 
+        /// Set / Get shader handles
+        void setShaderId(const char * shaderName, const unsigned int shaderId) { m_Shaders[shaderName] = shaderId; }
+        const unsigned int shaderId(const char * shaderName) const;
+
+        /// Get VAO
+        const unsigned int getVAO(const char * vertexArrayName) const;
+        const unsigned int vaoCount() const { return m_VAO.size(); }
+        /// Get VBO
+        const unsigned int getVBO(const char * vertexBufferName) const;
+        const unsigned int vboCount() const { return m_VBO.size(); }
+
     signals:
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
@@ -159,12 +173,24 @@ class Geometry : public QObject
         void setCentroid(const V3d& centroid) { m_centroid = centroid; }
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
 
+        void destroyBuffers();
+        void initializeBboxGL(unsigned int bboxShader);
+
+        /// Set VAO
+        void setVAO(const char * vertexArrayName, const unsigned int vertArrayId) { m_VAO[std::string(vertexArrayName)] = vertArrayId; }
+        /// Set VBO
+        void setVBO(const char * vertexBufferName, const unsigned int vertBufferId) { m_VBO[std::string(vertexBufferName)] = vertBufferId; }
+
     private:
         QString m_name;
         QString m_fileName;
         V3d m_offset;
         V3d m_centroid;
         Imath::Box3d m_bbox;
+
+        std::map<std::string, unsigned int> m_VAO;
+        std::map<std::string, unsigned int> m_VBO;
+        std::map<std::string, unsigned int> m_Shaders;
 };
 
 

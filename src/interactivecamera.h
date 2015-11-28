@@ -13,13 +13,16 @@
 #endif
 #include <cmath>
 
-#include <QtGui/QQuaternion>
-#include <QtGui/QVector3D>
-#include <QtGui/QMatrix4x4>
-#include <QtCore/QRect>
+#include <QQuaternion>
+#include <QVector3D>
+#include <QMatrix4x4>
+#include <QRect>
 
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathMatrix.h>
+
+// TMP DEBUG
+#include "tinyformat.h"
 
 /// Camera controller for mouse-based scene navigation
 ///
@@ -85,6 +88,17 @@ class InteractiveCamera : public QObject
             m.scale(0.5*m_viewport.width(), -0.5*m_viewport.height(), 1);
             m.translate(1, -1, 0);
             return qt2exr(m);
+        }
+
+        /// Get view rotation-only matrix
+        Imath::M44d rotationMatrix() const
+        {
+            QMatrix4x4 m;
+            //m.translate(0, 0, -m_dist);
+            m.rotate(m_rot);
+            if(m_reverseHandedness)
+                m.scale(1,1,-1);
+            return qt2exr(m); //.translate(-m_center);
         }
 
         /// Get the 2D region associated with the camera

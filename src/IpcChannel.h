@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include <QtCore/QDataStream>
-#include <QtCore/QByteArray>
-#include <QtNetwork/QLocalSocket>
+#include <QDataStream>
+#include <QByteArray>
+#include <QLocalSocket>
 
 
 /// Communication channel for local message-based IPC

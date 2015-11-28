@@ -4,6 +4,17 @@
 #include "glutil.h"
 #include "tinyformat.h"
 
+//------------------------------------------------------------------------------
+/// Utility to handle transformation state
+void TransformState::setUniform(GLuint prog, const char* name, const M44d& mat)
+{
+    GLint loc = glGetUniformLocation(prog, name);
+    if (loc == -1)
+        return;
+    M44f M(mat);
+    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
+}
+
 TransformState TransformState::translate(const Imath::V3d& offset) const
 {
     TransformState res(*this);
@@ -11,14 +22,18 @@ TransformState TransformState::translate(const Imath::V3d& offset) const
     return res;
 }
 
-
-static void setUniform(GLuint prog, const char* name, const M44d& mat)
+TransformState TransformState::scale(const Imath::V3d& scalar) const
 {
-    GLint loc = glGetUniformLocation(prog, name);
-    if (loc == -1)
-        return;
-    M44f M(mat);
-    glUniformMatrix4fv(loc, 1, GL_FALSE, &M[0][0]);
+    TransformState res(*this);
+    res.modelViewMatrix =  M44d().setScale(scalar) * modelViewMatrix;
+    return res;
+}
+
+TransformState TransformState::rotate(const Imath::V4d& rotation) const
+{
+    TransformState res(*this);
+    res.modelViewMatrix =  M44d().rotate(V3d(rotation.x*rotation.w,rotation.y*rotation.w,rotation.z*rotation.w)) * modelViewMatrix;
+    return res;
 }
 
 
@@ -32,61 +47,75 @@ void TransformState::setUniforms(GLuint prog) const
     setUniform(prog, "modelViewProjectionMatrix", mvproj);
 }
 
-
-void TransformState::load() const
+void TransformState::setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal)
 {
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrix(M44f(projMatrix));
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrix(M44f(modelViewMatrix));
-}
+    // Note: Create an orthographic matrix from input values
+    if ((left == right) || (bottom == top) || (nearVal == farVal))
+        throw DisplazError("Invalid input for orthographic projection.");
 
+    double xx = 2.0/(right-left);
+    double yy = 2.0/(top-bottom);
+    double zz = -2.0/(farVal-nearVal);
+
+    double tx = -(right+left)/(right-left);
+    double ty = -(top+bottom)/(top-bottom);
+    double tz = -(farVal+nearVal)/(farVal-nearVal);
+
+    projMatrix = M44d(xx,0.0,0.0,0.0,
+                      0.0,yy,0.0,0.0,
+                      0.0,0.0,zz,0.0,
+                      tx,ty,tz,1.0);
+}
 
 //------------------------------------------------------------------------------
 
-void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3d& bbox,
-                     const Imath::C3f& col)
+void drawBox(const TransformState& transState,
+             const Imath::Box3d& bbox,
+             const Imath::C3f& col,
+             const GLuint& shaderProgram)
 {
     // Transform to box min for stability with large offsets
+    // This function is allowing you to render any box
     TransformState trans2 = transState.translate(bbox.min);
     Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
-    drawBoundingBox(trans2, box2, col);
+    drawBox(trans2, box2, col, shaderProgram);
 }
 
+void drawBox(const TransformState& transState,
+             const Imath::Box3f& bbox,
+             const Imath::C3f& col,
+             const GLuint& shaderProgram)
+{
+    // This function is allowing you to render any box
+    // TODO: FIX ME
+    tfm::printfln("drawBox :: has not been implemented, yet.");
+}
 
 void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3f& bbox,
-                     const Imath::C3f& col)
+                     const GLuint& bboxVertexArray,
+                     const Imath::V3f& offset,
+                     const Imath::C3f& col,
+                     const GLuint& shaderProgram)
 {
-    transState.load();
+    // Transform to box min for stability with large offsets
+    TransformState trans2 = transState.translate(offset);
+
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor3f(col.x, col.y, col.z);
     glLineWidth(1);
-    GLfloat verts[] = {
-        bbox.min.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.max.y, bbox.min.z,
-        bbox.max.x, bbox.min.y, bbox.min.z,
-        bbox.min.x, bbox.min.y, bbox.max.z,
-        bbox.min.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.max.y, bbox.max.z,
-        bbox.max.x, bbox.min.y, bbox.max.z
-    };
-    unsigned char inds[] = {
-        // rows: bottom, sides, top
-        0,1, 1,2, 2,3, 3,0,
-        0,4, 1,5, 2,6, 3,7,
-        4,5, 5,6, 6,7, 7,4
-    };
-    // TODO: Use shaders here
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, verts);
-    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]),
-                   GL_UNSIGNED_BYTE, inds);
-    glDisableClientState(GL_VERTEX_ARRAY);
+
+    // should already be bound ...
+    //glUseProgram(shaderProg);
+
+    trans2.setUniforms(shaderProgram);
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+    //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
+    glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
+
+    glBindVertexArray(bboxVertexArray);
+    glDrawElements(GL_LINES, 3*8, GL_UNSIGNED_BYTE, 0);
+
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
 }
@@ -135,7 +164,8 @@ void drawSphere(const TransformState& transState,
             triInds.push_back(i1); triInds.push_back(i3); triInds.push_back(i4);
         }
     }
-
+#if 0
+    // TODO: FIX and TEST ME
     // Draw computed sphere mesh.
     glUseProgram(shaderProg);
     newTrans.setUniforms(shaderProg);
@@ -144,12 +174,14 @@ void drawSphere(const TransformState& transState,
     glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
     GLint positionLoc = glGetAttribLocation(shaderProg, "position");
     assert(positionLoc >= 0);
-    glEnableVertexAttribArray(positionLoc);
     glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, verts.get());
+    glEnableVertexAttribArray(positionLoc);
     glDrawElements(GL_TRIANGLES, (GLint)triInds.size(),
                    GL_UNSIGNED_SHORT, triInds.data());
     glDisableVertexAttribArray(positionLoc);
-    glUseProgram(0);
+
+    //glUseProgram(0);
+#endif
 }
 
 
@@ -253,5 +285,48 @@ void printActiveShaderAttributes(GLuint prog)
         getGlTypeInfo(attr.type, typeName, rows, cols, tbase);
         tfm::printf("   %s[%d] %s\n", typeName, attr.count, attr.name);
     }
+}
+
+void _glError(const char *file, int line) {
+    GLenum err (glGetError());
+
+    while(err!=GL_NO_ERROR) {
+        std::string error;
+
+        switch(err) {
+            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
+            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
+            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
+            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
+        }
+
+        tfm::printfln("GL_%s - %s:%i", error, file, line);
+        err=glGetError();
+    }
+}
+
+void _glFrameBufferStatus(GLenum target, const char *file, int line) {
+
+    GLenum fb_status(glCheckFramebufferStatus(target));
+
+    std::string status;
+
+    switch(fb_status) {
+        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
+        case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";      break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: status="INCOMPLETE_MULTISAMPLE";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: status="INCOMPLETE_LAYER_TARGETS";  break;
+        //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
+        default:                        status="INCOMPLETE";    break;
+    }
+
+    tfm::printfln("GL_FRAMEBUFFER_%s - %s:%i", status, file, line);
 }
 

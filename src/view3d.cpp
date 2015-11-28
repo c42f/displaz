@@ -1,17 +1,19 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+// DEBUG enable OpenGL error checking
+// #define GL_CHECK 1
+
 #include "glutil.h"
 #include "view3d.h"
 
-#include <QtCore/QTimer>
-#include <QtCore/QTime>
-#include <QtGui/QKeyEvent>
-#include <QtGui/QLayout>
+#include <QTimer>
+#include <QTime>
+#include <QKeyEvent>
+#include <QLayout>
 #include <QItemSelectionModel>
-#include <QtOpenGL/QGLFramebufferObject>
 #include <QMessageBox>
-//#include <QtOpenGL/QGLBuffer>
+#include <QGLFormat>
 
 #include "config.h"
 #include "fileloader.h"
@@ -23,10 +25,9 @@
 #include "util.h"
 
 //------------------------------------------------------------------------------
-View3D::View3D(GeometryCollection* geometries, QWidget *parent)
-    : QGLWidget(parent),
+View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
+    : QGLWidget(format, parent),
     m_camera(false, false),
-    m_prevMousePos(0,0),
     m_mouseButton(Qt::NoButton),
     m_cursorPos(0),
     m_prevCursorSnap(0),
@@ -34,17 +35,25 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     m_drawBoundingBoxes(true),
     m_drawCursor(true),
     m_drawAxes(true),
+    m_drawGrid(false),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
+    m_incrementalFramebuffer(0),
     m_incrementalDraw(false),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
-    m_drawAxesLabelZ(QImage(":/resource/z.png"))
+    m_drawAxesLabelZ(QImage(":/resource/z.png")),
+    m_cursorVertexArray(0),
+    m_axesVertexArray(0),
+    m_gridVertexArray(0),
+    m_quadVertexArray(0),
+    m_quadLabelVertexArray(0),
+    m_devicePixelRatio(1.0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -56,8 +65,9 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
 
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    setFocus();
 
-    m_camera.setClipFar(FLT_MAX);
+    m_camera.setClipFar(FLT_MAX*0.5f); //using FLT_MAX appears to cause issues under OS X for Qt to handle
     // Setting a good value for the near camera clipping plane is difficult
     // when trying to show a large variation of length scales:  Setting a very
     // small value allows us to see objects very close to the camera; the
@@ -68,7 +78,7 @@ View3D::View3D(GeometryCollection* geometries, QWidget *parent)
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
     makeCurrent();
-    m_shaderProgram.reset(new ShaderProgram(context()));
+    m_shaderProgram.reset(new ShaderProgram());
     connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
             this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
@@ -104,7 +114,15 @@ void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int l
 {
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (int i = firstRow; i <= lastRow; ++i)
-        geoms[i]->initializeGL();
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->initializeGL();
+        }
+    }
     geometryChanged();
 }
 
@@ -170,6 +188,12 @@ void View3D::toggleDrawAxes()
     restartRender();
 }
 
+void View3D::toggleDrawGrid()
+{
+    m_drawGrid = !m_drawGrid;
+    restartRender();
+}
+
 void View3D::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
@@ -185,61 +209,153 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
+double View3D::getDevicePixelRatio()
+{
+#ifdef DISPLAZ_USE_QT4
+    return 1.0;
+#else
+    return devicePixelRatio();
+#endif
+}
 
 void View3D::initializeGL()
 {
+    // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS),
+    // which causes GL_INVALID_ENUM on GL 3.2+ core context as soon as glewInit() is called.
+    // It also doesn't fetch the function pointers. The solution is for GLEW to use glGetStringi instead.
+    // The current version of GLEW is 1.10.0 but they still haven't corrected it.
+    // The only fix is to use glewExperimental for now.
+    // https://www.opengl.org/wiki/OpenGL_Loading_Library
+    glewExperimental = true;
     if (glewInit() != GLEW_OK)
     {
         g_logger.error("%s", "Failed to initialize GLEW");
         m_badOpenGL = true;
         return;
     }
+
     g_logger.info("OpenGL implementation:\n"
-                  "GL_VENDOR   = %s\n"
-                  "GL_RENDERER = %s\n"
-                  "GL_VERSION  = %s",
+                  "GL_VENDOR    = %s\n"
+                  "GL_RENDERER  = %s\n"
+                  "GL_VERSION   = %s\n"
+                  "GLSL_VERSION = %s\n"
+                  "GLEW_VERSION = %s\n",
                   (const char*)glGetString(GL_VENDOR),
                   (const char*)glGetString(GL_RENDERER),
-                  (const char*)glGetString(GL_VERSION));
-    m_shaderProgram->setContext(context());
-    m_meshFaceShader.reset(new ShaderProgram(context()));
+                  (const char*)glGetString(GL_VERSION),
+                  (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
+                  (const char*)glewGetString(GLEW_VERSION));
+
+    // GL_CHECK has to be defined for this to actually do something
+    glCheckError();
+
+    initCursor(10, 1);
+    initAxes();
+    initGrid(2.0f);
+
+    glCheckError();
+
+    m_boundingBoxShader.reset(new ShaderProgram());
+    m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
+
+    m_meshFaceShader.reset(new ShaderProgram());
     m_meshFaceShader->setShaderFromSourceFile("shaders:meshface.glsl");
-    m_meshEdgeShader.reset(new ShaderProgram(context()));
+
+    m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(width(), height());
+
+    double dPR = getDevicePixelRatio();
+    int w = width() * dPR;
+    int h = height() * dPR;
+
+    m_incrementalFramebuffer = allocIncrementalFramebuffer(w, h);
+
+    glFrameBufferStatus(m_incrementalFramebuffer);
+    glCheckError();
+
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (size_t i = 0; i < geoms.size(); ++i)
-        geoms[i]->initializeGL();
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            // TODO: build a shader manager for this
+            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
+            geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->initializeGL();
+        }
+    }
+
+    // FIXME: Do something about this mess.  The shader editor widget needs to
+    // be initialized with the default shader, but View3D can only compile
+    // shaders after it has a valid OpenGL context.
+    PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
+    pv_parent->openShaderFile("shaders:las_points.glsl");
+
+    setFocus();
 }
 
 
 void View3D::resizeGL(int w, int h)
 {
+    //Note: This function receives "device pixel sizes" for correct OpenGL viewport setup
+    //      Under OS X with retina display, this becomes important as it is 2x the width() or height()
+    //      of the normal window (there is a devicePixelRatio() function to deal with this).
+
     if (m_badOpenGL)
         return;
+
     // Draw on full window
     glViewport(0, 0, w, h);
-    m_camera.setViewport(QRect(0,0,w,h));
+
+    double dPR = getDevicePixelRatio();
+
+    m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
+
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
+
+    glCheckError();
 }
 
 
-std::unique_ptr<QGLFramebufferObject> View3D::allocIncrementalFramebuffer(int w, int h) const
+unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
 {
+    if (w < 1 || h < 1)
+        return 0;
+
+    //should we really delete this every time?
+    GLuint fb;
+    glDeleteFramebuffers(1, &fb);
+
+    const QGLFormat fmt = context()->format();
+
+    glGenFramebuffers(1, &fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+
     // TODO:
     // * Should we use multisampling 1 to avoid binding to a texture?
-    const QGLFormat fmt = context()->format();
-    QGLFramebufferObjectFormat fboFmt;
-    fboFmt.setAttachment(QGLFramebufferObject::Depth);
+
     // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
     // for samples==1, so work around it by forcing 0, if possible
-    fboFmt.setSamples(fmt.samples() > 1 ? fmt.samples() : 0);
-    //fboFmt.setTextureTarget();
-    std::unique_ptr<QGLFramebufferObject> fbo;
-    fbo.reset(new QGLFramebufferObject(w, h, fboFmt));
-    if (fbo.get() && fbo->attachment()==QGLFramebufferObject::NoAttachment)
-        g_logger.error("%s", "Failed to attach FBO depth buffer.");
-    return fbo;
+
+    // requires OpenGL 4
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, w);
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, h);
+    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, fmt.samples() > 1 ? fmt.samples() : 0);
+
+    GLuint c_buff;
+    glGenRenderbuffers(1, &c_buff);
+    glBindRenderbuffer(GL_RENDERBUFFER, c_buff);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, c_buff);
+
+    GLuint z_buff;
+    glGenRenderbuffers(1, &z_buff);
+    glBindRenderbuffer(GL_RENDERBUFFER, z_buff);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, z_buff);
+
+    return fb;
 }
 
 
@@ -250,11 +366,24 @@ void View3D::paintGL()
     QTime frameTimer;
     frameTimer.start();
 
-    m_incrementalFramebuffer->bind();
+    // Get window size
+    double dPR = getDevicePixelRatio();
+    int w = width() * dPR;
+    int h = height() * dPR;
+
+    // detecting a change in the device pixel ratio, since only the new QWindow (Qt5) would
+    // provide a signal for screen changes and this is the easiest solution
+    if (dPR != m_devicePixelRatio)
+    {
+        m_devicePixelRatio = dPR;
+        resizeGL(w, h);
+    }
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer);
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(Imath::V2i(width(), height()),
+    TransformState transState(Imath::V2i(w, h),
                               m_camera.projectionMatrix(),
                               m_camera.viewMatrix());
 
@@ -271,15 +400,26 @@ void View3D::paintGL()
     // Draw bounding boxes
     if(m_drawBoundingBoxes && !m_incrementalDraw)
     {
-        for(size_t i = 0; i < geoms.size(); ++i)
-            drawBoundingBox(transState, geoms[i]->boundingBox(), Imath::C3f(1));
+        if (m_boundingBoxShader->isValid())
+        {
+            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
+            // shader
+            boundingBoxShader.bind();
+            // matrix stack
+            transState.setUniforms(boundingBoxShader.programId());
+
+            for (size_t i = 0; i < geoms.size(); ++i)
+            {
+                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
+                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
+            }
+        }
     }
 
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
         drawMeshes(transState, geoms);
-
         // Generic draw for any other geometry
         // (TODO: make all geometries use this interface, or something similar)
         // FIXME - Do generic quality scaling
@@ -287,6 +427,7 @@ void View3D::paintGL()
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->draw(transState, quality);
     }
+
 
     // Aim for 40ms frame time - an ok tradeoff for desktop usage
     const double targetMillisecs = 40;
@@ -304,6 +445,7 @@ void View3D::paintGL()
     if (!geoms.empty())
         m_drawCostModel.addSample(drawCount, frameTime);
 
+
     // Debug: print bar showing how well we're sticking to the frame time
 //    int barSize = 40;
 //    std::string s = std::string(barSize*frameTime/targetMillisecs, '=');
@@ -311,33 +453,36 @@ void View3D::paintGL()
 //        s[barSize] = '|';
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
 
-    m_incrementalFramebuffer->release();
-    QGLFramebufferObject::blitFramebuffer(0, QRect(0,0,width(),height()),
-                                          m_incrementalFramebuffer.get(),
-                                          QRect(0,0,width(),height()),
-                                          GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBlitFramebuffer(0,0,w,h, 0,0,w,h,
+                      GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
+
+    // Draw a grid for orientation purposes
+    if (m_drawGrid)
+        drawGrid();
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
-    {
-        drawCursor(transState, m_cursorPos, 10, 1);
+        drawCursor(transState, m_cursorPos, 10);
         //drawCursor(transState, m_camera.center(), 10);
-    }
 
     // Draw overlay axes
     if (m_drawAxes)
-    {
         drawAxes();
-    }
 
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
     else
         m_incrementalFrameTimer->start(10);
-    m_incrementalDraw = true;
-}
 
+    m_incrementalDraw = true;
+
+    glFrameBufferStatus(m_incrementalFramebuffer);
+    glCheckError();
+}
 
 void View3D::drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const
@@ -355,18 +500,16 @@ void View3D::drawMeshes(const TransformState& transState,
         meshFaceShader.setUniformValue("lightDir_eye", lightDir.x, lightDir.y, lightDir.z);
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawFaces(meshFaceShader, transState);
-        meshFaceShader.release();
     }
 
     // Draw edges
     if (m_meshEdgeShader->isValid())
     {
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
-        glLineWidth(1);
+        glLineWidth(1.0f);
         meshEdgeShader.bind();
         for(size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawEdges(meshEdgeShader, transState);
-        meshEdgeShader.release();
     }
 }
 
@@ -381,7 +524,7 @@ void View3D::mousePressEvent(QMouseEvent* event)
     {
         double snapScale = 0.025;
         QString pointInfo;
-        V3d newPos;
+        V3d newPos(0.0,0.0,0.0); //init newPos to origin
         if (snapToGeometry(guessClickPosition(event->pos()), snapScale,
                            &newPos, &pointInfo))
         {
@@ -414,9 +557,8 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
         restartRender();
     }
     else
-    {
         m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
-    }
+
     m_prevMousePos = event->pos();
 }
 
@@ -430,19 +572,55 @@ void View3D::wheelEvent(QWheelEvent* event)
 
 void View3D::keyPressEvent(QKeyEvent *event)
 {
+    // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
-    {
-        // Centre camera on current cursor location
         m_camera.setCenter(m_cursorPos);
-    }
     else
         event->ignore();
 }
 
+void View3D::initCursor(float cursorRadius, float centerPointRadius)
+{
+    float r1 = cursorRadius;
+    float r2 = r1 + cursorRadius;
+
+    float s = 1.0;
+    float cursorPoints[] = {  r1*s,  0.0,  0.0,
+                              r2*s,  0.0,  0.0,
+                             -r1*s,  0.0,  0.0,
+                             -r2*s,  0.0,  0.0,
+                               0.0,  r1*s, 0.0,
+                               0.0,  r2*s, 0.0,
+                               0.0, -r1*s, 0.0,
+                               0.0, -r2*s, 0.0  };
+
+    m_cursorShader.reset(new ShaderProgram());
+    bool cursor_shader_init = m_cursorShader->setShaderFromSourceFile("shaders:cursor.glsl");
+
+    if (!cursor_shader_init)
+    {
+        g_logger.error("Could not read cursor shader.");
+        return;
+    }
+
+    glGenVertexArrays(1, &m_cursorVertexArray);
+    glBindVertexArray(m_cursorVertexArray);
+
+    GLuint cursorVertexBuffer;
+    glGenBuffers(1, &cursorVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, cursorVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), cursorPoints, GL_STATIC_DRAW);
+
+    GLuint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
 
 /// Draw the 3D cursor
-void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos,
-                        float cursorRadius, float centerPointRadius) const
+void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos, float centerPointRadius) const
 {
     V3d offset = transStateIn.cameraPos();
     TransformState transState = transStateIn.translate(offset);
@@ -452,236 +630,370 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     if((relCursor * transState.modelViewMatrix).z > 0)
         return;
 
-    if (centerPointRadius > 0)
-    {
-        transState.load();
-        // Draw a point at the center of the cursor.
-        glColor3f(1,1,1);
-        glPointSize(centerPointRadius);
-        glBegin(GL_POINTS);
-            glVertex(relCursor);
-        glEnd();
-    }
-
-    // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
-    // cursor, even when when it's behind something.
-    glPushAttrib(GL_ENABLE_BIT);
-    glDisable(GL_DEPTH_TEST);
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0,width(), 0,height(), 0, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-
     // Find position of cursor in screen space
     V3d screenP3 = relCursor * transState.modelViewMatrix * transState.projMatrix;
     // Position in ortho coord system
-    V2f p2 = 0.5f * V2f(width(), height()) *
-             (V2f(screenP3.x, screenP3.y) + V2f(1.0f));
-    float r1 = cursorRadius;
-    float r2 = r1 + cursorRadius;
-    glLineWidth(2);
-    glColor3f(1,1,1);
-    // Combined white and black crosshairs, so they can be seen on any
-    // background.
-    glTranslatef(p2.x, p2.y, 0);
-    glBegin(GL_LINES);
-        glVertex( V2f(r1, 0));
-        glVertex( V2f(r2, 0));
-        glVertex(-V2f(r1, 0));
-        glVertex(-V2f(r2, 0));
-        glVertex( V2f(0,  r1));
-        glVertex( V2f(0,  r2));
-        glVertex(-V2f(0,  r1));
-        glVertex(-V2f(0,  r2));
-    glEnd();
-    glColor3f(0,0,0);
-    glRotatef(45,0,0,1);
-    glBegin(GL_LINES);
-        glVertex( V2f(r1, 0));
-        glVertex( V2f(r2, 0));
-        glVertex(-V2f(r1, 0));
-        glVertex(-V2f(r2, 0));
-        glVertex( V2f(0,  r1));
-        glVertex( V2f(0,  r2));
-        glVertex(-V2f(0,  r1));
-        glVertex(-V2f(0,  r2));
-    glEnd();
+    V2f p2 = 0.5f * V2f(width(), height()) * (V2f(screenP3.x, screenP3.y) + V2f(1.0f));
 
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopAttrib();
+    // Draw cursor
+    if (m_cursorShader->isValid())
+    {
+        QGLShaderProgram& cursorShader = m_cursorShader->shaderProgram();
+        // shader
+        cursorShader.bind();
+        // vertex array
+        glBindVertexArray(m_cursorVertexArray);
+
+        transState.projMatrix.makeIdentity();
+        transState.setOrthoProjection(0, width(), 0, height(), 0, 1);
+        transState.modelViewMatrix.makeIdentity();
+
+        if (centerPointRadius > 0)
+        {
+            // fake drawing of white point through scaling ...
+            //
+            TransformState pointState = transState.translate( V3d(p2.x, p2.y, 0) );
+            pointState = pointState.scale( V3d(0.0,0.0,0.0) );
+            glLineWidth(centerPointRadius);
+            cursorShader.setUniformValue("color", 1.0f, 1.0f, 1.0f, 1.0f);
+            pointState.setUniforms(cursorShader.programId());
+            glDrawArrays( GL_POINTS, 0, 1 );
+        }
+
+        // Now draw a 2D overlay over the 3D scene to allow user to pinpoint the
+        // cursor, even when when it's behind something.
+        glDisable(GL_DEPTH_TEST);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_LINE_SMOOTH);
+
+        glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
+
+        // draw white lines
+        transState = transState.translate( V3d(p2.x, p2.y, 0) );
+        cursorShader.setUniformValue("color", 1.0f, 1.0f, 1.0f, 1.0f);
+        transState.setUniforms(cursorShader.programId());
+        glDrawArrays( GL_LINES, 0, 8 );
+
+        // draw black lines
+        transState = transState.rotate( V4d(0,0,1,0.785398) ); //45 deg
+        cursorShader.setUniformValue("color", 0.0f, 0.0f, 0.0f, 1.0f);
+        transState.setUniforms(cursorShader.programId());
+        glDrawArrays( GL_LINES, 0, 8 );
+    }
+}
+
+void View3D::initAxes()
+{
+    m_axesBackgroundShader.reset(new ShaderProgram());
+    bool axesb_shader_init = m_axesBackgroundShader->setShaderFromSourceFile("shaders:axes_quad.glsl");
+    m_axesLabelShader.reset(new ShaderProgram());
+    bool axesl_shader_init = m_axesLabelShader->setShaderFromSourceFile("shaders:axes_label.glsl");
+    m_axesShader.reset(new ShaderProgram());
+    bool axes_shader_init = m_axesShader->setShaderFromSourceFile("shaders:axes_lines.glsl");
+
+    if (!axes_shader_init || !axesb_shader_init || !axesl_shader_init)
+    {
+        g_logger.error("Could not read axes shaders");
+        return;
+    }
+
+    const GLfloat w = 64.0;    // Width of axes widget
+    const GLfloat o = 8.0;     // Axes widget offset in x and y
+    float transparency = 0.5f;
+
+    float axesQuad[] = { o  , o,  0.0f, 0.0f,
+                         o+w, o,  1.0f, 0.0f,
+                         o+w, o+w,1.0f, 1.0f,
+                         o  , o,  0.0f, 0.0f,
+                         o+w, o+w,1.0f, 1.0f,
+                         o  , o+w,0.0f, 1.0f };
+
+    glGenVertexArrays(1, &m_quadVertexArray);
+    glBindVertexArray(m_quadVertexArray);
+
+    GLuint axesQuadVertexBuffer;
+    glGenBuffers(1, &axesQuadVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, axesQuadVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (2 + 2) * 6 * sizeof(float), axesQuad, GL_STATIC_DRAW);
+
+    GLuint positionAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    GLuint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
+
+    glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
+    glEnableVertexAttribArray(texCoordAttribute);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    const GLint l = 16;     // Label is 16 pixels wide
+
+    float labelQuad[] = { -l/2, l/2, 0.0f, 0.0f,
+                           l/2, l/2, 1.0f, 0.0f,
+                           l/2,-l/2, 1.0f, 1.0f,
+                          -l/2, l/2, 0.0f, 0.0f,
+                           l/2,-l/2, 1.0f, 1.0f,
+                          -l/2,-l/2, 0.0f, 1.0f };
+
+    glGenVertexArrays(1, &m_quadLabelVertexArray);
+    glBindVertexArray(m_quadLabelVertexArray);
+
+    GLuint labelQuadVertexBuffer;
+    glGenBuffers(1, &labelQuadVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, labelQuadVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (2 + 2) * 6 * sizeof(float), labelQuad, GL_STATIC_DRAW);
+
+    positionAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    texCoordAttribute = glGetAttribLocation(m_axesLabelShader->shaderProgram().programId(), "texCoord");
+
+    glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
+    glEnableVertexAttribArray(texCoordAttribute);
+
+
+    // Center of axis overlay
+    const V3f center(o+w/2,o+w/2,0.0); //(0.0,0.0,0.0); //
+
+    // color tint
+    const float c = 0.8f;
+    const float d = 0.5f;
+    const float t = 0.5f*(1+transparency);
+    const float r = 0.6f;  // 60% towards edge of circle
+
+    const float le = r*w/2; //1.0f;  // we'll scale this later to match with the 60% sizing
+
+    // just make up some lines for now ... this has to be updated later on ... unless we want to use rotations ?
+    float axesLines[] = { center.x, center.y, center.z, c,d,d,t,
+                          center.x+le, center.y, center.z, c,d,d,t,
+                          center.x, center.y, center.z, d,c,d,t,
+                          center.x, center.y+le, center.z, d,c,d,t,
+                          center.x, center.y, center.z, d,d,c,t,
+                          center.x, center.y, center.z+le, d,d,c,t, };
+
+    glGenVertexArrays(1, &m_axesVertexArray);
+    glBindVertexArray(m_axesVertexArray);
+
+    GLuint axesLinesVertexBuffer;
+    glGenBuffers(1, &axesLinesVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, axesLinesVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (3 + 4) * 6 * sizeof(float), axesLines, GL_DYNAMIC_DRAW); // make this a STREAM buffer ?
+
+    positionAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    GLuint colorAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "color");
+
+    glVertexAttribPointer(colorAttribute, 4, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)(sizeof(float)*3));
+    glEnableVertexAttribArray(colorAttribute);
+
+    //glBindFragDataLocation(m_axesShader->shaderProgram().programId(), 0, "fragColor");
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void View3D::drawAxes() const
 {
-    glPushAttrib(GL_ENABLE_BIT);
     glDisable(GL_DEPTH_TEST);
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0, width(), 0, height(), 0, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
+    TransformState projState(Imath::V2i(width(), height()),
+                             Imath::M44d(),
+                             Imath::M44d());
+
+    projState.projMatrix.makeIdentity();
+    projState.setOrthoProjection(0, width(), 0, height(), 0, 1);
+    projState.modelViewMatrix.makeIdentity();
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     const GLint w = 64;    // Width of axes widget
     const GLint o = 8;     // Axes widget offset in x and y
-    float transparency = 0.5;
 
     // Center of axis overlay
     const V3d center(o+w/2,o+w/2,0.0);
 
-    // Background texture
+    TransformState transState(Imath::V2i(width(), height()),
+                              m_camera.projectionMatrix(),
+                              m_camera.viewMatrix());
 
-    m_drawAxesBackground.bind();
-    glColor4f(1,1,1,transparency);
-    glEnable(GL_TEXTURE_2D);
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex2i(o,   o  );
-        glTexCoord2i(1,0); glVertex2i(o+w, o  );
-        glTexCoord2i(1,1); glVertex2i(o+w, o+w);
-        glTexCoord2i(0,1); glVertex2i(o,   o+w);
-    glEnd();
-    glDisable(GL_TEXTURE_2D);
-
-    // Compute perspective correct x,y,z axis directions at position of the
-    // axis widget centre.  The full 3->window coordinate transformation is
-    //
-    //   c = a*M     // world -> clip coords
-    //   n = c/c[3]  // Perspective divide (clip->NDC)
-    //   e = n*W     // NDC -> window
-    //
-    // Taking the derivative de/da and rearranging gives the derivative:
-    //
-    //   de/da = (1/c[3]) * (M*W - outer_product(center, M[:,3]))
-    //
-    // The x-axis vector in the window coords is then [1,0,0,0] * de/da, etc.
-    //
-    // Using the projected axis directions can look a little weird, but so does
-    // an orthographic projection.  The projected version has the advantage
-    // that a line in the scene which is parallel to one of the x,y or z axes
-    // and passes through the location of the axis widget is parallel to the
-    // associated axis as drawn in the widget itself.
-    const M44d M = m_camera.viewMatrix()*m_camera.projectionMatrix();
-
-    // NDC->Window transform for the y=up,x=right window coordinate convention
-    // used in the glOrtho() call above.  Note this is opposite of Qt's window
-    // coordinates, which has y=0 at the top.
-    //
-    // Use zScreenScale so the size of the component into the screen is
-    // comparable with x and y in the other directions.
-    //
-    // TODO: Fix the coordinate systems used so that they're consistently
-    // manipulated with a common set of utilities.
-    double zScreenScale = 0.5*std::max(width(),height());
-    const M44d W = m_camera.viewportMatrix() *
-                   Imath::M44d().setScale(V3d(1,-1,zScreenScale)) *
-                   Imath::M44d().setTranslation(V3d(0,height(),0));
-
-    const M44d A = M*W;
-    V3d x = V3d(A[0][0],A[0][1],A[0][2]) - center*M[0][3];
-    V3d y = V3d(A[1][0],A[1][1],A[1][2]) - center*M[1][3];
-    V3d z = V3d(A[2][0],A[2][1],A[2][2]) - center*M[2][3];
-
-    // Normalize axes to make them a predictable size in 2D.
-    //
-    // TODO: For a perspective transform this is actually a bit subtle, since
-    // the magnitude of the component into the screen is affected by the clip
-    // plane positions.
-    x.normalize();
-    y.normalize();
-    z.normalize();
-
-    // Ignore z component for drawing overlay
-    x.z = y.z = z.z = 0.0;
-
-    // Draw lines for the x, y and z directions
+    // Draw Background texture
+    if (m_axesBackgroundShader->isValid())
     {
-        // color tint
-        const double c = 0.8;
-        const double d = 0.5;
-        const double t = 0.5*(1+transparency);
-        const double r = 0.6;  // 60% towards edge of circle
-        glLineWidth(1);
-        glBegin(GL_LINES);
-            glColor4f(c,d,d,t);
-            glVertex(center);
-            glVertex(center + x*r*w/2);
-            glColor4f(d,c,d,t);
-            glVertex(center);
-            glVertex(center + y*r*w/2);
-            glColor4f(d,d,c,t);
-            glVertex(center);
-            glVertex(center + z*r*w/2);
-        glEnd();
+        QGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
+        GLint textureSampler = glGetUniformLocation(axesBackgroundShader.programId(), "texture0");
+        // texture
+        m_drawAxesBackground.bind(textureSampler);
+        // shader
+        axesBackgroundShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_quadVertexArray);
+        // matrix stack
+        projState.setUniforms(axesBackgroundShader.programId());
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+        glBindVertexArray(0);
     }
 
-    // Labels
+    // Draw axes
+    if (m_axesShader->isValid())
+    {
+        //tfm::printfln("drawing with m_axesShader");
+
+        QGLShaderProgram& axesShader = m_axesShader->shaderProgram();
+        // shader
+        axesShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_axesVertexArray);
+        // matrix stack
+        axesShader.setUniformValue("center", center.x, center.y, center.z);
+
+        projState.modelViewMatrix = m_camera.rotationMatrix();
+        projState.setUniforms(axesShader.programId());
+
+        // draw
+        glLineWidth(1); // this won't work anymore for values larger than 1 (4.0f);
+        glDrawArrays( GL_LINES, 0, 6 );
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+    }
+
+    // Draw Labels
 
     const double r = 0.8;   // 80% towards edge of circle
-    const GLint l = 16;     // Label is 16 pixels wide
 
-    glColor4f(1,1,1,transparency);
-    glEnable(GL_TEXTURE_2D);
-
+    // TODO: check if we should do this again:
     // Note that V3d -> V3i (double to integer precision)
     // conversion is intentionally snapping the label to
     // integer co-ordinates to eliminate subpixel aliasing
     // artifacts.  This is also the reason that matrix
     // transformations are not being used for this.
 
-    const V3d px = center+x*r*w/2;
-    m_drawAxesLabelX.bind();
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(px+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(px+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(px+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(px+V3d( l/2, l/2,0)));
-    glEnd();
+    const V3d px = V3d(1.0,0.0,0.0)*r*w/2;
+    const V3d py = V3d(0.0,1.0,0.0)*r*w/2;
+    const V3d pz = V3d(0.0,0.0,1.0)*r*w/2;
 
-    const V3d py = center+y*r*w/2;
-    m_drawAxesLabelY.bind();
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(py+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(py+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(py+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(py+V3d( l/2, l/2,0)));
-    glEnd();
+    if (m_axesLabelShader->isValid())
+    {
+        QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
+        GLint textureSampler = glGetUniformLocation(axesLabelShader.programId(), "texture0");
 
-    const V3d pz = center+z*r*w/2;
-    m_drawAxesLabelZ.bind();
-    glBegin(GL_QUADS);
-        glTexCoord2i(0,0); glVertex(V3i(pz+V3d(-l/2, l/2,0)));
-        glTexCoord2i(0,1); glVertex(V3i(pz+V3d(-l/2,-l/2,0)));
-        glTexCoord2i(1,1); glVertex(V3i(pz+V3d( l/2,-l/2,0)));
-        glTexCoord2i(1,0); glVertex(V3i(pz+V3d( l/2, l/2,0)));
-    glEnd();
-
-    glDisable(GL_TEXTURE_2D);
-
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopAttrib();
-
-    glBindTexture(GL_TEXTURE_2D, 0);
+        // shader
+        axesLabelShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_quadLabelVertexArray);
+        // matrix stack
+        projState.setUniforms(axesLabelShader.programId());
+        // adjust positions
+        axesLabelShader.setUniformValue("center", center.x, center.y, center.z);
+        // offset
+        axesLabelShader.setUniformValue("offset", px.x, px.y, px.z);
+        // texture
+        m_drawAxesLabelX.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        axesLabelShader.setUniformValue("offset", py.x, py.y, py.z);
+        // texture
+        m_drawAxesLabelY.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        axesLabelShader.setUniformValue("offset", pz.x, pz.y, pz.z);
+        // texture
+        m_drawAxesLabelZ.bind(textureSampler);
+        // draw
+        glDrawArrays( GL_TRIANGLES, 0, 6 );
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+    }
 }
 
+
+void View3D::initGrid(const float scale)
+{
+    m_gridShader.reset(new ShaderProgram());
+    bool grid_shader_init = m_gridShader->setShaderFromSourceFile("shaders:grid.glsl");
+
+    if (!grid_shader_init)
+    {
+        g_logger.error("Could not read grid shader.");
+        return;
+    }
+
+    float gridLines[] = { -0.5f*scale, -0.5f*scale, 0.0f,  0.5f*scale, -0.5f*scale, 0.0f,
+                          -0.5f*scale, -0.4f*scale, 0.0f,  0.5f*scale, -0.4f*scale, 0.0f,
+                          -0.5f*scale, -0.3f*scale, 0.0f,  0.5f*scale, -0.3f*scale, 0.0f,
+                          -0.5f*scale, -0.2f*scale, 0.0f,  0.5f*scale, -0.2f*scale, 0.0f,
+                          -0.5f*scale, -0.1f*scale, 0.0f,  0.5f*scale, -0.1f*scale, 0.0f,
+                          -0.5f*scale,  0.0f,       0.0f,  0.5f*scale,  0.0f,       0.0f,
+                          -0.5f*scale,  0.1f*scale, 0.0f,  0.5f*scale,  0.1f*scale, 0.0f,
+                          -0.5f*scale,  0.2f*scale, 0.0f,  0.5f*scale,  0.2f*scale, 0.0f,
+                          -0.5f*scale,  0.3f*scale, 0.0f,  0.5f*scale,  0.3f*scale, 0.0f,
+                          -0.5f*scale,  0.4f*scale, 0.0f,  0.5f*scale,  0.4f*scale, 0.0f,
+                          -0.5f*scale,  0.5f*scale, 0.0f,  0.5f*scale,  0.5f*scale, 0.0f,
+
+                          -0.5f*scale, -0.5f*scale, 0.0f, -0.5f*scale,  0.5f*scale, 0.0f,
+                          -0.4f*scale, -0.5f*scale, 0.0f, -0.4f*scale,  0.5f*scale, 0.0f,
+                          -0.3f*scale, -0.5f*scale, 0.0f, -0.3f*scale,  0.5f*scale, 0.0f,
+                          -0.2f*scale, -0.5f*scale, 0.0f, -0.2f*scale,  0.5f*scale, 0.0f,
+                          -0.1f*scale, -0.5f*scale, 0.0f, -0.1f*scale,  0.5f*scale, 0.0f,
+                           0.0f,       -0.5f*scale, 0.0f,  0.0f,        0.5f*scale, 0.0f,
+                           0.1f*scale, -0.5f*scale, 0.0f,  0.1f*scale,  0.5f*scale, 0.0f,
+                           0.2f*scale, -0.5f*scale, 0.0f,  0.2f*scale,  0.5f*scale, 0.0f,
+                           0.3f*scale, -0.5f*scale, 0.0f,  0.3f*scale,  0.5f*scale, 0.0f,
+                           0.4f*scale, -0.5f*scale, 0.0f,  0.4f*scale,  0.5f*scale, 0.0f,
+                           0.5f*scale, -0.5f*scale, 0.0f,  0.5f*scale,  0.5f*scale, 0.0f,
+                            };
+
+    glGenVertexArrays(1, &m_gridVertexArray);
+    glBindVertexArray(m_gridVertexArray);
+
+    GLuint gridVertexBuffer;
+    glGenBuffers(1, &gridVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, gridVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, (22 * 2) * 3 * sizeof(float), gridLines, GL_STATIC_DRAW);
+
+    GLuint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
+
+    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
+    glEnableVertexAttribArray(positionAttribute);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void View3D::drawGrid() const
+{
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    TransformState transState(Imath::V2i(width(), height()),
+                              m_camera.projectionMatrix(),
+                              m_camera.viewMatrix());
+
+    // Draw grid
+    if (m_gridShader->isValid())
+    {
+        QGLShaderProgram &gridShader = m_gridShader->shaderProgram();
+        // shader
+        gridShader.bind();
+        // vertex buffer
+        glBindVertexArray(m_gridVertexArray);
+        // matrix stack
+        transState.setUniforms(gridShader.programId());
+        // draw
+        glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
+        glDrawArrays(GL_LINES, 0, (22 * 2));
+        // do NOT release shader, this is no longer supported in OpenGL 3.2
+    }
+}
 
 /// Draw point cloud
 DrawCount View3D::drawPoints(const TransformState& transState,
@@ -693,6 +1005,9 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         return DrawCount();
     if (!m_shaderProgram->isValid())
         return DrawCount();
+
+    double dPR = getDevicePixelRatio();
+
     glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
@@ -708,11 +1023,10 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(selection[(int)i].row() + 1));
-        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*m_camera.projectionMatrix()[0][0]));
+        prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*dPR*m_camera.projectionMatrix()[0][0]));
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    prog.release();
     return totDrawCount;
 }
 

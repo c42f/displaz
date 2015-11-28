@@ -135,21 +135,19 @@ bool HCloudView::loadFile(QString fileName, size_t maxVertexCount)
 
 void HCloudView::initializeGL()
 {
-    m_shader.reset(new ShaderProgram(QGLContext::currentContext()));
+    m_shader.reset(new ShaderProgram());
     m_shader->setShaderFromSourceFile("shaders:las_points_lod.glsl");
 }
 
-
-static void drawBounds(HCloudNode* node, const TransformState& transState)
+static void drawBounds(QGLShaderProgram& prog, HCloudNode* node, const TransformState& transState)
 {
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1));
+    drawBox(transState, node->bbox, Imath::C3f(1), prog.programId());
     for (int i = 0; i < 8; ++i)
     {
         if (node->children[i])
-            drawBounds(node->children[i], transState);
+            drawBounds(prog, node->children[i], transState);
     }
 }
-
 
 /// Read hcloud point data for node
 ///
@@ -325,7 +323,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
 
     glDisable(GL_POINT_SPRITE);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    prog.release();
+    // prog.release();
 
     g_logger.info("hcloud: %.1fMB, #nodes = %d, fetched pages = %d, mean voxel size = %.0f",
                   m_sizeBytes/1e6, nodesRendered, fetchedPages,

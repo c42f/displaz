@@ -7,9 +7,10 @@
 
 #include "glutil.h"
 
-#include <QtOpenGL/QGLShaderProgram>
-#include <QtCore/QTime>
+#include <QGLShaderProgram>
+#include <QTime>
 
+#include <functional>
 #include <unordered_map>
 #include <fstream>
 #include <queue>
@@ -523,29 +524,56 @@ void PointArray::estimateCost(const TransformState& transState,
 }
 
 
-static void drawTree(const TransformState& transState, const OctreeNode* node)
+static void drawTree(QGLShaderProgram& prog, const TransformState& transState, const OctreeNode* node)
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
                       node->center + Imath::V3f(node->halfWidth));
-    drawBoundingBox(transState, bbox, Imath::C3f(1));
-    drawBoundingBox(transState, node->bbox, Imath::C3f(1,0,0));
+
+    drawBox(transState, bbox, Imath::C3f(1), prog.programId());
+    drawBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
+
     for (int i = 0; i < 8; ++i)
     {
         OctreeNode* n = node->children[i];
         if (n)
-            drawTree(transState, n);
+            drawTree(prog, transState, n);
     }
 }
 
-void PointArray::drawTree(const TransformState& transState) const
+void PointArray::drawTree(QGLShaderProgram& prog, const TransformState& transState) const
 {
-    ::drawTree(transState, m_rootNode.get());
+    ::drawTree(prog, transState, m_rootNode.get());
 }
 
+void PointArray::initializeGL()
+{
+    Geometry::initializeGL();
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    setVAO("points", vao);
+
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    setVBO("point_buffer", vbo);
+}
+
+void PointArray::draw(const TransformState& transState, double quality) const
+{
+}
 
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
+
+    GLuint vao = getVAO("points");
+    glBindVertexArray(vao);
+
+    GLuint vbo = getVBO("point_buffer");
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
     TransformState relativeTrans = transState.translate(offset());
     relativeTrans.setUniforms(prog.programId());
     //printActiveShaderAttributes(prog.programId());
@@ -619,31 +647,77 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         idx = node->nextBeginIndex;
         if (nodeDrawCount.numVertices == 0)
             continue;
+
+        if (m_fields.size() < 1)
+            continue;
+
+        long bufferSize = 0;
+        for (size_t i = 0; i < m_fields.size(); ++i)
+        {
+            const GeomField &field = m_fields[i];
+            unsigned int arraySize = field.spec.arraySize();
+            unsigned int vecSize = field.spec.vectorSize();
+
+            // tfm::printfln("FIELD-NAME: %s", field.name);
+            // tfm::printfln("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
+
+            bufferSize += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
+        }
+
+        bufferSize = bufferSize * (GLsizei)nodeDrawCount.numVertices;
+
+        // TODO: might be able to do something more efficient here, for example use glBufferSubData to avoid re-allocation of memory by glBufferData
+        // INITIALIZE THE BUFFER TO FULL SIZE
+        // tfm::printfln("INIT BUFFER: %i, BS: %i", vbo, bufferSize);
+
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bufferSize, NULL, GL_STREAM_DRAW);
+        /// ========================================================================
+        /// ========================================================================
+        GLintptr bufferOffset = 0;
+
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
+
+            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data ?
+            // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
+            // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
+            bufferSize = arraySize * vecSize * field.spec.elsize * (GLsizei)nodeDrawCount.numVertices; //sizeof(glBaseType(field.spec))
+
+            char* bufferData = field.data.get() + idx*field.spec.size();
+            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, bufferData);
+
+            // tfm::printfln("UPDATE BUFFER: %i, BS: %i", vbo, bufferSize);
+
             for (int j = 0; j < arraySize; ++j)
             {
                 const ShaderAttribute* attr = attributes[k+j];
                 if (!attr)
                     continue;
-                char* data = field.data.get() + idx*field.spec.size() +
-                             j*field.spec.elsize;
+
+                // we have to create an intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
+                GLintptr intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
+
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
                     glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, data);
+                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset);
                 }
                 else
                 {
                     glVertexAttribPointer(attr->location, vecSize,
                                           glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, data);
+                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset);
                 }
+
+                glEnableVertexAttribArray(attr->location);
             }
+
+            bufferOffset += bufferSize;
         }
+
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
         node->nextBeginIndex += nodeDrawCount.numVertices;
     }
@@ -656,6 +730,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
+
     return drawCount;
 }
 

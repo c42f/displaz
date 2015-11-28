@@ -8,19 +8,21 @@
 #include <vector>
 #include <memory>
 
-#include <GL/glew.h>
+#include "glutil.h"
+#define QT_NO_OPENGL_ES_2
+
+
 #include <QGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
 #include "interactivecamera.h"
 #include "geometrycollection.h"
-#include "glutil.h"
 
 class QGLShaderProgram;
-class QGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
+class QGLFormat;
 
 class ShaderProgram;
 struct TransformState;
@@ -31,7 +33,7 @@ class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
-        View3D(GeometryCollection* geometries, QWidget *parent = NULL);
+        View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
         ~View3D();
 
         /// Return shader used for displaying points
@@ -56,6 +58,7 @@ class View3D : public QGLWidget
         void toggleDrawBoundingBoxes();
         void toggleDrawCursor();
         void toggleDrawAxes();
+        void toggleDrawGrid();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
@@ -80,12 +83,17 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
-        std::unique_ptr<QGLFramebufferObject> allocIncrementalFramebuffer(int w, int h) const;
+        double getDevicePixelRatio();
+        unsigned int allocIncrementalFramebuffer(int w, int h) const;
 
-        void drawCursor(const TransformState& transState, const V3d& P,
-                        float cursorRadius, float centerPointRadius) const;
+        void initCursor(float cursorRadius, float centerPointRadius);
+        void drawCursor(const TransformState& transState, const V3d& P, float centerPointRadius) const;
 
+        void initAxes();
         void drawAxes() const;
+
+        void initGrid(const float scale);
+        void drawGrid() const;
 
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
@@ -115,6 +123,7 @@ class View3D : public QGLWidget
         bool m_drawBoundingBoxes;
         bool m_drawCursor;
         bool m_drawAxes;
+        bool m_drawGrid;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
@@ -129,7 +138,7 @@ class View3D : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        std::unique_ptr<QGLFramebufferObject> m_incrementalFramebuffer;
+        unsigned int m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
@@ -138,6 +147,22 @@ class View3D : public QGLWidget
         Texture m_drawAxesLabelX;
         Texture m_drawAxesLabelY;
         Texture m_drawAxesLabelZ;
+
+        /// Shaders for interface geometry
+        std::unique_ptr<ShaderProgram> m_cursorShader;
+        std::unique_ptr<ShaderProgram> m_axesShader;
+        std::unique_ptr<ShaderProgram> m_gridShader;
+        std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
+        std::unique_ptr<ShaderProgram> m_axesLabelShader;
+        std::unique_ptr<ShaderProgram> m_boundingBoxShader;
+
+        unsigned int m_cursorVertexArray;
+        unsigned int m_axesVertexArray;
+        unsigned int m_gridVertexArray;
+        unsigned int m_quadVertexArray;
+        unsigned int m_quadLabelVertexArray;
+
+        double m_devicePixelRatio;
 };
 
 

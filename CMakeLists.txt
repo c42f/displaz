@@ -16,12 +16,23 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
+if (WIN32)
+    # cmake >= 2.8.10 needs this for Qt5 on Windows
+    cmake_policy(SET CMP0020 NEW)
+endif()
+
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" TRUE)
+if(UNIX AND NOT APPLE)
+    option(DISPLAZ_USE_QT4 "Build displaz with Qt4" FALSE)
+else()
+    # Qt4 build only supported on linux
+    set(DISPLAZ_USE_QT4 FALSE)
+endif()
 
 set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
     CACHE PATH "Directory containing installed third party libraries (laslib, ilmbase, ...)")
@@ -75,7 +86,26 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtOpenGL REQUIRED)
+
+if (DISPLAZ_USE_QT4)
+    find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtNetwork QtOpenGL REQUIRED)
+    add_definitions(-DDISPLAZ_USE_QT4)
+else ()
+    find_package(Qt5Core REQUIRED)
+    find_package(Qt5Gui REQUIRED)
+    find_package(Qt5Network REQUIRED)
+    find_package(Qt5OpenGL REQUIRED)
+    find_package(Qt5Widgets REQUIRED)
+    add_definitions(${Qt5Core_DEFINITIONS})
+    add_definitions(${Qt5Gui_DEFINITIONS})
+    add_definitions(${Qt5Network_DEFINITIONS})
+    add_definitions(${Qt5Widgets_DEFINITIONS})
+
+    if (NOT WIN32)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
+    endif()
+endif()
+
 
 include_directories(${ILMBASE_INCLUDE_DIRS})
 

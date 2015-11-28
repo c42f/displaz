@@ -7,8 +7,8 @@
 #include <vector>
 #include <memory>
 
-#include <QtCore/QString>
-#include <QtCore/QMetaType>
+#include <QString>
+#include <QMetaType>
 
 #include "geometry.h"
 
@@ -20,6 +20,10 @@ class TriMesh : public Geometry
 {
     public:
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
+
+        virtual void draw(const TransformState& transState, double quality) const;
+
+        virtual void initializeGL();
 
         virtual void drawFaces(QGLShaderProgram& prog,
                                const TransformState& transState) const;
@@ -39,6 +43,9 @@ class TriMesh : public Geometry
                                 std::string* info = 0) const;
 
     private:
+        void initializeFaceGL();
+        void initializeEdgeGL();
+        void initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName);
 
         static void makeSmoothNormals(std::vector<float>& normals,
                                       const std::vector<float>& verts,

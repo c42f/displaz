@@ -4,7 +4,16 @@
 #ifndef GLUTIL_H_INCLUDED
 #define GLUTIL_H_INCLUDED
 
+
 #include <GL/glew.h>
+
+#ifdef __APPLE__
+    #include <OpenGL/glext.h>
+#else
+    #include <GL/gl.h>
+#endif
+
+#define QT_NO_OPENGL_ES_2
 
 #include <QImage>
 
@@ -14,8 +23,6 @@
 #include "util.h"
 #include "typespec.h"
 
-//------------------------------------------------------------------------------
-/// Utility to handle transformation state
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -37,27 +44,34 @@ struct TransformState
     /// Translate model by given offset
     TransformState translate(const Imath::V3d& offset) const;
 
+    /// Scale model by given scalar
+    TransformState scale(const Imath::V3d& scalar) const;
+
+    /// Rotate model by given rotation vector
+    TransformState rotate(const Imath::V4d& rotation) const;
+
     /// Load matrix uniforms onto the currently bound shader program:
     ///
     ///   "projectionMatrix"
     ///   "modelViewMatrix"
     ///   "modelViewProjectionMatrix"
     ///
+    static void setUniform(GLuint prog, const char* name, const M44d& mat);
     void setUniforms(GLuint prog) const;
+    void setProjUniform(GLuint prog) const;
 
-    /// Load matrices into traditional openGL transform stack
-    ///
-    /// Should be removed eventually!
-    void load() const;
+    void setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal);
 };
 
 
 //----------------------------------------------------------------------
 /// Utilites for drawing simple primitives
-void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3f& bbox, const Imath::C3f& col);
-void drawBoundingBox(const TransformState& transState,
-                     const Imath::Box3d& bbox, const Imath::C3f& col);
+void drawBox(const TransformState& transState,
+             const Imath::Box3d& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
+void drawBox(const TransformState& transState,
+             const Imath::Box3f& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
+void drawBoundingBox(const TransformState& transState, const GLuint& bboxVertexArray,
+                     const Imath::V3f& offset, const Imath::C3f& col, const GLuint& shaderProgram);
 
 /// Draw a sphere using the given shader.  May be semitransparent.
 ///
@@ -128,7 +142,7 @@ struct Texture
         }
     }
 
-    void bind() const
+    void bind(int sampler) const
     {
         if (!texture)
         {
@@ -143,8 +157,19 @@ struct Texture
         }
         else
         {
+            // TODO: this has to become more sophisticated, if we ever want to have more than one texture bound
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(target, texture);
+            if (sampler >= 0)
+            {
+                glBindSampler(texture, sampler);
+            }
         }
+    }
+
+    void bind() const
+    {
+        bind(-1);
     }
 
             QImage image;
@@ -184,5 +209,22 @@ void printActiveShaderAttributes(GLuint prog);
 const ShaderAttribute* findAttr(const std::string& name,
                                 const std::vector<ShaderAttribute>& attrs);
 
+
+void _glError(const char *file, int line);
+void _glFrameBufferStatus(GLenum target, const char *file, int line);
+
+
+// #define GL_CHECK
+#ifdef GL_CHECK
+
+    #define glCheckError() _glError(__FILE__,__LINE__)
+    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
+
+#else
+
+    #define glCheckError()
+    #define glFrameBufferStatus(TARGET)
+
+#endif //GL_CHECK
 
 #endif // GLUTIL_H_INCLUDED

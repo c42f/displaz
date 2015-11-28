@@ -5,8 +5,8 @@
 #ifndef DISPLAZ_MAINWINDOW_H_INCLUDED
 #define DISPLAZ_MAINWINDOW_H_INCLUDED
 
-#include <QtCore/QDir>
-#include <QtGui/QMainWindow>
+#include <QDir>
+#include <QMainWindow>
 
 #include <memory>
 
@@ -16,6 +16,7 @@ class QSignalMapper;
 class QPlainTextEdit;
 class QProgressBar;
 class QModelIndex;
+class QGLFormat;
 
 class HelpDialog;
 class View3D;
@@ -33,7 +34,7 @@ class PointViewerMainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        PointViewerMainWindow();
+        PointViewerMainWindow(const QGLFormat& format);
 
         /// Hint at an appropriate size
         QSize sizeHint() const;
