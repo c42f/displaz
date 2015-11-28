@@ -2,7 +2,7 @@ module Displaz
 using Compat
 
 # Quick and nasty matlab-like plotting interface
-export plot, clf, hold
+export plot3d, plot3d!, plot, clf, hold
 
 
 # Convert julia array into a type name and type appropriate for putting in the
@@ -44,23 +44,23 @@ function write_ply_points(filename, nvertices, fields)
         write(fid, "format binary_little_endian 1.0\n")
         write(fid, "comment Displaz native\n")
         for ((name,semantic,_), (typename, value)) in zip(fields, converted_fields)
-            n = size(value,1)
+            n = size(value,2)
             assert(n == nvertices || n == 1)
             write(fid, "element vertex_$name $n\n")
-            for i = 1:size(value,2)
+            for i = 1:size(value,1)
                 propname = ply_property_name(semantic, i)
                 write(fid, "property $typename $propname\n")
             end
         end
         write(fid, "end_header\n")
         for (_,value) in converted_fields
-            write(fid, value')
+            write(fid, value)
         end
     end
 end
 
 function write_ply_lines(filename, position, color, linebreak)
-    nvalidvertices = size(position,1)
+    nvalidvertices = size(position,2)
 
     # Create and write to ply file
     fid = open(filename, "w")
@@ -93,7 +93,7 @@ function write_ply_lines(filename, position, color, linebreak)
             linelen = linebreak[i+1] - linebreak[i]
             range = realstart:realstart + linelen-1
         else
-            linelen = size(position,1) - linebreak[i] + 1
+            linelen = size(position,2) - linebreak[i] + 1
             range = realstart:realstart + linelen - 1
         end
         write(fid,Int32(linelen))
@@ -108,7 +108,7 @@ end
 #                           :marksize  => (array_semantic,1),
 #                           :markshape => (array_semantic,1)]
 
-const color_names = @compat Dict('r' => [1.0  0   0],
+const _color_names = @compat Dict('r' => [1.0  0   0],
                                  'g' => [0.0  0.8 0],
                                  'b' => [0.0  0   0.8],
                                  'c' => [0.0  1  1],
@@ -117,76 +117,160 @@ const color_names = @compat Dict('r' => [1.0  0   0],
                                  'k' => [0.0  0  0],
                                  'w' => [1.0  1  1])
 
-const shape_names = @compat Dict('.' => [0],
-                                 's' => [1],
-                                 'o' => [2],
-                                 'x' => [3],
-                                 '+' => [4],
-                                 '-' => '-')
+const _shape_ids = @compat Dict('.' => 0,
+                                's' => 1,
+                                'o' => 2,
+                                'x' => 3,
+                                '+' => 4,
+                                '-' => '-')
 
 interpret_color(color) = color
 interpret_color(s::AbstractString) = length(s) == 1 ? interpret_color(s[1]) : error("Unknown color abbreviation $s")
-interpret_color(c::Char) = color_names[c]
+interpret_color(c::Char) = _color_names[c]
 interpret_shape(markershape) = markershape
-interpret_shape(c::Char) = shape_names[c]
+interpret_shape(c::Char) = [_shape_ids[c]]
+interpret_shape(s::Vector{Char}) = Int[_shape_ids[c] for c in s]
+interpret_shape(s::AbstractString) = Int[_shape_ids[c] for c in s]
 interpret_linebreak(nvertices, linebreak) = linebreak
 interpret_linebreak(nvertices, i::Integer) = i == 1 ? [1] : 1:i:nvertices
-# True if plots are to be plotted over the previous data, false to clear before
-# plotting new data sets.
-_hold = false
 
-# Basic 3D plotting function for points
-function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0], linebreak = [1])
-    nvertices = size(position, 1)
+
+"""
+Plot 3D points or lines on a new plot
+
+```
+  plot3d(position, attr1=value1, ...)
+```
+
+The `position` array should be a 3xN array of vertex positions. (This is
+consistent with treating the components of a single point as a column vector.
+It also has the same memory layout as an array of short `Vector3` instances
+from ImmutableArrays, for example).
+
+TODO: Revisit the nasty decision of the shape of position again - the above
+choice is somewhat inconsistent with supplying markersize / markershape as a
+column vector :-(  Can we have a set of consistent broadcasting rules for this?
+It seems like the case of a 3x3 matrix will always be ambiguous if we try
+to guess what the user wants.
+
+
+### Vertex attributes
+
+Each point may have a set of vertex attributes attached to control the visual
+representation and tag the point for inspection. The following are supported by
+the default shader:
+
+  * `color`       - A 3xN array of vertex colors
+  * `markersize`  - Vertex marker size
+  * `markershape` - Vector of vertex marker shapes.  Shape can be represented
+                    either by a Char or a numeric identifier between 0 and 4:
+
+```
+                    sphere - '.' 0    square - 's' 1
+                    circle - 'o' 2    times  - 'x' 3
+                    cross  - '+' 4
+```
+
+
+### Plotting points
+
+To plot 10000 random points with distance from the origin determining the
+color, and random marker shapes:
+```
+  P = randn(3,10000)
+  c = 0.5./sumabs2(P,1) .* [1,0,0]
+  plot3d(P, color=c, markershape=rand(1:4,10000))
+```
+
+
+### Plotting lines
+
+To plot a piecewise linear curve between 10000 random vertices
+```
+  plot3d(randn(3,10000), markershape="-")
+```
+
+When plotting lines, the `linebreak` keyword argument can be used to break the
+position array into multiple line segments.  Each index in the line break array
+is the initial index of a line segment.
+"""
+function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
+                linebreak=[1], _clear_before_plot=true)
+    nvertices = size(position, 2)
     color = interpret_color(color)
     markershape = interpret_shape(markershape)
     linebreak = interpret_linebreak(nvertices, linebreak)
-    size(position, 2) == 3 || error("position must be a Nx3 array")
-    size(color, 2)    == 3 || error("color must be a Nx3 array")
-    # FIXME in displaz itself.  This waste shouldn't be required.
-    if size(color,1) == 1
-        color = repmat(color, nvertices, 1)
-    end
-    if size(markersize,1) == 1
-        markersize = repmat(markersize, nvertices, 1)
+    size(position, 1) == 3 || error("position must be a 3xN array")
+    size(color, 1)    == 3 || error("color must be a 3xN array")
+    # FIXME in displaz itself.  No repmat waste should be required.
+    if size(color,2) == 1
+        color = repmat(color, 1, nvertices)
     end
     # Ensure all fields are floats for now, to avoid surprising scaling in the
     # shader
     color = map(Float32,color)
     markersize = map(Float32,markersize)
-    size(color,1) == nvertices || error("color must have same number of rows as position array")
+    size(color,2) == nvertices || error("color must have same number of rows as position array")
     filename = tempname()*".ply"
     if '-' in markershape # Plot lines
         write_ply_lines(filename, position, color, linebreak)
     else # Plot points
-        if size(markershape,1) == 1
-            markershape = repmat(markershape, nvertices, 1)
+        if length(markersize) == 1
+            markersize = repmat(markersize, 1, nvertices)
+        end
+        if length(markershape) == 1
+            markershape = repmat(markershape, 1, nvertices)
         end
         write_ply_points(filename, nvertices, (
                          (:position, vector_semantic, position),
                          (:color, color_semantic, color),
-                         (:markersize, array_semantic, markersize),
-                         (:markershape, array_semantic, markershape),
+                         # FIXME: shape of markersize??
+                         (:markersize, array_semantic, vec(markersize)'),
+                         (:markershape, array_semantic, vec(markershape)'),
                          ))
     end
-    hold = _hold ? "-add" : []
-    run(`displaz -background $hold -shader generic_points.glsl -rmtemp $filename`)
+    addopt = _clear_before_plot ? [] : "-add"
+    run(`displaz -background $addopt -shader generic_points.glsl -rmtemp $filename`)
     nothing
 end
 
-function clf()
-    run(`displaz -clear`)
-    nothing
+
+"""
+Add points or lines to an existing 3D plot
+
+See plot3d for documentation
+"""
+function plot3d!(position; kwargs...)
+    plot3d(position; _clear_before_plot=false, kwargs...)
+end
+
+
+#-------------------------------------------------------------------------------
+# Deprecated junk
+
+_hold = false
+
+function plot(position; color=[1 1 1], markersize=[0.1], markershape=[0], linebreak = [1])
+    Base.depwarn("plot() is deprecated.  Use plot3d() instead", :plot)
+    plot3d(position', color=color', markersize=markersize, markershape=markershape, linebreak=linebreak, _clear_before_plot=!_hold)
 end
 
 function hold()
+    Base.depwarn("hold() is deprecated.  Use plot3d() to make a new plot, and plot3d!() to add to an existing one", :hold)
     global _hold
     _hold = !_hold
 end
 
 function hold(h)
+    Base.depwarn("hold() is deprecated.  Use plot3d() to make a new plot, and plot3d!() to add to an existing one", :hold)
     global _hold
     _hold = Bool(h)
+end
+
+function clf()
+    Base.depwarn("clf() is deprecated.  Use plot3d() to make a new plot, and plot3d!() to add to an existing one", :clf)
+    run(`displaz -clear`)
+    nothing
 end
 
 end
