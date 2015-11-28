@@ -16,6 +16,9 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
+# cmake >= 2.8.10 needs this for Qt5 on Windows
+cmake_policy(SET CMP0020 NEW)
+
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
@@ -84,10 +87,6 @@ find_package(OpenGL REQUIRED)
 if (DISPLAZ_USE_QT4)
     find_package(Qt4 4.7 COMPONENTS QtCore QtGui QtNetwork QtOpenGL REQUIRED)
     add_definitions(-DDISPLAZ_USE_QT4)
-
-    if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
-    endif()
 else ()
     find_package(Qt5Core REQUIRED)
     find_package(Qt5Gui REQUIRED)
@@ -99,13 +98,11 @@ else ()
     add_definitions(${Qt5Network_DEFINITIONS})
     add_definitions(${Qt5Widgets_DEFINITIONS})
 
-    if(WIN32)
-        # cmake 3.3 needs this for Qt5 on Windows
-        cmake_policy(SET CMP0020 NEW)
-    else()
-        set(CMAKE_CXX_FLAGS "-Wall -std=c++0x ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}" CACHE STRING "Flags used by the compiler during all build types.")
+    if (NOT WIN32)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt5Core_EXECUTABLE_COMPILE_FLAGS} ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS} ${Qt5Network_EXECUTABLE_COMPILE_FLAGS} ${Qt5OpenGL_EXECUTABLE_COMPILE_FLAGS} ${Qt5Widgets_EXECUTABLE_COMPILE_FLAGS}")
     endif()
 endif()
+
 
 include_directories(${ILMBASE_INCLUDE_DIRS})
 
