@@ -16,8 +16,10 @@ project(displaz)
 
 cmake_minimum_required(VERSION 2.8)
 
-# cmake >= 2.8.10 needs this for Qt5 on Windows
-cmake_policy(SET CMP0020 NEW)
+if (WIN32)
+    # cmake >= 2.8.10 needs this for Qt5 on Windows
+    cmake_policy(SET CMP0020 NEW)
+endif()
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
