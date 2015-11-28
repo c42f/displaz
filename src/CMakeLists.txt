@@ -43,16 +43,16 @@ set(util_srcs
     ../thirdparty/argparse.cpp
 )
 
+macro(displaz_qt_wrap_cpp moc_out_srcs)
+    if(DISPLAZ_USE_QT4)
+        qt4_wrap_cpp(${moc_out_srcs} ${ARGN})
+    else()
+        qt5_wrap_cpp(${moc_out_srcs} ${ARGN})
+    endif()
+endmacro()
+
 # Interprocess communication
-if(DISPLAZ_USE_QT4)
-    qt4_wrap_cpp(ipc_moc_srcs
-        IpcChannel.h
-    )
-else()
-    qt5_wrap_cpp(ipc_moc_srcs
-        IpcChannel.h
-    )
-endif()
+displaz_qt_wrap_cpp(ipc_moc_srcs IpcChannel.h)
 
 set(ipc_srcs
     ${ipc_moc_srcs}
@@ -61,7 +61,7 @@ set(ipc_srcs
 )
 
 # GUI
-set(moc_srcs
+displaz_qt_wrap_cpp(gui_moc_srcs
     datasetui.h
     dragspinbox.h
     fileloader.h
@@ -77,16 +77,6 @@ set(moc_srcs
     shadereditor.h
     shader.h
 )
-
-if(DISPLAZ_USE_QT4)
-    qt4_wrap_cpp(gui_moc_srcs
-        ${moc_srcs}
-    )
-else()
-    qt5_wrap_cpp(gui_moc_srcs
-        ${moc_srcs}
-    )
-endif()
 
 set(gui_srcs
     ${util_srcs}

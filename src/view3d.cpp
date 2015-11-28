@@ -220,11 +220,11 @@ double View3D::getDevicePixelRatio()
 
 void View3D::initializeGL()
 {
-    // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS)​,
-    // which causes GL_INVALID_ENUM on GL 3.2+ core context as soon as glewInit()​ is called.
-    // It also doesn't fetch the function pointers. The solution is for GLEW to use glGetStringi​ instead.
+    // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS),
+    // which causes GL_INVALID_ENUM on GL 3.2+ core context as soon as glewInit() is called.
+    // It also doesn't fetch the function pointers. The solution is for GLEW to use glGetStringi instead.
     // The current version of GLEW is 1.10.0 but they still haven't corrected it.
-    // The only fix is to use glewExperimental​ for now.
+    // The only fix is to use glewExperimental for now.
     // https://www.opengl.org/wiki/OpenGL_Loading_Library
     glewExperimental = true;
     if (glewInit() != GLEW_OK)
@@ -286,6 +286,9 @@ void View3D::initializeGL()
         }
     }
 
+    // FIXME: Do something about this mess.  The shader editor widget needs to
+    // be initialized with the default shader, but View3D can only compile
+    // shaders after it has a valid OpenGL context.
     PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
     pv_parent->openShaderFile("shaders:las_points.glsl");
 
