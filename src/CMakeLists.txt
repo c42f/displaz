@@ -167,12 +167,12 @@ if (DISPLAZ_USE_QT4)
     )
 else()
     target_link_libraries(displaz
-        ${Qt5Core_LIBRARIES} ${Qt5Network_LIBRARIES} ${Qt5Widgets_LIBRARIES}
+        Qt5::Core Qt5::Network Qt5::Widgets
         ${ILMBASE_LIBRARIES}
     )
     target_link_libraries(displaz-gui
-        ${Qt5Core_LIBRARIES} ${Qt5Gui_LIBRARIES} ${Qt5OpenGL_LIBRARIES}
-        ${Qt5Network_LIBRARIES} ${Qt5Widgets_LIBRARIES}
+        Qt5::Core Qt5::Gui Qt5::OpenGL
+        Qt5::Network Qt5::Widgets
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
         ${ILMBASE_LIBRARIES}
     )
@@ -182,9 +182,9 @@ else()
 endif()
 
 if(APPLE)
-target_link_libraries(displaz-gui
-    ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
-)
+    target_link_libraries(displaz-gui
+        ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
+    )
 endif()
 
 if (DISPLAZ_BUILD_DVOX)
@@ -192,7 +192,7 @@ if (DISPLAZ_BUILD_DVOX)
     if (DISPLAZ_USE_QT4)
         target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
     else()
-        target_link_libraries(dvox ${Qt5Core_LIBRARIES})
+        target_link_libraries(dvox Qt5::Core)
     endif()
 endif()
 
@@ -212,12 +212,6 @@ endif()
 
 
 if(WIN32)
-    # TODO: test windows version - is this still required ?
-    if(DISPLAZ_USE_QT4)
-        target_link_libraries(displaz-gui
-            ${QT_QTMAIN_LIBRARY}
-        )
-    endif()
     if(DISPLAZ_STATIC)
         # These extra libraries are needed on windows when linking against a
         # static Qt-4.8.? which has been built with the default options.
@@ -243,9 +237,11 @@ if(WIN32)
             fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
         ")
     else()
+        get_target_property(QtCore_location Qt5::Core LOCATION)
+        get_filename_component(QtCore_dir "${QtCore_location}" PATH)
         install(CODE "
             include(BundleUtilities)
-            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${Qt5Core_LIBRARY_DIR}\")
+            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QtCore_dir}\")
         ")
     endif()
 endif()
@@ -274,7 +270,7 @@ if (DISPLAZ_USE_TESTS)
     if (DISPLAZ_USE_QT4)
         target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
     else ()
-        target_link_libraries(InterProcessLock_test ${Qt5Core_LIBRARIES})
+        target_link_libraries(InterProcessLock_test Qt5::Core)
     endif ()
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
