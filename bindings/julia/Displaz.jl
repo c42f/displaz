@@ -153,6 +153,11 @@ column vector :-(  Can we have a set of consistent broadcasting rules for this?
 It seems like the case of a 3x3 matrix will always be ambiguous if we try
 to guess what the user wants.
 
+### Data set attributes
+
+The following attributes can be attached to a dataset on each call to `plot3d`:
+
+  * `label` - A string labeling the data set
 
 ### Vertex attributes
 
@@ -195,7 +200,7 @@ position array into multiple line segments.  Each index in the line break array
 is the initial index of a line segment.
 """
 function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
-                linebreak=[1], _clear_before_plot=true)
+                label=nothing, linebreak=[1], _clear_before_plot=true)
     nvertices = size(position, 2)
     color = interpret_color(color)
     markershape = interpret_shape(markershape)
@@ -212,7 +217,9 @@ function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
     markersize = map(Float32,markersize)
     size(color,2) == nvertices || error("color must have same number of rows as position array")
     filename = tempname()*".ply"
+    seriestype = "Points"
     if '-' in markershape # Plot lines
+        seriestype = "Line"
         write_ply_lines(filename, position, color, linebreak)
     else # Plot points
         if length(markersize) == 1
@@ -229,8 +236,11 @@ function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
                          (:markershape, array_semantic, vec(markershape)'),
                          ))
     end
+    if label === nothing
+        label = "$seriestype [$nvertices vertices]"
+    end
     addopt = _clear_before_plot ? [] : "-add"
-    run(`displaz -background $addopt -shader generic_points.glsl -rmtemp $filename`)
+    run(`displaz -background $addopt -dataname $label -shader generic_points.glsl -rmtemp $filename`)
     nothing
 end
 
