@@ -134,18 +134,52 @@ interpret_shape(s::AbstractString) = Int[_shape_ids[c] for c in s]
 interpret_linebreak(nvertices, linebreak) = linebreak
 interpret_linebreak(nvertices, i::Integer) = i == 1 ? [1] : 1:i:nvertices
 
+# Multiple figure window support
+# TODO: Consider how the API below relates to Plots.jl and its tendency to
+# create a lot of new figure windows rather than clearing existing ones.
+type DisplazWindow
+    name::AbstractString
+end
+
+_current_figure = DisplazWindow("default")
+"Get handle to current figure window"
+function current()
+    _current_figure
+end
+
+"Get figure window by name may be new or already existing"
+function figure(name::AbstractString)
+    global _current_figure
+    _current_figure = DisplazWindow(name)
+end
+"Get figure window with given id"
+figure(id::Integer) = figure("Figure $id")
+
+_figure_id = 1
+"Create next incrementally named figure window, counting automatically from \"Figure 1\""
+function newfigure()
+    global _figure_id
+    id = _figure_id
+    _figure_id += 1
+    figure(id)
+end
+
 
 """
 Plot 3D points or lines on a new plot
 
 ```
-  plot3d(position, attr1=value1, ...)
+  plot3d([plotobj,] position; attr1=value1, ...)
 ```
 
 The `position` array should be a 3xN array of vertex positions. (This is
 consistent with treating the components of a single point as a column vector.
 It also has the same memory layout as an array of short `Vector3` instances
 from ImmutableArrays, for example).
+
+The `plotobj` argument is optional and determines which plot window to send the
+data to.  If it's not used the data will be sent to the plot window returned
+by `current()`.
 
 TODO: Revisit the nasty decision of the shape of position again - the above
 choice is somewhat inconsistent with supplying markersize / markershape as a
@@ -199,7 +233,7 @@ When plotting lines, the `linebreak` keyword argument can be used to break the
 position array into multiple line segments.  Each index in the line break array
 is the initial index of a line segment.
 """
-function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
+function plot3d(plotobj::DisplazWindow, position; color=[1,1,1], markersize=[0.1], markershape=[0],
                 label=nothing, linebreak=[1], _clear_before_plot=true)
     nvertices = size(position, 2)
     color = interpret_color(color)
@@ -240,7 +274,7 @@ function plot3d(position; color=[1,1,1], markersize=[0.1], markershape=[0],
         label = "$seriestype [$nvertices vertices]"
     end
     addopt = _clear_before_plot ? [] : "-add"
-    run(`displaz -background $addopt -dataname $label -shader generic_points.glsl -rmtemp $filename`)
+    run(`displaz -background $addopt -server $(plotobj.name) -dataname $label -shader generic_points.glsl -rmtemp $filename`)
     nothing
 end
 
@@ -250,9 +284,14 @@ Add points or lines to an existing 3D plot
 
 See plot3d for documentation
 """
-function plot3d!(position; kwargs...)
-    plot3d(position; _clear_before_plot=false, kwargs...)
+function plot3d!(plotobj::DisplazWindow, position; kwargs...)
+    plot3d(plotobj, position; _clear_before_plot=false, kwargs...)
 end
+
+
+# Plot to current window
+plot3d!(position; kwargs...) = plot3d!(current(), position; kwargs...)
+plot3d(position; kwargs...)  = plot3d(current(), position; kwargs...)
 
 
 #-------------------------------------------------------------------------------
