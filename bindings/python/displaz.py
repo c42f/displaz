@@ -84,7 +84,7 @@ def plot(position, plotspec='b.', color=None):
     plyfile = os.fdopen(fd, 'w')
     _write_ply(plyfile, position, color)
     plyfile.close()
-    args = ['-background', '-shader', 'generic_points.glsl', '-rmtemp', filename]
+    args = ['-script', '-shader', 'generic_points.glsl', '-rmtemp', filename]
     if __hold_plot:
         args = ['-add'] + args
     _call_displaz(*args)

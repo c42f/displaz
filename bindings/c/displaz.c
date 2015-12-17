@@ -100,9 +100,9 @@ int launch_displaz(const char* fileName, const char* options)
     char cmd[1024];
 #ifdef _WIN32
     // needs testing
-    _snprintf(cmd, 1024, "displaz -background %s %s", options, fileName);
+    _snprintf(cmd, 1024, "displaz -script %s %s", options, fileName);
 #else
-    snprintf(cmd, 1024, "displaz -background %s %s", options, fileName);
+    snprintf(cmd, 1024, "displaz -script %s %s", options, fileName);
 #endif
     cmd[1023] = '\0';
     //printf("%s\n", cmd);

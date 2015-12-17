@@ -298,7 +298,7 @@ class Window
             std::string opts = options;
             if (!m_windowName.empty())
                 opts += " -server \"" + m_windowName + "\"";
-            cmd = "displaz -background " + opts;
+            cmd = "displaz -script " + opts;
             if (m_debug)
                 std::cout << cmd << "\n";
             if (system(cmd.c_str()) != 0)

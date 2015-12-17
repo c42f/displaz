@@ -274,7 +274,7 @@ function plot3d(plotobj::DisplazWindow, position; color=[1,1,1], markersize=[0.1
         label = "$seriestype [$nvertices vertices]"
     end
     addopt = _clear_before_plot ? [] : "-add"
-    run(`displaz -background $addopt -server $(plotobj.name) -dataname $label -shader generic_points.glsl -rmtemp $filename`)
+    run(`displaz -script $addopt -server $(plotobj.name) -dataname $label -shader generic_points.glsl -rmtemp $filename`)
     nothing
 end
 

@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     bool rmTemp = false;
     bool quitRemote = false;
     bool queryCursor = false;
-    bool background = false;
+    bool script = false;
 
     bool printVersion = false;
     bool printHelp = false;
@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
-        "-background",   &background,    "Put process in background - do not wait for displaz GUI to exit before returning",
+        "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
+                                         " (a) do not wait for displaz GUI to exit before returning,",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -253,7 +254,7 @@ int main(int argc, char *argv[])
                              shaderName.c_str());
     }
 
-    if (startedGui && !background)
+    if (startedGui && !script)
     {
         SigIntTransferHandler sigIntHandler(guiPid);
         channel->waitForDisconnected(-1);
