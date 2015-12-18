@@ -82,8 +82,8 @@ function write_ply_lines(filename, position, color, linebreak)
         """
     )
 
-    write(fid,convert(Array{Float64,2},position'))
-    write(fid,color')
+    write(fid,convert(Array{Float64,2},position))
+    write(fid,color)
 
     realstart = 0
     linelen = []
@@ -108,14 +108,14 @@ end
 #                           :marksize  => (array_semantic,1),
 #                           :markshape => (array_semantic,1)]
 
-const _color_names = @compat Dict('r' => [1.0  0   0],
-                                 'g' => [0.0  0.8 0],
-                                 'b' => [0.0  0   0.8],
-                                 'c' => [0.0  1  1],
-                                 'm' => [1.0  0  1],
-                                 'y' => [1.0  1  0],
-                                 'k' => [0.0  0  0],
-                                 'w' => [1.0  1  1])
+const _color_names = @compat Dict('r' => [1.0, 0,   0],
+                                  'g' => [0.0, 0.8, 0],
+                                  'b' => [0.0, 0,   0.8],
+                                  'c' => [0.0, 1,   1],
+                                  'm' => [1.0, 0,   1],
+                                  'y' => [1.0, 1,   0],
+                                  'k' => [0.0, 0,   0],
+                                  'w' => [1.0, 1,   1])
 
 const _shape_ids = @compat Dict('.' => 0,
                                 's' => 1,
