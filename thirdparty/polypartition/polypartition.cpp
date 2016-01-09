@@ -373,7 +373,7 @@ void TPPLPartition::UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, 
 int TPPLPartition::Triangulate_EC(TPPLPoly *poly, list<TPPLPoly> *triangles) {
 	long numvertices;
 	PartitionVertex *vertices;
-	PartitionVertex *ear;
+	PartitionVertex *ear = 0;
 	TPPLPoly triangle;
 	long i,j;
 	bool earfound;
