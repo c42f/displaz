@@ -48,6 +48,7 @@ script:
     - cd build
     - cmake -DCMAKE_BUILD_TYPE=${DISPLAZ_BUILD_TYPE} ..
     - make -j4
+    - ctest -VV
     - cd ..
 
 matrix:
