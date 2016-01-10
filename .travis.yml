@@ -4,9 +4,17 @@ os:
     - linux
     - osx
 
+sudo: required
+dist: trusty   # Use ubuntu 14.04 for qt5 support
+
 compiler:
     - gcc
     - clang
+
+env:
+    matrix:
+        - DISPLAZ_BUILD_TYPE=Release
+        - DISPLAZ_BUILD_TYPE=Debug
 
 # either whitelist or blacklist branches
 # branches:
@@ -16,10 +24,11 @@ compiler:
 #         - experimental
 
 before_install:
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get update -qq; fi
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
 
 install:
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils; fi
+    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq -y git g++ cmake qt5-default python-docutils; fi
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install git qt5; fi
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew unlink qt5; fi
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew link qt5 --force; fi
@@ -37,13 +46,9 @@ script:
     # Build displaz
     - mkdir build
     - cd build
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then cmake -DDISPLAZ_USE_QT4=1 ..; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then cmake ..; fi
+    - cmake -DCMAKE_BUILD_TYPE=${DISPLAZ_BUILD_TYPE} ..
     - make -j4
-    - make clean
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then cmake -DCMAKE_BUILD_TYPE=Debug -DDISPLAZ_USE_QT4=1 ..; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then cmake -DCMAKE_BUILD_TYPE=Debug ..; fi
-    - make -j4
+    - ctest -VV
     - cd ..
 
 matrix:
