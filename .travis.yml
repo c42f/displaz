@@ -11,6 +11,11 @@ compiler:
     - gcc
     - clang
 
+env:
+    matrix:
+        - DISPLAZ_BUILD_TYPE=Release
+        - DISPLAZ_BUILD_TYPE=Debug
+
 # either whitelist or blacklist branches
 # branches:
 #     only:
@@ -41,11 +46,7 @@ script:
     # Build displaz
     - mkdir build
     - cd build
-    - cmake ..
-    - make -j4
-    - make clean
-    # TODO: Do this using build matrix env var
-    - cmake -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake -DCMAKE_BUILD_TYPE=${DISPLAZ_BUILD_TYPE} ..
     - make -j4
     - cd ..
 
