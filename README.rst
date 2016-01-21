@@ -49,6 +49,9 @@ dependencies for several distributions::
     # Ubuntu >= 14.04 (and probably other debian-based distributions)
     sudo apt-get install git g++ cmake qt5-default python-docutils
 
+    # Mint
+    sudo apt-get install git g++ cmake qt5-default libqt5opengl5-dev python-docutils
+
     # Older ubuntu (qt4 based - add cmake flag -DDISPLAZ_USE_QT4=TRUE)
     sudo apt-get install git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils
 
