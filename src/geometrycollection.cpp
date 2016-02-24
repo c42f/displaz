@@ -25,9 +25,8 @@ int GeometryCollection::findMatchingRow(const std::string & filename_substr)
 {
     for (unsigned row = 0; row < m_geometries.size(); row++)
     {
-		if (std::string::npos != m_geometries[row]->fileName().toStdString().find(filename_substr))
+        if (std::string::npos != m_geometries[row]->fileName().toStdString().find(filename_substr))
         {
-            printf("MATCHED '%s'\n", m_geometries[row]->fileName().toStdString().c_str());
             return row;
         }
     }
@@ -36,8 +35,6 @@ int GeometryCollection::findMatchingRow(const std::string & filename_substr)
 
 void GeometryCollection::unloadFiles(const std::string & filename_substr)
 {
-    printf("GeometryCollection::unloadFiles(%s)\n", filename_substr.c_str());
-
     while (true)
     {
         int row = findMatchingRow(filename_substr);

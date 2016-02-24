@@ -226,9 +226,9 @@ int main(int argc, char *argv[])
     if (posX != -DBL_MAX)
     {
         channel->sendMessage("SET_VIEW_POSITION\n" +
-                             QByteArray().setNum(posX, 'g', 32) + "\n" +
-                             QByteArray().setNum(posY, 'g', 32) + "\n" +
-                             QByteArray().setNum(posZ, 'g', 32));
+                             QByteArray().setNum(posX, 'e', 17) + "\n" +
+                             QByteArray().setNum(posY, 'e', 17) + "\n" +
+                             QByteArray().setNum(posZ, 'e', 17));
     }
     if (yaw != -DBL_MAX)
     {
