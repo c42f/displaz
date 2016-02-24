@@ -21,6 +21,34 @@ void GeometryCollection::clear()
     }
 }
 
+int GeometryCollection::findMatchingRow(const std::string & filename_substr)
+{
+    for (unsigned row = 0; row < m_geometries.size(); row++)
+    {
+		if (std::string::npos != m_geometries[row]->fileName().toStdString().find(filename_substr))
+        {
+            printf("MATCHED '%s'\n", m_geometries[row]->fileName().toStdString().c_str());
+            return row;
+        }
+    }
+    return -1;
+}
+
+void GeometryCollection::unloadFiles(const std::string & filename_substr)
+{
+    printf("GeometryCollection::unloadFiles(%s)\n", filename_substr.c_str());
+
+    while (true)
+    {
+        int row = findMatchingRow(filename_substr);
+
+        if (row == -1)
+            break;
+
+        this->removeRows(row, 1, QModelIndex());
+    }
+}
+
 
 int GeometryCollection::rowCount(const QModelIndex & parent) const
 {

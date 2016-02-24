@@ -378,6 +378,29 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         m_geometries->clear();
     }
+    else if (commandTokens[0] == "UNLOAD_FILES")
+    {
+        m_geometries->unloadFiles(QString(commandTokens[1]).toStdString());
+    }
+    else if (commandTokens[0] == "SET_VIEW_POSITION")
+    {
+        if (commandTokens.size()-1 != 3)
+        {
+            tfm::format(std::cerr, "Expected three coordinates, got %d\n",
+                        commandTokens.size()-1);
+            return;
+        }
+        bool xOk = false, yOk = false, zOk = false;
+        double x = commandTokens[1].toDouble(&xOk);
+        double y = commandTokens[2].toDouble(&yOk);
+        double z = commandTokens[3].toDouble(&zOk);
+        if (!zOk || !yOk || !zOk)
+        {
+            std::cerr << "Could not parse XYZ coordinates for position\n";
+            return;
+        }
+        m_pointView->centerOnPoint(Imath::V3d(x, y, z));
+    }
     else if (commandTokens[0] == "SET_VIEW_ANGLES")
     {
         if (commandTokens.size()-1 != 3)

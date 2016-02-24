@@ -29,6 +29,8 @@ class GeometryCollection : public QAbstractListModel
 
         /// Remove all geometries from the list
         void clear();
+        /// Remove and unload all geometries whose filenames contain given substring 
+        void unloadFiles(const std::string & filename_substr);
 
         // Following implemented from QAbstractListModel:
         virtual int rowCount(const QModelIndex & parent = QModelIndex()) const;
@@ -49,6 +51,7 @@ class GeometryCollection : public QAbstractListModel
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);
+        int findMatchingRow(const std::string & filename_substr);
 
         GeometryVec m_geometries;
 };

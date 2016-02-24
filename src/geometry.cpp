@@ -51,7 +51,9 @@ Geometry::Geometry()
 
 Geometry::~Geometry()
 {
-    destroyBuffers();
+    // Line below commented out as a temporary fix to prevent segfaults 
+    // when removing datasets. Probably leaking memory now instead though.
+    //destroyBuffers();
 }
 
 std::shared_ptr<Geometry> Geometry::create(QString fileName)

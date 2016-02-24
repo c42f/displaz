@@ -209,6 +209,12 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
 }
 
+void View3D::centerOnPoint(const Imath::V3d& pos)
+{
+    m_cursorPos = pos;
+    m_camera.setCenter(m_cursorPos);
+}
+
 double View3D::getDevicePixelRatio()
 {
 #ifdef DISPLAZ_USE_QT4
@@ -522,27 +528,32 @@ void View3D::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::MidButton ||
         (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)))
     {
-        double snapScale = 0.025;
-        QString pointInfo;
-        V3d newPos(0.0,0.0,0.0); //init newPos to origin
-        if (snapToGeometry(guessClickPosition(event->pos()), snapScale,
-                           &newPos, &pointInfo))
-        {
-            V3d posDiff = newPos - m_prevCursorSnap;
-            g_logger.info("Selected Point Attributes:\n"
-                          "%s"
-                          "diff with previous = %.3f\n"
-                          "vector diff = %.3f",
-                          pointInfo, posDiff.length(), posDiff);
-            // Snap cursor /and/ camera to new position
-            // TODO: Decouple these, but in a sensible way
-            m_cursorPos = newPos;
-            m_camera.setCenter(newPos);
-            m_prevCursorSnap = newPos;
-        }
+        snapToPoint(guessClickPosition(event->pos()));
     }
 }
 
+void View3D::snapToPoint(const Imath::V3d & pos)
+{
+
+    double snapScale = 0.025;
+    QString pointInfo;
+    V3d newPos(0.0,0.0,0.0); //init newPos to origin
+    if (snapToGeometry(pos, snapScale,
+                &newPos, &pointInfo))
+    {
+        V3d posDiff = newPos - m_prevCursorSnap;
+        g_logger.info("Selected Point Attributes:\n"
+                "%s"
+                "diff with previous = %.3f\n"
+                "vector diff = %.3f",
+                pointInfo, posDiff.length(), posDiff);
+        // Snap cursor /and/ camera to new position
+        // TODO: Decouple these, but in a sensible way
+        m_cursorPos = newPos;
+        m_camera.setCenter(newPos);
+        m_prevCursorSnap = newPos;
+    }
+}
 
 void View3D::mouseMoveEvent(QMouseEvent* event)
 {
