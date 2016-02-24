@@ -72,7 +72,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
     for (size_t i = 0; i < outerRingInds.size(); ++i)
     {
         GLuint j = 3*outerRingInds[i];
-        assert(j + 3 < verts.size());
+        assert(j + 2 < verts.size());
         bbox.extendBy(V3d(verts[j], verts[j+1], verts[j+2]));
     }
     V3d diag = bbox.size();
