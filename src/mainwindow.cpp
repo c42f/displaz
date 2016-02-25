@@ -380,7 +380,15 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     }
     else if (commandTokens[0] == "UNLOAD_FILES")
     {
-        m_geometries->unloadFiles(QString(commandTokens[1]).toStdString());
+        QString regex_str = commandTokens[1];
+        QRegExp regex(regex_str, Qt::CaseSensitive, QRegExp::WildcardUnix);
+        if (!regex.isValid())
+        {
+            tfm::format(std::cerr, "Invalid regular expression '%s': %s\n", 
+                        regex_str, regex.errorString()); 
+            return;
+        }
+        m_geometries->unloadFiles(regex);
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {

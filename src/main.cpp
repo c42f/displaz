@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
-        "-unload %s",    &unloadFiles,   "Remote: unload currently loaded files containing given substring",
+        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching given (unix shell style) regex",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
