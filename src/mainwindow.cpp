@@ -384,8 +384,8 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QRegExp regex(regex_str, Qt::CaseSensitive, QRegExp::WildcardUnix);
         if (!regex.isValid())
         {
-            tfm::format(std::cerr, "Invalid regular expression '%s': %s\n", 
-                        regex_str, regex.errorString()); 
+            g_logger.error("Invalid pattern in -unload command: '%s': %s",
+                           regex_str, regex.errorString());
             return;
         }
         m_geometries->unloadFiles(regex);
