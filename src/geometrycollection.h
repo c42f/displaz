@@ -12,6 +12,7 @@
 #include "geometry.h"
 #include "fileloader.h"
 
+class QRegExp;
 
 /// Collection of loaded data sets for use with Qt's model view architecture
 ///
@@ -29,6 +30,8 @@ class GeometryCollection : public QAbstractListModel
 
         /// Remove all geometries from the list
         void clear();
+        /// Remove and unload all geometries whose filenames matched by given QRegExp object
+        void unloadFiles(const QRegExp & filenameRegex);
 
         // Following implemented from QAbstractListModel:
         virtual int rowCount(const QModelIndex & parent = QModelIndex()) const;
@@ -49,6 +52,7 @@ class GeometryCollection : public QAbstractListModel
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);
+        int findMatchingRow(const QRegExp & filenameRegex);
 
         GeometryVec m_geometries;
 };

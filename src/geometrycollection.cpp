@@ -6,6 +6,8 @@
 #include "tinyformat.h"
 #include "fileloader.h"
 
+#include <QRegExp>
+
 GeometryCollection::GeometryCollection(QObject* parent)
     : QAbstractListModel(parent)
 { }
@@ -18,6 +20,29 @@ void GeometryCollection::clear()
         emit beginRemoveRows(QModelIndex(), 0, (int)m_geometries.size()-1);
         m_geometries.clear();
         emit endRemoveRows();
+    }
+}
+
+int GeometryCollection::findMatchingRow(const QRegExp & filenameRegex)
+{
+    for (unsigned row = 0; row < m_geometries.size(); row++)
+    {
+        if (filenameRegex.exactMatch(m_geometries[row]->name()))
+            return row;
+    }
+    return -1;
+}
+
+void GeometryCollection::unloadFiles(const QRegExp & filenameRegex)
+{
+    while (true)
+    {
+        int row = findMatchingRow(filenameRegex);
+
+        if (row == -1)
+            break;
+
+        this->removeRows(row, 1, QModelIndex());
     }
 }
 

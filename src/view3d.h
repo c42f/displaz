@@ -62,6 +62,8 @@ class View3D : public QGLWidget
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
+        void centerOnPoint(const Imath::V3d& pos);
+        void setExplicitCursorPos(const Imath::V3d& pos);
 
     protected:
         // Qt OpenGL callbacks
@@ -107,6 +109,7 @@ class View3D : public QGLWidget
         bool snapToGeometry(const Imath::V3d& pos, double normalScaling,
                             Imath::V3d* newPos, QString* pointInfo);
 
+        void snapToPoint(const Imath::V3d& pos);
         std::vector<const Geometry*> selectedGeometry() const;
 
         /// Mouse-based camera positioning
@@ -114,6 +117,8 @@ class View3D : public QGLWidget
         QPoint m_prevMousePos;
         Qt::MouseButton m_mouseButton;
         bool m_middleButton;
+        // if true, an explicit cursor position has been specified
+        bool m_explicitCursorPos;
         /// Position of 3D cursor
         V3d m_cursorPos;
         V3d m_prevCursorSnap;

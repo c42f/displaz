@@ -55,10 +55,12 @@ int main(int argc, char *argv[])
 {
     int maxPointCount = -1;
     std::string serverName = "default";
+    double posX = -DBL_MAX, posY = -DBL_MAX, posZ = -DBL_MAX;
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
+    std::string unloadFiles;
     bool noServer = false;
 
     bool clearFiles = false;
@@ -85,9 +87,11 @@ int main(int argc, char *argv[])
         "-noserver",     &noServer,      "Don't attempt to open files in existing window",
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
+        "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
+        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching given (unix shell style) regex",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set",
         "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
@@ -150,7 +154,7 @@ int main(int argc, char *argv[])
             std::cerr << "ERROR: No remote displaz instance found\n";
             return EXIT_FAILURE;
         }
-        if (quitRemote || clearFiles)
+        if (quitRemote || clearFiles || !unloadFiles.empty())
         {
             return EXIT_SUCCESS;
         }
@@ -214,6 +218,17 @@ int main(int argc, char *argv[])
     if (clearFiles)
     {
         channel->sendMessage("CLEAR_FILES");
+    }
+    if (!unloadFiles.empty())
+    {
+        channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadFiles.c_str());
+    }
+    if (posX != -DBL_MAX)
+    {
+        channel->sendMessage("SET_VIEW_POSITION\n" +
+                             QByteArray().setNum(posX, 'e', 17) + "\n" +
+                             QByteArray().setNum(posY, 'e', 17) + "\n" +
+                             QByteArray().setNum(posZ, 'e', 17));
     }
     if (yaw != -DBL_MAX)
     {
