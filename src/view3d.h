@@ -63,6 +63,7 @@ class View3D : public QGLWidget
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
         void centerOnPoint(const Imath::V3d& pos);
+        void setExplicitCursorPos(const Imath::V3d& pos);
 
     protected:
         // Qt OpenGL callbacks
@@ -116,6 +117,8 @@ class View3D : public QGLWidget
         QPoint m_prevMousePos;
         Qt::MouseButton m_mouseButton;
         bool m_middleButton;
+        // if true, an explicit cursor position has been specified
+        bool m_explicit_cursor_pos;
         /// Position of 3D cursor
         V3d m_cursorPos;
         V3d m_prevCursorSnap;

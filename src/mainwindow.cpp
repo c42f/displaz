@@ -407,7 +407,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             std::cerr << "Could not parse XYZ coordinates for position\n";
             return;
         }
-        m_pointView->centerOnPoint(Imath::V3d(x, y, z));
+        m_pointView->setExplicitCursorPos(Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_ANGLES")
     {
