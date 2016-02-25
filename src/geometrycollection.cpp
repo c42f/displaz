@@ -27,10 +27,8 @@ int GeometryCollection::findMatchingRow(const QRegExp & filenameRegex)
 {
     for (unsigned row = 0; row < m_geometries.size(); row++)
     {
-        if (filenameRegex.exactMatch(m_geometries[row]->fileName()))
-        {
+        if (filenameRegex.exactMatch(m_geometries[row]->name()))
             return row;
-        }
     }
     return -1;
 }
