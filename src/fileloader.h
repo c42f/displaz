@@ -19,20 +19,20 @@
 struct FileLoadInfo
 {
     QString filePath;     /// Path to the file on disk
-    QString dataSetName;  /// Human readable name of the dataset
+    QString dataSetLabel; /// Human readable label for the dataset
     bool deleteAfterLoad; /// Delete file after load - for use with temporary files.
 
     FileLoadInfo() : deleteAfterLoad(false) {}
-    FileLoadInfo(const QString& filePath_, const QString& dataSetName_ = "",
+    FileLoadInfo(const QString& filePath_, const QString& dataSetLabel_ = "",
                  bool deleteAfterLoad_ = false)
         : filePath(filePath_),
-        dataSetName(dataSetName_),
+        dataSetLabel(dataSetLabel_),
         deleteAfterLoad(deleteAfterLoad_)
     {
-        if (dataSetName.isEmpty())
+        if (dataSetLabel.isEmpty())
         {
             QFileInfo fileInfo(filePath);
-            dataSetName = fileInfo.fileName();
+            dataSetLabel = fileInfo.fileName();
         }
     }
 };
@@ -103,7 +103,7 @@ class FileLoader : public QObject
         void loadFileImpl(const FileLoadInfo& loadInfo, bool reloaded)
         {
             std::shared_ptr<Geometry> geom = Geometry::create(loadInfo.filePath);
-            geom->setName(loadInfo.dataSetName);
+            geom->setLabel(loadInfo.dataSetLabel);
             connect(geom.get(), SIGNAL(loadProgress(int)),
                     this, SIGNAL(loadProgress(int)));
             connect(geom.get(), SIGNAL(loadStepStarted(QString)),

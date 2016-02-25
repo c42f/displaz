@@ -27,7 +27,7 @@ int GeometryCollection::findMatchingRow(const QRegExp & filenameRegex)
 {
     for (unsigned row = 0; row < m_geometries.size(); row++)
     {
-        if (filenameRegex.exactMatch(m_geometries[row]->name()))
+        if (filenameRegex.exactMatch(m_geometries[row]->label()))
             return row;
     }
     return -1;
@@ -60,7 +60,7 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
     if (!index.isValid())
         return QVariant();
     if (role == Qt::DisplayRole)
-        return m_geometries[index.row()]->name();
+        return m_geometries[index.row()]->label();
     return QVariant();
 }
 
@@ -106,7 +106,7 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
         {
             if (m_geometries[i]->fileName() == geom->fileName())
             {
-                geom->setName(m_geometries[i]->name());
+                geom->setLabel(m_geometries[i]->label());
                 m_geometries[i] = geom;
                 QModelIndex idx = createIndex((int)i, 0);
                 emit dataChanged(idx, idx);
