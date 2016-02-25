@@ -23,11 +23,11 @@ void GeometryCollection::clear()
     }
 }
 
-int GeometryCollection::findMatchingRow(const QRegExp & filename_regex)
+int GeometryCollection::findMatchingRow(const QRegExp & filenameRegex)
 {
     for (unsigned row = 0; row < m_geometries.size(); row++)
     {
-        if (filename_regex.exactMatch(m_geometries[row]->fileName()))
+        if (filenameRegex.exactMatch(m_geometries[row]->fileName()))
         {
             return row;
         }
@@ -35,11 +35,11 @@ int GeometryCollection::findMatchingRow(const QRegExp & filename_regex)
     return -1;
 }
 
-void GeometryCollection::unloadFiles(const QRegExp & filename_regex)
+void GeometryCollection::unloadFiles(const QRegExp & filenameRegex)
 {
     while (true)
     {
-        int row = findMatchingRow(filename_regex);
+        int row = findMatchingRow(filenameRegex);
 
         if (row == -1)
             break;

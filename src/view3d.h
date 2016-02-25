@@ -118,7 +118,7 @@ class View3D : public QGLWidget
         Qt::MouseButton m_mouseButton;
         bool m_middleButton;
         // if true, an explicit cursor position has been specified
-        bool m_explicit_cursor_pos;
+        bool m_explicitCursorPos;
         /// Position of 3D cursor
         V3d m_cursorPos;
         V3d m_prevCursorSnap;

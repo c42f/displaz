@@ -29,7 +29,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     : QGLWidget(format, parent),
     m_camera(false, false),
     m_mouseButton(Qt::NoButton),
-    m_explicit_cursor_pos(false),
+    m_explicitCursorPos(false),
     m_cursorPos(0),
     m_prevCursorSnap(0),
     m_backgroundColor(60, 50, 50),
@@ -105,7 +105,7 @@ void View3D::restartRender()
 
 void View3D::geometryChanged()
 {
-    if (m_geometries->rowCount() == 1 && !m_explicit_cursor_pos)
+    if (m_geometries->rowCount() == 1 && !m_explicitCursorPos)
         centerOnGeometry(m_geometries->index(0));
     restartRender();
 }
@@ -218,7 +218,7 @@ void View3D::centerOnPoint(const Imath::V3d& pos)
 
 void View3D::setExplicitCursorPos(const Imath::V3d& pos)
 {
-    m_explicit_cursor_pos = true;
+    m_explicitCursorPos = true;
     centerOnPoint(pos);
 }
 
