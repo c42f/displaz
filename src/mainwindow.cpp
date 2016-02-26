@@ -364,14 +364,14 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         bool rmTemp = flags.contains("RMTEMP");
         for (int i = 2; i < commandTokens.size(); ++i)
         {
-            QList<QByteArray> pathAndName = commandTokens[i].split('\0');
-            if (pathAndName.size() != 2)
+            QList<QByteArray> pathAndLabel = commandTokens[i].split('\0');
+            if (pathAndLabel.size() != 2)
             {
                 g_logger.error("Unrecognized OPEN_FILES token: %s",
                                QString(commandTokens[i]));
                 continue;
             }
-            m_fileLoader->loadFile(FileLoadInfo(pathAndName[0], pathAndName[1], rmTemp));
+            m_fileLoader->loadFile(FileLoadInfo(pathAndLabel[0], pathAndLabel[1], rmTemp));
         }
     }
     else if (commandTokens[0] == "CLEAR_FILES")
@@ -384,8 +384,8 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QRegExp regex(regex_str, Qt::CaseSensitive, QRegExp::WildcardUnix);
         if (!regex.isValid())
         {
-            tfm::format(std::cerr, "Invalid regular expression '%s': %s\n", 
-                        regex_str, regex.errorString()); 
+            g_logger.error("Invalid pattern in -unload command: '%s': %s",
+                           regex_str, regex.errorString());
             return;
         }
         m_geometries->unloadFiles(regex);

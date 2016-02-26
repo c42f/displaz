@@ -33,20 +33,20 @@ static std::string displazIpcName(const std::string& suffix = "")
 struct PositionalArg
 {
     std::string filePath;
-    std::string dataSetName;
+    std::string dataSetLabel;
 };
 
-static std::string g_dataSetName;
+static std::string g_dataSetLabel;
 static std::vector<PositionalArg> g_initialFileNames;
 static int storeFileName (int argc, const char *argv[])
 {
     assert(argc == 1);
     PositionalArg arg;
     arg.filePath = argv[0];
-    arg.dataSetName = g_dataSetName;
+    arg.dataSetLabel = g_dataSetLabel;
     g_initialFileNames.push_back(arg);
     // Dataset name must be explicitly specified for each file
-    g_dataSetName.clear();
+    g_dataSetLabel.clear();
     return 0;
 }
 
@@ -76,11 +76,11 @@ int main(int argc, char *argv[])
     ArgParse::ArgParse ap;
     ap.options(
         "displaz - A lidar point cloud viewer\n"
-        "Usage: displaz [opts] [file1.las ...]",
+        "Usage: displaz [opts] [ [-label label1] file1.las ... ]",
         "%*", storeFileName, "",
 
         "<SEPARATOR>", "\nData set tagging",
-        "-dataname %s",  &g_dataSetName, "Override the displayed dataset name for the next data file on the command line with the given name",
+        "-label %s",     &g_dataSetLabel, "Override the displayed dataset label for the next data file on the command line with the given name",
 
         "<SEPARATOR>", "\nInitial settings / remote commands:",
         "-maxpoints %d", &maxPointCount, "Maximum number of points to load at a time",
@@ -209,11 +209,11 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < g_initialFileNames.size(); ++i)
         {
             const PositionalArg& arg = g_initialFileNames[i];
-            std::string dataSetName = !arg.dataSetName.empty() ? arg.dataSetName : arg.filePath;
+            std::string dataSetLabel = !arg.dataSetLabel.empty() ? arg.dataSetLabel : arg.filePath;
             command += '\n';
             command += currentDir.absoluteFilePath(QString::fromStdString(arg.filePath)).toUtf8();
             command += '\0';
-            command += QByteArray(dataSetName.data(), (int)dataSetName.size());
+            command += QByteArray(dataSetLabel.data(), (int)dataSetLabel.size());
         }
         channel->sendMessage(command);
     }
