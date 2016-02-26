@@ -43,12 +43,14 @@ int main(int argc, char* argv[])
     std::string lockName;
     std::string lockId;
     std::string socketName;
+    std::string shaderName;
 
     ArgParse::ArgParse ap;
     ap.options(
         "displaz-gui - don't use this directly, use the displaz commandline helper instead)",
         "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
         "-socketname %s", &socketName,             "Local socket name for IPC",
+        "-shader %s",    &shaderName,              "Name of shader file to load on startup",
         NULL
     );
 
@@ -79,7 +81,7 @@ int main(int argc, char* argv[])
     //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
-    PointViewerMainWindow window(f);
+    PointViewerMainWindow window(f, QString::fromStdString(shaderName));
     InterProcessLock instanceLock(lockName);
     if (!lockId.empty())
         instanceLock.inherit(lockId);

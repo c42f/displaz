@@ -38,7 +38,7 @@
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
-PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
+PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format, const QString & pointShader)
     : m_progressBar(0),
     m_pointView(0),
     m_shaderEditor(0),
@@ -178,7 +178,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new View3D(m_geometries, format, this);
+    m_pointView = new View3D(m_geometries, format, this, pointShader);
     setCentralWidget(m_pointView);
     connect(drawBoundingBoxes, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawBoundingBoxes()));
@@ -463,10 +463,6 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else if (commandTokens[0] == "SET_MAX_POINT_COUNT")
     {
         m_maxPointCount = commandTokens[1].toLongLong();
-    }
-    else if (commandTokens[0] == "OPEN_SHADER")
-    {
-        openShaderFile(commandTokens[1]);
     }
     else
     {

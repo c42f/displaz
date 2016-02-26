@@ -163,7 +163,9 @@ int main(int argc, char *argv[])
         QStringList args;
         args << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
-             << "-socketname"   << socketName;
+             << "-socketname"   << socketName
+             << "-shader"       << QString::fromStdString(shaderName);
+
         QString guiExe = QDir(QCoreApplication::applicationDirPath())
                          .absoluteFilePath("displaz-gui");
         if (!QProcess::startDetached(guiExe, args,
@@ -257,16 +259,6 @@ int main(int argc, char *argv[])
     {
         channel->sendMessage("SET_MAX_POINT_COUNT\n" +
                              QByteArray().setNum(maxPointCount));
-    }
-    if (!shaderName.empty() && startedGui)
-    {
-        // Note - only send the OPEN_SHADER command when the GUI is initially
-        // started, since this is probably what you want when using from a
-        // scripting language.
-        // TODO: This shader open behaviour seems a bit inconsistent - figure
-        // out how to make it nicer?
-        channel->sendMessage(QByteArray("OPEN_SHADER\n") +
-                             shaderName.c_str());
     }
 
     if (startedGui && !script)
