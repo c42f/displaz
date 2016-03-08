@@ -1,6 +1,8 @@
 project(viewer)
 
 include_directories(BEFORE
+    .
+    render
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
     ${OPENGL_INCLUDE_DIR}
@@ -65,17 +67,18 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     datasetui.h
     dragspinbox.h
     fileloader.h
-    geometry.h
     geometrycollection.h
-    hcloudview.h
     helpdialog.h
     interactivecamera.h
     qtlogger.h
     mainwindow.h
-    view3d.h
-    pointarray.h
     shadereditor.h
-    shader.h
+
+    render/geometry.h
+    render/hcloudview.h
+    render/view3d.h
+    render/pointarray.h
+    render/shader.h
 )
 
 set(gui_srcs
@@ -84,21 +87,23 @@ set(gui_srcs
     ${gui_moc_srcs}
     datasetui.cpp
     DrawCostModel.cpp
-    geometry.cpp
     geometrycollection.cpp
-    glutil.cpp
-    hcloudview.cpp
     qtlogger.cpp
     guimain.cpp
     mainwindow.cpp
-    mesh.cpp
     ply_io.cpp
     las_io.cpp
-    pointarray.cpp
     PolygonBuilder.cpp
-    view3d.cpp
     shadereditor.cpp
-    shader.cpp
+
+    render/geometry.cpp
+    render/glutil.cpp
+    render/hcloudview.cpp
+    render/mesh.cpp
+    render/pointarray.cpp
+    render/view3d.cpp
+    render/shader.cpp
+
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp
 )
