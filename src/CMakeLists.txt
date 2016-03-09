@@ -2,6 +2,7 @@ project(viewer)
 
 include_directories(BEFORE
     .
+    gui
     render
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
@@ -64,15 +65,16 @@ set(ipc_srcs
 
 # GUI
 displaz_qt_wrap_cpp(gui_moc_srcs
-    datasetui.h
-    dragspinbox.h
     fileloader.h
     geometrycollection.h
-    helpdialog.h
-    interactivecamera.h
-    qtlogger.h
-    mainwindow.h
-    shadereditor.h
+
+    gui/datasetui.h
+    gui/dragspinbox.h
+    gui/helpdialog.h
+    gui/interactivecamera.h
+    gui/mainwindow.h
+    gui/qtlogger.h
+    gui/shadereditor.h
 
     render/geometry.h
     render/hcloudview.h
@@ -85,16 +87,17 @@ set(gui_srcs
     ${util_srcs}
     ${ipc_srcs}
     ${gui_moc_srcs}
-    datasetui.cpp
     DrawCostModel.cpp
     geometrycollection.cpp
-    qtlogger.cpp
-    guimain.cpp
-    mainwindow.cpp
     ply_io.cpp
     las_io.cpp
     PolygonBuilder.cpp
-    shadereditor.cpp
+
+    gui/datasetui.cpp
+    gui/guimain.cpp
+    gui/mainwindow.cpp
+    gui/qtlogger.cpp
+    gui/shadereditor.cpp
 
     render/geometry.cpp
     render/glutil.cpp
