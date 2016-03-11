@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-#include "qtlogger.h"
+#include "QtLogger.h"
 
 //------------------------------------------------------------------------------
 // Utilities for interfacing with rply

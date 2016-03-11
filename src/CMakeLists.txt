@@ -68,19 +68,19 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     fileloader.h
     geometrycollection.h
 
-    gui/datasetui.h
-    gui/dragspinbox.h
-    gui/helpdialog.h
-    gui/interactivecamera.h
-    gui/mainwindow.h
-    gui/qtlogger.h
-    gui/shadereditor.h
+    gui/DataSetUI.h
+    gui/DragSpinBox.h
+    gui/HelpDialog.h
+    gui/InteractiveCamera.h
+    gui/PointViewerMainWindow.h
+    gui/QtLogger.h
+    gui/ShaderEditor.h
 
-    render/geometry.h
-    render/hcloudview.h
-    render/view3d.h
-    render/pointarray.h
-    render/shader.h
+    render/Geometry.h
+    render/HCloudView.h
+    render/View3D.h
+    render/PointArray.h
+    render/Shader.h
 )
 
 set(gui_srcs
@@ -93,19 +93,19 @@ set(gui_srcs
     las_io.cpp
     PolygonBuilder.cpp
 
-    gui/datasetui.cpp
+    gui/DataSetUI.cpp
     gui/guimain.cpp
-    gui/mainwindow.cpp
-    gui/qtlogger.cpp
-    gui/shadereditor.cpp
+    gui/PointViewerMainWindow.cpp
+    gui/QtLogger.cpp
+    gui/ShaderEditor.cpp
 
-    render/geometry.cpp
+    render/Geometry.cpp
     render/glutil.cpp
-    render/hcloudview.cpp
-    render/mesh.cpp
-    render/pointarray.cpp
-    render/view3d.cpp
-    render/shader.cpp
+    render/HCloudView.cpp
+    render/TriMesh.cpp
+    render/PointArray.cpp
+    render/View3D.cpp
+    render/Shader.cpp
 
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp
