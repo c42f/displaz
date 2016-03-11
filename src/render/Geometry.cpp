@@ -1,11 +1,11 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "geometry.h"
-#include "hcloudview.h"
-#include "mesh.h"
+#include "Geometry.h"
+#include "HCloudView.h"
+#include "TriMesh.h"
 #include "ply_io.h"
-#include "pointarray.h"
+#include "PointArray.h"
 
 #include <rply/rply.h>
 

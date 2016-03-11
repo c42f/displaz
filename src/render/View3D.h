@@ -16,7 +16,7 @@
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
-#include "interactivecamera.h"
+#include "InteractiveCamera.h"
 #include "geometrycollection.h"
 
 class QGLShaderProgram;

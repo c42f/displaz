@@ -7,7 +7,7 @@
 #include <deque>
 #include <vector>
 
-#include "geometry.h"
+#include "Geometry.h"
 #include "util.h"
 
 /// Frame time cost model for drawn geometry

@@ -4,7 +4,7 @@
 #include "PolygonBuilder.h"
 
 #include "polypartition/polypartition.h"
-#include "qtlogger.h"
+#include "QtLogger.h"
 
 // Initialize polypartition TPPLPoly from a list of indices and vertices
 //

@@ -10,7 +10,7 @@
 #include <QString>
 #include <QMetaType>
 
-#include "geometry.h"
+#include "Geometry.h"
 
 class QGLShaderProgram;
 

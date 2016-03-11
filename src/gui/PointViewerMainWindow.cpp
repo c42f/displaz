@@ -1,19 +1,19 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "mainwindow.h"
+#include "PointViewerMainWindow.h"
 
 #include "config.h"
-#include "datasetui.h"
+#include "DataSetUI.h"
 #include "fileloader.h"
 #include "geometrycollection.h"
-#include "helpdialog.h"
+#include "HelpDialog.h"
 #include "IpcChannel.h"
-#include "qtlogger.h"
-#include "mesh.h"
-#include "shadereditor.h"
-#include "shader.h"
-#include "view3d.h"
+#include "QtLogger.h"
+#include "TriMesh.h"
+#include "ShaderEditor.h"
+#include "Shader.h"
+#include "View3D.h"
 
 #include <QSignalMapper>
 #include <QThread>
