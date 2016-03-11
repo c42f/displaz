@@ -1,7 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "shadereditor.h"
+#include "ShaderEditor.h"
 
 #include <memory>
 #include <iostream>

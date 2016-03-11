@@ -1,11 +1,11 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "shader.h"
+#include "Shader.h"
 
 #include "tinyformat.h"
-#include "dragspinbox.h"
-#include "qtlogger.h"
+#include "DragSpinBox.h"
+#include "QtLogger.h"
 
 #include <QFormLayout>
 #include <QComboBox>

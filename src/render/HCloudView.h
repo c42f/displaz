@@ -7,7 +7,7 @@
 
 #include <fstream>
 
-#include "geometry.h"
+#include "Geometry.h"
 #include "hcloud.h"
 
 struct HCloudNode;

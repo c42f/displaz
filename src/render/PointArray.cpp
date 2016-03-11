@@ -1,9 +1,9 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "pointarray.h"
+#include "PointArray.h"
 
-#include "qtlogger.h"
+#include "QtLogger.h"
 
 #include "glutil.h"
 
