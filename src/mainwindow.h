@@ -34,7 +34,7 @@ class PointViewerMainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        PointViewerMainWindow(const QGLFormat& format, const QString & pointShader);
+        PointViewerMainWindow(const QGLFormat& format);
 
         /// Hint at an appropriate size
         QSize sizeHint() const;

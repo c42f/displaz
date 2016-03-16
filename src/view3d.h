@@ -33,8 +33,7 @@ class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
-        View3D(GeometryCollection* geometries, const QGLFormat & format, QWidget *parent = NULL, 
-               const QString initialPointShader = QString());
+        View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
         ~View3D();
 
         /// Return shader used for displaying points
@@ -132,8 +131,6 @@ class View3D : public QGLWidget
         bool m_drawGrid;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
-
-        QString m_initialPointShader;
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
         /// Shaders for polygonal geometry

@@ -25,8 +25,7 @@
 #include "util.h"
 
 //------------------------------------------------------------------------------
-View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent,
-               const QString initialPointShader)
+View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
     : QGLWidget(format, parent),
     m_camera(false, false),
     m_mouseButton(Qt::NoButton),
@@ -39,7 +38,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawAxes(true),
     m_drawGrid(false),
     m_badOpenGL(false),
-    m_initialPointShader(initialPointShader),
     m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
@@ -92,11 +90,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
-
-    if (m_initialPointShader.isEmpty())
-    {
-        m_initialPointShader = "shaders:las_points.glsl";
-    }
 }
 
 
@@ -311,7 +304,7 @@ void View3D::initializeGL()
     // be initialized with the default shader, but View3D can only compile
     // shaders after it has a valid OpenGL context.
     PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
-    pv_parent->openShaderFile(m_initialPointShader);
+    pv_parent->openShaderFile("shaders:las_points.glsl");
 
     setFocus();
 }
