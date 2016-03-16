@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 
-#include "geometry.h"
+#include "Geometry.h"
 #include "typespec.h"
 #include "geomfield.h"
 

@@ -1,8 +1,8 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "qtlogger.h"
-#include "pointarray.h"
+#include "QtLogger.h"
+#include "PointArray.h"
 
 // FIXME! The point loader code is really a horrible mess.  It should be
 // cleaned up to conform to a proper interface, and moved out of the PointArray

@@ -11,8 +11,8 @@
 #include <QObject>
 #include <QStringList>
 
-#include "geometry.h"
-#include "qtlogger.h"
+#include "Geometry.h"
+#include "QtLogger.h"
 
 
 /// Information passed along when a file is loaded

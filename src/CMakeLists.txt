@@ -1,6 +1,9 @@
 project(viewer)
 
 include_directories(BEFORE
+    .
+    gui
+    render
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
     ${OPENGL_INCLUDE_DIR}
@@ -62,43 +65,48 @@ set(ipc_srcs
 
 # GUI
 displaz_qt_wrap_cpp(gui_moc_srcs
-    datasetui.h
-    dragspinbox.h
     fileloader.h
-    geometry.h
     geometrycollection.h
-    hcloudview.h
-    helpdialog.h
-    interactivecamera.h
-    qtlogger.h
-    mainwindow.h
-    view3d.h
-    pointarray.h
-    shadereditor.h
-    shader.h
+
+    gui/DataSetUI.h
+    gui/DragSpinBox.h
+    gui/HelpDialog.h
+    gui/InteractiveCamera.h
+    gui/PointViewerMainWindow.h
+    gui/QtLogger.h
+    gui/ShaderEditor.h
+
+    render/Geometry.h
+    render/HCloudView.h
+    render/View3D.h
+    render/PointArray.h
+    render/Shader.h
 )
 
 set(gui_srcs
     ${util_srcs}
     ${ipc_srcs}
     ${gui_moc_srcs}
-    datasetui.cpp
     DrawCostModel.cpp
-    geometry.cpp
     geometrycollection.cpp
-    glutil.cpp
-    hcloudview.cpp
-    qtlogger.cpp
-    guimain.cpp
-    mainwindow.cpp
-    mesh.cpp
     ply_io.cpp
     las_io.cpp
-    pointarray.cpp
     PolygonBuilder.cpp
-    view3d.cpp
-    shadereditor.cpp
-    shader.cpp
+
+    gui/DataSetUI.cpp
+    gui/guimain.cpp
+    gui/PointViewerMainWindow.cpp
+    gui/QtLogger.cpp
+    gui/ShaderEditor.cpp
+
+    render/Geometry.cpp
+    render/glutil.cpp
+    render/HCloudView.cpp
+    render/TriMesh.cpp
+    render/PointArray.cpp
+    render/View3D.cpp
+    render/Shader.cpp
+
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp
 )

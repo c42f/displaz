@@ -5,7 +5,7 @@
 // #define GL_CHECK 1
 
 #include "glutil.h"
-#include "view3d.h"
+#include "View3D.h"
 
 #include <QTimer>
 #include <QTime>
@@ -17,10 +17,10 @@
 
 #include "config.h"
 #include "fileloader.h"
-#include "qtlogger.h"
-#include "mainwindow.h"
-#include "mesh.h"
-#include "shader.h"
+#include "QtLogger.h"
+#include "PointViewerMainWindow.h"
+#include "TriMesh.h"
+#include "Shader.h"
 #include "tinyformat.h"
 #include "util.h"
 

@@ -9,7 +9,7 @@
 #include <QAbstractListModel>
 #include <QItemSelectionModel>
 
-#include "geometry.h"
+#include "Geometry.h"
 #include "fileloader.h"
 
 class QRegExp;
