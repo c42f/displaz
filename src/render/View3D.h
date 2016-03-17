@@ -20,6 +20,7 @@
 #include "geometrycollection.h"
 
 class QGLShaderProgram;
+class QOpenGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
@@ -52,6 +53,8 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
+        void paintToBuffer(QOpenGLFramebufferObject & buffer, double quality);
+        QImage renderScreenshot(int width = -1, int height = -1);
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -85,6 +88,7 @@ class View3D : public QGLWidget
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
+        void resizeViewport(int w, int h);
         double getDevicePixelRatio();
         unsigned int allocIncrementalFramebuffer(int w, int h) const;
 

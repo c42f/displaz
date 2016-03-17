@@ -390,6 +390,12 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         }
         m_geometries->unloadFiles(regex);
     }
+    else if (commandTokens[0] == "SAVE_SCREENSHOT")
+    {
+        QString filename = commandTokens[1];
+        saveScreenShot(commandTokens[1]);
+
+    }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {
         if (commandTokens.size()-1 != 3)
@@ -619,6 +625,15 @@ void PointViewerMainWindow::screenShot()
     sshot.save(fileName);
 }
 
+void PointViewerMainWindow::saveScreenShot(const QString & fileName)
+{
+    //QPixmap sshot = m_pointView->renderPixmap();
+
+    QImage sshot = m_pointView->renderScreenshot();
+    sshot.save(fileName);
+    g_logger.info("Saved screenshot to file '%s'", fileName.toStdString());
+
+}
 
 void PointViewerMainWindow::aboutDialog()
 {

@@ -74,6 +74,7 @@ class PointViewerMainWindow : public QMainWindow
         void handleIpcConnection();
 
     private:
+        void saveScreenShot(const QString & fileName);
         // Gui objects
         QProgressBar* m_progressBar;
         View3D* m_pointView;

@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 
     std::string shaderName;
     std::string unloadFiles;
+    std::string saveScreenShot;
     bool noServer = false;
 
     bool clearFiles = false;
@@ -98,6 +99,7 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
+        "-screenshot %s", &saveScreenShot, "Remote: save current view as image to given file",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -222,6 +224,10 @@ int main(int argc, char *argv[])
     if (!unloadFiles.empty())
     {
         channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadFiles.c_str());
+    }
+    if (!saveScreenShot.empty())
+    {
+        channel->sendMessage(QByteArray("SAVE_SCREENSHOT\n") + saveScreenShot.c_str());
     }
     if (posX != -DBL_MAX)
     {
