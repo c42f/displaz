@@ -89,6 +89,7 @@ class View3D : public QGLWidget
 
     private:
         void resizeViewport(int w, int h);
+        void clearFramebuffer() const;
         double getDevicePixelRatio();
         unsigned int allocIncrementalFramebuffer(int w, int h) const;
 

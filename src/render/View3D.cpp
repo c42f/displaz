@@ -325,7 +325,6 @@ void View3D::resizeViewport(int w, int h)
 
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
-
 }
 
 void View3D::resizeGL(int w, int h)
@@ -474,9 +473,9 @@ void View3D::paintGL()
 //    tfm::printfln("%12f %4d %s", quality, frameTime, s);
 
     // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
-    //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-    QOpenGLFramebufferObject::bindDefault();
+    //QOpenGLFramebufferObject::bindDefault();
     glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
@@ -530,11 +529,15 @@ void View3D::paintToBuffer(QOpenGLFramebufferObject & buffer, double quality)
 
 QImage View3D::renderScreenshot(int width, int height)
 {
+    double dPR = getDevicePixelRatio();
     if (width == -1)
         width = this->width();
 
     if (height == -1)
         height = this->height();
+
+    width *= dPR;
+    height *= dPR;
 
     QOpenGLFramebufferObject framebuffer(QSize(width, height), QOpenGLFramebufferObject::Depth);
     framebuffer.bind();
@@ -542,7 +545,8 @@ QImage View3D::renderScreenshot(int width, int height)
 
     paintToBuffer(framebuffer, DBL_MAX);
 
-    return framebuffer.toImage();
+    QImage img = framebuffer.toImage();
+    return img.scaledToWidth(width / dPR, Qt::SmoothTransformation);
 }
 
 
