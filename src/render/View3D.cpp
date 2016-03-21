@@ -485,7 +485,6 @@ void View3D::paintGL()
 
     // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
     glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH

@@ -20,7 +20,6 @@
 #include "geometrycollection.h"
 
 class QGLShaderProgram;
-class QOpenGLFramebufferObject;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
