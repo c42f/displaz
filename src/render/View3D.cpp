@@ -309,6 +309,7 @@ void View3D::initializeGL()
 
     setFocus();
 }
+
 void View3D::resizeViewport(int w, int h)
 {
     //Note: This function receives "device pixel sizes" for correct OpenGL viewport setup
@@ -324,11 +325,13 @@ void View3D::resizeViewport(int w, int h)
     double dPR = getDevicePixelRatio();
 
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
-
 }
 
 void View3D::resizeGL(int w, int h)
 {
+    if (m_badOpenGL)
+        return;
+
     resizeViewport(w, h);
 
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
@@ -377,6 +380,23 @@ unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
     return fb;
 }
 
+void View3D::clearBuffers() const
+{
+    glClearDepth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                 m_backgroundColor.blueF(), 1.0f);
+    if (!m_incrementalDraw)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+TransformState View3D::makeTransformState(int w, int h) const
+{
+    return TransformState(Imath::V2i(w, h),
+            m_camera.projectionMatrix(),
+            m_camera.viewMatrix());
+}
 
 void View3D::paintGL()
 {
@@ -402,18 +422,9 @@ void View3D::paintGL()
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(Imath::V2i(w, h),
-                              m_camera.projectionMatrix(),
-                              m_camera.viewMatrix());
+    TransformState transState = makeTransformState(w, h);
 
-    glClearDepth(1.0f);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
-                 m_backgroundColor.blueF(), 1.0f);
-    if (!m_incrementalDraw)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    clearBuffers();
     std::vector<const Geometry*> geoms = selectedGeometry();
 
     // Draw bounding boxes
@@ -475,7 +486,6 @@ void View3D::paintGL()
     // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-    //QOpenGLFramebufferObject::bindDefault();
     glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
@@ -505,45 +515,36 @@ void View3D::paintGL()
     glCheckError();
 }
 
-void View3D::paintToBuffer(QOpenGLFramebufferObject & buffer, double quality)
+
+QImage View3D::renderScreenShot(int width, int height)
 {
+    if (m_badOpenGL)
+        return QImage();
 
-    glClearDepth(1.0f);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
-                 m_backgroundColor.blueF(), 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    TransformState transState(Imath::V2i(buffer.width(), buffer.height()),
-                              m_camera.projectionMatrix(),
-                              m_camera.viewMatrix());
-    std::vector<const Geometry*> geoms = selectedGeometry();
-    // Render points
-    DrawCount drawCount = drawPoints(transState, geoms, quality, false);
-
-    // Measure frame time to update estimate for how much geometry we can draw
-    // with a reasonable frame rate
-    glFinish();
-
-}
-
-QImage View3D::renderScreenshot(int width, int height)
-{
     double dPR = getDevicePixelRatio();
-    if (width == -1)
+    if (width < 0)
         width = this->width();
 
-    if (height == -1)
+    if (height < 0)
         height = this->height();
 
+    // Note: the reason for the following two lines and the subsequent downsampling of the
+    //       resulting image is to make the radius of rendered points consistent between the
+    //       gui and screenshot on displas with dPR != 1.
     width *= dPR;
     height *= dPR;
 
     QOpenGLFramebufferObject framebuffer(QSize(width, height), QOpenGLFramebufferObject::Depth);
     framebuffer.bind();
     resizeViewport(width, height);
-
-    paintToBuffer(framebuffer, DBL_MAX);
+    clearBuffers();
+     
+    // Render points only
+     drawPoints(makeTransformState(width, height),
+                selectedGeometry(),
+                DBL_MAX,
+                false);
+    glFinish();
 
     QImage img = framebuffer.toImage();
     return img.scaledToWidth(width / dPR, Qt::SmoothTransformation);

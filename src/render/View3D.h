@@ -53,8 +53,9 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
-        void paintToBuffer(QOpenGLFramebufferObject & buffer, double quality);
-        QImage renderScreenshot(int width = -1, int height = -1);
+        // Render pointcloud to offscreen buffer of given size and return as a QImage.
+        // Negative dimensions are replaced with current gui 3d viewport size.
+        QImage renderScreenShot(int width = -1, int height = -1);
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -89,7 +90,7 @@ class View3D : public QGLWidget
 
     private:
         void resizeViewport(int w, int h);
-        void clearFramebuffer() const;
+        void clearBuffers() const;
         double getDevicePixelRatio();
         unsigned int allocIncrementalFramebuffer(int w, int h) const;
 
@@ -105,6 +106,8 @@ class View3D : public QGLWidget
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
+
+        TransformState makeTransformState(int w, int h) const;
 
         void drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const;

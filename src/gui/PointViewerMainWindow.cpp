@@ -392,9 +392,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     }
     else if (commandTokens[0] == "SAVE_SCREENSHOT")
     {
-        QString filename = commandTokens[1];
         saveScreenShot(commandTokens[1]);
-
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {
@@ -627,12 +625,9 @@ void PointViewerMainWindow::screenShot()
 
 void PointViewerMainWindow::saveScreenShot(const QString & fileName)
 {
-    //QPixmap sshot = m_pointView->renderPixmap();
-
-    QImage sshot = m_pointView->renderScreenshot();
+    QImage sshot = m_pointView->renderScreenShot();
     sshot.save(fileName);
     g_logger.info("Saved screenshot to file '%s'", fileName.toStdString());
-
 }
 
 void PointViewerMainWindow::aboutDialog()
