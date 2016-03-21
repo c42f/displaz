@@ -392,6 +392,11 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     }
     else if (commandTokens[0] == "SAVE_SCREENSHOT")
     {
+        if (commandTokens.size()-1 != 1)
+        {
+            tfm::format(std::cerr, "Expected screenshot filename\n");
+            return;
+        }
         saveScreenShot(commandTokens[1]);
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
