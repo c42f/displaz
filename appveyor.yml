@@ -1,0 +1,49 @@
+# Windows CI build via the Appveyor service
+
+# branches to build
+branches:
+  except:
+    - gh-pages
+
+# scripts that are called at very beginning, before repo cloning
+init:
+  - git config --global core.autocrlf input
+
+# scripts that run after cloning repository
+install:
+
+# build platform, i.e. x86, x64, Any CPU.
+platform:
+  - x64
+
+# build Configuration, i.e. Debug, Release, etc.
+configuration: Release
+
+build_script:
+  - echo "Build third party dependencies"
+  - mkdir build_external
+  - cd build_external
+  - cmake -G "NMake Makefiles" -D CMAKE_BUILD_TYPE={configuration} ..\thirdparty\external
+  - nmake
+  - cd ..
+  - echo "Build displaz"
+  - mkdir build
+  - cd build
+  - cmake -G "NMake Makefiles" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 -D CMAKE_INSTALL_PREFIX:PATH=dist ..
+  - nmake
+
+# TODO: Packaging
+#  - nmake package
+
+test_script:
+  - ctest
+
+deploy: off
+# TODO: deploy to S3 or GitHub Releases ?
+
+
+notifications:
+  # Email
+  - provider: Email
+    to: chris42f@gmail.com
+    on_build_status_changed: true
