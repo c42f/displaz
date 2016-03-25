@@ -9,8 +9,9 @@ branches:
 init:
   - git config --global core.autocrlf input
 
-# scripts that run after cloning repository
-install:
+environment:
+  matrix:
+    - COMPILER: msvc2013_64
 
 # build platform, i.e. x86, x64, Any CPU.
 platform:
