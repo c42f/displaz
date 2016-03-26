@@ -9,9 +9,14 @@ branches:
 init:
   - git config --global core.autocrlf input
 
+# Build matrix variables -
+#   * environment
+#   * platform
+#   * configuration
 environment:
   matrix:
-    - COMPILER: msvc2013_64
+    - COMPILER: "Visual Studio 12 Win64"
+    #- COMPILER: "Visual Studio 13 Win64"
 
 # build platform, i.e. x86, x64, Any CPU.
 platform:
@@ -21,20 +26,22 @@ platform:
 configuration: Release
 
 build_script:
+  - echo COMPILER = %COMPILER%, CONFIGURATION = %CONFIGURATION%
+  - cmake -h
   - echo "Build third party dependencies"
   - mkdir build_external
   - cd build_external
-  - cmake -G "NMake Makefiles" -D CMAKE_BUILD_TYPE={configuration} ..\thirdparty\external
-  - nmake
+  - cmake -G "Visual Studio 12 Win64" -D CMAKE_BUILD_TYPE={configuration} ..\thirdparty\external
+  - cmake --build . --config %CONFIGURATION%
   - cd ..
   - echo "Build displaz"
   - mkdir build
   - cd build
-  - cmake -G "NMake Makefiles" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 -D CMAKE_INSTALL_PREFIX:PATH=dist ..
-  - nmake
+  - cmake -G "Visual Studio 12 Win64" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 ..
+  - cmake --build . --config %CONFIGURATION%
 
 # TODO: Packaging
-#  - nmake package
+#  - cmake --build . --target package
 
 test_script:
   - ctest
