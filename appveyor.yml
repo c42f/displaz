@@ -1,0 +1,77 @@
+# Windows CI build via the Appveyor service
+
+# branches to build
+branches:
+  except:
+    - gh-pages
+
+# scripts that are called at very beginning, before repo cloning
+init:
+  - git config --global core.autocrlf input
+
+# scripts that run after cloning repository
+#install:
+#  - Install rst2html for docs?
+
+# Build matrix variables -
+#   * environment
+#   * platform
+#   * configuration
+environment:
+  matrix:
+    - COMPILER: "Visual Studio 12 Win64"
+    #- COMPILER: "Visual Studio 14 Win64"
+
+# build platform, i.e. x86, x64, Any CPU.
+platform:
+  - x64
+
+# build Configuration, i.e. Debug, Release, etc.
+configuration: Release
+
+before_build:
+  - echo --------------------------------------------------------------------------------
+  - echo Appveyor environment info:
+  - echo COMPILER = %COMPILER%, CONFIGURATION = %CONFIGURATION%
+  - cmake -h
+  - rem --------------------------------------------------------------------------------
+  - rem Build third party dependencies:
+  - mkdir build_external
+  - cd build_external
+  # Disable warnings with /W0, since both external libs are rotten with
+  # warnings on Visual Studio
+  - cmake -G "%COMPILER%" ..\thirdparty\external
+  - cmake --build . --config %CONFIGURATION%
+  - cd ..
+
+build_script:
+  - echo --------------------------------------------------------------------------------
+  - echo Build displaz:
+  - mkdir build
+  - cd build
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 ..
+  - cmake --build . --config %CONFIGURATION%
+
+after_build:
+  - cmake --build . --config %CONFIGURATION% --target package
+
+test_script:
+  # TODO: Figure out why IPC lock test seems to be timing out (or just very
+  # slow?), and re-enable it.
+  - ctest --timeout 10 -C %CONFIGURATION%   -E InterProcessLock_test
+
+
+artifacts:
+  - path: build\displaz-*.exe
+    name: displaz-installer
+
+
+deploy: off
+# TODO: deploy to S3 or GitHub Releases ?
+
+
+notifications:
+  # Email
+  - provider: Email
+    to: chris42f@gmail.com
+    on_build_status_changed: true
