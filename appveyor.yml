@@ -9,6 +9,10 @@ branches:
 init:
   - git config --global core.autocrlf input
 
+# scripts that run after cloning repository
+#install:
+#  - Install rst2html for docs?
+
 # Build matrix variables -
 #   * environment
 #   * platform
@@ -16,7 +20,7 @@ init:
 environment:
   matrix:
     - COMPILER: "Visual Studio 12 Win64"
-    #- COMPILER: "Visual Studio 13 Win64"
+    #- COMPILER: "Visual Studio 14 Win64"
 
 # build platform, i.e. x86, x64, Any CPU.
 platform:
@@ -25,26 +29,35 @@ platform:
 # build Configuration, i.e. Debug, Release, etc.
 configuration: Release
 
-build_script:
+before_build:
+  - echo --------------------------------------------------------------------------------
+  - echo Appveyor environment info:
   - echo COMPILER = %COMPILER%, CONFIGURATION = %CONFIGURATION%
   - cmake -h
-  - echo "Build third party dependencies"
+  - rem --------------------------------------------------------------------------------
+  - rem Build third party dependencies:
   - mkdir build_external
   - cd build_external
-  - cmake -G "Visual Studio 12 Win64" -D CMAKE_BUILD_TYPE={configuration} ..\thirdparty\external
+  # Disable warnings with /W0, since both external libs are rotten with
+  # warnings on Visual Studio
+  - cmake -G "%COMPILER%" ..\thirdparty\external
   - cmake --build . --config %CONFIGURATION%
   - cd ..
-  - echo "Build displaz"
+
+build_script:
+  - echo --------------------------------------------------------------------------------
+  - echo Build displaz:
   - mkdir build
   - cd build
-  - cmake -G "Visual Studio 12 Win64" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 ..
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 ..
   - cmake --build . --config %CONFIGURATION%
 
 # TODO: Packaging
+# after_build:
 #  - cmake --build . --target package
 
 test_script:
-  - ctest
+  - ctest -C %CONFIGURATION%
 
 deploy: off
 # TODO: deploy to S3 or GitHub Releases ?
