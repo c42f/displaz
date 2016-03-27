@@ -37,6 +37,10 @@ endif()
 set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
     CACHE PATH "Directory containing installed third party libraries (laslib, ilmbase, ...)")
 
+set(DISPLAZ_BUILD_NUMBER "dev"
+    CACHE STRING "Build version number suffix for automated builds")
+mark_as_advanced(DISPLAZ_BUILD_NUMBER)
+
 #------------------------------------------------------------------------------
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -185,7 +189,7 @@ set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${DISPLAZ_BIN_DIR}")
 include(InstallRequiredSystemLibraries)
 
 set(CPACK_PACKAGE_NAME "displaz")
-set(CPACK_PACKAGE_VERSION "${displazVersion}")
+set(CPACK_PACKAGE_VERSION "${displazVersion}+${DISPLAZ_BUILD_NUMBER}")
 set(fullVersion "displaz-${displazVersion}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
