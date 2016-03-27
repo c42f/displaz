@@ -51,20 +51,22 @@ build_script:
   - echo Build displaz:
   - mkdir build
   - cd build
-  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 -DDISPLAZ_BUILD_NUMBER={build} ..
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 -DDISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
   - cmake --build . --config %CONFIGURATION%
 
 after_build:
   - cmake --build . --config %CONFIGURATION% --target package
+  # Hack: copy artifacts to avoid extra directories in deploy :(
+  # See http://help.appveyor.com/discussions/questions/1244-path-inside-artifact-name-is-there-a-way-to-remove-it
+  - cp displaz-*.exe ..
 
 test_script:
   # TODO: Figure out why IPC lock test seems to be timing out (or just very
   # slow?), and re-enable it.
   - ctest --timeout 10 -C %CONFIGURATION%   -E InterProcessLock_test
 
-
 artifacts:
-  - path: build\displaz-*.exe
+  - path: displaz-*.exe
     name: displaz-installer
 
 
@@ -79,8 +81,7 @@ deploy:
     secret_access_key:
       secure: uKUdBw0IvkIlc6sWpk/rwIQv1MmsexLLElD/Ir6bcXXetJUM0KoS5nQCaxSjQuV7
     bucket: displaz-data
-    folder: builds/ci-master-win64/
-    #artifact:  TODO: Required?
+    folder: builds/ci/
     set_public: true
 
 
