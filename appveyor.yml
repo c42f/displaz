@@ -74,8 +74,8 @@ deploy:
   # Deploy CI builds of master to s3://displaz-data/builds/
   - provider: S3
     on:
-      # FIXME: Change to master after testing.
-      branch: appveyor-s3-deploy
+      # Only deploy CI builds from master
+      branch: master
     access_key_id:
       secure: y4QWdKCrKxq9JIQGjN87Gd/Pg4Vdmz+GaqoPlKxUuAY=
     secret_access_key:
