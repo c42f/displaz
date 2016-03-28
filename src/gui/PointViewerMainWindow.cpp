@@ -651,11 +651,20 @@ void PointViewerMainWindow::chooseBackground()
 
 void PointViewerMainWindow::updateTitle()
 {
-    QStringList fileNames;
+    QStringList labels;
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    int numGeoms = 0;
     for (auto i = geoms.begin(); i != geoms.end(); ++i)
-        fileNames << QFileInfo((*i)->fileName()).fileName();
-    setWindowTitle(tr("Displaz - %1").arg(fileNames.join(", ")));
+    {
+        labels << (*i)->label();
+        numGeoms += 1;
+        if (numGeoms > 10)
+        {
+            labels << "...";
+            break;
+        }
+    }
+    setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
 }
 
 
