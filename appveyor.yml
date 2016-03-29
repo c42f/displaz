@@ -59,6 +59,8 @@ after_build:
   # Hack: copy artifacts to avoid extra directories in deploy :(
   # See http://help.appveyor.com/discussions/questions/1244-path-inside-artifact-name-is-there-a-way-to-remove-it
   - cp displaz-*.exe ..
+  - mkdir ..\latest
+  - cp displaz-*.exe ..\latest\displaz-win64.exe
 
 test_script:
   # TODO: Figure out why IPC lock test seems to be timing out (or just very
@@ -68,6 +70,8 @@ test_script:
 artifacts:
   - path: displaz-*.exe
     name: displaz-installer
+  - path: latest\*.exe
+    name: displaz-installer-latest
 
 
 deploy:
