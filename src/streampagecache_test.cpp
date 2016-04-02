@@ -8,6 +8,11 @@
 
 #include "streampagecache.h"
 
+// gcc 4.6 and 4.7 warns/suggests parentheses around == comparison
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 TEST_CASE("Test page cache for std::istream")
 {
     const size_t size = 12345;

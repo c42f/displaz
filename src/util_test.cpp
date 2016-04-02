@@ -5,6 +5,11 @@
 
 #include "util.h"
 
+// gcc 4.6 and 4.7 warns/suggests parentheses around == comparison
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 int identity(int i) { return i; }
 
 TEST_CASE("Simple test for multi_partition")
