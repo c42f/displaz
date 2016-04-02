@@ -18,8 +18,17 @@
 #include <QMatrix4x4>
 #include <QRect>
 
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-register"
+#endif
+
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathMatrix.h>
+
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif
 
 // TMP DEBUG
 #include "tinyformat.h"

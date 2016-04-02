@@ -8,10 +8,19 @@
 #include <memory>
 #include <stdexcept>
 
+#ifdef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-register"
+#endif
+
 #include <OpenEXR/ImathVec.h>
 #include <OpenEXR/ImathBox.h>
 #include <OpenEXR/ImathColor.h>
 #include <OpenEXR/ImathMatrix.h>
+
+#ifdef __clang__
+#pragma GCC diagnostic pop
+#endif
 
 #include <tinyformat.h>
 
