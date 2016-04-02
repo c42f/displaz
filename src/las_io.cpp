@@ -45,7 +45,9 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 #elif __GNUC__
 #   pragma GCC diagnostic push
 #   pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#   ifndef __clang__
 #   pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#   endif
 #endif
 // Note... laslib generates a small horde of warnings
 #include <lasreader.hpp>
