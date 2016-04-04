@@ -82,11 +82,13 @@ class View3D : public QGLWidget
         void setupShaderParamUI();
 
         void geometryChanged();
+        void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
 
     private:
         double getDevicePixelRatio();
         unsigned int allocIncrementalFramebuffer(int w, int h) const;
+        void initializeGLGeometry(int begin, int end);
 
         void initCursor(float cursorRadius, float centerPointRadius);
         void drawCursor(const TransformState& transState, const V3d& P, float centerPointRadius) const;
