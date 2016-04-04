@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
     bool clearFiles = false;
     bool addFiles = false;
-    bool rmTemp = false;
+    bool deleteAfterLoad = false;
     bool quitRemote = false;
     bool queryCursor = false;
     bool script = false;
@@ -91,10 +91,10 @@ int main(int argc, char *argv[])
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
-        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching given (unix shell style) regex",
+        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
-        "-add",          &addFiles,      "Remote: add files to currently open set",
-        "-rmtemp",       &rmTemp,        "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
+        "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
+        "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
             std::cerr << "ERROR: No remote displaz instance found\n";
             return EXIT_FAILURE;
         }
-        if (quitRemote || clearFiles || !unloadFiles.empty())
+        if (quitRemote || !unloadFiles.empty())
         {
             return EXIT_SUCCESS;
         }
@@ -189,6 +189,10 @@ int main(int argc, char *argv[])
     //
     // TODO: Factor out this socket comms code - sending and recieving of
     // messages should happen in a centralised place.
+    if (clearFiles)
+    {
+        channel->sendMessage("CLEAR_FILES");
+    }
     if (!g_initialFileNames.empty())
     {
         QByteArray command;
@@ -196,12 +200,12 @@ int main(int argc, char *argv[])
         command = "OPEN_FILES\n";
         if (!addFiles)
         {
-            command += QByteArray("CLEAR");
+            command += QByteArray("REPLACE_LABEL");
             command += '\0';
         }
-        if (rmTemp)
+        if (deleteAfterLoad)
         {
-            command += QByteArray("RMTEMP");
+            command += QByteArray("DELETE_AFTER_LOAD");
             command += '\0';
         }
         for (size_t i = 0; i < g_initialFileNames.size(); ++i)
@@ -214,10 +218,6 @@ int main(int argc, char *argv[])
             command += QByteArray(dataSetLabel.data(), (int)dataSetLabel.size());
         }
         channel->sendMessage(command);
-    }
-    if (clearFiles)
-    {
-        channel->sendMessage("CLEAR_FILES");
     }
     if (!unloadFiles.empty())
     {
