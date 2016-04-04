@@ -64,12 +64,6 @@ std::shared_ptr<Geometry> Geometry::create(QString fileName)
         return std::shared_ptr<Geometry>(new PointArray());
 }
 
-
-bool Geometry::reloadFile(size_t maxVertexCount)
-{
-    return loadFile(m_fileName, maxVertexCount);
-}
-
 void Geometry::initializeGL()
 {
     destroyBuffers();
