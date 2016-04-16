@@ -34,7 +34,7 @@ void LogViewer::appendLogMessage(int logLevel, QString msg)
             insertPlainText(msg);
             break;
         case Logger::Info:
-            appendHtml("<b>INFO</b>: ");
+            appendHtml(""); // Force new paragraph
             insertPlainText(msg);
             break;
     }

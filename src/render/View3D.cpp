@@ -249,11 +249,11 @@ void View3D::initializeGL()
     }
 
     g_logger.info("OpenGL implementation:\n"
-                  "GL_VENDOR    = %s\n"
-                  "GL_RENDERER  = %s\n"
-                  "GL_VERSION   = %s\n"
-                  "GLSL_VERSION = %s\n"
-                  "GLEW_VERSION = %s\n",
+                  "  GL_VENDOR    = %s\n"
+                  "  GL_RENDERER  = %s\n"
+                  "  GL_VERSION   = %s\n"
+                  "  GLSL_VERSION = %s\n"
+                  "  GLEW_VERSION = %s",
                   (const char*)glGetString(GL_VENDOR),
                   (const char*)glGetString(GL_RENDERER),
                   (const char*)glGetString(GL_VERSION),
