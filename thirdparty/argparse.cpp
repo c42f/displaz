@@ -468,12 +468,14 @@ ArgParse::options (const char *intro, ...)
         if (find_option (cur) &&
                 strcmp(cur, "<SEPARATOR>")) {
             error ("Option \"%s\" is multiply defined", cur);
+            va_end (ap);
             return -1;
         }
         
         // Build a new option and then parse the values
         ArgOption *option = new ArgOption (cur);
         if (option->initialize() < 0) {
+            va_end (ap);
             return -1;
         }
 
