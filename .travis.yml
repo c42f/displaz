@@ -35,7 +35,7 @@ install:
 
 before_script:
     # Build external tools
-    - mkdir build_external
+    - mkdir -p build_external
     - cd build_external
     - cmake ../thirdparty/external
     - make -j4
@@ -44,7 +44,7 @@ before_script:
 
 script:
     # Build displaz
-    - mkdir build
+    - mkdir -p build
     - cd build
     - cmake -DCMAKE_BUILD_TYPE=${DISPLAZ_BUILD_TYPE} ..
     - make -j4
