@@ -248,10 +248,16 @@ int main(int argc, char *argv[])
     }
     if (queryCursor)
     {
-        channel->sendMessage("QUERY_CURSOR");
-        QByteArray msg = channel->receiveMessage();
-        std::cout.write(msg.data(), msg.length());
-        std::cout << "\n";
+        try
+        {
+            channel->sendMessage("QUERY_CURSOR");
+            QByteArray msg = channel->receiveMessage();
+            std::cout.write(msg.data(), msg.length());
+            std::cout << "\n";
+        }
+        catch (DisplazError & e) // receiveMessage can time out
+        {
+        }
     }
     if (maxPointCount > 0)
     {
