@@ -101,7 +101,7 @@ static HCloudNode* readHCloudIndex(std::istream& in, const Box3f& bbox)
 }
 
 
-HCloudView::HCloudView() { }
+HCloudView::HCloudView() : m_sizeBytes(0) { }
 
 
 HCloudView::~HCloudView() { }
@@ -327,7 +327,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
 
     g_logger.info("hcloud: %.1fMB, #nodes = %d, fetched pages = %d, mean voxel size = %.0f",
                   m_sizeBytes/1e6, nodesRendered, fetchedPages,
-                  double(voxelsRendered)/nodesRendered);
+                  nodesRendered ? double(voxelsRendered)/nodesRendered : 0.0);
 }
 
 

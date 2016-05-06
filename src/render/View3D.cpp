@@ -304,7 +304,8 @@ void View3D::initializeGL()
     // be initialized with the default shader, but View3D can only compile
     // shaders after it has a valid OpenGL context.
     PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
-    pv_parent->openShaderFile("shaders:las_points.glsl");
+    if (pv_parent)
+        pv_parent->openShaderFile("shaders:las_points.glsl");
 
     setFocus();
 }

@@ -18,22 +18,20 @@
 ///
 static QByteArray makeBlacklistDefines()
 {
-    bool isWindows = false;
+    QByteArray defines;
 #   ifdef _WIN32
-    isWindows = true;
-#   endif
     bool isIntel = false;
     // Extremely useful list of GL_VENDOR strings seen in the wild:
     // http://feedback.wildfiregames.com/report/opengl/feature/GL_VENDOR
     QString vendorStr = (const char*)glGetString(GL_VENDOR);
     if (vendorStr.contains("intel", Qt::CaseInsensitive))
         isIntel = true;
-    QByteArray defines;
     // Blacklist use of gl_FragCoord/gl_FragDepth with Intel drivers on
     // windows.  For some reason, this interacts badly with any use of
     // gl_PointCoord, leading to gross rendering artifacts.
-    if (isWindows && isIntel)
+    if (isIntel)
         defines += "#define BROKEN_GL_FRAG_COORD\n";
+#endif
     return defines;
 }
 

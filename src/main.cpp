@@ -248,10 +248,18 @@ int main(int argc, char *argv[])
     }
     if (queryCursor)
     {
-        channel->sendMessage("QUERY_CURSOR");
-        QByteArray msg = channel->receiveMessage();
-        std::cout.write(msg.data(), msg.length());
-        std::cout << "\n";
+        try
+        {
+            channel->sendMessage("QUERY_CURSOR");
+            QByteArray msg = channel->receiveMessage();
+            std::cout.write(msg.data(), msg.length());
+            std::cout << "\n";
+        }
+        catch (DisplazError & e)
+        {
+            std::cerr << "ERROR: QUERY_CURSOR message timed out waiting for a response.\n";
+            return EXIT_FAILURE;
+        }
     }
     if (maxPointCount > 0)
     {
