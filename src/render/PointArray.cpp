@@ -154,7 +154,7 @@ static OctreeNode* makeTree(int depth, size_t* inds,
         return node;
     }
     // Partition points into the 8 child nodes
-    std::vector<size_t *> childRanges(9, NULL);
+    size_t* childRanges[9] = {0};
     multi_partition(beginPtr, endPtr, OctreeChildIdx(P, center), &childRanges[1], 8);
     childRanges[0] = beginPtr;
     // Recursively generate child nodes

@@ -255,8 +255,10 @@ int main(int argc, char *argv[])
             std::cout.write(msg.data(), msg.length());
             std::cout << "\n";
         }
-        catch (DisplazError & e) // receiveMessage can time out
+        catch (DisplazError & e)
         {
+            std::cerr << "ERROR: QUERY_CURSOR message timed out waiting for a response.\n";
+            return EXIT_FAILURE;
         }
     }
     if (maxPointCount > 0)
