@@ -1248,6 +1248,10 @@ static int ply_read_header_property(p_ply ply) {
     }
     /* get property name */
     if (!ply_read_word(ply)) return 0;
+    if (strlen(BWORD(ply)) >= WORDSIZE) {
+        ply_ferror(ply, "Property name too long");
+        return 0;
+    }
     strcpy(property->name, BWORD(ply));
     if (!ply_read_word(ply)) return 0;
     return 1;
@@ -1263,6 +1267,10 @@ static int ply_read_header_element(p_ply ply) {
     if (!element) return 0;
     /* get element name */
     if (!ply_read_word(ply)) return 0;
+    if (strlen(BWORD(ply)) >= WORDSIZE) {
+        ply_ferror(ply, "Element name too long");
+        return 0;
+    }
     strcpy(element->name, BWORD(ply));
     /* get number of elements of this type */
     if (!ply_read_word(ply)) return 0;
