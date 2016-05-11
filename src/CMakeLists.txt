@@ -177,6 +177,10 @@ else()
     if (Qt5_POSITION_INDEPENDENT_CODE)
         set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     endif()
+    # TODO this is a workaround for Ubuntu 16.04 x86-64
+    if (UNIX)
+        add_definitions(-fPIC)
+    endif()
 endif()
 
 if(APPLE)
