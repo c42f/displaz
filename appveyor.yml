@@ -88,9 +88,3 @@ deploy:
     folder: builds/ci/
     set_public: true
 
-
-notifications:
-  # Email
-  - provider: Email
-    to: chris42f@gmail.com
-    on_build_status_changed: true
