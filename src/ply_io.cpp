@@ -28,7 +28,7 @@ class PlyFieldLoader
             long idata = 0;
             ply_get_argument_user_data(argument, &pinfo, &idata);
             double value = ply_get_argument_value(argument);
-            return ((PlyFieldLoader*)pinfo)->writeValue(idata, value);
+            return pinfo ? ((PlyFieldLoader*)pinfo)->writeValue(idata, value) : 0;
         }
 
         /// Accept a single element of a point field from the ply file
