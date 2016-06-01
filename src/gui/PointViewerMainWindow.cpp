@@ -468,6 +468,38 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         openShaderFile(commandTokens[1]);
     }
+    else if (commandTokens[0] == "HOOK")
+    {  
+        m_pointView->addHook();
+
+        //See above, not modular (see also Qt documentation)
+	IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
+        if (!channel)
+        {
+            qWarning() << "Signalling object not a IpcChannel!\n";
+            return;
+        }
+	
+	//connect hookevent to send back data
+	connect(m_pointView, SIGNAL(hookEvent(QByteArray)), channel, SLOT(sendMessage(QByteArray)));
+
+	//error handling: remove hook if this channel is disconnected
+	connect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));	
+    }
+    else if (commandTokens[0] == "HOOKREMOVE")
+    {
+        //See above, not modular (see also Qt documentation)
+        IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
+        if (!channel)
+        {
+            qWarning() << "Signalling object not a IpcChannel!\n";
+            return;
+        }
+	//disconnect error handling, regular exit in CLI
+	disconnect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));
+      
+        m_pointView->removeHook();	
+    }
     else
     {
         g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));

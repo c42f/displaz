@@ -73,6 +73,8 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
 
+    bool hookevent = false;
+
     ArgParse::ArgParse ap;
     ap.options(
         "displaz - A lidar point cloud viewer\n"
@@ -98,6 +100,7 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
+	"-hook",         &hookevent,     "Test: send hook from script to displaz instance, connect to gui and wait for response. key and event (predefined for now): either right-click with ControlModifier (-> command on Mac) to return closest position to click (no snapping to geometry, only guessing), or key:E for current cursor position. waits for input '1' after sending info to stdout",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -276,7 +279,51 @@ int main(int argc, char *argv[])
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
     }
-
+    if (hookevent)
+    {
+        // First simple try
+        try
+        {
+            channel->sendMessage("HOOK");
+	    //
+	    // First simple try: predefined event and key in GUI (View3D), simply set hook
+	    // in GUI and send back information on event
+	    //
+	    // currently: single return message from GUI, i.e. wait on
+	    // stdin after receiving and writing message, as implemented here
+	    //
+	    // if multiple return messages (i.e. events in GUI reported to CLI) are
+	    // wanted while no input from script: since std::cin always blocks would need
+	    // to start another thread and emit a signal once read in is complete
+	    // (Qt offers platform independent multithreading and signals)
+	    // not sure what the desired behaviour is -> discuss
+	    //
+            QByteArray msg = channel->receiveMessage();
+            std::cout.write(msg.data(), msg.length());
+            std::cout << "\n";
+	    
+	    // what is needed in the following? what kind of message, what kind of
+	    // behaviour? for complex messages I'd need a proper serialization of
+	    // these socket messages (Chris is aware of that, see his comment on github)
+	    // -> discuss
+	    {
+	        bool success = 0;
+	        std::cin >> success;
+	        if(success)
+	            channel->sendMessage("HOOKREMOVE"); 
+	        else
+	            std::cout << " No success, exiting " << std::endl;
+	            //could add EXIT_FAILURE here, but probably not for complex messages
+	    }
+	    // if message wanted: read char from script, convert to QByteArray, send to GUI
+        }
+        catch (DisplazError & e)
+        {
+            std::cerr << "ERROR: Hook message timed out waiting for a response.\n";
+            return EXIT_FAILURE;
+        }
+	
+    }
     if (startedGui && !script)
     {
         SigIntTransferHandler sigIntHandler(guiPid);

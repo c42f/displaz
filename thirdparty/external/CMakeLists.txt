@@ -22,19 +22,19 @@ set(CMAKE_INSTALL_PREFIX ${THIRDPARTY_INSTALL_PREFIX})
 
 include(ExternalProject)
 
-ExternalProject_Add(
-    ilmbase
-    URL http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.2.0.tar.gz
-    URL_MD5 b540db502c5fa42078249f43d18a4652
-    CMAKE_ARGS
-        -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
-        -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-        -D CMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-        -D NAMESPACE_VERSIONING:BOOL=OFF
-        -D BUILD_SHARED_LIBS:BOOL=OFF
-    INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-    DOWNLOAD_DIR "${DOWNLOAD_DIR}"
-)
+#ExternalProject_Add(
+#    ilmbase
+#    URL http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.2.0.tar.gz
+#    URL_MD5 b540db502c5fa42078249f43d18a4652
+#    CMAKE_ARGS
+#        -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
+#        -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+#        -D CMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+#        -D NAMESPACE_VERSIONING:BOOL=OFF
+#        -D BUILD_SHARED_LIBS:BOOL=OFF
+#    INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+#    DOWNLOAD_DIR "${DOWNLOAD_DIR}"
+#)
 
 ExternalProject_Add(
     laslib

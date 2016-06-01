@@ -52,6 +52,8 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
+	//bool getHookState() { return m_hookEvent; }
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -64,6 +66,14 @@ class View3D : public QGLWidget
         void centerOnGeometry(const QModelIndex& index);
         void centerOnPoint(const Imath::V3d& pos);
         void setExplicitCursorPos(const Imath::V3d& pos);
+	
+        //add or remove hook from CLI
+	void addHook();
+	void removeHook();
+
+    signals:
+        void hookEvent(QByteArray message);
+
 
     protected:
         // Qt OpenGL callbacks
@@ -76,6 +86,7 @@ class View3D : public QGLWidget
         void mouseMoveEvent(QMouseEvent* event);
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);
+	
 
     private slots:
         void restartRender();
@@ -168,6 +179,11 @@ class View3D : public QGLWidget
         unsigned int m_quadLabelVertexArray;
 
         double m_devicePixelRatio;
+
+	// for single instance of displaz connecting: bool should suffice.
+	// what if several users/several scripts access at the same time?
+	// What's the desired behaviour in that case?
+	bool m_hookEvent;
 };
 
 
