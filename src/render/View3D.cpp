@@ -54,7 +54,8 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_gridVertexArray(0),
     m_quadVertexArray(0),
     m_quadLabelVertexArray(0),
-    m_devicePixelRatio(1.0)
+    m_devicePixelRatio(1.0),
+    m_hookEvent(false)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -91,6 +92,9 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+
+
+
 }
 
 
@@ -540,7 +544,20 @@ void View3D::mousePressEvent(QMouseEvent* event)
     {
         snapToPoint(guessClickPosition(event->pos()));
     }
+
+    if(m_hookEvent==true)
+    {
+        // simple first implementation: return cursor position via guessclosest point and predefined event
+        if((event->button() == Qt::RightButton && (event->modifiers() & Qt::ControlModifier)))
+        {
+            Imath::V3d p = guessClickPosition(event->pos());
+            std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+      
+            emit hookEvent(QByteArray(response.data(), (int)response.size()));
+        }
+    }
 }
+
 
 void View3D::snapToPoint(const Imath::V3d & pos)
 {
@@ -596,9 +613,20 @@ void View3D::keyPressEvent(QKeyEvent *event)
     // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
         m_camera.setCenter(m_cursorPos);
+    else if(m_hookEvent==true)
+    {
+      // simple first implementation: return current cursor position on predefined event
+      if(event->key() == Qt::Key_E)
+      {
+	  Imath::V3d p = m_cursorPos;
+          std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+          emit hookEvent(QByteArray(response.data(), (int)response.size()));
+      }
+    }
     else
         event->ignore();
 }
+
 
 void View3D::initCursor(float cursorRadius, float centerPointRadius)
 {
@@ -1129,3 +1157,24 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
 
 
 // vi: set et:
+
+
+// addHook, include proper error handling (what's the desired behaviour?
+// if hook already set, decline and exit with error?)
+void View3D::addHook(void)
+{
+    if(!m_hookEvent)
+        m_hookEvent = !m_hookEvent;
+    // else
+    //   std::cout << " Hook is already set " << std::endl;  
+}
+
+void View3D::removeHook(void)
+{
+    if(m_hookEvent)
+        m_hookEvent = !m_hookEvent;
+    //else
+    //    std::cout << " Hook is already removed " << std::endl;  
+}
+
+

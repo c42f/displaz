@@ -1,0 +1,40 @@
+Hookable events from scripting language, issue #92
+
+---------
+Chris' workflow:
+
+   For automating displaz from julia/python/etc it'd be really useful to be able to register keyboard/mouse event hooks from the scripting language and have data returned on each event. This would make it possible to round trip from scripting language to form simple 3D UIs while prototyping algorithms.
+
+Usage sketch:
+
+  - Scripting language sends a hook command down the socket via the displaz CLI, eg displaz -hookevent key:E cursorposition, and sets up a task/thread blocking on reading the displaz process stdout.
+  - displaz process waits on the socket
+  - When displaz-gui reads the E key, it responds with the cursor position, which is read by displaz and sent to stdout
+  - Script reads a line from stdout with the desired message, and responds by sending extra datasets back to displaz-gui
+  - The hook in displaz-gui should disappear when the displaz CLI process exits.
+
+The model above is pretty simple, but may be a bit command line centric and doesn't seem extensible to complex messages. Possibly might want to consider a proper serialization format for socket messages rather than the ad hoc line-based message format.
+
+Additional useful hook event: When user clicks on a point, return (dataset name, vertex index, vertex attributes) - more or less what currently goes in the log
+---------
+
+
+
+ So everything via command line interface. First simple try:
+ 
+    - Send line to CLI, i.e. displaz main (don't care about serialization format for socket messages for now, just get it to work with specific line like 'querycursor').
+    - Displaz waiting on the socket is implemented in IPC class, takes care of Qt messages being complete (thread safe) and waits for response (time out 10sec).
+    - Send hook from PointViewerMainWindow when message HOOK arrives to m_pointview (pointer to View3D instance) , connect IPC channel to signal ‘hook event triggered’ in View3D and send message (format: QByteArray) once signal emitted (if connection breaks unexpectedly: disconnect signal connected to remove hook).
+    - In View3D: bool hook_event to only activate when hook is set. Maybe add hookSignal and hookMessage to get arbitrary communication from GUI to display (how to generalize? Probably need proper serialization for messages first, for now use simple specific event and message.).
+    - When event happens: What kind of events trigger what kind of behaviour? For simple cases (see point above) implement individually. Implementation: Emit signal triggered, QByteArray gets send to CLI
+    - CLI sends data to stdout, waits for stdin (std::cin always blocks. Is that desired? If not, Qt offers platform-independent multithreading and signalling, should be straightforward to wait for input)
+    - CLI sends data from stdin to displaz-gui. For now: send message 'removehook' on specific input (e.g. '1' read). Need to know what kind of communication is supposed to happen here.
+    
+----------
+
+  Questions and to do:
+     - What kind of events is GUI supposed to communicate to CLI?
+     - What kind of information is supposed to be sent back to GUI from script, what does it trigger?
+     - Do I want the connection to be open until script answers with success, so you can have multiple events outputting multiple sets of information, or do you want to disconnect and remove hook after single event success?
+     - Event handling: Should I define new class for proper handling of e.g. mouse+key (non-modifier) (or generic key combinations passed to GUI by script)?
+     - Generalize from specific predefined key and event to more general choices? (-> discuss which events are needed)

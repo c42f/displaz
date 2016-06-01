@@ -71,7 +71,7 @@ class PointViewerMainWindow : public QMainWindow
         void updateTitle();
         void setProgressBarText(QString text);
         void geometryRowsInserted(const QModelIndex& parent, int first, int last);
-        void handleIpcConnection();
+        void handleIpcConnection();  // does it have to be public for this?
 
     private:
         // Gui objects
@@ -94,6 +94,7 @@ class PointViewerMainWindow : public QMainWindow
 
         // Interprocess communication
         QLocalServer* m_ipcServer;
+
 };
 
 
