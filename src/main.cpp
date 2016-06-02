@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
     bool printHelp = false;
 
     bool hookevent = false;
+    std::string keydef = "";
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
-	"-hook",         &hookevent,     "Test: send hook from script to displaz instance, connect to gui and wait for response. key and event (predefined for now): either right-click with ControlModifier (-> command on Mac) to return closest position to click (no snapping to geometry, only guessing), or key:E for current cursor position. waits for input '1' after sending info to stdout",
+	"-hook",         &hookevent,     "Send hook from script to displaz instance, connect to GUI and wait for response. There are three keys and events (predefined for now): Either right-click with ControlModifier (-> command on Mac) to return closest position to click (without snapping to that point); or key:E for current cursor position; or right-click with ShiftModifier for info on closest position to click (without snapping to that point). Waits for input after sending info to stdout, removes hook regularly on input '1', otherwise error handling in GUI removes hook.",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -280,45 +281,45 @@ int main(int argc, char *argv[])
     }
     if (hookevent)
     {
-        // First simple try
         try
         {
             channel->sendMessage("HOOK");
 	    //
-	    // First simple try: predefined event and key in GUI (View3D), simply set hook
-	    // in GUI and send back information on event
+	    // First simple try: Predefined event and key in GUI (View3D), simply set hook
+	    // in GUI and send back information on event.
+	    // Could ask for key and desired message. If more than just a few standard cases:
+	    // Event handler class implementation might be good (reduce View3D, centralize
+	    // event handling), as well as socket communication serialization.
 	    //
-	    // currently: single return message from GUI, i.e. wait on
-	    // stdin after receiving and writing message, as implemented here
-	    //
-	    // if multiple return messages (i.e. events in GUI reported to CLI) are
-	    // wanted while no input from script: since std::cin always blocks would need
-	    // to start another thread and emit a signal once read in is complete
-	    // (Qt offers platform independent multithreading and signals)
+	    // Currently: Single return message from GUI, i.e. wait on stdin after
+	    // receiving message and sending to stdout.
+	    // If multiple return messages (i.e. events in GUI reported to CLI) are
+	    // wanted while no input from script: Since stdin always blocks would need
+	    // to start another thread and emit a signal once read in starts
+	    // (Qt offers platform independent multithreading and signals. Make sure to block
+	    // output as soon as input starts).
+	    // Simple alternativ: Specify number of events beforehand and count returns,
 	    // not sure what the desired behaviour is -> discuss
 	    //
-            QByteArray msg = channel->receiveMessage();
+            QByteArray msg = channel->receiveMessage(); // timeout of 10sec
             std::cout.write(msg.data(), msg.length());
-            std::cout << "\n";
 	    
-	    // what is needed in the following? what kind of message, what kind of
-	    // behaviour? for complex messages I'd need a proper serialization of
-	    // these socket messages (Chris is aware of that, see his comment on github)
+	    // What kind of message to GUI and what kind of behaviour is desired?
+	    // For complex messages a proper serialization of socket messages would be good
 	    // -> discuss
 	    {
-	        bool success = 0;
+	        int success = 0;
 	        std::cin >> success;
-	        if(success)
+	        if(success==1)
 	            channel->sendMessage("HOOKREMOVE"); 
 	        else
-	            std::cout << " No success, exiting " << std::endl;
+	            std::cout << "No success communicated by command line, exiting " << std::endl;
 	            //could add EXIT_FAILURE here, but probably not for complex messages
 	    }
-	    // if message wanted: read char from script, convert to QByteArray, send to GUI
         }
         catch (DisplazError & e)
         {
-            std::cerr << "ERROR: Hook message timed out waiting for a response.\n";
+            std::cerr << "ERROR: Hook timed out waiting for a response.\n";
             return EXIT_FAILURE;
         }
 	
