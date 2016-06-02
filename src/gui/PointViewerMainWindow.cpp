@@ -471,33 +471,28 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else if (commandTokens[0] == "HOOK")
     {  
         m_pointView->addHook();
-
-        //See above, not modular (see also Qt documentation)
+        //See QUERY_CURSOR above, not modular
 	IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
         if (!channel)
         {
             qWarning() << "Signalling object not a IpcChannel!\n";
             return;
         }
-	
 	//connect hookevent to send back data
 	connect(m_pointView, SIGNAL(hookEvent(QByteArray)), channel, SLOT(sendMessage(QByteArray)));
-
-	//error handling: remove hook if this channel is disconnected
+	//error handler: remove hook if this channel is disconnected
 	connect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));	
     }
     else if (commandTokens[0] == "HOOKREMOVE")
     {
-        //See above, not modular (see also Qt documentation)
         IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
         if (!channel)
         {
             qWarning() << "Signalling object not a IpcChannel!\n";
             return;
         }
-	//disconnect error handling, regular exit in CLI
+	//disconnect error handler, regular exit in CLI
 	disconnect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));
-      
         m_pointView->removeHook();	
     }
     else
