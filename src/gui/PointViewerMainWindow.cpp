@@ -35,6 +35,8 @@
 #include <QMimeData>
 #include <QGLFormat>
 
+#include <QShortcut>
+
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
@@ -468,22 +470,12 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         openShaderFile(commandTokens[1]);
     }
-    else if (commandTokens[0] == "HOOK")
-    {  
-        m_pointView->addHook();
-        //See QUERY_CURSOR above, not modular
-	IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
-        if (!channel)
-        {
-            qWarning() << "Signalling object not a IpcChannel!\n";
-            return;
-        }
-	//connect hookevent to send back data
-	connect(m_pointView, SIGNAL(hookEvent(QByteArray)), channel, SLOT(sendMessage(QByteArray)));
-	//error handler: remove hook if this channel is disconnected
-	connect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));	
-    }
     else if (commandTokens[0] == "HOOKREMOVE")
+    {
+        QByteArray message = QByteArray("REMOVE\n");
+        emit removeAllHooks(message);
+    }
+    else if (commandTokens[0] == "HOOK")
     {
         IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
         if (!channel)
@@ -491,14 +483,46 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             qWarning() << "Signalling object not a IpcChannel!\n";
             return;
         }
-	//disconnect error handler, regular exit in CLI
-	disconnect(channel, SIGNAL(disconnected()), m_pointView, SLOT(removeHook()));
-        m_pointView->removeHook();	
+        if (commandTokens.size()-1 != 3)
+        {
+            tfm::format(std::cerr, "Expected three commands, got %d\n",
+                        commandTokens.size()-1);
+            return;
+        }
+	connect(this, SIGNAL(removeAllHooks(QByteArray)), channel, SLOT(sendMessage(QByteArray)));
+	channel->setHook(commandTokens[1], commandTokens[2], commandTokens[3]);
+	//connect((new QShortcut(channel->getHookKey(), this)), SIGNAL(activated()), channel, SLOT(hookActivated()));
+	//connect(channel, SIGNAL(disconnected()), this, SLOT(removeShortCut()));
     }
     else
     {
         g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));
     }
+}
+
+
+void PointViewerMainWindow::handleHookInfo()
+{
+    IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
+    if (!channel)
+    {
+        qWarning() << "Signalling object not a IpcChannel!\n";
+        return;
+    }
+
+    if(channel->getHookInfo()=="cursor")
+    {
+        V3d p = m_pointView->cursorPos();
+        std::string response = tfm::format("%.15g %.15g %.15g\n", p.x, p.y, p.z);
+        channel->sendMessage(QByteArray(response.data(), (int)response.size()));
+    }
+    else if(channel->getHookInfo()=="key")
+    {
+        QByteArray message = channel->getHookKey().toString(QKeySequence::PortableText).append("\n").toUtf8();
+	channel->sendMessage(message);
+    }
+    else
+        channel->sendMessage("Key recognised, but unknown information requested\n");
 }
 
 

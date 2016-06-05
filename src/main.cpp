@@ -73,8 +73,10 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
 
-    bool hookevent = false;
-    std::string keydef = "";
+    bool hookremove = false;
+    std::string hookkeydef = "";
+    std::string hookkeymod = "";
+    std::string hookinfo = "";
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -101,8 +103,9 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
-	"-hook",         &hookevent,     "Send hook from script to displaz instance, connect to GUI and wait for response. There are three keys and events (predefined for now): Either right-click with ControlModifier (-> command on Mac) to return closest position to click (without snapping to that point); or key:E for current cursor position; or right-click with ShiftModifier for info on closest position to click (without snapping to that point). Waits for input after sending info to stdout, removes hook regularly on input '1', otherwise error handling in GUI removes hook.",
-
+	"-hook %s %s %s",  &hookkeydef, &hookkeymod, &hookinfo, "Set hook to listen for specified event (key and modifier)"
+                                                                 "and return either the cursor position (type cursor) or the event key (type key))",
+	"-hookremove",   &hookremove, "Remove all hooks",
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
         "-help",         &printHelp,     "Print command line usage help",
@@ -280,50 +283,34 @@ int main(int argc, char *argv[])
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
     }
-    if (hookevent)
+    if(hookkeydef!="")
     {
+        const char * removehook = "REMOVE";
+	QByteArray msg;
         try
         {
-            channel->sendMessage("HOOK");
-	    //
-	    // First simple try: Predefined event and key in GUI (View3D), simply set hook
-	    // in GUI and send back information on event.
-	    // Could ask for key and desired message. If more than just a few standard cases:
-	    // Event handler class implementation might be good (reduce View3D, centralize
-	    // event handling), as well as socket communication serialization.
-	    //
-	    // Currently: Single return message from GUI, i.e. wait on stdin after
-	    // receiving message and sending to stdout.
-	    // If multiple return messages (i.e. events in GUI reported to CLI) are
-	    // wanted while no input from script: Since stdin always blocks would need
-	    // to start another thread and emit a signal once read in starts
-	    // (Qt offers platform independent multithreading and signals. Make sure to block
-	    // output as soon as input starts).
-	    // Simple alternativ: Specify number of events beforehand and count returns,
-	    // not sure what the desired behaviour is -> discuss
-	    //
-            QByteArray msg = channel->receiveMessage(); // timeout of 10sec
-            std::cout.write(msg.data(), msg.length());
+            QByteArray message = QByteArray("HOOK\n")
+	                       + QByteArray::fromStdString(hookkeydef) + QByteArray("\n") 
+	                       + QByteArray::fromStdString(hookkeymod) + QByteArray("\n")
+	                       + QByteArray::fromStdString(hookinfo);
+	    channel->sendMessage(message);
 	    
-	    // What kind of message to GUI and what kind of behaviour is desired?
-	    // For complex messages a proper serialization of socket messages would be good
-	    // -> discuss
-	    {
-	        int success = 0;
-	        std::cin >> success;
-	        if(success==1)
-	            channel->sendMessage("HOOKREMOVE"); 
-	        else
-	            std::cout << "No success communicated by command line, exiting " << std::endl;
-	            //could add EXIT_FAILURE here, but probably not for complex messages
+	    do
+	    {  
+                msg = channel->receiveMessage(); // timeout of 10sec
+ 		std::cout.write(msg.data(), msg.length());
 	    }
-        }
+	    while(*(msg.constData())!=*removehook);
+	}
         catch (DisplazError & e)
         {
             std::cerr << "ERROR: Hook timed out waiting for a response.\n";
             return EXIT_FAILURE;
         }
-	
+    }
+    if (hookremove)
+    {
+        channel->sendMessage("HOOKREMOVE");	
     }
     if (startedGui && !script)
     {
