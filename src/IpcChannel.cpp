@@ -14,13 +14,17 @@
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),
     m_socket(socket),
-    m_messageSize(0)
+    m_messageSize(0),
+    m_hookSeq(0),
+    m_shortCut(0),
+    m_hookInfo(0)
 {
     m_socket->setParent(this);
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(readReadyData()));
     connect(m_socket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
     connect(m_socket, SIGNAL(error(QLocalSocket::LocalSocketError)),
             this, SLOT(handleError(QLocalSocket::LocalSocketError)));
+    p_parent = parent;
 }
 
 std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int timeoutMsecs)
@@ -173,4 +177,36 @@ void IpcChannel::clearCurrentMessage()
 {
     m_message.clear();
     m_messageSize = 0;
+}
+
+/*
+void IpcChannel::setHookKey(QByteArray hookKey, QByteArray hookModifier)
+{
+    std::string key = hookKey.toStdString();
+    std::string modifier = hookModifier.toStdString();
+    std::string stringseq = modifier + "+" + key;
+    QString seq = QString::fromStdString(stringseq);
+
+    m_hookSeq = QKeySequence::fromString(seq, QKeySequence::PortableText);//QKeySequence::NativeText)
+}
+*/
+
+void IpcChannel::setHook(QByteArray key, QByteArray modifier, QByteArray info)
+{
+    m_hookInfo = info;
+    std::string stringseq = modifier.toStdString() + "+" + key.toStdString();
+    QString seq = QString::fromStdString(stringseq);
+    m_hookSeq = QKeySequence::fromString(seq, QKeySequence::PortableText);//QKeySequence::NativeText)
+    
+    m_shortCut = new QShortcut(m_hookSeq, qobject_cast<QWidget *>(p_parent));
+    connect(m_shortCut, SIGNAL(activated()), this, SLOT(hookActivated()));
+    connect(this, SIGNAL(disconnected()), this, SLOT(removeShortCut()));
+    connect(this, SIGNAL(hookActive()), p_parent, SLOT(handleHookInfo()));
+}
+
+void IpcChannel::hookActivated(void)
+{
+    emit hookActive();
+    //QByteArray message = m_hookSeq.toString(QKeySequence::PortableText).append("\n").toUtf8();
+    //sendMessage(message);
 }

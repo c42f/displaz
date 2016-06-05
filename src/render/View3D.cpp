@@ -54,8 +54,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_gridVertexArray(0),
     m_quadVertexArray(0),
     m_quadLabelVertexArray(0),
-    m_devicePixelRatio(1.0),
-    m_hookEvent(false)
+    m_devicePixelRatio(1.0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
@@ -92,9 +91,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
-
-
-
 }
 
 
@@ -544,45 +540,11 @@ void View3D::mousePressEvent(QMouseEvent* event)
     {
         snapToPoint(guessClickPosition(event->pos()));
     }
-
-    if(m_hookEvent==true)
-    {
-        // return (guessed) coordinates of closest point to event
-        if((event->button() == Qt::RightButton && (event->modifiers() & Qt::ControlModifier)))
-        {
-            Imath::V3d p = guessClickPosition(event->pos());
-            std::string response = tfm::format("%.15g %.15g %.15g\n", p.x, p.y, p.z);
-      
-            emit hookEvent(QByteArray(response.data(), (int)response.size()));
-        }
-	// return geometrical info on closest point to event, do not change camera or cursor position
-        if((event->button() == Qt::RightButton && (event->modifiers() & Qt::ShiftModifier)))
-        {
-            Imath::V3d pos = guessClickPosition(event->pos());
-	    //from snapToPoint() below:
-            double snapScale = 0.025;
-            QString pointInfo;
-            V3d newPos(0.0,0.0,0.0); //init newPos to origin
-            if (snapToGeometry(pos, snapScale,
-			       &newPos, &pointInfo)) // newPos is closest point to clicked position
-	    {
-	        // Return difference to current postion as well?
-	        //V3d posDiff = newPos - m_prevCursorSnap;
-                
-                // Snap cursor /and/ camera to new position?
-		// m_cursorPos = newPos;
-		// m_camera.setCenter(newPos);
-		// m_prevCursorSnap = newPos;
-	    }
-     
-            emit hookEvent(pointInfo.toUtf8());
-        }
-    }
 }
-
 
 void View3D::snapToPoint(const Imath::V3d & pos)
 {
+
     double snapScale = 0.025;
     QString pointInfo;
     V3d newPos(0.0,0.0,0.0); //init newPos to origin
@@ -634,22 +596,9 @@ void View3D::keyPressEvent(QKeyEvent *event)
     // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
         m_camera.setCenter(m_cursorPos);
-    else if(m_hookEvent==true)
-    {
-      // simple first implementation: return current cursor position on predefined event
-      if(event->key() == Qt::Key_E)
-      {
-	  Imath::V3d p = m_cursorPos;
-          std::string response = tfm::format("%.15g %.15g %.15g\n", p.x, p.y, p.z);
-          emit hookEvent(QByteArray(response.data(), (int)response.size()));
-      }
-      else
-        event->ignore();
-    }
     else
         event->ignore();
 }
-
 
 void View3D::initCursor(float cursorRadius, float centerPointRadius)
 {
@@ -1180,20 +1129,3 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
 
 
 // vi: set et:
-
-
-// addHook, include proper error handling (what's the desired behaviour?
-// if hook already set, decline and exit with error?)
-void View3D::addHook(void)
-{
-    if(!m_hookEvent)
-        m_hookEvent = !m_hookEvent;
-}
-
-void View3D::removeHook(void)
-{
-    if(m_hookEvent)
-        m_hookEvent = !m_hookEvent;
-}
-
-

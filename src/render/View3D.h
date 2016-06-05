@@ -64,15 +64,6 @@ class View3D : public QGLWidget
         void centerOnGeometry(const QModelIndex& index);
         void centerOnPoint(const Imath::V3d& pos);
         void setExplicitCursorPos(const Imath::V3d& pos);
-	
-        //add or remove hook from CLI
-	void addHook();
-	void removeHook();
-
-    signals:
-	// emits when hookEvent is executed
-        void hookEvent(QByteArray message);
-
 
     protected:
         // Qt OpenGL callbacks
@@ -85,7 +76,6 @@ class View3D : public QGLWidget
         void mouseMoveEvent(QMouseEvent* event);
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);
-	
 
     private slots:
         void restartRender();
@@ -180,8 +170,6 @@ class View3D : public QGLWidget
         unsigned int m_quadLabelVertexArray;
 
         double m_devicePixelRatio;
-
-	bool m_hookEvent;
 };
 
 
