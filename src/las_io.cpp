@@ -191,7 +191,8 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     // Hack: liblas doesn't like forward slashes as path separators on windows
     fileName = fileName.replace('/', '\\');
 #endif
-    lasReadOpener.set_file_name(fileName.toLatin1().constData());
+    // FIXME: Figure out how to pass non-ascii file names on windows.
+    lasReadOpener.set_file_name(fileName.toUtf8().constData());
     std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
 
     if(!lasReader)
