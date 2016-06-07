@@ -6,7 +6,6 @@
 #include <QDataStream>
 #include <QByteArray>
 #include <QLocalSocket>
-
 #include <QKeySequence>
 #include <QShortcut>
 
@@ -53,9 +52,9 @@ class IpcChannel : public QObject
         /// If timeoutMsecs is -1, wait indefinitely.
         bool waitForDisconnected(int timeoutMsecs = 10000);
 
-	QKeySequence getHookKey() { return m_hookSeq; }
-	QByteArray getHookInfo() { return m_hookInfo; }
-	void setHook(QByteArray key, QByteArray mod, QByteArray info);
+        QKeySequence getHookKey(int index) { return m_hookSeq.at(index); }
+        QByteArray getHookInfo(int index) { return m_hookInfo.at(index); }
+        void setHook(QByteArray key, QByteArray info);
 
     public slots:
         /// Send message asynchronously
@@ -63,9 +62,8 @@ class IpcChannel : public QObject
         /// The message is formatted on the wire as a big endian uint32 length
         /// followed by the raw message bytes.
         void sendMessage(const QByteArray& message);
+        void hookActivated(void);
 
-	void hookActivated(void);
-	
     signals:
         /// Triggered when a message arrives
         void messageReceived(QByteArray message);
@@ -73,14 +71,14 @@ class IpcChannel : public QObject
         /// Triggered when disconnected from the server
         void disconnected();
 
-	// Triggered on key press of custom shortcut iff channel is hooked.
-	void hookActive();
+        /// Triggered on event of custom shortcut iff channel is hooked
+        void hookActive(int hookIndex);
 
     private slots:
         void readReadyData();
         void handleError(QLocalSocket::LocalSocketError errorCode);
         void handleDisconnect();
-	void removeShortCut() { m_shortCut->setEnabled(false); }
+        void removeShortCut();
 
     private:
         bool appendCurrentMessage();
@@ -90,10 +88,10 @@ class IpcChannel : public QObject
         QLocalSocket* m_socket;
         quint32 m_messageSize;
 
-	QKeySequence m_hookSeq;
-	QShortcut* m_shortCut;
-	QByteArray m_hookInfo;
-	QObject* p_parent;
+        QList<QKeySequence> m_hookSeq;
+        QList<QByteArray> m_hookInfo;
+        QList<QShortcut*> m_shortCut;
+        QObject* m_parent;
 };
 
 

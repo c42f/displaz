@@ -26,6 +26,7 @@ class GeometryCollection;
 class IpcChannel;
 class FileLoader;
 
+
 //------------------------------------------------------------------------------
 /// Main window for point cloud viewer application
 class PointViewerMainWindow : public QMainWindow
@@ -50,15 +51,12 @@ class PointViewerMainWindow : public QMainWindow
     public slots:
         void handleMessage(QByteArray message);
         void openShaderFile(const QString& shaderFileName);
-	void handleHookInfo();
+        void handleHookEvent(int hookIndex);
 
-    signals:
-	void removeAllHooks(QByteArray message);
-	
     protected:
         void dragEnterEvent(QDragEnterEvent *event);
         void dropEvent(QDropEvent *event);
-	
+
     private slots:
         void openFiles();
         void addFiles();
@@ -75,7 +73,7 @@ class PointViewerMainWindow : public QMainWindow
         void setProgressBarText(QString text);
         void geometryRowsInserted(const QModelIndex& parent, int first, int last);
         void handleIpcConnection();
-	
+
     private:
         // Gui objects
         QProgressBar* m_progressBar;
