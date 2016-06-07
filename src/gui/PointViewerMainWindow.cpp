@@ -35,8 +35,6 @@
 #include <QMimeData>
 #include <QGLFormat>
 
-#include <QShortcut>
-
 //------------------------------------------------------------------------------
 // PointViewerMainWindow implementation
 
@@ -471,12 +469,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         openShaderFile(commandTokens[1]);
     }
-    else if (commandTokens[0] == "HOOKREMOVE")
-    {
-        QByteArray message = QByteArray("REMOVE\n");
-        emit removeAllHooks(message);
-    }
-    else if (commandTokens[0] == "HOOK")
+    else if(commandTokens[0] == "HOOK")
     {
         IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
         if (!channel)
@@ -484,16 +477,8 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             qWarning() << "Signalling object not a IpcChannel!\n";
             return;
         }
-        if (commandTokens.size()-1 != 3)
-        {
-            tfm::format(std::cerr, "Expected three commands, got %d\n",
-                        commandTokens.size()-1);
-            return;
-        }
-	connect(this, SIGNAL(removeAllHooks(QByteArray)), channel, SLOT(sendMessage(QByteArray)));
-	channel->setHook(commandTokens[1], commandTokens[2], commandTokens[3]);
-	//connect((new QShortcut(channel->getHookKey(), this)), SIGNAL(activated()), channel, SLOT(hookActivated()));
-	//connect(channel, SIGNAL(disconnected()), this, SLOT(removeShortCut()));
+        for(int i=1; i<commandTokens.count(); i+=2)
+            channel->setHook(commandTokens[i], commandTokens[i+1]);
     }
     else
     {
@@ -502,7 +487,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
 }
 
 
-void PointViewerMainWindow::handleHookInfo()
+void PointViewerMainWindow::handleHookEvent(int hookIndex)
 {
     IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
     if (!channel)
@@ -511,19 +496,21 @@ void PointViewerMainWindow::handleHookInfo()
         return;
     }
 
-    if(channel->getHookInfo()=="cursor")
+    if(channel->getHookInfo(hookIndex) == "cursor")
     {
         V3d p = m_pointView->cursorPos();
-        std::string response = tfm::format("%.15g %.15g %.15g\n", p.x, p.y, p.z);
-        channel->sendMessage(QByteArray(response.data(), (int)response.size()));
-    }
-    else if(channel->getHookInfo()=="key")
-    {
-        QByteArray message = channel->getHookKey().toString(QKeySequence::PortableText).append("\n").toUtf8();
-	channel->sendMessage(message);
+        std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+        QByteArray message = channel->getHookInfo(hookIndex) + " "
+                             + channel->getHookKey(hookIndex).toString(QKeySequence::PortableText).toUtf8()
+                             + " " + QByteArray(response.data(), (int)response.size()) + "\n";
+        channel->sendMessage(message);
     }
     else
-        channel->sendMessage("Key recognised, but unknown information requested\n");
+    {
+        QByteArray message = channel->getHookInfo(hookIndex) + " "
+                             + channel->getHookKey(hookIndex).toString(QKeySequence::PortableText).append("\n").toUtf8();
+        channel->sendMessage(message);
+    }
 }
 
 

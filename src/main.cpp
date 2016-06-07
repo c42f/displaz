@@ -51,6 +51,18 @@ static int storeFileName (int argc, const char *argv[])
 }
 
 
+/// Callback for parsing of multiple hooks
+static std::vector<std::string> hookKeys;
+static std::vector<std::string> hookInfos;
+static int hooks(int argc, const char *argv[])
+{
+    assert(argc == 3);
+    hookKeys.push_back(argv[1]);
+    hookInfos.push_back(argv[2]);
+    return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
     int maxPointCount = -1;
@@ -73,10 +85,8 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
 
-    bool hookremove = false;
-    std::string hookkeydef = "";
-    std::string hookkeymod = "";
-    std::string hookinfo = "";
+    std::string hookKeyDef;
+    std::string hookInfoDef;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -103,9 +113,8 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
-	"-hook %s %s %s",  &hookkeydef, &hookkeymod, &hookinfo, "Set hook to listen for specified event (key and modifier)"
-                                                                 "and return either the cursor position (type cursor) or the event key (type key))",
-	"-hookremove",   &hookremove, "Remove all hooks",
+        "-hook %@ %s %s", hooks, &hookKeyDef, &hookInfoDef, "Hook to listen for specified event. Syntax: modifier+key option. Options are cursor or key",
+
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
         "-help",         &printHelp,     "Print command line usage help",
@@ -282,35 +291,33 @@ int main(int argc, char *argv[])
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
     }
-    if(hookkeydef!="")
+    if(hookKeyDef != "")
     {
-        const char * removehook = "REMOVE";
-	QByteArray msg;
+        QByteArray msg;
+        QByteArray message = QByteArray("HOOK");
+        for(int i=0; i<hookInfos.size(); i++)
+            message = message + QByteArray("\n")
+                              + QByteArray(hookKeys[i].data(), (int)hookKeys[i].size()) + QByteArray("\n")
+                              + QByteArray(hookInfos[i].data(), (int)hookInfos[i].size());
+
         try
         {
-            QByteArray message = QByteArray("HOOK\n")
-	                       + QByteArray::fromStdString(hookkeydef) + QByteArray("\n") 
-	                       + QByteArray::fromStdString(hookkeymod) + QByteArray("\n")
-	                       + QByteArray::fromStdString(hookinfo);
-	    channel->sendMessage(message);
-	    
-	    do
-	    {  
-                msg = channel->receiveMessage(); // timeout of 10sec
- 		std::cout.write(msg.data(), msg.length());
-	    }
-	    while(*(msg.constData())!=*removehook);
-	}
+            channel->sendMessage(message);
+            do
+            {
+                msg = channel->receiveMessage(-1);
+                std::cout.write(msg.data(), msg.length());
+                std::cout.flush();
+            }
+            while(true);
+        }
         catch (DisplazError & e)
         {
-            std::cerr << "ERROR: Hook timed out waiting for a response.\n";
+            std::cerr << "ERROR: Connection to GUI broken.\n";
             return EXIT_FAILURE;
         }
     }
-    if (hookremove)
-    {
-        channel->sendMessage("HOOKREMOVE");	
-    }
+
     if (startedGui && !script)
     {
         SigIntTransferHandler sigIntHandler(guiPid);
