@@ -59,8 +59,13 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
 {
     if (!index.isValid())
         return QVariant();
-    if (role == Qt::DisplayRole)
-        return m_geometries[index.row()]->label();
+    switch (role)
+    {
+        case Qt::DisplayRole:
+            return m_geometries[index.row()]->label();
+        case Qt::ToolTipRole:
+            return m_geometries[index.row()]->fileName();
+    }
     return QVariant();
 }
 
