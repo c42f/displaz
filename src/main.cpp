@@ -211,11 +211,10 @@ int main(int argc, char *argv[])
         for (size_t i = 0; i < g_initialFileNames.size(); ++i)
         {
             const PositionalArg& arg = g_initialFileNames[i];
-            std::string dataSetLabel = !arg.dataSetLabel.empty() ? arg.dataSetLabel : arg.filePath;
             command += '\n';
             command += currentDir.absoluteFilePath(QString::fromStdString(arg.filePath)).toUtf8();
             command += '\0';
-            command += QByteArray(dataSetLabel.data(), (int)dataSetLabel.size());
+            command += QByteArray(arg.dataSetLabel.data(), (int)arg.dataSetLabel.size());
         }
         channel->sendMessage(command);
     }
