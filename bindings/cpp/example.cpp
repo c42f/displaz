@@ -9,7 +9,6 @@
 int main()
 {
     displaz::Window win;
-    win.hold(false);
     win.setDebug(true);
 
     displaz::PointList points;
