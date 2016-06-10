@@ -14,6 +14,7 @@
 #include <QItemSelectionModel>
 #include <QMessageBox>
 #include <QGLFormat>
+#include <QOpenGLFramebufferObject>
 
 #include "config.h"
 #include "fileloader.h"
@@ -311,8 +312,7 @@ void View3D::initializeGL()
     setFocus();
 }
 
-
-void View3D::resizeGL(int w, int h)
+void View3D::resizeViewport(int w, int h)
 {
     //Note: This function receives "device pixel sizes" for correct OpenGL viewport setup
     //      Under OS X with retina display, this becomes important as it is 2x the width() or height()
@@ -327,6 +327,14 @@ void View3D::resizeGL(int w, int h)
     double dPR = getDevicePixelRatio();
 
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
+}
+
+void View3D::resizeGL(int w, int h)
+{
+    if (m_badOpenGL)
+        return;
+
+    resizeViewport(w, h);
 
     m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
 
@@ -374,6 +382,23 @@ unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
     return fb;
 }
 
+void View3D::clearBuffers() const
+{
+    glClearDepth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                 m_backgroundColor.blueF(), 1.0f);
+    if (!m_incrementalDraw)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+TransformState View3D::makeTransformState(int w, int h) const
+{
+    return TransformState(Imath::V2i(w, h),
+            m_camera.projectionMatrix(),
+            m_camera.viewMatrix());
+}
 
 void View3D::paintGL()
 {
@@ -399,18 +424,9 @@ void View3D::paintGL()
 
     //--------------------------------------------------
     // Draw main scene
-    TransformState transState(Imath::V2i(w, h),
-                              m_camera.projectionMatrix(),
-                              m_camera.viewMatrix());
+    TransformState transState = makeTransformState(w, h);
 
-    glClearDepth(1.0f);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
-                 m_backgroundColor.blueF(), 1.0f);
-    if (!m_incrementalDraw)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    clearBuffers();
     std::vector<const Geometry*> geoms = selectedGeometry();
 
     // Draw bounding boxes
@@ -499,6 +515,42 @@ void View3D::paintGL()
     glFrameBufferStatus(m_incrementalFramebuffer);
     glCheckError();
 }
+
+
+QImage View3D::renderScreenShot(int width, int height)
+{
+    if (m_badOpenGL)
+        return QImage();
+
+    double dPR = getDevicePixelRatio();
+    if (width < 0)
+        width = this->width();
+
+    if (height < 0)
+        height = this->height();
+
+    // Note: the reason for the following two lines and the subsequent downsampling of the
+    //       resulting image is to make the radius of rendered points consistent between the
+    //       gui and screenshot on displas with dPR != 1.
+    width *= dPR;
+    height *= dPR;
+
+    QOpenGLFramebufferObject framebuffer(QSize(width, height), QOpenGLFramebufferObject::Depth);
+    framebuffer.bind();
+    resizeViewport(width, height);
+    clearBuffers();
+     
+    // Render points only
+     drawPoints(makeTransformState(width, height),
+                selectedGeometry(),
+                DBL_MAX,
+                false);
+    glFinish();
+
+    QImage img = framebuffer.toImage();
+    return img.scaledToWidth(width / dPR, Qt::SmoothTransformation);
+}
+
 
 void View3D::drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const
