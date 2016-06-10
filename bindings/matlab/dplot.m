@@ -30,12 +30,18 @@ function dplot(position, varargin)
     end
 
     global g_DisplazHold;
+    global g_DisplazDataSetNumber;
+    if isempty(g_DisplazDataSetNumber)
+        g_DisplazDataSetNumber = 1;
+    end
 
     color = [1 1 1];
     markersize = 0.1;
     markershape = 0;
     plotLine = false;
     plotMarkers = false;
+    label = sprintf('DataSet%d', g_DisplazDataSetNumber);
+    g_DisplazDataSetNumber = g_DisplazDataSetNumber + 1;
 
     skipArg = false;
     for i=1:length(varargin)
@@ -57,6 +63,9 @@ function dplot(position, varargin)
                 skipArg = true;
             case 'markershape'
                 markershape = ensure_vec(varargin{i+1}', 'markershape');
+                skipArg = true;
+            case 'label'
+                label = varargin{i+1};
                 skipArg = true;
             otherwise
                 if i ~= 1
@@ -109,9 +118,9 @@ function dplot(position, varargin)
     end
 
     if g_DisplazHold
-        holdStr = '-add';
-    else
         holdStr = '';
+    else
+        holdStr = '-clear';
     end
     fixLdLibPath = '';
     if isunix()
@@ -120,8 +129,8 @@ function dplot(position, varargin)
         % libraries used when building displaz.
         fixLdLibPath = 'env LD_LIBRARY_PATH=""';
     end
-    displazCall=sprintf('%s displaz -script %s -shader generic_points.glsl -rmtemp %s %s', ...
-                        fixLdLibPath, holdStr, tmpPointFileName, tmpLineFileName);
+    displazCall=sprintf('%s displaz -script %s -shader generic_points.glsl -rmtemp -label %s %s %s', ...
+                        fixLdLibPath, holdStr, label, tmpPointFileName, tmpLineFileName);
     % disp(displazCall);
     system(displazCall);
     % FIXME: Calling displaz too often in a loop causes contention on the

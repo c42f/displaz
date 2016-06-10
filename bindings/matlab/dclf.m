@@ -6,5 +6,5 @@ function dclf()
         % libraries used when building displaz.
         fixLdLibPath = 'env LD_LIBRARY_PATH=""';
     end
-    system(sprintf('%s displaz -clear', fixLdLibPath));
+    system(sprintf('%s displaz -script -clear', fixLdLibPath));
 end
