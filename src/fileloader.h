@@ -20,18 +20,21 @@ struct FileLoadInfo
 {
     QString filePath;     /// Path to the file on disk
     QString dataSetLabel; /// Human readable label for the dataset
+    bool replaceLabel;    /// Replace any existing dataset in the UI with the same label
     bool deleteAfterLoad; /// Delete file after load - for use with temporary files.
 
-    FileLoadInfo() : deleteAfterLoad(false) {}
+    FileLoadInfo() : replaceLabel(true), deleteAfterLoad(false) {}
     FileLoadInfo(const QString& filePath_, const QString& dataSetLabel_ = "",
-                 bool deleteAfterLoad_ = false)
+                 bool replaceLabel_ = true)
         : filePath(filePath_),
         dataSetLabel(dataSetLabel_),
-        deleteAfterLoad(deleteAfterLoad_)
+        replaceLabel(replaceLabel_),
+        // Following must be set explicitly - getting it wrong will delete user data!
+        deleteAfterLoad(false)
     {
-        if (dataSetLabel.isEmpty())
+        if (dataSetLabel_.isEmpty())
         {
-            QFileInfo fileInfo(filePath);
+            QFileInfo fileInfo(filePath_);
             dataSetLabel = fileInfo.fileName();
         }
     }
@@ -89,7 +92,7 @@ class FileLoader : public QObject
         /// If reloaded is true, the load signal is the result of calling
         /// reloadFile()
         void geometryLoaded(std::shared_ptr<Geometry> geom,
-                            bool reloaded);
+                            bool replaceLabel, bool reloaded);
 
     private slots:
         void asyncLoadFile(const FileLoadInfo& loadInfo, bool reloaded)
@@ -112,7 +115,7 @@ class FileLoader : public QObject
             {
                 if (geom->loadFile(loadInfo.filePath, m_maxPointsPerFile))
                 {
-                    emit geometryLoaded(geom, reloaded);
+                    emit geometryLoaded(geom, loadInfo.replaceLabel, reloaded);
                     if (loadInfo.deleteAfterLoad)
                     {
                         // Only delete after successful load:  Load errors

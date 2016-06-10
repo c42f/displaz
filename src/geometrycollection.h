@@ -48,7 +48,10 @@ class GeometryCollection : public QAbstractListModel
         ///
         /// If `reloaded` is true, search existing geometry for
         /// `geom->fileName()` and if found, replace the existing geometry.
-        void addGeometry(std::shared_ptr<Geometry> geom, bool reloaded = false);
+        ///
+        /// If `replaceLabel` is true, search existing geometry for a matching
+        /// `geom->label()` and replace the existing geometry if found.
+        void addGeometry(std::shared_ptr<Geometry> geom, bool replaceLabel = false, bool reloaded = false);
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);

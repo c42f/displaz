@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -243,7 +244,8 @@ class Window
         Window(const std::string& windowName = "")
             : m_windowName(windowName),
             m_hold(true),
-            m_debug(false)
+            m_debug(false),
+            m_dataSetNumber(1)
         { }
 
         /// Set plotting hold state so that plots will be overwritten or
@@ -265,17 +267,22 @@ class Window
             std::string fileName;
             FilePtr ply = openTempPly(fileName);
             points.writeToFile(ply.get());
-            std::string opts;
-            if (m_hold)
-                opts += " -add";
+            std::ostringstream opts;
+            if (!m_hold)
+                opts << " -clear";
             if (!m_debug)
-                opts += " -rmtemp";
+                opts << " -rmtemp";
             if (!m_shaderName.empty())
-                opts += " -shader \"" + m_shaderName + "\"";
+                opts << " -shader \"" << m_shaderName << "\"";
+            opts << " -label \"";
             if (!label.empty())
-                opts += " -label \"" + label + "\"";
-            opts += " " + fileName;
-            sendMessage(opts);
+                opts << label;
+            else
+                opts << "DataSet" << m_dataSetNumber;
+            opts << "\"";
+            opts << " " << fileName;
+            sendMessage(opts.str());
+            m_dataSetNumber += 1;
         }
 
         /// Remove all datasets from the plot window
@@ -329,6 +336,7 @@ class Window
         std::string m_shaderName;
         bool m_hold;
         bool m_debug;
+        int m_dataSetNumber;
 };
 
 

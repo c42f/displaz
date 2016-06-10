@@ -138,7 +138,7 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     glBindBuffer(GL_ARRAY_BUFFER, geomVertexBuffer);
 
     setVBO("bbox_vertex", geomVertexBuffer);
-    
+
     glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
     GLuint positionAttribute = glGetAttribLocation(bboxShader, "position");
@@ -162,12 +162,8 @@ const unsigned int Geometry::getVAO(const char * vertexArrayName) const
     {
         return m_VAO.at(std::string(vertexArrayName));
     }
-    tfm::printfln("Geometry :: vertexArrayObject was not found and will be created - %s", vertexArrayName);
-
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-
-    return vao;
+    tfm::printfln("Geometry :: vertexArrayObject was not found - %s", vertexArrayName);
+    return 0;
 }
 
 const unsigned int Geometry::getVBO(const char * vertexBufferName) const
@@ -177,12 +173,8 @@ const unsigned int Geometry::getVBO(const char * vertexBufferName) const
     {
         return m_VBO.at(std::string(vertexBufferName));
     }
-    tfm::printfln("Geometry :: vertexBufferObject was not found and will be created - %s", vertexBufferName);
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-
-    return vbo;
+    tfm::printfln("Geometry :: vertexBufferObject was not found - %s", vertexBufferName);
+    return 0;
 }
 
 const unsigned int Geometry::shaderId(const char * shaderName) const

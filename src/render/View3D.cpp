@@ -59,6 +59,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
     //connect(m_geometries, SIGNAL(destroyed()),                          this, SLOT(modelDestroyed()));
     connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(geometryChanged()));
+    connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(dataChanged(QModelIndex,QModelIndex)));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryInserted(const QModelIndex&, int,int)));
     connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(geometryChanged()));
 
@@ -102,7 +103,6 @@ void View3D::restartRender()
     update();
 }
 
-
 void View3D::geometryChanged()
 {
     if (m_geometries->rowCount() == 1 && !m_explicitCursorPos)
@@ -110,20 +110,32 @@ void View3D::geometryChanged()
     restartRender();
 }
 
-
-void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
+/// Initialize all geometry in m_geometries for indices i in [begin,end)
+void View3D::initializeGLGeometry(int begin, int end)
 {
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
-    for (int i = firstRow; i <= lastRow; ++i)
+    for (int i = begin; i < end; ++i)
     {
         if (m_boundingBoxShader->isValid())
         {
+            // TODO: build a shader manager for this
             geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
             geoms[i]->initializeGL();
         }
     }
+}
+
+void View3D::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+{
+    initializeGLGeometry(topLeft.row(), bottomRight.row()+1);
+    geometryChanged();
+}
+
+void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
+{
+    initializeGLGeometry(firstRow, lastRow+1);
     geometryChanged();
 }
 
@@ -287,18 +299,7 @@ void View3D::initializeGL()
     glFrameBufferStatus(m_incrementalFramebuffer);
     glCheckError();
 
-    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
-    for (size_t i = 0; i < geoms.size(); ++i)
-    {
-        if (m_boundingBoxShader->isValid())
-        {
-            // TODO: build a shader manager for this
-            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
-            geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
-            geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
-            geoms[i]->initializeGL();
-        }
-    }
+    initializeGLGeometry(0, m_geometries->get().size());
 
     // FIXME: Do something about this mess.  The shader editor widget needs to
     // be initialized with the default shader, but View3D can only compile

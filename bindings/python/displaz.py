@@ -35,7 +35,7 @@ def _interpret_spec(specstr):
 
 
 def _call_displaz(*args):
-    subprocess.call(['displaz'] + list(args))
+    subprocess.call(['displaz', '-script'] + list(args))
 
 
 def _write_ply(plyfile, position, color):
@@ -58,7 +58,8 @@ end_header
     color.tofile(plyfile)
 
 
-__hold_plot = False
+__hold_plot = True
+__plot_number = 1
 
 def hold(state=None):
     global __hold_plot
@@ -68,7 +69,8 @@ def hold(state=None):
         __hold_plot = not __hold_plot
 
 
-def plot(position, plotspec='b.', color=None):
+def plot(position, plotspec='b.', color=None, label=None):
+    global __plot_number
     spec = _interpret_spec(plotspec)
     if color is None:
         color = spec['color']
@@ -84,10 +86,13 @@ def plot(position, plotspec='b.', color=None):
     plyfile = os.fdopen(fd, 'w')
     _write_ply(plyfile, position, color)
     plyfile.close()
-    args = ['-script', '-shader', 'generic_points.glsl', '-rmtemp', filename]
-    if __hold_plot:
-        args = ['-add'] + args
+    if label is None:
+        label = "DataSet%d" % (__plot_number,)
+    args = ['-shader', 'generic_points.glsl', '-rmtemp', '-label', label, filename]
+    if not __hold_plot:
+        args = ['-clear'] + args
     _call_displaz(*args)
+    __plot_number += 1
 
 
 def clf():

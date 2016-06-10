@@ -59,8 +59,13 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
 {
     if (!index.isValid())
         return QVariant();
-    if (role == Qt::DisplayRole)
-        return m_geometries[index.row()]->label();
+    switch (role)
+    {
+        case Qt::DisplayRole:
+            return m_geometries[index.row()]->label();
+        case Qt::ToolTipRole:
+            return m_geometries[index.row()]->fileName();
+    }
     return QVariant();
 }
 
@@ -94,9 +99,9 @@ bool GeometryCollection::removeRows(int row, int count, const QModelIndex& paren
 
 
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
-                                     bool reloaded)
+                                     bool replaceLabel, bool reloaded)
 {
-    if (reloaded)
+    if (replaceLabel || reloaded)
     {
         // FIXME: Doing it this way seems a bit nasty.  The geometry should
         // probably reload itself (or provide a way to create a new clone of
@@ -104,9 +109,9 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
         // reloaded?)
         for (size_t i = 0; i < m_geometries.size(); ++i)
         {
-            if (m_geometries[i]->fileName() == geom->fileName())
+            if ( (replaceLabel && m_geometries[i]->label()    == geom->label()) ||
+                 (reloaded     && m_geometries[i]->fileName() == geom->fileName()) )
             {
-                geom->setLabel(m_geometries[i]->label());
                 m_geometries[i] = geom;
                 QModelIndex idx = createIndex((int)i, 0);
                 emit dataChanged(idx, idx);
