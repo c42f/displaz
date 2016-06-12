@@ -12,6 +12,9 @@ compiler:
     - clang
 
 env:
+    global:
+        # For Coverity
+        - secure: "bSAmoFpL5U18TVx7Zw6XPlMNV8pEL00rS7erfG5zgZ/hsf/lTzl3LU04VqStCffxoR6cyG0CipYeUZExvh2WG+V6f2WDVCMhoe2hwSAplQug1j5PhyPqd1W8FqIMcNHXjojPN1Bplhf+33JQ96TiNVcFRzt9zts3m+RVfZPmsGFq+O1Lalpdpy5zeAX/qEAUvSayKxsxExwdkyKYOQxsvozb6GeeYwx7hCq2GY0xxlYza4dklyqZBtL2GtvhFG8Xg+eqLtF4AdmkHoWAT6f0Ty6M06ZR+D1J5j/mHSIolnhVsbXXLQGfMJ35pkQa31r6hoBOn0H4tkLzhV10rjk2qrPWIolOAJ8GebK1DJ0Sx7/EWI/SVCk0etyeB+58PakneeRziHUTagWuM89WR/nZ7mWdh3eSsMS2n/RhlKWv19eeK7GCB3mhDKkaq5uEw82E1bbX6Ys+/AS30PwGgUUNF6Et75NNJOV4aKyB329wll8P7oTKyL+9XBoJnozVbfqlmiX9ShvKTMiarN04w5LASuHyK+4aigsP80sP3b7wUWccpFrMR2nIDbowXe++F//6JSW2ni3qYWt7rXmk9Ou/XElfjBYSjhR+Uaz7GJT6EDRTZ3F6WpecNd0MJcxOJs7fy6P6gMCT4QKc0rLCGkQAmcf6x2xQCqYRnRBt2FCD3lQ="
     matrix:
         - DISPLAZ_BUILD_TYPE=Release
         - DISPLAZ_BUILD_TYPE=Debug
@@ -61,3 +64,13 @@ matrix:
     allow_failures:
         # For now ignore every OS X build issues
         - os: osx
+
+addons:
+  coverity_scan:
+    project:
+      name: "nigels-com/displaz"
+      description: "Build submitted via Travis CI"
+    notification_email: nigels.com@gmail.com
+    build_command_prepend: "mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=${DISPLAZ_BUILD_TYPE} .. && cd .."
+    build_command:   "make -C build -j4"
+    branch_pattern: master
