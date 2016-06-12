@@ -14,6 +14,8 @@
 #include "ShaderEditor.h"
 #include "Shader.h"
 #include "View3D.h"
+#include "IpcEventDispatcher.h"
+#include "hookEvent.h"
 
 #include <QSignalMapper>
 #include <QThread>
@@ -46,7 +48,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_logTextView(0),
     m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
-    m_ipcServer(0)
+    m_ipcServer(0),
+    m_hookEvent(0)
 {
     setWindowTitle("Displaz");
     setAcceptDrops(true);
@@ -277,6 +280,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
+
+    // Create custom hook events from CLI at runtime
+    m_hookEvent = new hookEvent(this);
 }
 
 
@@ -478,7 +484,16 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             return;
         }
         for(int i=1; i<commandTokens.count(); i+=2)
-            channel->setHook(commandTokens[i], commandTokens[i+1]);
+        {
+            m_hookEvent->setHookEvent(commandTokens[i]);
+            int latestHookIndex = m_hookEvent->getHookId();
+            // new object for each channel and each payload, keeps 
+            // channels and payloads discernible without SignalMapper
+            IpcEventDispatcher* hookDispatch = new IpcEventDispatcher(channel, this, commandTokens[i], commandTokens[i+1]);
+
+            connect(m_hookEvent->m_shortCut.at(latestHookIndex), SIGNAL(activated()),
+                    hookDispatch, SLOT(hookActivated()));
+        }
     }
     else
     {
@@ -487,29 +502,17 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
 }
 
 
-void PointViewerMainWindow::handleHookEvent(int hookIndex)
+QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
 {
-    IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
-    if (!channel)
-    {
-        qWarning() << "Signalling object not a IpcChannel!\n";
-        return;
-    }
-
-    if(channel->getHookInfo(hookIndex) == "cursor")
+    if(payload == QByteArray("cursor"))
     {
         V3d p = m_pointView->cursorPos();
         std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
-        QByteArray message = channel->getHookInfo(hookIndex) + " "
-                             + channel->getHookKey(hookIndex).toString(QKeySequence::PortableText).toUtf8()
-                             + " " + QByteArray(response.data(), (int)response.size()) + "\n";
-        channel->sendMessage(message);
+        return (payload + " " + QByteArray(response.data(), (int)response.size()));
     }
     else
     {
-        QByteArray message = channel->getHookInfo(hookIndex) + " "
-                             + channel->getHookKey(hookIndex).toString(QKeySequence::PortableText).append("\n").toUtf8();
-        channel->sendMessage(message);
+        return payload;
     }
 }
 

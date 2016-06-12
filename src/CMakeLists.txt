@@ -67,6 +67,8 @@ set(ipc_srcs
 displaz_qt_wrap_cpp(gui_moc_srcs
     fileloader.h
     geometrycollection.h
+    IpcEventDispatcher.h
+    hookEvent.h
 
     gui/DataSetUI.h
     gui/DragSpinBox.h
@@ -92,6 +94,8 @@ set(gui_srcs
     ply_io.cpp
     las_io.cpp
     PolygonBuilder.cpp
+    IpcEventDispatcher.cpp
+    hookEvent.cpp
 
     gui/DataSetUI.cpp
     gui/guimain.cpp
