@@ -14,17 +14,13 @@
 IpcChannel::IpcChannel(QLocalSocket* socket, QObject* parent)
     : QObject(parent),
     m_socket(socket),
-    m_messageSize(0),
-    m_hookSeq(),
-    m_hookInfo(),
-    m_shortCut()
+    m_messageSize(0)
 {
     m_socket->setParent(this);
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(readReadyData()));
     connect(m_socket, SIGNAL(disconnected()), this, SLOT(handleDisconnect()));
     connect(m_socket, SIGNAL(error(QLocalSocket::LocalSocketError)),
             this, SLOT(handleError(QLocalSocket::LocalSocketError)));
-    m_parent = parent;
 }
 
 std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int timeoutMsecs)
@@ -119,30 +115,6 @@ bool IpcChannel::waitForDisconnected(int timeoutMsecs)
 #   endif
 }
 
-/// Set shortcut and connect to GUI
-void IpcChannel::setHook(QByteArray key, QByteArray info)
-{
-    int numberShortCuts = m_shortCut.count();
-    m_hookInfo.append(info);
-    m_hookSeq.append(QKeySequence::fromString(QString::fromUtf8(key), QKeySequence::PortableText));
-    m_shortCut.append(new QShortcut(m_hookSeq.at(numberShortCuts), qobject_cast<QWidget*>(m_parent)));
-
-    connect(m_shortCut.at(numberShortCuts), SIGNAL(activated()), this, SLOT(hookActivated()));
-
-    if(numberShortCuts == 0) // do not connect instance of IpcChannel to handleHookInfo or removeShortCut more than once
-    {
-        connect(this, SIGNAL(disconnected()), this, SLOT(removeShortCut()));
-        connect(this, SIGNAL(hookActive(int)), m_parent, SLOT(handleHookEvent(int)));
-    }
-}
-
-void IpcChannel::hookActivated()
-{
-    QShortcut* whichShortCut = qobject_cast<QShortcut*>(sender());
-    emit hookActive(m_shortCut.indexOf(whichShortCut));
-}
-
-
 //--------------------------------------------------
 // Private functions
 
@@ -200,11 +172,4 @@ void IpcChannel::clearCurrentMessage()
 {
     m_message.clear();
     m_messageSize = 0;
-}
-
-/// Disable all shortcuts
-void IpcChannel::removeShortCut()
-{
-    for(int i=0; i < m_shortCut.count(); i++)
-        m_shortCut.at(i)->setEnabled(false);
 }

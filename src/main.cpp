@@ -52,13 +52,13 @@ static int storeFileName (int argc, const char *argv[])
 
 
 /// Callback for parsing of multiple hooks
-static std::vector<std::string> hookKeys;
-static std::vector<std::string> hookInfos;
+static std::vector<std::string> hookSpec;
+static std::vector<std::string> hookPayload;
 static int hooks(int argc, const char *argv[])
 {
     assert(argc == 3);
-    hookKeys.push_back(argv[1]);
-    hookInfos.push_back(argv[2]);
+    hookSpec.push_back(argv[1]);
+    hookPayload.push_back(argv[2]);
     return 0;
 }
 
@@ -85,8 +85,8 @@ int main(int argc, char *argv[])
     bool printVersion = false;
     bool printHelp = false;
 
-    std::string hookKeyDef;
-    std::string hookInfoDef;
+    std::string hookSpecDef;
+    std::string hookPayloadDef;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
-        "-hook %@ %s %s", hooks, &hookKeyDef, &hookInfoDef, "Hook to listen for specified event. Syntax: modifier+key option. Options are cursor or key",
+        "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -292,14 +292,14 @@ int main(int argc, char *argv[])
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
     }
-    if(hookKeyDef != "")
+    if(hookSpecDef != "")
     {
         QByteArray msg;
         QByteArray message = QByteArray("HOOK");
-        for(int i=0; i<hookInfos.size(); i++)
+        for(int i=0; i<hookPayload.size(); i++)
             message = message + QByteArray("\n")
-                              + QByteArray(hookKeys[i].data(), (int)hookKeys[i].size()) + QByteArray("\n")
-                              + QByteArray(hookInfos[i].data(), (int)hookInfos[i].size());
+                              + QByteArray(hookSpec[i].data(), (int)hookSpec[i].size()) + QByteArray("\n")
+                              + QByteArray(hookPayload[i].data(), (int)hookPayload[i].size());
 
         try
         {
@@ -331,4 +331,3 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
-

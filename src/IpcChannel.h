@@ -6,8 +6,6 @@
 #include <QDataStream>
 #include <QByteArray>
 #include <QLocalSocket>
-#include <QKeySequence>
-#include <QShortcut>
 
 /// Communication channel for local message-based IPC
 ///
@@ -52,17 +50,12 @@ class IpcChannel : public QObject
         /// If timeoutMsecs is -1, wait indefinitely.
         bool waitForDisconnected(int timeoutMsecs = 10000);
 
-        QKeySequence getHookKey(int index) { return m_hookSeq.at(index); }
-        QByteArray getHookInfo(int index) { return m_hookInfo.at(index); }
-        void setHook(QByteArray key, QByteArray info);
-
     public slots:
         /// Send message asynchronously
         ///
         /// The message is formatted on the wire as a big endian uint32 length
         /// followed by the raw message bytes.
         void sendMessage(const QByteArray& message);
-        void hookActivated(void);
 
     signals:
         /// Triggered when a message arrives
@@ -71,14 +64,10 @@ class IpcChannel : public QObject
         /// Triggered when disconnected from the server
         void disconnected();
 
-        /// Triggered on event of custom shortcut iff channel is hooked
-        void hookActive(int hookIndex);
-
     private slots:
         void readReadyData();
         void handleError(QLocalSocket::LocalSocketError errorCode);
         void handleDisconnect();
-        void removeShortCut();
 
     private:
         bool appendCurrentMessage();
@@ -87,11 +76,6 @@ class IpcChannel : public QObject
         QByteArray m_message;
         QLocalSocket* m_socket;
         quint32 m_messageSize;
-
-        QList<QKeySequence> m_hookSeq;
-        QList<QByteArray> m_hookInfo;
-        QList<QShortcut*> m_shortCut;
-        QObject* m_parent;
 };
 
 
