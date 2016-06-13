@@ -292,14 +292,16 @@ int main(int argc, char *argv[])
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
     }
-    if(hookSpecDef != "")
+    if(!hookPayload.empty())
     {
         QByteArray msg;
         QByteArray message = QByteArray("HOOK");
         for(int i=0; i<hookPayload.size(); i++)
+        {
             message = message + QByteArray("\n")
                               + QByteArray(hookSpec[i].data(), (int)hookSpec[i].size()) + QByteArray("\n")
                               + QByteArray(hookPayload[i].data(), (int)hookPayload[i].size());
+        }
 
         try
         {

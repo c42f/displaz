@@ -14,8 +14,8 @@
 #include "ShaderEditor.h"
 #include "Shader.h"
 #include "View3D.h"
-#include "IpcEventDispatcher.h"
-#include "hookEvent.h"
+#include "HookFormatter.h"
+#include "HookManager.h"
 
 #include <QSignalMapper>
 #include <QThread>
@@ -49,7 +49,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
     m_ipcServer(0),
-    m_hookEvent(0)
+    m_hookManager(0)
 {
     setWindowTitle("Displaz");
     setAcceptDrops(true);
@@ -282,7 +282,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     viewMenu->addAction(dataSetDock->toggleViewAction());
 
     // Create custom hook events from CLI at runtime
-    m_hookEvent = new hookEvent(this);
+    m_hookManager = new HookManager(this);
 }
 
 
@@ -484,15 +484,8 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         }
         for(int i=1; i<commandTokens.count(); i+=2)
         {
-            m_hookEvent->setHookEvent(commandTokens[i]);
-            int latestHookIndex = m_hookEvent->getHookId();
-            // new object for each channel and each payload, keeps 
-            // channels and payloads discernible without SignalMapper
-            IpcEventDispatcher* hookDispatch = new IpcEventDispatcher(channel, this, commandTokens[i], commandTokens[i+1], latestHookIndex);
-
-            connect(m_hookEvent->m_shortCut.at(latestHookIndex), SIGNAL(activated()),
-                    hookDispatch, SLOT(hookActivated()));
-            connect(hookDispatch, SIGNAL(deletedShortCut(int)), m_hookEvent, SLOT(removeShortCut(int)));
+            HookFormatter* formatter = new HookFormatter(this, commandTokens[i], commandTokens[i+1], channel);
+            m_hookManager->connectHook(commandTokens[i], formatter);
         }
     }
     else
