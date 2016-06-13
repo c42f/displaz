@@ -57,9 +57,8 @@ void HookManager::connectHook(QByteArray eventSpec, HookFormatter* formatter)
 
 void HookManager::deactivateEvent(int eventId)
 {
-    if(m_hooksSignedUp.at(eventId)==1)
-    {
+    m_hooksSignedUp[eventId]--;
+
+    if(m_hooksSignedUp.at(eventId) == 0)
         m_event.at(eventId)->setEnabled(false);
-        m_hooksSignedUp[eventId]=0;
-    }
 }
