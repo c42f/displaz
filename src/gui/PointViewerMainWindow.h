@@ -25,8 +25,8 @@ class LogViewer;
 class GeometryCollection;
 class IpcChannel;
 class FileLoader;
-class IpcEventDispatcher;
 class hookEvent;
+
 
 //------------------------------------------------------------------------------
 /// Main window for point cloud viewer application
@@ -97,7 +97,7 @@ class PointViewerMainWindow : public QMainWindow
         // Interprocess communication
         QLocalServer* m_ipcServer;
 
-        // Hook event handler
+        // Custom event registration for dynamic hooks
         hookEvent* m_hookEvent;
 };
 

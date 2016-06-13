@@ -489,10 +489,11 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             int latestHookIndex = m_hookEvent->getHookId();
             // new object for each channel and each payload, keeps 
             // channels and payloads discernible without SignalMapper
-            IpcEventDispatcher* hookDispatch = new IpcEventDispatcher(channel, this, commandTokens[i], commandTokens[i+1]);
+            IpcEventDispatcher* hookDispatch = new IpcEventDispatcher(channel, this, commandTokens[i], commandTokens[i+1], latestHookIndex);
 
             connect(m_hookEvent->m_shortCut.at(latestHookIndex), SIGNAL(activated()),
                     hookDispatch, SLOT(hookActivated()));
+            connect(hookDispatch, SIGNAL(deletedShortCut(int)), m_hookEvent, SLOT(removeShortCut(int)));
         }
     }
     else
@@ -512,7 +513,7 @@ QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
     }
     else
     {
-        return payload;
+        return QByteArray("null");//payload;
     }
 }
 

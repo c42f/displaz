@@ -8,22 +8,24 @@
 #include <QKeySequence>
 #include <QShortcut>
 
-/// Class for handling hook events. Implemented via QShortCut,
-/// for more generic event handling define custom events here.
-///
+/// Class for registering custom hook events. Implemented via QShortCut,
+/// i.e. for QKeySequences only.
 class hookEvent : public QObject
 {
     Q_OBJECT
     public:
         hookEvent(QObject* parent = NULL);
 
-        QKeySequence getHookSpec(int index) const { return m_hookSpec.at(index); }
         void setHookEvent(QByteArray hookSpec);
         int getHookId() const { return latestHookIndex; }
         QVector<QShortcut*> m_shortCut;
 
+    public slots:
+        void removeShortCut(int whichShortCut);
+
     private:
         QList<QKeySequence> m_hookSpec;
+        QVector<int> m_hooksSignedUp;
         int latestHookIndex;
 };
 

@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QLocalSocket>
 
+
 /// Communication channel for local message-based IPC
 ///
 /// The main idea here is to wrap QLocalSocket so that only complete messages
@@ -63,6 +64,7 @@ class IpcChannel : public QObject
 
         /// Triggered when disconnected from the server
         void disconnected();
+
 
     private slots:
         void readReadyData();

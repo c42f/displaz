@@ -115,6 +115,7 @@ bool IpcChannel::waitForDisconnected(int timeoutMsecs)
 #   endif
 }
 
+
 //--------------------------------------------------
 // Private functions
 
