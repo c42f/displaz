@@ -25,7 +25,7 @@ class LogViewer;
 class GeometryCollection;
 class IpcChannel;
 class FileLoader;
-class hookEvent;
+class HookManager;
 
 
 //------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class PointViewerMainWindow : public QMainWindow
         QLocalServer* m_ipcServer;
 
         // Custom event registration for dynamic hooks
-        hookEvent* m_hookEvent;
+        HookManager* m_hookManager;
 };
 
 
