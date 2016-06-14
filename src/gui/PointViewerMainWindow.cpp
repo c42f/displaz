@@ -14,6 +14,8 @@
 #include "ShaderEditor.h"
 #include "Shader.h"
 #include "View3D.h"
+#include "HookFormatter.h"
+#include "HookManager.h"
 
 #include <QSignalMapper>
 #include <QThread>
@@ -46,7 +48,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_logTextView(0),
     m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
-    m_ipcServer(0)
+    m_ipcServer(0),
+    m_hookManager(0)
 {
     setWindowTitle("Displaz");
     setAcceptDrops(true);
@@ -277,6 +280,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     viewMenu->addAction(shaderParamsDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
     viewMenu->addAction(dataSetDock->toggleViewAction());
+
+    // Create custom hook events from CLI at runtime
+    m_hookManager = new HookManager(this);
 }
 
 
@@ -469,9 +475,38 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         openShaderFile(commandTokens[1]);
     }
+    else if(commandTokens[0] == "HOOK")
+    {
+        IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
+        if (!channel)
+        {
+            qWarning() << "Signalling object not a IpcChannel!\n";
+            return;
+        }
+        for(int i=1; i<commandTokens.count(); i+=2)
+        {
+            HookFormatter* formatter = new HookFormatter(this, commandTokens[i], commandTokens[i+1], channel);
+            m_hookManager->connectHook(commandTokens[i], formatter);
+        }
+    }
     else
     {
         g_logger.error("Unkown remote message:\n%s", QString::fromUtf8(message));
+    }
+}
+
+
+QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
+{
+    if(payload == QByteArray("cursor"))
+    {
+        V3d p = m_pointView->cursorPos();
+        std::string response = tfm::format("%.15g %.15g %.15g", p.x, p.y, p.z);
+        return (payload + " " + QByteArray(response.data(), (int)response.size()));
+    }
+    else
+    {
+        return QByteArray("null");//payload;
     }
 }
 
