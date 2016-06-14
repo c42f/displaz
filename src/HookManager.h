@@ -22,12 +22,12 @@ class HookManager : public QObject
         void connectHook(QByteArray eventSpec, HookFormatter* formatter);
 
     public slots:
-        void deactivateEvent(int whichEvent);
+        void deactivateEvent(int eventId);
 
     private:
-        QVector<QShortcut*> m_event;
-        QList<QKeySequence> m_eventSpec;
+        QVector<QShortcut*> m_events;
+        QList<QKeySequence> m_eventSpecs;
         QVector<int> m_hooksSignedUp;
 };
 
-#endif // DISPLAZ_HOOKEVENT_H_INCLUDED
+#endif // DISPLAZ_HOOKMANAGER_H_INCLUDED
