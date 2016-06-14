@@ -51,6 +51,18 @@ static int storeFileName (int argc, const char *argv[])
 }
 
 
+/// Callback for parsing of multiple hooks
+static std::vector<std::string> hookSpec;
+static std::vector<std::string> hookPayload;
+static int hooks(int argc, const char *argv[])
+{
+    assert(argc == 3);
+    hookSpec.push_back(argv[1]);
+    hookPayload.push_back(argv[2]);
+    return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
     int maxPointCount = -1;
@@ -72,6 +84,9 @@ int main(int argc, char *argv[])
 
     bool printVersion = false;
     bool printHelp = false;
+
+    std::string hookSpecDef;
+    std::string hookPayloadDef;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -98,6 +113,7 @@ int main(int argc, char *argv[])
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
+        "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -274,6 +290,34 @@ int main(int argc, char *argv[])
         // out how to make it nicer?
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
+    }
+    if(!hookPayload.empty())
+    {
+        QByteArray msg;
+        QByteArray message = QByteArray("HOOK");
+        for(int i=0; i<hookPayload.size(); i++)
+        {
+            message = message + QByteArray("\n")
+                              + QByteArray(hookSpec[i].data(), (int)hookSpec[i].size()) + QByteArray("\n")
+                              + QByteArray(hookPayload[i].data(), (int)hookPayload[i].size());
+        }
+
+        try
+        {
+            channel->sendMessage(message);
+            do
+            {
+                msg = channel->receiveMessage(-1);
+                std::cout.write(msg.data(), msg.length());
+                std::cout.flush();
+            }
+            while(true);
+        }
+        catch (DisplazError & e)
+        {
+            std::cerr << "ERROR: Connection to GUI broken.\n";
+            return EXIT_FAILURE;
+        }
     }
 
     if (startedGui && !script)

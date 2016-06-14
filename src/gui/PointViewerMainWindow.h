@@ -25,6 +25,7 @@ class LogViewer;
 class GeometryCollection;
 class IpcChannel;
 class FileLoader;
+class HookManager;
 
 
 //------------------------------------------------------------------------------
@@ -51,6 +52,7 @@ class PointViewerMainWindow : public QMainWindow
     public slots:
         void handleMessage(QByteArray message);
         void openShaderFile(const QString& shaderFileName);
+        QByteArray hookPayload(QByteArray payload);
 
     protected:
         void dragEnterEvent(QDragEnterEvent *event);
@@ -94,6 +96,9 @@ class PointViewerMainWindow : public QMainWindow
 
         // Interprocess communication
         QLocalServer* m_ipcServer;
+
+        // Custom event registration for dynamic hooks
+        HookManager* m_hookManager;
 };
 
 
