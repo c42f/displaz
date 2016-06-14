@@ -231,27 +231,15 @@ endif()
 # Install
 install(TARGETS displaz     DESTINATION "${DISPLAZ_BIN_DIR}")
 install(TARGETS displaz-gui DESTINATION "${DISPLAZ_BIN_DIR}")
+
+if(WIN32)
+    include(DeployQt5)
+    install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz-gui${CMAKE_EXECUTABLE_SUFFIX})
+endif()
+
 if (DISPLAZ_BUILD_DVOX)
     install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
 endif()
-
-if(WIN32)
-    # Install required qt libraries
-    if (DISPLAZ_USE_QT4)
-        install(CODE "
-            include(BundleUtilities)
-            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QT_LIBRARY_DIR}\")
-        ")
-    else()
-        get_target_property(QtCore_location Qt5::Core LOCATION)
-        get_filename_component(QtCore_dir "${QtCore_location}" PATH)
-        install(CODE "
-            include(BundleUtilities)
-            fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX}\" \"\" \"${QtCore_dir}\")
-        ")
-    endif()
-endif()
-
 
 #------------------------------------------------------------------------------
 # Tests
