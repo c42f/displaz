@@ -61,9 +61,7 @@ class InteractiveCamera : public QObject
             m_rot(),
             m_center(0,0,0),
             m_dist(5),
-            m_fieldOfView(60),
-            m_clipNear(0.1),
-            m_clipFar(1000)
+            m_fieldOfView(60)
         { }
 
         /// Get the projection from camera to screen coordinates
@@ -71,7 +69,14 @@ class InteractiveCamera : public QObject
         {
             QMatrix4x4 m;
             qreal aspect = qreal(m_viewport.width())/m_viewport.height();
-            m.perspective(m_fieldOfView, aspect, m_clipNear, m_clipFar);
+            // Simple heuristic for clipping planes: use a large range of
+            // depths scaled by the distance of interest m_dist.  The large
+            // range must be traded off against finite precision of the depth
+            // buffer which can lead to z-fighting when rendering objects at a
+            // similar depth.
+            float clipNear = 1e-2*m_dist;
+            float clipFar = 1e+5*m_dist;
+            m.perspective(m_fieldOfView, aspect, clipNear, clipFar);
             return qt2exr(m);
         }
 
@@ -112,10 +117,6 @@ class InteractiveCamera : public QObject
 
         /// Get the 2D region associated with the camera
         QRect viewport() const     { return m_viewport; }
-        /// Get depth of near clipping plane
-        qreal clipNear() const     { return m_clipNear; }
-        /// Get depth of far clipping plane
-        qreal clipFar() const      { return m_clipFar; }
         /// Get field of view
         qreal fieldOfView() const  { return m_fieldOfView; }
         /// Get center around which the camera will pivot
@@ -157,16 +158,6 @@ class InteractiveCamera : public QObject
         {
             m_viewport = rect;
             emit viewChanged();
-        }
-        void setClipNear(qreal clipNear)
-        {
-            m_clipNear = clipNear;
-            emit projectionChanged();
-        }
-        void setClipFar(qreal clipFar)
-        {
-            m_clipFar = clipFar;
-            emit projectionChanged();
         }
         void setFieldOfView(qreal fov)
         {
@@ -336,8 +327,6 @@ class InteractiveCamera : public QObject
         qreal m_dist;         ///< distance from center of view
         // Projection variables
         qreal m_fieldOfView;  ///< field of view in degrees
-        qreal m_clipNear;     ///< near clipping plane
-        qreal m_clipFar;      ///< far clipping plane
         QRect m_viewport;     ///< rectangle we'll drag inside
 };
 

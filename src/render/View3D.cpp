@@ -69,13 +69,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     setFocus();
 
-    m_camera.setClipFar(FLT_MAX*0.5f); //using FLT_MAX appears to cause issues under OS X for Qt to handle
-    // Setting a good value for the near camera clipping plane is difficult
-    // when trying to show a large variation of length scales:  Setting a very
-    // small value allows us to see objects very close to the camera; the
-    // tradeoff is that this reduces the resolution of the z-buffer leading to
-    // z-fighting in the distance.
-    m_camera.setClipNear(1);
     connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
@@ -219,7 +212,7 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_cursorPos = geom.centroid();
     m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+    m_camera.setEyeToCenterDistance(diag*0.7);
 }
 
 void View3D::centerOnPoint(const Imath::V3d& pos)
