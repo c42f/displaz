@@ -82,6 +82,9 @@ class PointViewerMainWindow : public QMainWindow
         ShaderEditor* m_shaderEditor;
         HelpDialog* m_helpDialog;
         LogViewer* m_logTextView;
+        QDockWidget* m_shaderParamsDock;
+        QDockWidget* m_logDock;
+        QDockWidget* m_dataSetDock;
 
         // Gui state
         QDir m_currFileDir;

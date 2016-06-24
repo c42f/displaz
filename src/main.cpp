@@ -82,6 +82,8 @@ int main(int argc, char *argv[])
     bool queryCursor = false;
     bool script = false;
 
+    bool toggleUi = false;
+
     bool printVersion = false;
     bool printHelp = false;
 
@@ -114,6 +116,8 @@ int main(int argc, char *argv[])
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
         "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
+
+        "-toggleui",    &toggleUi,       "Toggle visibility of all user interface elements other than the 3D window",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -260,6 +264,10 @@ int main(int argc, char *argv[])
     if (quitRemote)
     {
         channel->sendMessage("QUIT");
+    }
+    if (toggleUi)
+    {
+        channel->sendMessage("TOGGLE_UI");
     }
     if (queryCursor)
     {

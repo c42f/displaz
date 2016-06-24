@@ -199,11 +199,11 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     //--------------------------------------------------
     // Docked widgets
     // Shader parameters UI
-    QDockWidget* shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
-    shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
+    m_shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable);
-    QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
-    shaderParamsDock->setWidget(shaderParamsUI);
+    QWidget* shaderParamsUI = new QWidget(m_shaderParamsDock);
+    m_shaderParamsDock->setWidget(shaderParamsUI);
     m_pointView->setShaderParamsUIWidget(shaderParamsUI);
 
     // Shader editor UI
@@ -228,10 +228,10 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 
     // Log viewer UI
-    QDockWidget* logDock = new QDockWidget(tr("Log"), this);
-    logDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_logDock = new QDockWidget(tr("Log"), this);
+    m_logDock->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
-    QWidget* logUI = new QWidget(logDock);
+    QWidget* logUI = new QWidget(m_logDock);
     m_logTextView = new LogViewer(logUI);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
@@ -251,15 +251,15 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     logUILayout->addWidget(m_logTextView);
     logUILayout->addWidget(m_progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
-    logDock->setWidget(logUI);
+    m_logDock->setWidget(logUI);
 
     // Data set list UI
-    QDockWidget* dataSetDock = new QDockWidget(tr("Data Sets"), this);
-    dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_dataSetDock = new QDockWidget(tr("Data Sets"), this);
+    m_dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
     DataSetUI* dataSetUI = new DataSetUI(this);
-    dataSetDock->setWidget(dataSetUI);
+    m_dataSetDock->setWidget(dataSetUI);
     QAbstractItemView* dataSetOverview = dataSetUI->view();
     dataSetOverview->setModel(m_geometries);
     connect(dataSetOverview, SIGNAL(doubleClicked(const QModelIndex&)),
@@ -267,19 +267,19 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_pointView->setSelectionModel(dataSetOverview->selectionModel());
 
     // Set up docked widgets
-    addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_shaderParamsDock);
     addDockWidget(Qt::LeftDockWidgetArea, shaderEditorDock);
-    addDockWidget(Qt::RightDockWidgetArea, logDock);
-    addDockWidget(Qt::RightDockWidgetArea, dataSetDock);
-    tabifyDockWidget(logDock, dataSetDock);
-    logDock->raise();
+    addDockWidget(Qt::RightDockWidgetArea, m_logDock);
+    addDockWidget(Qt::RightDockWidgetArea, m_dataSetDock);
+    tabifyDockWidget(m_logDock, m_dataSetDock);
+    m_logDock->raise();
     shaderEditorDock->setVisible(false);
 
     // Add dock widget toggles to view menu
     viewMenu->addSeparator();
-    viewMenu->addAction(shaderParamsDock->toggleViewAction());
-    viewMenu->addAction(logDock->toggleViewAction());
-    viewMenu->addAction(dataSetDock->toggleViewAction());
+    viewMenu->addAction(m_shaderParamsDock->toggleViewAction());
+    viewMenu->addAction(m_logDock->toggleViewAction());
+    viewMenu->addAction(m_dataSetDock->toggleViewAction());
 
     // Create custom hook events from CLI at runtime
     m_hookManager = new HookManager(this);
@@ -466,6 +466,16 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else if (commandTokens[0] == "QUIT")
     {
         close();
+    }
+    else if (commandTokens[0] == "TOGGLE_UI")
+    {
+        bool visible = !menuBar()->isVisible();
+        menuBar()->setVisible(visible);
+        m_shaderParamsDock->setVisible(visible);
+        m_logDock->setVisible(visible);
+        m_dataSetDock->setVisible(visible);
+        m_pointView->toggleDrawBoundingBoxes();
+        m_pointView->toggleDrawCursor();
     }
     else if (commandTokens[0] == "SET_MAX_POINT_COUNT")
     {
