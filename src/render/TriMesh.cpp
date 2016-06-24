@@ -5,6 +5,9 @@
 
 #include <memory>
 
+#include <QDir>
+#include <QFileInfo>
+
 #include "glutil.h"
 #include <QGLShaderProgram>
 
@@ -52,6 +55,8 @@ struct PlyLoadInfo
     std::vector<float> verts;
     double offset[3]; /// Global offset for verts array
     std::vector<float> colors;
+    std::vector<float> texcoords;
+    QString textureFileName;
 
     std::vector<GLuint> triangles;
     std::vector<GLuint> edges;
@@ -72,6 +77,10 @@ struct PlyLoadInfo
     {
         for (size_t i = 0; i < deferredPolys.size(); ++i)
             deferredPolys[i].triangulate(verts, triangles);
+        if (colors.size() != size_t(3*nvertices))
+            colors.clear();
+        if (texcoords.size() != size_t(2*nvertices))
+            texcoords.clear();
     }
 };
 
@@ -100,6 +109,19 @@ static int color_cb(p_ply_argument argument)
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
     double v = ply_get_argument_value(argument);
     info.colors.push_back((float)v);
+    return 1;
+}
+
+
+static int texcoord_cb(p_ply_argument argument)
+{
+    // TODO - refactor this to reduce duplication using the same loader code
+    // as point arrays.
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
+    double v = ply_get_argument_value(argument);
+    info.texcoords.push_back((float)v);
     return 1;
 }
 
@@ -196,6 +218,28 @@ bool loadPlyFile(const QString& fileName,
             info.colors.reserve(3*nvertices);
         }
     }
+    long ntexcoords = ply_set_read_cb(ply.get(), "vertex", "u", texcoord_cb, &info, 0);
+    if (ntexcoords != 0)
+    {
+        if (ply_set_read_cb(ply.get(), "vertex", "v", texcoord_cb, &info, 1) == ntexcoords)
+            info.texcoords.reserve(2*nvertices);
+        else
+            ntexcoords = 0;
+    }
+
+    const char* cmt = NULL;
+    while (true)
+    {
+        cmt = ply_get_next_comment(ply.get(), cmt);
+        if (!cmt)
+            break;
+        QList<QString> tokens = QString(cmt).split(" ");
+        if (tokens[0] == "TextureFile" && tokens.size() > 1)
+        {
+            QDir d = QFileInfo(fileName).dir();
+            info.textureFileName = d.absoluteFilePath(tokens[1]);
+        }
+    }
 
     long nfaces = 0;
     long nedges = 0;
@@ -274,8 +318,14 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     setBoundingBox(getBoundingBox(offset, info.verts));
     m_verts.swap(info.verts);
     m_colors.swap(info.colors);
+    m_texcoords.swap(info.texcoords);
     m_triangles.swap(info.triangles);
     m_edges.swap(info.edges);
+    if (!info.textureFileName.isEmpty())
+    {
+        g_logger.info("Loading texture from %s", info.textureFileName);
+        m_texture.reset(new Texture(QImage(info.textureFileName)));
+    }
     //makeSmoothNormals(m_normals, m_verts, m_triangles);
     //makeEdges(m_edges, m_triangles);
     return true;
@@ -321,7 +371,8 @@ void TriMesh::initializeEdgeGL()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_edges.size()*sizeof(unsigned int), &m_edges[0], GL_STATIC_DRAW);
 }
 
-void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName) {
+void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName)
+{
     unsigned int vertexShaderId = shaderId(vertArrayName);
 
     if (!vertexShaderId) {
@@ -369,11 +420,32 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
     glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(colorAttribute);
+
+    GLuint texcoordBuffer;
+    glGenBuffers(1, &texcoordBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer);
+
+    if (!m_texcoords.empty()) {
+        glBufferData(GL_ARRAY_BUFFER, m_texcoords.size() * sizeof(float), &m_texcoords[0], GL_STATIC_DRAW);
+    }
+    else {
+        std::vector<float> tmp_texcoords(2*m_verts.size()/3, 0.0f);
+        glBufferData(GL_ARRAY_BUFFER, tmp_texcoords.size() * sizeof(float), &tmp_texcoords[0], GL_STATIC_DRAW);
+    }
+
+    GLuint texcoordsAttribute = glGetAttribLocation(vertexShaderId, "texCoord");
+    glVertexAttribPointer(texcoordsAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float) * (2), (const GLvoid *) 0);
+    glEnableVertexAttribArray(texcoordsAttribute);
 }
 
 void TriMesh::drawFaces(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
+    if (m_texture)
+    {
+        GLint textureSampler = glGetUniformLocation(prog.programId(), "texture0");
+        m_texture->bind(textureSampler);
+    }
     unsigned int vertexShaderId = shaderId("meshface");
     unsigned int vertexArray = getVAO("meshface");
 

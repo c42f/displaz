@@ -60,6 +60,10 @@ class TriMesh : public Geometry
         std::vector<float> m_colors;
         /// Per-vertex normal
         std::vector<float> m_normals;
+        /// Per-vertex texture coordinates
+        std::vector<float> m_texcoords;
+        /// Optional texture
+        std::unique_ptr<Texture> m_texture;
         /// triples of indices into vertex array
         std::vector<unsigned int> m_triangles;
         std::vector<unsigned int> m_edges;
