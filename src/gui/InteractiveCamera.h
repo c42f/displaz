@@ -74,7 +74,7 @@ class InteractiveCamera : public QObject
             // range must be traded off against finite precision of the depth
             // buffer which can lead to z-fighting when rendering objects at a
             // similar depth.
-            float clipNear = 1e-2*m_dist;
+            float clipNear = 1e-3*m_dist;
             float clipFar = 1e+5*m_dist;
             m.perspective(m_fieldOfView, aspect, clipNear, clipFar);
             return qt2exr(m);
