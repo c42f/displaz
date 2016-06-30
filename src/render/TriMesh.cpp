@@ -441,11 +441,17 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
 void TriMesh::drawFaces(QGLShaderProgram& prog,
                         const TransformState& transState) const
 {
+    // TODO: The hasTexture uniform shader variable would be unnecessary if we
+    // supported more than one mesh face shader...
+    GLint hasTextureLoc = glGetUniformLocation(prog.programId(), "hasTexture");
     if (m_texture)
     {
-        GLint textureSampler = glGetUniformLocation(prog.programId(), "texture0");
-        m_texture->bind(textureSampler);
+        GLint textureSamplerLoc = glGetUniformLocation(prog.programId(), "texture0");
+        if (textureSamplerLoc != -1)
+            m_texture->bind(textureSamplerLoc);
     }
+    if (hasTextureLoc != -1)
+        glUniform1i(hasTextureLoc, m_texture ? 1 : 0);
     unsigned int vertexShaderId = shaderId("meshface");
     unsigned int vertexArray = getVAO("meshface");
 

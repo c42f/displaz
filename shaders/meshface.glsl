@@ -31,6 +31,7 @@ void main()
 
 uniform vec3 lightDir_eye = vec3(0.0,0.0,-1.0);
 
+uniform bool hasTexture = false;
 uniform sampler2D texture0;
 
 in vec3 position_eye;
@@ -41,12 +42,9 @@ out vec4 fragColor;
 
 void main()
 {
-    if (textureSize(texture0,0).x > 0) // Dubious?
+    if (hasTexture)
     {
-        vec4 tx = texture(texture0, vec2(ftexCoord));
-        if (tx.x == 0 && tx.y == 0 && tx.z == 0)
-            discard;
-        fragColor = tx.zyxw;
+        fragColor = texture(texture0, vec2(ftexCoord));
     }
     else
     {
