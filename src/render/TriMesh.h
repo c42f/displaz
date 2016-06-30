@@ -11,6 +11,7 @@
 #include <QMetaType>
 
 #include "Geometry.h"
+#include "glutil.h"
 
 class QGLShaderProgram;
 
@@ -43,10 +44,9 @@ class TriMesh : public Geometry
                                 std::string* info = 0) const;
 
     private:
-        void initializeFaceGL();
-        void initializeEdgeGL();
-        void initializeVertexGL(const char * vertArrayName, const char * vertAttrName,
-                                const char * normAttrName, const char * colorAttrName, const char* texCoordAttrName);
+        void initializeVertexGL(const char * vertArrayName, const std::vector<unsigned int>& elementInds,
+                                const char * positionAttrName, const char * normAttrName,
+                                const char * colorAttrName, const char* texCoordAttrName);
 
         static void makeSmoothNormals(std::vector<float>& normals,
                                       const std::vector<float>& verts,

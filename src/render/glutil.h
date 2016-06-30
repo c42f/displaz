@@ -122,6 +122,49 @@ inline void glLoadMatrix(const Imath::M44f& m)
     glLoadMatrixf((GLfloat*)m[0]);
 }
 
+
+//------------------------------------------------------------------------------
+// OpenGL buffer lifetime
+class GlBuffer
+{
+public:
+    GlBuffer() : m_id(0) {}
+
+    GlBuffer(const GlBuffer&) = delete;
+
+    GlBuffer(GlBuffer&& rhs)
+    {
+        m_id = rhs.m_id;
+        rhs.m_id = 0;
+    }
+
+    bool init()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+        m_id = 0;
+        glGenBuffers(1, &m_id);
+        return m_id != 0;
+    }
+
+    void bind(GLenum target)
+    {
+        if (m_id || init())
+            glBindBuffer(target, m_id);
+    }
+
+    ~GlBuffer()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+    }
+
+private:
+    GLuint m_id;
+};
+
+
+
 //------------------------------------------------------------------------------
 // Texture utility
 

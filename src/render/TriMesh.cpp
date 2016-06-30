@@ -347,31 +347,12 @@ void TriMesh::initializeGL()
     }
 
     // init our own vertex arrays here
-    initializeFaceGL();
-    initializeEdgeGL();
+    initializeVertexGL("meshface", m_triangles, "position", "normal", "color", "texCoord");
+    initializeVertexGL("meshedge", m_edges, "position", "normal", "color", "texCoord");
 }
 
-void TriMesh::initializeFaceGL()
-{
-    initializeVertexGL("meshface", "position", "normal", "color", "texCoord");
-
-    GLuint geomElementBuffer;
-    glGenBuffers(1, &geomElementBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_triangles.size()*sizeof(unsigned int), &m_triangles[0], GL_STATIC_DRAW);
-}
-
-void TriMesh::initializeEdgeGL()
-{
-    initializeVertexGL("meshedge", "position", "normal", "color", "texCoord");
-
-    GLuint geomElementBuffer;
-    glGenBuffers(1, &geomElementBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geomElementBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_edges.size()*sizeof(unsigned int), &m_edges[0], GL_STATIC_DRAW);
-}
-
-void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName,
+void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<unsigned int>& elementInds,
+                                 const char * positionAttrName, const char * normAttrName,
                                  const char * colorAttrName, const char* texCoordAttrName)
 {
     unsigned int vertexShaderId = shaderId(vertArrayName);
@@ -388,28 +369,30 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     // store this vertex array id
     setVAO(vertArrayName, vertexArray);
 
+    // Buffer for element indices
+    GlBuffer elementBuffer;
+    elementBuffer.bind(GL_ELEMENT_ARRAY_BUFFER);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, elementInds.size()*sizeof(unsigned int), &elementInds[0], GL_STATIC_DRAW);
+
     // Position attribute
-    GLuint vertexBuffer;
-    glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    GlBuffer positionBuffer;
+    positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, m_verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
-    GLuint positionAttribute = glGetAttribLocation(vertexShaderId, vertAttrName);
+    GLuint positionAttribute = glGetAttribLocation(vertexShaderId, positionAttrName);
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(positionAttribute);
 
     // Normal attribute
-    GLuint normalBuffer;
-    glGenBuffers(1, &normalBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+    GlBuffer normalBuffer;
+    normalBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
     GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
     glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(normalAttribute);
 
     // Color attribute
-    GLuint colorBuffer;
-    glGenBuffers(1, &colorBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
+    GlBuffer colorBuffer;
+    colorBuffer.bind(GL_ARRAY_BUFFER);
     if (!m_colors.empty())
     {
         glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
@@ -425,6 +408,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
 
     // Texture coordinate
     GLint texcoordsLocation = glGetAttribLocation(vertexShaderId, texCoordAttrName);
+    GlBuffer texcoordBuffer;
     if (texcoordsLocation != -1)
     {
         if (m_texcoords.empty())
@@ -433,14 +417,13 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
         }
         else
         {
-            GLuint texcoordBuffer;
-            glGenBuffers(1, &texcoordBuffer);
-            glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer);
+            texcoordBuffer.bind(GL_ARRAY_BUFFER);
             glBufferData(GL_ARRAY_BUFFER, m_texcoords.size() * sizeof(float), &m_texcoords[0], GL_STATIC_DRAW);
             glVertexAttribPointer(texcoordsLocation, 2, GL_FLOAT, GL_FALSE, sizeof(float) * (2), (const GLvoid *) 0);
             glEnableVertexAttribArray(texcoordsLocation);
         }
     }
+    glBindVertexArray(0);
 }
 
 void TriMesh::drawFaces(QGLShaderProgram& prog,
@@ -464,6 +447,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
 
     glBindVertexArray(vertexArray);
     glDrawElements(GL_TRIANGLES, (GLsizei)m_triangles.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
 
@@ -477,6 +461,7 @@ void TriMesh::drawEdges(QGLShaderProgram& prog,
 
     glBindVertexArray(vertexArray);
     glDrawElements(GL_LINES, (GLsizei)m_edges.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
 }
 
 
