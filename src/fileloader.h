@@ -115,6 +115,9 @@ class FileLoader : public QObject
             {
                 if (geom->loadFile(loadInfo.filePath, m_maxPointsPerFile))
                 {
+                    // Loader thread should disown the object so that its slots
+                    // won't run until they're picked up by the main thread.
+                    geom->moveToThread(0);
                     emit geometryLoaded(geom, loadInfo.replaceLabel, reloaded);
                     if (loadInfo.deleteAfterLoad)
                     {
