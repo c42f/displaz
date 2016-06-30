@@ -1,6 +1,6 @@
 ply
 format ascii 1.0
-comment TextureFile foo.png
+comment TextureFile uv_texture.png
 element vertex 4
 property double x
 property double y
@@ -10,8 +10,8 @@ property double v
 element face 1
 property list int int vertex_index
 end_header
-0 0 0       0 1
-1.33333 0 0 1 1
-1.33333 1 0 1 0
-0 1 0       0 0
+-2 -1.5 0  0 1
+ 2 -1.5 0  1 1
+ 2  1.5 0  1 0
+-2  1.5 0  0 0
 4 0 1 2 3
