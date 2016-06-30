@@ -353,7 +353,7 @@ void TriMesh::initializeGL()
 
 void TriMesh::initializeFaceGL()
 {
-    initializeVertexGL("meshface", "position", "normal", "color");
+    initializeVertexGL("meshface", "position", "normal", "color", "texCoord");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -363,7 +363,7 @@ void TriMesh::initializeFaceGL()
 
 void TriMesh::initializeEdgeGL()
 {
-    initializeVertexGL("meshedge", "position", "normal", "color");
+    initializeVertexGL("meshedge", "position", "normal", "color", "texCoord");
 
     GLuint geomElementBuffer;
     glGenBuffers(1, &geomElementBuffer);
@@ -371,7 +371,8 @@ void TriMesh::initializeEdgeGL()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_edges.size()*sizeof(unsigned int), &m_edges[0], GL_STATIC_DRAW);
 }
 
-void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName)
+void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName,
+                                 const char * colorAttrName, const char* texCoordAttrName)
 {
     unsigned int vertexShaderId = shaderId(vertArrayName);
 
@@ -387,55 +388,59 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const char * vertAt
     // store this vertex array id
     setVAO(vertArrayName, vertexArray);
 
+    // Position attribute
     GLuint vertexBuffer;
     glGenBuffers(1, &vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, m_verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
-
     GLuint positionAttribute = glGetAttribLocation(vertexShaderId, vertAttrName);
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(positionAttribute);
 
+    // Normal attribute
     GLuint normalBuffer;
     glGenBuffers(1, &normalBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
     glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
-
     GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
     glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(normalAttribute);
 
+    // Color attribute
     GLuint colorBuffer;
     glGenBuffers(1, &colorBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-
-    if (m_colors.size() == m_verts.size()) {
+    if (!m_colors.empty())
+    {
         glBufferData(GL_ARRAY_BUFFER, m_colors.size() * sizeof(float), &m_colors[0], GL_STATIC_DRAW);
     }
-    else {
+    else
+    {
         std::vector<float> tmp_colors(m_verts.size(), 1.0f);
         glBufferData(GL_ARRAY_BUFFER, tmp_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
     }
-
     GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
     glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(colorAttribute);
 
-    GLuint texcoordBuffer;
-    glGenBuffers(1, &texcoordBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer);
-
-    if (!m_texcoords.empty()) {
-        glBufferData(GL_ARRAY_BUFFER, m_texcoords.size() * sizeof(float), &m_texcoords[0], GL_STATIC_DRAW);
+    // Texture coordinate
+    GLint texcoordsLocation = glGetAttribLocation(vertexShaderId, texCoordAttrName);
+    if (texcoordsLocation != -1)
+    {
+        if (m_texcoords.empty())
+        {
+            glVertexAttrib2f(texcoordsLocation, 0, 0);
+        }
+        else
+        {
+            GLuint texcoordBuffer;
+            glGenBuffers(1, &texcoordBuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer);
+            glBufferData(GL_ARRAY_BUFFER, m_texcoords.size() * sizeof(float), &m_texcoords[0], GL_STATIC_DRAW);
+            glVertexAttribPointer(texcoordsLocation, 2, GL_FLOAT, GL_FALSE, sizeof(float) * (2), (const GLvoid *) 0);
+            glEnableVertexAttribArray(texcoordsLocation);
+        }
     }
-    else {
-        std::vector<float> tmp_texcoords(2*m_verts.size()/3, 0.0f);
-        glBufferData(GL_ARRAY_BUFFER, tmp_texcoords.size() * sizeof(float), &tmp_texcoords[0], GL_STATIC_DRAW);
-    }
-
-    GLuint texcoordsAttribute = glGetAttribLocation(vertexShaderId, "texCoord");
-    glVertexAttribPointer(texcoordsAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float) * (2), (const GLvoid *) 0);
-    glEnableVertexAttribArray(texcoordsAttribute);
 }
 
 void TriMesh::drawFaces(QGLShaderProgram& prog,

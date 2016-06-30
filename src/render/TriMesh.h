@@ -45,7 +45,8 @@ class TriMesh : public Geometry
     private:
         void initializeFaceGL();
         void initializeEdgeGL();
-        void initializeVertexGL(const char * vertArrayName, const char * vertAttrName, const char * normAttrName, const char * colorAttrName);
+        void initializeVertexGL(const char * vertArrayName, const char * vertAttrName,
+                                const char * normAttrName, const char * colorAttrName, const char* texCoordAttrName);
 
         static void makeSmoothNormals(std::vector<float>& normals,
                                       const std::vector<float>& verts,
