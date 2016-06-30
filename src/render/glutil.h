@@ -125,45 +125,55 @@ inline void glLoadMatrix(const Imath::M44f& m)
 //------------------------------------------------------------------------------
 // Texture utility
 
-struct Texture
+class Texture
 {
+public:
     Texture(const QImage& i)
-    :   image(i),
-        target(GL_TEXTURE_2D),
-        texture(0)
+        : m_image(i),
+        m_target(GL_TEXTURE_2D),
+        m_texture(0)
     {
+        // Convert to 32-bit pixel format to ease OpenGL interop.
+        if (m_image.format() != QImage::Format_ARGB32 &&
+            m_image.format() != QImage::Format_RGB32)
+        {
+            m_image.convertToFormat(m_image.hasAlphaChannel() ?
+                                    QImage::Format_ARGB32 : QImage::Format_RGB32);
+        }
     }
 
     ~Texture()
     {
-        if (texture)
+        if (m_texture)
         {
-            glDeleteTextures(1, &texture);
+            glDeleteTextures(1, &m_texture);
         }
     }
 
     void bind(int sampler) const
     {
-        if (!texture)
+        if (!m_texture)
         {
-            glGenTextures(1, &texture);
-            glBindTexture(target, texture);
-            // TODO better handling for non-RGBA formats
-            assert(image.format()==QImage::Format_ARGB32);
-            if (image.format()==QImage::Format_ARGB32)
-                glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
-            glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenTextures(1, &m_texture);
+            glBindTexture(m_target, m_texture);
+            GLenum format = m_image.hasAlphaChannel() ? GL_BGRA : GL_BGR;
+            glTexImage2D(m_target, 0, GL_RGBA, m_image.width(), m_image.height(),
+                         0, format, GL_UNSIGNED_BYTE, m_image.constBits());
+            glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
         else
         {
-            // TODO: this has to become more sophisticated, if we ever want to have more than one texture bound
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(target, texture);
-            if (sampler >= 0)
-            {
-                glBindSampler(texture, sampler);
-            }
+            glBindTexture(m_target, m_texture);
+        }
+        // TODO: this has to become more sophisticated, if we ever want to have
+        // more than one texture bound
+        glActiveTexture(GL_TEXTURE0);
+        if (sampler >= 0)
+        {
+            glBindSampler(m_texture, sampler);
         }
     }
 
@@ -172,9 +182,11 @@ struct Texture
         bind(-1);
     }
 
-            QImage image;
-            GLint  target;
-    mutable GLuint texture;
+
+private:
+    QImage m_image;
+    GLint  m_target;
+    mutable GLuint m_texture;
 };
 
 
