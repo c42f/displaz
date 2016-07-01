@@ -115,6 +115,7 @@ void drawBoundingBox(const TransformState& transState,
 
     glBindVertexArray(bboxVertexArray);
     glDrawElements(GL_LINES, 3*8, GL_UNSIGNED_BYTE, 0);
+    glBindVertexArray(0);
 
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);

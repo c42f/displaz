@@ -413,6 +413,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     {
         if (m_texcoords.empty())
         {
+            glDisableVertexAttribArray(texcoordsLocation);
             glVertexAttrib2f(texcoordsLocation, 0, 0);
         }
         else

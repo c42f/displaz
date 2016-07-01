@@ -620,17 +620,15 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
     glGenVertexArrays(1, &m_cursorVertexArray);
     glBindVertexArray(m_cursorVertexArray);
 
-    GLuint cursorVertexBuffer;
-    glGenBuffers(1, &cursorVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cursorVertexBuffer);
+    GlBuffer positionBuffer;
+    positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), cursorPoints, GL_STATIC_DRAW);
 
     GLuint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
-
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 /// Draw the 3D cursor
@@ -695,6 +693,8 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
         cursorShader.setUniformValue("color", 0.0f, 0.0f, 0.0f, 1.0f);
         transState.setUniforms(cursorShader.programId());
         glDrawArrays( GL_LINES, 0, 8 );
+
+        glBindVertexArray(0);
     }
 }
 
@@ -743,6 +743,7 @@ void View3D::initAxes()
     glEnableVertexAttribArray(texCoordAttribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
 
     const GLint l = 16;     // Label is 16 pixels wide
@@ -771,6 +772,7 @@ void View3D::initAxes()
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
     glEnableVertexAttribArray(texCoordAttribute);
+    glBindVertexArray(0);
 
 
     // Center of axis overlay
@@ -813,6 +815,7 @@ void View3D::initAxes()
     //glBindFragDataLocation(m_axesShader->shaderProgram().programId(), 0, "fragColor");
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void View3D::drawAxes() const
@@ -879,6 +882,8 @@ void View3D::drawAxes() const
         glLineWidth(1); // this won't work anymore for values larger than 1 (4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+
+        glBindVertexArray(0);
     }
 
     // Draw Labels
@@ -926,6 +931,8 @@ void View3D::drawAxes() const
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+
+        glBindVertexArray(0);
     }
 }
 
@@ -980,6 +987,7 @@ void View3D::initGrid(const float scale)
     glEnableVertexAttribArray(positionAttribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void View3D::drawGrid() const
@@ -1006,6 +1014,7 @@ void View3D::drawGrid() const
         glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
         glDrawArrays(GL_LINES, 0, (22 * 2));
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+        glBindVertexArray(0);
     }
 }
 
