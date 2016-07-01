@@ -122,48 +122,121 @@ inline void glLoadMatrix(const Imath::M44f& m)
     glLoadMatrixf((GLfloat*)m[0]);
 }
 
+
+//------------------------------------------------------------------------------
+/// OpenGL buffer lifetime management.
+///
+/// Use this to allocate a temporary buffer for passing data to the GPU.  For
+/// instance, for associating vertex buffer data with a vertex array object:
+///
+/// ```
+/// {
+///     GLuint vertexArray;
+///     glGenVertexArrays(1, &vertexArray);
+///     glBindVertexArray(vertexArray);
+///
+///     // Associate some array data with the VBO
+///     GlBuffer positionBuffer;
+///     positionBuffer.bind(GL_ARRAY_BUFFER)
+///     glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
+///
+///     // Critical: unbind the VBO to ensure that OpenGL state doesn't leak
+///     // out of the function
+///     glBindVertexArray(0);
+/// }
+/// ```
+class GlBuffer
+{
+public:
+    GlBuffer() : m_id(0) {}
+
+    GlBuffer(const GlBuffer&) = delete;
+
+    GlBuffer(GlBuffer&& rhs)
+    {
+        m_id = rhs.m_id;
+        rhs.m_id = 0;
+    }
+
+    bool init()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+        m_id = 0;
+        glGenBuffers(1, &m_id);
+        return m_id != 0;
+    }
+
+    void bind(GLenum target)
+    {
+        if (m_id || init())
+            glBindBuffer(target, m_id);
+    }
+
+    ~GlBuffer()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+    }
+
+private:
+    GLuint m_id;
+};
+
+
+
 //------------------------------------------------------------------------------
 // Texture utility
 
-struct Texture
+class Texture
 {
+public:
     Texture(const QImage& i)
-    :   image(i),
-        target(GL_TEXTURE_2D),
-        texture(0)
+        : m_image(i),
+        m_target(GL_TEXTURE_2D),
+        m_texture(0)
     {
+        // Convert to 32-bit pixel format to ease OpenGL interop.
+        if (m_image.format() != QImage::Format_ARGB32 &&
+            m_image.format() != QImage::Format_RGB32)
+        {
+            m_image.convertToFormat(m_image.hasAlphaChannel() ?
+                                    QImage::Format_ARGB32 : QImage::Format_RGB32);
+        }
     }
 
     ~Texture()
     {
-        if (texture)
+        if (m_texture)
         {
-            glDeleteTextures(1, &texture);
+            glDeleteTextures(1, &m_texture);
         }
     }
 
     void bind(int sampler) const
     {
-        if (!texture)
+        if (!m_texture)
         {
-            glGenTextures(1, &texture);
-            glBindTexture(target, texture);
-            // TODO better handling for non-RGBA formats
-            assert(image.format()==QImage::Format_ARGB32);
-            if (image.format()==QImage::Format_ARGB32)
-                glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
-            glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenTextures(1, &m_texture);
+            glBindTexture(m_target, m_texture);
+            GLenum format = m_image.hasAlphaChannel() ? GL_BGRA : GL_BGR;
+            glTexImage2D(m_target, 0, GL_RGBA, m_image.width(), m_image.height(),
+                         0, format, GL_UNSIGNED_BYTE, m_image.constBits());
+            glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
         else
         {
-            // TODO: this has to become more sophisticated, if we ever want to have more than one texture bound
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(target, texture);
-            if (sampler >= 0)
-            {
-                glBindSampler(texture, sampler);
-            }
+            glBindTexture(m_target, m_texture);
+        }
+        // TODO: this has to become more sophisticated, if we ever want to have
+        // more than one texture bound
+        glActiveTexture(GL_TEXTURE0);
+        if (sampler >= 0)
+        {
+            glBindSampler(m_texture, sampler);
         }
     }
 
@@ -172,9 +245,11 @@ struct Texture
         bind(-1);
     }
 
-            QImage image;
-            GLint  target;
-    mutable GLuint texture;
+
+private:
+    QImage m_image;
+    GLint  m_target;
+    mutable GLuint m_texture;
 };
 
 

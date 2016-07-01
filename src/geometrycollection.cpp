@@ -7,6 +7,7 @@
 #include "fileloader.h"
 
 #include <QRegExp>
+#include <QThread>
 
 GeometryCollection::GeometryCollection(QObject* parent)
     : QAbstractListModel(parent)
@@ -101,6 +102,7 @@ bool GeometryCollection::removeRows(int row, int count, const QModelIndex& paren
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                                      bool replaceLabel, bool reloaded)
 {
+    geom->moveToThread(QThread::currentThread());
     if (replaceLabel || reloaded)
     {
         // FIXME: Doing it this way seems a bit nasty.  The geometry should
