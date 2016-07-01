@@ -124,7 +124,27 @@ inline void glLoadMatrix(const Imath::M44f& m)
 
 
 //------------------------------------------------------------------------------
-// OpenGL buffer lifetime
+/// OpenGL buffer lifetime management.
+///
+/// Use this to allocate a temporary buffer for passing data to the GPU.  For
+/// instance, for associating vertex buffer data with a vertex array object:
+///
+/// ```
+/// {
+///     GLuint vertexArray;
+///     glGenVertexArrays(1, &vertexArray);
+///     glBindVertexArray(vertexArray);
+///
+///     // Associate some array data with the VBO
+///     GlBuffer positionBuffer;
+///     positionBuffer.bind(GL_ARRAY_BUFFER)
+///     glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
+///
+///     // Critical: unbind the VBO to ensure that OpenGL state doesn't leak
+///     // out of the function
+///     glBindVertexArray(0);
+/// }
+/// ```
 class GlBuffer
 {
 public:
