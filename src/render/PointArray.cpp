@@ -551,12 +551,10 @@ void PointArray::initializeGL()
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
     setVAO("points", vao);
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     setVBO("point_buffer", vbo);
 }
 
@@ -567,7 +565,6 @@ void PointArray::draw(const TransformState& transState, double quality) const
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
-
     GLuint vao = getVAO("points");
     glBindVertexArray(vao);
 
@@ -730,6 +727,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         if (attributes[i])
             prog.disableAttributeArray(attributes[i]->location);
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
     return drawCount;
 }
