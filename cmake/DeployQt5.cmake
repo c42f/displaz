@@ -318,13 +318,13 @@ function(install_qt5_executable executable)
       get_property(loc TARGET Qt5::QCocoaIntegrationPlugin
         PROPERTY LOCATION_RELEASE)
       install_qt5_plugin("${loc}" "${executable}" 0 installed_plugin_paths
-        "PlugIns" "${component}")
+        "${plugins_dir}/platforms" "${component}")
       list(APPEND libs ${installed_plugin_paths})
     elseif(WIN32)
       get_property(loc TARGET Qt5::QWindowsIntegrationPlugin
         PROPERTY LOCATION_RELEASE)
       install_qt5_plugin("${loc}" "${executable}" 0 installed_plugin_paths
-        "" "${component}")
+        "platforms" "${component}")
       list(APPEND libs ${installed_plugin_paths})
     endif()
     foreach(plugin ${qtplugins})
