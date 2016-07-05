@@ -323,8 +323,11 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     m_edges.swap(info.edges);
     if (!info.textureFileName.isEmpty())
     {
-        g_logger.info("Loading texture from %s", info.textureFileName);
-        m_texture.reset(new Texture(QImage(info.textureFileName)));
+        QImage image;
+        if (image.load(info.textureFileName))
+            m_texture.reset(new Texture(image));
+        else
+            g_logger.warning("Could not load texture %s for model %s", info.textureFileName, fileName);
     }
     //makeSmoothNormals(m_normals, m_verts, m_triangles);
     //makeEdges(m_edges, m_triangles);

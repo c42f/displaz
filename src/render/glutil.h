@@ -16,6 +16,7 @@
 #define QT_NO_OPENGL_ES_2
 
 #include <QImage>
+#include <QGLWidget>
 
 #include <vector>
 #include <cassert>
@@ -191,19 +192,11 @@ private:
 class Texture
 {
 public:
-    Texture(const QImage& i)
-        : m_image(i),
+    Texture(const QImage& image)
+        : m_image(QGLWidget::convertToGLFormat(image)),
         m_target(GL_TEXTURE_2D),
         m_texture(0)
-    {
-        // Convert to 32-bit pixel format to ease OpenGL interop.
-        if (m_image.format() != QImage::Format_ARGB32 &&
-            m_image.format() != QImage::Format_RGB32)
-        {
-            m_image.convertToFormat(m_image.hasAlphaChannel() ?
-                                    QImage::Format_ARGB32 : QImage::Format_RGB32);
-        }
-    }
+    { }
 
     ~Texture()
     {
@@ -219,9 +212,8 @@ public:
         {
             glGenTextures(1, &m_texture);
             glBindTexture(m_target, m_texture);
-            GLenum format = m_image.hasAlphaChannel() ? GL_BGRA : GL_BGR;
             glTexImage2D(m_target, 0, GL_RGBA, m_image.width(), m_image.height(),
-                         0, format, GL_UNSIGNED_BYTE, m_image.constBits());
+                         0, GL_RGBA, GL_UNSIGNED_BYTE, m_image.constBits());
             glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
