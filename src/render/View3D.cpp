@@ -406,25 +406,6 @@ void View3D::paintGL()
 
     std::vector<const Geometry*> geoms = selectedGeometry();
 
-    // Draw bounding boxes
-    if(m_drawBoundingBoxes && !m_incrementalDraw)
-    {
-        if (m_boundingBoxShader->isValid())
-        {
-            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
-            // shader
-            boundingBoxShader.bind();
-            // matrix stack
-            transState.setUniforms(boundingBoxShader.programId());
-
-            for (size_t i = 0; i < geoms.size(); ++i)
-            {
-                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
-                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
-            }
-        }
-    }
-
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
@@ -471,6 +452,25 @@ void View3D::paintGL()
     // Draw a grid for orientation purposes
     if (m_drawGrid)
         drawGrid();
+
+    // Draw bounding boxes
+    if(m_drawBoundingBoxes)
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
+            // shader
+            boundingBoxShader.bind();
+            // matrix stack
+            transState.setUniforms(boundingBoxShader.programId());
+
+            for (size_t i = 0; i < geoms.size(); ++i)
+            {
+                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
+                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
+            }
+        }
+    }
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
