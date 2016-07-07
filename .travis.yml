@@ -17,9 +17,9 @@ env:
         - DISPLAZ_BUILD_TYPE=Debug
 
 # either whitelist or blacklist branches
-# branches:
-#     only:
-#         - master
+branches:
+    only:
+        - master
 #     except:
 #         - experimental
 
