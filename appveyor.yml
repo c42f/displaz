@@ -4,8 +4,8 @@ version: '{build}'
 
 # branches to build
 branches:
-  except:
-    - gh-pages
+  only:
+    - master
 
 # scripts that are called at very beginning, before repo cloning
 init:
