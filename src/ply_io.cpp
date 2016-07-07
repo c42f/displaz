@@ -7,11 +7,19 @@
 
 #include "QtLogger.h"
 
+#include <QRegExp>
+
 //------------------------------------------------------------------------------
 // Utilities for interfacing with rply
 
+/// Logging callback, logging all rply errors to g_logger
+void logRplyError(p_ply ply, const char* message)
+{
+    g_logger.error("rply: %s", message);
+}
+
 /// Callback handler for reading ply data into a point field using rply
-class PlyFieldLoader
+class PlyLoader::PlyFieldLoader
 {
     public:
         PlyFieldLoader(GeomField& field)
@@ -432,7 +440,3 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
 }
 
 
-void logRplyError(p_ply ply, const char* message)
-{
-    g_logger.error("rply: %s", message);
-}
