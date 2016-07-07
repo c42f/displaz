@@ -95,6 +95,35 @@ def plot(position, plotspec='b.', color=None, label=None):
     __plot_number += 1
 
 
+def multi_plot(position_list):
+    """
+    Plots different points clouds with random colors
+    
+    Args:
+        position_list (list(numpy.array)): list of point clouds
+    """
+    if not isinstance(position_list, list):
+        raise TypeError("Input should be a list of points clouds")
+    file_names = []    
+    for i, position in enumerate(position_list):
+        if position.shape[1] != 3:
+            raise Exception('Position must have three columns')
+        if position.dtype != np.float64:
+            position = np.float64(position)
+        color = np.tile(np.random.random_sample(3), (position.shape[0],1) )
+        
+        fd, filename = tempfile.mkstemp(suffix='.ply', prefix='displaz_py_')
+        file_names.append(filename)
+        plyfile = os.fdopen(fd, 'w')
+        _write_ply(plyfile, position, color)
+        plyfile.close()
+    
+    args = ['-shader', 'las_points.glsl', '-rmtemp'] + file_names
+    if __hold_plot:
+        args = ['-add'] + args
+    _call_displaz(*args)
+
+
 def clf():
     _call_displaz('-clear')
 
