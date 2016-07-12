@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
     std::string serverName = "default";
     double posX = -DBL_MAX, posY = -DBL_MAX, posZ = -DBL_MAX;
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
+    double rot[9] = {-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX}; // Camera rotation matrix
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
@@ -104,6 +105,10 @@ int main(int argc, char *argv[])
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
+        "-viewrotation %F %F %F %F %F %F %F %F %F", rot+0, rot+1, rot+2, rot+3, rot+4, rot+5, rot+6, rot+7, rot+8,
+                                         "Set camera view rotation to the given rotation matrix (passed in row major form).  "
+                                         "This will be coerced into a rotation if it isn't one.  "
+                                         "This is a simpler alternative to -viewangles",
         "-viewradius %F", &viewRadius,   "Set distance to view point",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
         "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
@@ -251,6 +256,17 @@ int main(int argc, char *argv[])
                              QByteArray().setNum(yaw)   + "\n" +
                              QByteArray().setNum(pitch) + "\n" +
                              QByteArray().setNum(roll));
+    }
+    if (rot[0] != -DBL_MAX)
+    {
+        QByteArray command("SET_VIEW_ROTATION\n");
+        for(int i = 0; i < 9; ++i)
+        {
+            command += QByteArray().setNum(rot[i]);
+            if (i != 8)
+                command += "\n";
+        }
+        channel->sendMessage(command);
     }
     if (viewRadius != -DBL_MAX)
     {

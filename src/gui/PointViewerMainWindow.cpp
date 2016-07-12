@@ -439,6 +439,27 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             QQuaternion::fromAxisAndAngle(0,0,1, yaw)
         );
     }
+    else if (commandTokens[0] == "SET_VIEW_ROTATION")
+    {
+        if (commandTokens.size()-1 != 9)
+        {
+            tfm::format(std::cerr, "Expected 9 rotation matrix components, got %d\n",
+                        commandTokens.size()-1);
+            return;
+        }
+        float rot[9] = {0};
+        for (int i = 0; i < 9; ++i)
+        {
+            bool ok = true;
+            rot[i] = commandTokens[i+1].toDouble(&ok);
+            if(!ok)
+            {
+                tfm::format(std::cerr, "badly formatted view matrix message:\n%s", message.constData());
+                return;
+            }
+        }
+        m_pointView->camera().setRotation(QMatrix3x3(rot));
+    }
     else if (commandTokens[0] == "SET_VIEW_RADIUS")
     {
         bool ok = false;
