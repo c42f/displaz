@@ -193,7 +193,11 @@ class Texture
 {
 public:
     Texture(const QImage& image)
-        : m_image(QGLWidget::convertToGLFormat(image)),
+        : // Note that convertToGLFormat "helpfully" inverts the image top to
+          // bottom in addition to doing format conversion.  We need to undo
+          // this using mirrored() to avoid texture coordinates coming out in
+          // an unexpected way.
+        m_image(QGLWidget::convertToGLFormat(image.mirrored(false,true))),
         m_target(GL_TEXTURE_2D),
         m_texture(0)
     { }

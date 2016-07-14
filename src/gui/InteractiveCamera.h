@@ -179,6 +179,40 @@ class InteractiveCamera : public QObject
             m_rot = rotation;
             emit viewChanged();
         }
+        void setRotation(QMatrix3x3 rot3x3)
+        {
+            // From http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q55
+            // via QQuaternion::fromRotation() (which is only available in Qt 5.5)
+            float scalar;
+            float axis[3];
+
+            const float trace = rot3x3(0, 0) + rot3x3(1, 1) + rot3x3(2, 2);
+            if (trace > 0.00000001f) {
+                const float s = 2.0f * std::sqrt(trace + 1.0f);
+                scalar = 0.25f * s;
+                axis[0] = (rot3x3(2, 1) - rot3x3(1, 2)) / s;
+                axis[1] = (rot3x3(0, 2) - rot3x3(2, 0)) / s;
+                axis[2] = (rot3x3(1, 0) - rot3x3(0, 1)) / s;
+            } else {
+                static int s_next[3] = { 1, 2, 0 };
+                int i = 0;
+                if (rot3x3(1, 1) > rot3x3(0, 0))
+                    i = 1;
+                if (rot3x3(2, 2) > rot3x3(i, i))
+                    i = 2;
+                int j = s_next[i];
+                int k = s_next[j];
+
+                const float s = 2.0f * std::sqrt(rot3x3(i, i) - rot3x3(j, j) - rot3x3(k, k) + 1.0f);
+                axis[i] = 0.25f * s;
+                scalar  = (rot3x3(k, j) - rot3x3(j, k)) / s;
+                axis[j] = (rot3x3(j, i) + rot3x3(i, j)) / s;
+                axis[k] = (rot3x3(k, i) + rot3x3(i, k)) / s;
+            }
+
+            m_rot = QQuaternion(scalar, axis[0], axis[1], axis[2]);
+            emit viewChanged();
+        }
         void setTrackballInteraction(bool trackballInteraction)
         {
             m_trackballInteraction = trackballInteraction;
