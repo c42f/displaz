@@ -104,12 +104,17 @@ int main(int argc, char *argv[])
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
-        "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
+        "-viewradius %F", &viewRadius,   "Set distance to view focus point",
+        "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]. "
+                                         "Equivalent to -viewrotation with rotation matrix "
+                                         "R_z(roll)*R_x(pitch-90)*R_z(yaw).",
         "-viewrotation %F %F %F %F %F %F %F %F %F", rot+0, rot+1, rot+2, rot+3, rot+4, rot+5, rot+6, rot+7, rot+8,
-                                         "Set camera view rotation to the given rotation matrix (passed in row major form).  "
-                                         "This will be coerced into a rotation if it isn't one.  "
-                                         "This is a simpler alternative to -viewangles",
-        "-viewradius %F", &viewRadius,   "Set distance to view point",
+                                         "Set 3x3 camera rotation matrix. "
+                                         "The matrix must be a rotation in row major format; "
+                                         "it transforms points into the standard OpenGL camera coordinates "
+                                         "(+x right, +y up, -z into the scene). "
+                                         "This alternative to -viewangles is supplied to simplify "
+                                         "setting camera rotations from a script.",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
         "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
