@@ -406,6 +406,14 @@ void View3D::paintGL()
 
     std::vector<const Geometry*> geoms = selectedGeometry();
 
+    // Aim for 40ms frame time - an ok tradeoff for desktop usage
+    const double targetMillisecs = 40;
+    double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
+                                             m_incrementalDraw);
+
+    // Render points
+    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
+
     // Draw meshes and lines
     if (!m_incrementalDraw)
     {
@@ -417,15 +425,6 @@ void View3D::paintGL()
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->draw(transState, quality);
     }
-
-
-    // Aim for 40ms frame time - an ok tradeoff for desktop usage
-    const double targetMillisecs = 40;
-    double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
-                                             m_incrementalDraw);
-
-    // Render points
-    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
 
     // Measure frame time to update estimate for how much geometry we can draw
     // with a reasonable frame rate
