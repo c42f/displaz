@@ -33,6 +33,9 @@ class GeometryCollection : public QAbstractListModel
         /// Remove and unload all geometries whose filenames matched by given QRegExp object
         void unloadFiles(const QRegExp & filenameRegex);
 
+        /// Find the first index to a geometry with label matching the given pattern
+        QModelIndex findLabel(const QRegExp & labelPattern);
+
         // Following implemented from QAbstractListModel:
         virtual int rowCount(const QModelIndex & parent = QModelIndex()) const;
         virtual QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;

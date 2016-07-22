@@ -47,6 +47,11 @@ void GeometryCollection::unloadFiles(const QRegExp & filenameRegex)
     }
 }
 
+QModelIndex GeometryCollection::findLabel(const QRegExp & labelPattern)
+{
+    int row = findMatchingRow(labelPattern);
+    return (row == -1) ? QModelIndex() : createIndex(row, 0);
+}
 
 int GeometryCollection::rowCount(const QModelIndex & parent) const
 {

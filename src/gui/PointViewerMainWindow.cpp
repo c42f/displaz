@@ -397,6 +397,20 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         }
         m_geometries->unloadFiles(regex);
     }
+    else if (commandTokens[0] == "SET_VIEW_LABEL")
+    {
+        QString regex_str = commandTokens[1];
+        QRegExp regex(regex_str, Qt::CaseSensitive, QRegExp::FixedString);
+        if (!regex.isValid())
+        {
+            g_logger.error("Invalid pattern in -unload command: '%s': %s",
+                           regex_str, regex.errorString());
+            return;
+        }
+        QModelIndex index = m_geometries->findLabel(regex);
+        if (index.isValid())
+            m_pointView->centerOnGeometry(index);
+    }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {
         if (commandTokens.size()-1 != 3)
@@ -729,5 +743,3 @@ void PointViewerMainWindow::updateTitle()
     }
     setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
 }
-
-

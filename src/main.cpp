@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 
     std::string shaderName;
     std::string unloadFiles;
+    std::string viewLabelName;
     bool noServer = false;
 
     bool clearFiles = false;
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
         "-viewradius %F", &viewRadius,   "Set distance to view focus point",
+        "-viewlabel %s", &viewLabelName, "Set view on the first index to geometry that matches the given label",
         "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]. "
                                          "Equivalent to -viewrotation with rotation matrix "
                                          "R_z(roll)*R_x(pitch-90)*R_z(yaw).",
@@ -248,6 +250,10 @@ int main(int argc, char *argv[])
     {
         channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadFiles.c_str());
     }
+    if (!viewLabelName.empty())
+    {
+        channel->sendMessage(QByteArray("SET_VIEW_LABEL\n") + viewLabelName.c_str());
+    }
     if (posX != -DBL_MAX)
     {
         channel->sendMessage("SET_VIEW_POSITION\n" +
@@ -353,4 +359,3 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
-

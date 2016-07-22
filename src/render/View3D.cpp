@@ -212,7 +212,7 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_cursorPos = geom.centroid();
     m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(diag*0.7);
+    m_camera.setEyeToCenterDistance(diag*0.7 + 0.01);
 }
 
 void View3D::centerOnPoint(const Imath::V3d& pos)
