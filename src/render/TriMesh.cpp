@@ -27,7 +27,7 @@ static V3d getCentroid(const V3d& offset, const std::vector<float>& vertices)
     for (size_t i = 0; i < vertices.size(); i+=3)
         posSum += V3d(vertices[i], vertices[i+1], vertices[i+2]);
     if (vertices.size() > 0)
-        posSum = 1.0/vertices.size() * posSum;
+        posSum = 1.0/(vertices.size()/3.0) * posSum;
     return posSum + offset;
 }
 
