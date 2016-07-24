@@ -21,8 +21,9 @@ init:
 #   * configuration
 environment:
   matrix:
-    - COMPILER: "Visual Studio 12 Win64"
-    #- COMPILER: "Visual Studio 14 Win64"
+    # TODO: Enable both compilers?  How does this interact with the deploy?
+    #- COMPILER: "Visual Studio 12 Win64"
+    - COMPILER: "Visual Studio 14 Win64"
 
 # build platform, i.e. x86, x64, Any CPU.
 platform:
@@ -40,8 +41,8 @@ before_build:
   - rem Build third party dependencies:
   - mkdir build_external
   - cd build_external
-  # Disable warnings with /W0, since both external libs are rotten with
-  # warnings on Visual Studio
+  # TODO: Disable warnings with /W0, since both external libs are rotten with
+  # warnings on Visual Studio?
   - cmake -G "%COMPILER%" ..\thirdparty\external
   - cmake --build . --config %CONFIGURATION%
   - cd ..
@@ -51,7 +52,7 @@ build_script:
   - echo Build displaz:
   - mkdir build
   - cd build
-  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.5\msvc2013_64 -DDISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.6\msvc2015_64 -DDISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
   - cmake --build . --config %CONFIGURATION%
 
 after_build:
