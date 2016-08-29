@@ -6,10 +6,17 @@
 #include <cmath>
 
 //------------------------------------------------------------------------------
-void Logger::log(LogLevel level, const char* fmt, tfm::FormatListRef flist)
+void Logger::log(LogLevel level, const char* fmt, tfm::FormatListRef flist, int maxMsgs)
 {
     if (level > m_logLevel)
         return;
+    if (maxMsgs > 0)
+    {
+        int& count = m_logCountLimit[LogCountKey(fmt, level)];
+        if (count >= maxMsgs)
+            return;
+        ++count;
+    }
     std::ostringstream ss;
     tfm::vformat(ss, fmt, flist);
     logImpl(level, ss.str());
