@@ -4,7 +4,10 @@
 #ifndef LOGGER_H_INCLUDED
 #define LOGGER_H_INCLUDED
 
+#include <map>
+
 #include "tinyformat.h"
+
 
 //------------------------------------------------------------------------------
 /// Logger class for log message formatting using printf-style strings
@@ -20,8 +23,12 @@ class Logger
             Progress
         };
 
-        Logger(LogLevel logLevel = Info, bool logProgress = true)
-            : m_logLevel(logLevel), m_logProgress(logProgress) { }
+        Logger(LogLevel logLevel = Info, bool logProgress = true,
+               int logMessageLimit = 1000)
+            : m_logLevel(logLevel),
+            m_logProgress(logProgress),
+            m_logMessageLimit(logMessageLimit)
+        { }
 
         void setLogLevel(LogLevel logLevel) { m_logLevel = logLevel; }
         void setLogProgress(bool logProgress) { m_logProgress = logProgress; }
@@ -32,50 +39,56 @@ class Logger
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void progress(const char* fmt, TINYFORMAT_VARARGS(n))              \
         {                                                                  \
-            if (m_logProgress)                                             \
-                log(Progress, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));   \
+            log(Progress, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)));\
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void debug(const char* fmt, TINYFORMAT_VARARGS(n))                 \
         {                                                                  \
-            if (m_logLevel >= Debug)                                       \
-                log(Debug, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));      \
+            log(Debug, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)));  \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void info(const char* fmt, TINYFORMAT_VARARGS(n))                  \
         {                                                                  \
-            if (m_logLevel >= Info)                                        \
-                log(Info, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));       \
+            log(Info, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)));   \
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void warning(const char* fmt, TINYFORMAT_VARARGS(n))               \
         {                                                                  \
-            if (m_logLevel >= Warning)                                     \
-                log(Warning, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));    \
+            log(Warning, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)));\
         }                                                                  \
                                                                            \
         template<TINYFORMAT_ARGTYPES(n)>                                   \
         void error(const char* fmt, TINYFORMAT_VARARGS(n))                 \
         {                                                                  \
-            if (m_logLevel >= Error)                                       \
-                log(Error, tfm::format(fmt, TINYFORMAT_PASSARGS(n)));      \
+            log(Error, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)));  \
+        }                                                                  \
+                                                                           \
+        /* Versions of above which limit total number of messages to m_logMessageLimit */ \
+        template<TINYFORMAT_ARGTYPES(n)>                                   \
+        void warning_limited(const char* fmt, TINYFORMAT_VARARGS(n))       \
+        {                                                                  \
+            log(Warning, fmt, tfm::makeFormatList(TINYFORMAT_PASSARGS(n)), m_logMessageLimit); \
         }
 
         TINYFORMAT_FOREACH_ARGNUM(DISPLAZ_MAKE_LOG_FUNCS)
 #       undef DISPLAZ_MAKE_LOG_FUNCS
 
         // 0-arg versions
-        void progress (const char* fmt) { log(Progress, tfm::format(fmt)); }
-        void debug    (const char* fmt) { log(Debug, tfm::format(fmt)); }
-        void info     (const char* fmt) { log(Info, tfm::format(fmt)); }
-        void warning  (const char* fmt) { log(Warning, tfm::format(fmt)); }
-        void error    (const char* fmt) { log(Error, tfm::format(fmt)); }
+        void progress (const char* fmt) { log(Progress, fmt, tfm::makeFormatList()); }
+        void debug    (const char* fmt) { log(Debug,    fmt, tfm::makeFormatList()); }
+        void info     (const char* fmt) { log(Info,     fmt, tfm::makeFormatList()); }
+        void warning  (const char* fmt) { log(Warning,  fmt, tfm::makeFormatList()); }
+        void error    (const char* fmt) { log(Error,    fmt, tfm::makeFormatList()); }
+        void warning_limited (const char* fmt) { log(Warning, fmt, tfm::makeFormatList(), m_logMessageLimit); }
 
-        /// Log message at the given log level
-        virtual void log(LogLevel level, const std::string& msg) = 0;
+        /// Log result of `tfm::vformat(fmt,flist)` at the given log level.
+        ///
+        /// If `maxMsgs` is positive, messages with the same `(level,fmt)` key
+        /// will be logged at most `maxMsgs` times.
+        virtual void log(LogLevel level, const char* fmt, tfm::FormatListRef flist, int maxMsgs = 0);
 
         /// Report progress of some processing step
         void progress(double progressFraction)
@@ -85,11 +98,18 @@ class Logger
         }
 
     protected:
+        virtual void logImpl(LogLevel level, const std::string& msg) = 0;
+
         virtual void progressImpl(double progressFraction) = 0;
 
     private:
+        typedef std::pair<const char*,LogLevel> LogCountKey;
+
         LogLevel m_logLevel;
         bool m_logProgress;
+        int m_logMessageLimit;
+
+        std::map<LogCountKey,int> m_logCountLimit;
 };
 
 
@@ -100,9 +120,9 @@ class StreamLogger : public Logger
         StreamLogger(std::ostream& outStream);
         ~StreamLogger();
 
-        virtual void log(LogLevel level, const std::string& msg);
-
     protected:
+        virtual void logImpl(LogLevel level, const std::string& msg);
+
         virtual void progressImpl(double progressFraction);
 
     private:

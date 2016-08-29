@@ -29,7 +29,7 @@ static void initTPPLPoly(TPPLPoly& poly,
          verts[3*inds[0]+1] == verts[3*inds[size-1]+1] &&
          verts[3*inds[0]+2] == verts[3*inds[size-1]+2]))
     {
-        g_logger.warning("Ignoring duplicate final vertex in explicitly closed polygon");
+        g_logger.warning_limited("Ignoring duplicate final vertex in explicitly closed polygon");
         size -= 1;
     }
     // Copy into polypartition data structure
