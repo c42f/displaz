@@ -236,6 +236,14 @@ class SigIntTransferHandler
 };
 
 
+/// Get socket and lock file names for displaz IPC
+///
+/// This is a combination of the program name and user name to avoid any name
+/// clashes, along with a user-defined serverName.
+void getDisplazIpcNames(std::string& socketName, std::string& lockFileName,
+                        const std::string& serverName);
+
+
 //------------------------------------------------------------------------------
 // String utils
 

@@ -16,19 +16,6 @@
 
 //------------------------------------------------------------------------------
 
-/// Get resource name for displaz IPC
-///
-/// This is a combination of the program name and user name to avoid any name
-/// clashes, along with a user-defined suffix.
-static std::string displazIpcName(const std::string& suffix = "")
-{
-    std::string name = "displaz-ipc-" + currentUserUid();
-    if (!suffix.empty())
-        name += "-" + suffix;
-    return name;
-}
-
-
 /// Callback and globals for positional argument parsing
 struct PositionalArg
 {
@@ -167,10 +154,8 @@ int main(int argc, char *argv[])
         serverName = QUuid::createUuid().toByteArray().constData();
     }
 
-    std::string ipcResourceName = displazIpcName(serverName);
-    QString socketName = QString::fromStdString(ipcResourceName);
-
-    std::string lockName = ipcResourceName + ".lock";
+    std::string socketName, lockName;
+    getDisplazIpcNames(socketName, lockName, serverName);
     InterProcessLock instanceLock(lockName);
     bool startedGui = false;
     qint64 guiPid = -1;
@@ -191,7 +176,7 @@ int main(int argc, char *argv[])
         QStringList args;
         args << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
-             << "-socketname"   << socketName;
+             << "-socketname"   << QString::fromStdString(socketName);
         QString guiExe = QDir(QCoreApplication::applicationDirPath())
                          .absoluteFilePath("displaz-gui");
         if (!QProcess::startDetached(guiExe, args,
@@ -206,7 +191,7 @@ int main(int argc, char *argv[])
     // Remote displaz instance should now be running (either it existed
     // already, or we started it above).  Communicate with it via the socket
     // interface to set any requested parameters, load additional files etc.
-    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
+    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(QString::fromStdString(socketName));
     if (!channel)
     {
         std::cerr << "ERROR: Could not open IPC channel to remote instance - exiting\n";
