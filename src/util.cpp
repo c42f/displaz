@@ -203,6 +203,18 @@ SigIntTransferHandler::~SigIntTransferHandler()
 
 
 //------------------------------------------------------------------------------
+void getDisplazIpcNames(std::string& socketName, std::string& lockFileName,
+                        const std::string& serverName)
+{
+    std::string id = "displaz-ipc-" + currentUserUid();
+    if (!serverName.empty())
+        id += "-" + serverName;
+    socketName = id;
+    lockFileName = id + ".lock";
+}
+
+
+//------------------------------------------------------------------------------
 bool iequals(const std::string& a, const std::string& b)
 {
     if (a.size() != b.size())
