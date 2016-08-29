@@ -18,11 +18,6 @@ class QtLogger : public QObject, public Logger
     public:
         QtLogger(QObject* parent = 0) : QObject(parent) {}
 
-        virtual void log(LogLevel level, const std::string& msg)
-        {
-            emit logMessage(level, QString::fromUtf8(msg.c_str()));
-        }
-
     signals:
         /// Signal emitted every time a log message comes in
         void logMessage(int logLevel, QString msg);
@@ -31,6 +26,11 @@ class QtLogger : public QObject, public Logger
         void progressPercent(int percent);
 
     protected:
+        virtual void logImpl(LogLevel level, const std::string& msg)
+        {
+            emit logMessage(level, QString::fromUtf8(msg.c_str()));
+        }
+
         virtual void progressImpl(double progressFraction)
         {
             emit progressPercent(int(100*progressFraction));

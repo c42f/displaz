@@ -5,6 +5,16 @@
 
 #include <cmath>
 
+//------------------------------------------------------------------------------
+void Logger::log(LogLevel level, const char* fmt, tfm::FormatListRef flist)
+{
+    if (level > m_logLevel)
+        return;
+    std::ostringstream ss;
+    tfm::vformat(ss, fmt, flist);
+    logImpl(level, ss.str());
+}
+
 
 //------------------------------------------------------------------------------
 StreamLogger::StreamLogger(std::ostream& outStream)
@@ -19,7 +29,7 @@ StreamLogger::~StreamLogger()
         m_out << "\n";
 }
 
-void StreamLogger::log(LogLevel level, const std::string& msg)
+void StreamLogger::logImpl(LogLevel level, const std::string& msg)
 {
     if (m_prevPrintWasProgress)
         tfm::format(m_out, "\n");
