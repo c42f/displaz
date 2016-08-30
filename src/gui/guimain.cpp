@@ -11,6 +11,7 @@
 #include "argparse.h"
 #include "config.h"
 #include "InterProcessLock.h"
+#include "util.h"
 
 class Geometry;
 
@@ -43,12 +44,14 @@ int main(int argc, char* argv[])
     std::string lockName;
     std::string lockId;
     std::string socketName;
+    std::string serverName;
 
     ArgParse::ArgParse ap;
     ap.options(
         "displaz-gui - don't use this directly, use the displaz commandline helper instead)",
         "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
-        "-socketname %s", &socketName,             "Local socket name for IPC",
+        "-socketname %s",      &socketName,        "Local socket name for IPC",
+        "-server %s",          &serverName,        "DEBUG: Compute lock file and socket name; do not inherit lock",
         NULL
     );
 
@@ -80,9 +83,24 @@ int main(int argc, char* argv[])
     QGLFormat::setDefaultFormat(f);
 
     PointViewerMainWindow window(f);
+
+    // Inherit instance lock (or debug: acquire it)
+    if (!serverName.empty())
+        getDisplazIpcNames(socketName, lockName, serverName);
     InterProcessLock instanceLock(lockName);
     if (!lockId.empty())
+    {
         instanceLock.inherit(lockId);
+    }
+    else if (!serverName.empty())
+    {
+        if (!instanceLock.tryLock())
+        {
+            std::cerr << "ERROR: Another displaz instance has the lock\n";
+            return EXIT_FAILURE;
+        }
+    }
+
     if (!socketName.empty())
         window.startIpcServer(QString::fromStdString(socketName));
     window.show();
