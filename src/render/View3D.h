@@ -146,7 +146,7 @@ class View3D : public QGLWidget
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        unsigned int m_incrementalFramebuffer;
+        Framebuffer m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;

@@ -24,6 +24,29 @@
 #include "util.h"
 #include "typespec.h"
 
+
+//-------------------------------------------------------------------------------
+// OpenGL Debug tools
+void _glError(const char *file, int line);
+void _glFrameBufferStatus(GLenum target, const char *file, int line);
+
+
+// #define GL_CHECK
+#ifdef GL_CHECK
+
+    #define glCheckError() _glError(__FILE__,__LINE__)
+    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
+
+#else
+
+    #define glCheckError()
+    #define glFrameBufferStatus(TARGET)
+
+#endif //GL_CHECK
+
+
+
+//-------------------------------------------------------------------------------
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -185,6 +208,71 @@ private:
 };
 
 
+//------------------------------------------------------------------------------
+/// Framebuffer resource wrapper with color and depth attachements for the
+/// particular framebuffer settings needed in the incremental framebuffer in
+/// View3D.cpp
+class Framebuffer
+{
+    public:
+        /// Generate an uninitialized framebuffer.
+        Framebuffer()
+            : m_fbo(0), m_colorBuf(0), m_zBuf(0)
+        { }
+
+        ~Framebuffer()
+        {
+            destroy();
+        }
+
+        /// Initialize framebuffer with given width and height.
+        void init(int width, int height)
+        {
+            destroy();
+
+            glGenFramebuffers(1, &m_fbo);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+
+            glGenRenderbuffers(1, &m_colorBuf);
+            glBindRenderbuffer(GL_RENDERBUFFER, m_colorBuf);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_colorBuf);
+
+            glGenRenderbuffers(1, &m_zBuf);
+            glBindRenderbuffer(GL_RENDERBUFFER, m_zBuf);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
+
+            glFrameBufferStatus(m_incrementalFramebuffer.id());
+            glCheckError();
+        }
+
+        void destroy()
+        {
+            if (m_fbo != 0)
+                glDeleteFramebuffers(1, &m_fbo);
+            if (m_colorBuf != 0)
+                glDeleteRenderbuffers(1, &m_colorBuf);
+            if (m_zBuf != 0)
+                glDeleteRenderbuffers(1, &m_zBuf);
+            m_fbo = 0;
+            m_colorBuf = 0;
+            m_zBuf = 0;
+        }
+
+        /// Get OpenGL identifier for the buffer
+        GLuint id() const
+        {
+            assert(m_fbo != 0);
+            return m_fbo;
+        }
+
+    private:
+        GLuint m_fbo;
+        GLuint m_colorBuf;
+        GLuint m_zBuf;
+};
+
 
 //------------------------------------------------------------------------------
 // Texture utility
@@ -280,22 +368,5 @@ void printActiveShaderAttributes(GLuint prog);
 const ShaderAttribute* findAttr(const std::string& name,
                                 const std::vector<ShaderAttribute>& attrs);
 
-
-void _glError(const char *file, int line);
-void _glFrameBufferStatus(GLenum target, const char *file, int line);
-
-
-// #define GL_CHECK
-#ifdef GL_CHECK
-
-    #define glCheckError() _glError(__FILE__,__LINE__)
-    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
-
-#else
-
-    #define glCheckError()
-    #define glFrameBufferStatus(TARGET)
-
-#endif //GL_CHECK
 
 #endif // GLUTIL_H_INCLUDED
