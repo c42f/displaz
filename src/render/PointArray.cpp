@@ -609,6 +609,17 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             prog.enableAttributeArray(attributes[i]->location);
     }
 
+    // Compute number of bytes required to store all attributes of a vertex, in
+    // bytes.
+    size_t perVertexBytes = 0;
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        const GeomField &field = m_fields[i];
+        unsigned int arraySize = field.spec.arraySize();
+        unsigned int vecSize = field.spec.vectorSize();
+        perVertexBytes += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
+    }
+
     DrawCount drawCount;
     ClipBox clipBox(relativeTrans);
 
@@ -634,85 +645,77 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             }
             continue;
         }
-        size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
 
         DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
         drawCount += nodeDrawCount;
 
-        idx = node->nextBeginIndex;
         if (nodeDrawCount.numVertices == 0)
             continue;
 
         if (m_fields.size() < 1)
             continue;
 
-        long bufferSize = 0;
-        for (size_t i = 0; i < m_fields.size(); ++i)
-        {
-            const GeomField &field = m_fields[i];
-            unsigned int arraySize = field.spec.arraySize();
-            unsigned int vecSize = field.spec.vectorSize();
+        // Create a new uninitialized buffer for the current node, reserving
+        // enough space for the entire set of vertex attributes which will be
+        // passed to the shader.
+        //
+        // (This new memory area will be bound to the "point_buffer" VBO until
+        // the memory is orphaned by calling glBufferData() next time through
+        // the loop.  The orphaned memory should be cleaned up by the driver,
+        // and this may actually be quite efficient, see
+        // http://stackoverflow.com/questions/25111565/how-to-deallocate-glbufferdata-memory
+        // http://hacksoflife.blogspot.com.au/2015/06/glmapbuffer-no-longer-cool.html )
+        GLsizeiptr nodeBufferSize = perVertexBytes * nodeDrawCount.numVertices;
+        glBufferData(GL_ARRAY_BUFFER, nodeBufferSize, NULL, GL_STREAM_DRAW);
 
-            // tfm::printfln("FIELD-NAME: %s", field.name);
-            // tfm::printfln("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
-
-            bufferSize += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
-        }
-
-        bufferSize = bufferSize * (GLsizei)nodeDrawCount.numVertices;
-
-        // TODO: might be able to do something more efficient here, for example use glBufferSubData to avoid re-allocation of memory by glBufferData
-        // INITIALIZE THE BUFFER TO FULL SIZE
-        // tfm::printfln("INIT BUFFER: %i, BS: %i", vbo, bufferSize);
-
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bufferSize, NULL, GL_STREAM_DRAW);
-        /// ========================================================================
-        /// ========================================================================
         GLintptr bufferOffset = 0;
-
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
 
-            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data ?
-            // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
-            // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
-            bufferSize = arraySize * vecSize * field.spec.elsize * (GLsizei)nodeDrawCount.numVertices; //sizeof(glBaseType(field.spec))
+            // TODO?: Could use a single data-array that isn't split into
+            // vertex / normal / color / etc. sections, but has interleaved
+            // data ?  OpenGL has a stride value in glVertexAttribPointer for
+            // exactly this purpose, which should be used for better efficiency
+            // here we write only the current attribute data into this the
+            // buffer (e.g. all positions, then all colors)
+            GLsizeiptr fieldBufferSize = arraySize * vecSize * field.spec.elsize * nodeDrawCount.numVertices;
 
-            char* bufferData = field.data.get() + idx*field.spec.size();
-            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, bufferData);
+            // Upload raw data for `field` to the appropriate part of the buffer.
+            char* bufferData = field.data.get() + node->nextBeginIndex*field.spec.size();
+            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, fieldBufferSize, bufferData);
 
-            // tfm::printfln("UPDATE BUFFER: %i, BS: %i", vbo, bufferSize);
-
+            // Tell OpenGL how to interpret the buffer of raw data which was
+            // just uploaded.  This should be a single call, but OpenGL spec
+            // insanity says we need `arraySize` calls (though arraySize=1
+            // for most usage.)
             for (int j = 0; j < arraySize; ++j)
             {
                 const ShaderAttribute* attr = attributes[k+j];
                 if (!attr)
                     continue;
 
-                // we have to create an intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
-                GLintptr intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
+                GLintptr arrayElementOffset = bufferOffset + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
-                    glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset);
+                    glVertexAttribIPointer(attr->location, vecSize, glBaseType(field.spec),
+                                           0, (const GLvoid *)arrayElementOffset);
                 }
                 else
                 {
-                    glVertexAttribPointer(attr->location, vecSize,
-                                          glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset);
+                    glVertexAttribPointer(attr->location, vecSize, glBaseType(field.spec),
+                                          field.spec.fixedPoint, 0, (const GLvoid *)arrayElementOffset);
                 }
 
                 glEnableVertexAttribArray(attr->location);
             }
 
-            bufferOffset += bufferSize;
+            bufferOffset += fieldBufferSize;
         }
 
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
