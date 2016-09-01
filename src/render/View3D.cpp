@@ -43,7 +43,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
-    m_incrementalFramebuffer(0),
+    m_incrementalFramebuffer(),
     m_incrementalDraw(false),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
@@ -287,10 +287,7 @@ void View3D::initializeGL()
     int w = width() * dPR;
     int h = height() * dPR;
 
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(w, h);
-
-    glFrameBufferStatus(m_incrementalFramebuffer);
-    glCheckError();
+    m_incrementalFramebuffer.init(w, h);
 
     initializeGLGeometry(0, m_geometries->get().size());
 
@@ -321,7 +318,7 @@ void View3D::resizeGL(int w, int h)
 
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
+    m_incrementalFramebuffer.init(w,h);
 
     glCheckError();
 }
@@ -388,7 +385,7 @@ void View3D::paintGL()
         resizeGL(w, h);
     }
 
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer.id());
 
     //--------------------------------------------------
     // Draw main scene
@@ -444,7 +441,7 @@ void View3D::paintGL()
 
     // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer.id());
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
 
@@ -487,9 +484,6 @@ void View3D::paintGL()
         m_incrementalFrameTimer->start(10);
 
     m_incrementalDraw = true;
-
-    glFrameBufferStatus(m_incrementalFramebuffer);
-    glCheckError();
 }
 
 void View3D::drawMeshes(const TransformState& transState,
