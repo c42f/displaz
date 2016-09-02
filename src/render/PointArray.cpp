@@ -606,7 +606,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     for (size_t i = 0; i < attributes.size(); ++i)
     {
         if (attributes[i])
-            prog.enableAttributeArray(attributes[i]->location);
+            glEnableVertexAttribArray(attributes[i]->location);
     }
 
     // Compute number of bytes required to store all attributes of a vertex, in
@@ -711,8 +711,6 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
                     glVertexAttribPointer(attr->location, vecSize, glBaseType(field.spec),
                                           field.spec.fixedPoint, 0, (const GLvoid *)arrayElementOffset);
                 }
-
-                glEnableVertexAttribArray(attr->location);
             }
 
             bufferOffset += fieldBufferSize;
@@ -728,7 +726,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     for (size_t i = 0; i < attributes.size(); ++i)
     {
         if (attributes[i])
-            prog.disableAttributeArray(attributes[i]->location);
+            glDisableVertexAttribArray(attributes[i]->location);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
