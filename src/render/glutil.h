@@ -35,12 +35,12 @@ void _glFrameBufferStatus(GLenum target, const char *file, int line);
 #ifdef GL_CHECK
 
     #define glCheckError() _glError(__FILE__,__LINE__)
-    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
+    #define glCheckFrameBufferStatus() _glFrameBufferStatus(GL_FRAMEBUFFER, __FILE__,__LINE__)
 
 #else
 
     #define glCheckError()
-    #define glFrameBufferStatus(TARGET)
+    #define glCheckFrameBufferStatus()
 
 #endif //GL_CHECK
 
@@ -243,7 +243,7 @@ class Framebuffer
             glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
             glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
 
-            glFrameBufferStatus(m_incrementalFramebuffer.id());
+            glCheckFrameBufferStatus();
             glCheckError();
         }
 
