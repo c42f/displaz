@@ -88,7 +88,6 @@ class View3D : public QGLWidget
 
     private:
         double getDevicePixelRatio();
-        unsigned int allocIncrementalFramebuffer(int w, int h) const;
         void initializeGLGeometry(int begin, int end);
 
         void initCursor(float cursorRadius, float centerPointRadius);

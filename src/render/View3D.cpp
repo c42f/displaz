@@ -319,49 +319,7 @@ void View3D::resizeGL(int w, int h)
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
     m_incrementalFramebuffer.init(w,h);
-
     glCheckError();
-}
-
-
-unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
-{
-    if (w < 1 || h < 1)
-        return 0;
-
-    //should we really delete this every time?
-    GLuint fb;
-    glDeleteFramebuffers(1, &fb);
-
-    const QGLFormat fmt = context()->format();
-
-    glGenFramebuffers(1, &fb);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
-
-    // TODO:
-    // * Should we use multisampling 1 to avoid binding to a texture?
-
-    // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
-    // for samples==1, so work around it by forcing 0, if possible
-
-    // requires OpenGL 4
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, w);
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, h);
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, fmt.samples() > 1 ? fmt.samples() : 0);
-
-    GLuint c_buff;
-    glGenRenderbuffers(1, &c_buff);
-    glBindRenderbuffer(GL_RENDERBUFFER, c_buff);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
-    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, c_buff);
-
-    GLuint z_buff;
-    glGenRenderbuffers(1, &z_buff);
-    glBindRenderbuffer(GL_RENDERBUFFER, z_buff);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, z_buff);
-
-    return fb;
 }
 
 
