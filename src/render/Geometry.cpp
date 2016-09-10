@@ -87,7 +87,7 @@ void Geometry::destroyBuffers()
     for (auto& it: m_VAO)
     {
         GLuint vao = it.second;
-        glDeleteBuffers(1, &vao);
+        glDeleteVertexArrays(1, &vao);
     }
 
     m_VAO.clear();
