@@ -368,9 +368,9 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
     // Sort points into octree order
     emit loadStepStarted("Sorting points");
-    std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
+    m_inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
     for (size_t i = 0; i < m_npoints; ++i)
-        inds[i] = i;
+        m_inds[i] = i;
     // Expand the bound so that it's cubic.  Not exactly sure it's required
     // here, but cubic nodes sometimes work better the points are better
     // distributed for LoD, splitting is unbiased, etc.
@@ -378,14 +378,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     V3f diag = rootBound.size();
     float rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
     ProgressFunc progressFunc(*this);
-    m_rootNode.reset(makeTree(0, &inds[0], 0, m_npoints, &m_P[0],
+    m_rootNode.reset(makeTree(0, &m_inds[0], 0, m_npoints, &m_P[0],
                               rootBound.center(), rootRadius, progressFunc));
     // Reorder point fields into octree order
     emit loadStepStarted("Reordering fields");
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
-        reorder(m_fields[i], inds.get(), m_npoints);
+        reorder(m_fields[i], m_inds.get(), m_npoints);
         emit loadProgress(int(100*(i+1)/m_fields.size()));
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
