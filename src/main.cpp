@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 
     bool clearFiles = false;
     bool addFiles = false;
+    bool mutateData = false;
     bool deleteAfterLoad = false;
     bool quitRemote = false;
     bool queryCursor = false;
@@ -108,6 +109,7 @@ int main(int argc, char *argv[])
         "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
+        "-modify",       &mutateData,    "Remote: mutate data already loaded with the matching label (requires displaz .ply with an \"index\" field to indicate mutated points)",
         "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
@@ -211,6 +213,11 @@ int main(int argc, char *argv[])
         QByteArray command;
         QDir currentDir = QDir::current();
         command = "OPEN_FILES\n";
+        if (mutateData)
+        {
+            command += QByteArray("MUTATE_EXISTING");
+            command += '\0';
+        }
         if (!addFiles)
         {
             command += QByteArray("REPLACE_LABEL");

@@ -131,3 +131,21 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
     m_geometries.push_back(geom);
     emit endInsertRows();
 }
+
+void GeometryCollection::mutateGeometry(std::shared_ptr<GeometryMutator> mutator)
+{
+    mutator->moveToThread(QThread::currentThread());
+
+    for (size_t i = 0; i < m_geometries.size(); ++i)
+    {
+        if ( m_geometries[i]->label() == mutator->label());
+        {
+            m_geometries[i]->mutate(mutator);
+
+            QModelIndex idx = createIndex((int)i, 0);
+            emit dataChanged(idx, idx);
+
+            return;
+        }
+    }
+}

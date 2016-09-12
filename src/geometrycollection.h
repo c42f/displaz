@@ -11,6 +11,7 @@
 
 #include "Geometry.h"
 #include "fileloader.h"
+#include "GeometryMutator.h"
 
 class QRegExp;
 
@@ -55,6 +56,8 @@ class GeometryCollection : public QAbstractListModel
         /// If `replaceLabel` is true, search existing geometry for a matching
         /// `geom->label()` and replace the existing geometry if found.
         void addGeometry(std::shared_ptr<Geometry> geom, bool replaceLabel = false, bool reloaded = false);
+        void mutateGeometry(std::shared_ptr<GeometryMutator> mutator);
+
 
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);

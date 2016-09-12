@@ -12,6 +12,7 @@
 #include "Geometry.h"
 #include "typespec.h"
 #include "geomfield.h"
+#include "GeometryMutator.h"
 
 class QGLShaderProgram;
 
@@ -30,6 +31,8 @@ class PointArray : public Geometry
 
         // Overridden Geometry functions
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
+
+        virtual void mutate(std::shared_ptr<GeometryMutator> mutator);
 
         virtual void draw(const TransformState& transState, double quality) const;
 

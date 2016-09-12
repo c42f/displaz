@@ -368,9 +368,9 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
     // Sort points into octree order
     emit loadStepStarted("Sorting points");
-    m_inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
+    std::unique_ptr<size_t[]> inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
     for (size_t i = 0; i < m_npoints; ++i)
-        m_inds[i] = i;
+        inds[i] = i;
     // Expand the bound so that it's cubic.  Not exactly sure it's required
     // here, but cubic nodes sometimes work better the points are better
     // distributed for LoD, splitting is unbiased, etc.
@@ -378,7 +378,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     V3f diag = rootBound.size();
     float rootRadius = std::max(std::max(diag.x, diag.y), diag.z) / 2;
     ProgressFunc progressFunc(*this);
-    m_rootNode.reset(makeTree(0, &m_inds[0], 0, m_npoints, &m_P[0],
+    m_rootNode.reset(makeTree(0, &inds[0], 0, m_npoints, &m_P[0],
                               rootBound.center(), rootRadius, progressFunc));
     // Reorder point fields into octree order
     emit loadStepStarted("Reordering fields");
@@ -386,13 +386,47 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     {
         g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
         reorder(m_fields[i], m_inds.get(), m_npoints);
-        emit loadProgress(int(100*(i+1)/m_fields.size()));
+        emit loadProgress(int(100*(i+1)/(m_fields.size()+1))); // denominator +1 for permutation reorder below
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+    // The index we want to store is the reverse permutation of the index above
+    m_inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
+    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = i;
+    emit loadProgress(int(100));
 
     return true;
 }
 
+
+void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
+{
+    // Now we need to find the matching columns
+    auto npoints = mutator->pointCount();
+    const std::vector<GeomField>& mut_fields = mutator->fields();
+    auto mut_idx = mutator->index();
+
+    // Currently doesn't matter if a field isn't found
+    // Convenient way to ignore "index" but is not robust
+    for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
+    {
+        for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
+        {
+            if (m_fields[field_idx].name == mut_fields[mut_field_idx].name &&
+                m_fields[field_idx].spec == mut_fields[mut_field_idx].spec)
+            {
+                // Now we copy data from the mutator to the object
+                char* ptr_to = m_fields[field_idx].data.get();
+                char* ptr_from = mut_fields[mut_field_idx].data.get();
+                size_t fieldsize = m_fields[field_idx].spec.size();
+                for (size_t j = 0; j < npoints; ++j)
+                {
+                    memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
+                }
+                break;
+            }
+        }
+    }
+}
 
 
 bool PointArray::pickVertex(const V3d& cameraPos,
@@ -734,5 +768,3 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
 
     return drawCount;
 }
-
-

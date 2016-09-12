@@ -13,6 +13,8 @@
 #include <QString>
 #include <QMetaType>
 
+#include "GeometryMutator.h"
+
 class ShaderProgram;
 class QGLShaderProgram;
 struct TransformState;
@@ -59,6 +61,12 @@ class Geometry : public QObject
         /// Attempt to load no more than a maximum of maxVertexCount vertices,
         /// simplifying the geometry if possible.
         virtual bool loadFile(QString fileName, size_t maxVertexCount) = 0;
+
+        //--------------------------------------------------
+        /// Mutate a geometry
+        ///
+        /// Modify some geometry data with the data in a GeometryMutator
+        virtual void mutate(std::shared_ptr<GeometryMutator> mutator) { }
 
         //--------------------------------------------------
         /// Draw geometry using current OpenGL context

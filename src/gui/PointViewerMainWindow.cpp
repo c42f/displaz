@@ -78,6 +78,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     //connect(m_fileLoader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
     connect(m_fileLoader, SIGNAL(geometryLoaded(std::shared_ptr<Geometry>, bool, bool)),
             m_geometries, SLOT(addGeometry(std::shared_ptr<Geometry>, bool, bool)));
+    connect(m_fileLoader, SIGNAL(geometryMutatorLoaded(std::shared_ptr<GeometryMutator>)),
+            m_geometries, SLOT(mutateGeometry(std::shared_ptr<GeometryMutator>)));
     loaderThread->start();
 
     //--------------------------------------------------
@@ -367,6 +369,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QList<QByteArray> flags = commandTokens[1].split('\0');
         bool replaceLabel = flags.contains("REPLACE_LABEL");
         bool deleteAfterLoad = flags.contains("DELETE_AFTER_LOAD");
+        bool mutateExisting = flags.contains("MUTATE_EXISTING");
         for (int i = 2; i < commandTokens.size(); ++i)
         {
             QList<QByteArray> pathAndLabel = commandTokens[i].split('\0');
@@ -378,6 +381,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             }
             FileLoadInfo loadInfo(pathAndLabel[0], pathAndLabel[1], replaceLabel);
             loadInfo.deleteAfterLoad = deleteAfterLoad;
+            loadInfo.mutateExisting = mutateExisting;
             m_fileLoader->loadFile(loadInfo);
         }
     }

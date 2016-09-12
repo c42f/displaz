@@ -81,6 +81,13 @@ struct TypeSpec
 
     /// Get number of bytes required to store the field for a single point
     int size() const { return elsize*count; }
+
+    bool operator==(const TypeSpec& other) const
+    {
+        return type == other.type && elsize == other.elsize &&
+            count == other.count && semantics == other.semantics &&
+            fixedPoint == other.fixedPoint;
+    }
 };
 
 
