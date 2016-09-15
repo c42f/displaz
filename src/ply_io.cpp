@@ -334,12 +334,12 @@ bool findVertexElements(std::vector<p_ply_element>& vertexElements,
             g_logger.warning("Ignoring unrecogized ply element: %s", name);
         }
     }
-    if (positionIndex == -1)
+    /*if (positionIndex == -1)
     {
         g_logger.error("%s", "No vertex position found in ply file");
         return false;
-    }
-    if (positionIndex != 0)
+    }*/
+    if (positionIndex != -1 && positionIndex != 0)
         std::swap(vertexElements[0], vertexElements[positionIndex]);
     npoints = np;
     return true;

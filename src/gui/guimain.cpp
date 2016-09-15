@@ -14,6 +14,7 @@
 #include "util.h"
 
 class Geometry;
+class GeometryMutator;
 
 
 /// Set up search paths to our application directory for Qt's file search
@@ -72,6 +73,7 @@ int main(int argc, char* argv[])
     Q_INIT_RESOURCE(resource);
 
     qRegisterMetaType<std::shared_ptr<Geometry>>("std::shared_ptr<Geometry>");
+    qRegisterMetaType<std::shared_ptr<GeometryMutator>>("std::shared_ptr<GeometryMutator>");
 
     // Multisampled antialiasing - this makes rendered point clouds look much
     // nicer, but also makes the render much slower, especially on lower
@@ -106,4 +108,3 @@ int main(int argc, char* argv[])
     window.show();
     return app.exec();
 }
-

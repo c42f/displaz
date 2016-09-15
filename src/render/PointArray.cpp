@@ -385,7 +385,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
         g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
-        reorder(m_fields[i], m_inds.get(), m_npoints);
+        reorder(m_fields[i], inds.get(), m_npoints);
         emit loadProgress(int(100*(i+1)/(m_fields.size()+1))); // denominator +1 for permutation reorder below
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();

@@ -115,7 +115,9 @@ class FileLoader : public QObject
                 std::shared_ptr<GeometryMutator> mutator(new GeometryMutator());
                 mutator->loadFile(loadInfo.filePath);
                 mutator->moveToThread(0);
+                mutator->setLabel(loadInfo.dataSetLabel);
                 emit geometryMutatorLoaded(mutator);
+
                 if (loadInfo.deleteAfterLoad)
                 {
                     // Only delete after successful load:  Load errors

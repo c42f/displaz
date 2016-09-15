@@ -3,7 +3,7 @@
 
 #include "GeometryMutator.h"
 #include "ply_io.h"
-
+#include "QtLogger.h"
 
 GeometryMutator::GeometryMutator()
     : m_npoints(0),
@@ -34,7 +34,7 @@ bool GeometryMutator::loadFile(const QString& fileName)
     p_ply_element vertexElement = findVertexElement(ply.get(), m_npoints);
     if (vertexElement)
     {
-        //g_logger.error("Expected displaz formated ply for file %s", fileName);
+        g_logger.error("Expected displaz formated ply for file %s", fileName);
         return false;
     }
     else
@@ -55,13 +55,13 @@ bool GeometryMutator::loadFile(const QString& fileName)
     }
     if (m_indexFieldIdx == -1)
     {
-        //g_logger.error("No index field found in file %s", fileName);
+        g_logger.error("No index field found in file %s", fileName);
         return false;
     }
-    m_index = (size_t*)m_fields[m_indexFieldIdx].as<size_t>();
+    m_index = (int*)m_fields[m_indexFieldIdx].as<int>();
 
-    //g_logger.info("Loaded %d point mutations from file %s in %.2f seconds",
-    //              m_npoints, fileName, loadTimer.elapsed()/1000.0);
+    g_logger.info("Loaded %d point mutations from file %s",
+                  m_npoints, fileName);
 
     return true;
 }
