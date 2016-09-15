@@ -22,25 +22,33 @@ bool GeometryMutator::loadFile(const QString& fileName)
     // Check it is ply
     if (!fileName.endsWith(".ply"))
     {
-        //g_logger.error("Expected ply for file %s", fileName);
+        g_logger.error("Expected ply for file %s", fileName);
         return false;
     }
 
-    std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
-            ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
-    if (!ply || !ply_read_header(ply.get()))
-        return false;
-    // Parse out header data
-    p_ply_element vertexElement = findVertexElement(ply.get(), m_npoints);
-    if (vertexElement)
+    try
     {
-        g_logger.error("Expected displaz formated ply for file %s", fileName);
-        return false;
-    }
-    else
-    {
-        if (!loadDisplazNativePly(fileName, ply.get(), m_fields, m_offset, m_npoints))
+        std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
+                ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
+        if (!ply || !ply_read_header(ply.get()))
             return false;
+        // Parse out header data
+        p_ply_element vertexElement = findVertexElement(ply.get(), m_npoints);
+        if (vertexElement)
+        {
+            g_logger.error("Expected displaz formated ply for file %s", fileName);
+            return false;
+        }
+        else
+        {
+            if (!loadDisplazNativePly(fileName, ply.get(), m_fields, m_offset, m_npoints))
+                return false;
+        }
+    }
+    catch(...)
+    {
+        g_logger.error("Unkown load error for file %s", fileName);
+        return false;
     }
 
     // Search for index field

@@ -113,7 +113,10 @@ class FileLoader : public QObject
             if (loadInfo.mutateExisting)
             {
                 std::shared_ptr<GeometryMutator> mutator(new GeometryMutator());
-                mutator->loadFile(loadInfo.filePath);
+                if (!mutator->loadFile(loadInfo.filePath))
+                {
+                    g_logger.error("Could not load %s", loadInfo.filePath);
+                }
                 mutator->moveToThread(0);
                 mutator->setLabel(loadInfo.dataSetLabel);
                 emit geometryMutatorLoaded(mutator);

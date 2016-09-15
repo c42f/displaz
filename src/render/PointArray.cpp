@@ -405,6 +405,12 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     const std::vector<GeomField>& mut_fields = mutator->fields();
     auto mut_idx = mutator->index();
 
+    if (m_npoints > 4294967296)
+    {
+        g_logger.error("Mutation with more than 2^32 points is not supported");
+        return;
+    }
+
     // Check index is valid
     for (size_t j = 0; j < npoints; ++j)
     {
