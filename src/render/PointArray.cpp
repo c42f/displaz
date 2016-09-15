@@ -405,12 +405,25 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     const std::vector<GeomField>& mut_fields = mutator->fields();
     auto mut_idx = mutator->index();
 
+    // Check index is valid
+    for (size_t j = 0; j < npoints; ++j)
+    {
+        if (mut_idx[j] < 0 || mut_idx[j] >= m_npoints)
+        {
+            g_logger.error("Index out of bounds - got %d (should be between zero and %d)", mut_idx[j], m_npoints-1);
+            return;
+        }
+    }
+
     // Currently doesn't matter if a field isn't found
     // Convenient way to ignore "index" but is not robust
-    for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
+    for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
     {
-        for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
+        for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
         {
+            if (mut_fields[mut_field_idx].name == "Index")
+                continue;
+
             if (m_fields[field_idx].name == mut_fields[mut_field_idx].name &&
                 m_fields[field_idx].spec == mut_fields[mut_field_idx].spec)
             {
@@ -425,6 +438,8 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
                 break;
             }
         }
+
+        g_logger.warning("Didn't encounter a field labeled \"%s\"", mut_fields[mut_field_idx].name);
     }
 }
 

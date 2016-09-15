@@ -40,7 +40,7 @@ class GeometryMutator : public QObject
         size_t pointCount() const { return m_npoints; }
 
         /// Get index of points to mutate
-        int* index() const { return m_index; }
+        uint* index() const { return m_index; }
 
         /// Get fields to mutate
         const std::vector<GeomField>& fields() const { return m_fields; }
@@ -57,7 +57,7 @@ class GeometryMutator : public QObject
         std::vector<GeomField> m_fields;
         /// An index field is required, plus an alias for convenience:
         int m_indexFieldIdx;
-        int* m_index;
+        uint* m_index;
 };
 
 Q_DECLARE_METATYPE(std::shared_ptr<GeometryMutator>)

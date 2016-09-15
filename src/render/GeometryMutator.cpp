@@ -58,7 +58,7 @@ bool GeometryMutator::loadFile(const QString& fileName)
         g_logger.error("No index field found in file %s", fileName);
         return false;
     }
-    m_index = (int*)m_fields[m_indexFieldIdx].as<int>();
+    m_index = (uint*)m_fields[m_indexFieldIdx].as<uint>();
 
     g_logger.info("Loaded %d point mutations from file %s",
                   m_npoints, fileName);
