@@ -110,12 +110,15 @@ class FileLoader : public QObject
         void loadFileImpl(const FileLoadInfo& loadInfo, bool reloaded)
         {
             // Different codepath for mutating existing data.
+            // TODO Geometry and GeometryMutator have different exception handling
+            //      that could be made more consistent.
             if (loadInfo.mutateExisting)
             {
                 std::shared_ptr<GeometryMutator> mutator(new GeometryMutator());
                 if (!mutator->loadFile(loadInfo.filePath))
                 {
                     g_logger.error("Could not load %s", loadInfo.filePath);
+                    return;
                 }
                 mutator->moveToThread(0);
                 mutator->setLabel(loadInfo.dataSetLabel);

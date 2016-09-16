@@ -86,7 +86,7 @@ class PointArray : public Geometry
         /// A position field is required.  Alias for convenience:
         int m_positionFieldIdx;
         V3f* m_P;
-        std::unique_ptr<size_t[]> m_inds;
+        std::unique_ptr<uint32_t[]> m_inds;
 };
 
 

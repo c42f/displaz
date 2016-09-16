@@ -368,7 +368,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
     // Sort points into octree order
     emit loadStepStarted("Sorting points");
-    std::unique_ptr<size_t[]> inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
+    std::unique_ptr<size_t[]> inds(new size_t[m_npoints]);
     for (size_t i = 0; i < m_npoints; ++i)
         inds[i] = i;
     // Expand the bound so that it's cubic.  Not exactly sure it's required
@@ -389,9 +389,11 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         emit loadProgress(int(100*(i+1)/(m_fields.size()+1))); // denominator +1 for permutation reorder below
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+
     // The index we want to store is the reverse permutation of the index above
-    m_inds = std::unique_ptr<size_t[]>(new size_t[m_npoints]);
-    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = i;
+    // This is necessary if we want to mutate the data later
+    m_inds = std::unique_ptr<uint32_t[]>(new uint32_t[m_npoints]);
+    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = i; // Works for m_npoints < UINT32_MAX
     emit loadProgress(int(100));
 
     return true;
@@ -405,7 +407,7 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     const std::vector<GeomField>& mut_fields = mutator->fields();
     auto mut_idx = mutator->index();
 
-    if (m_npoints > 4294967296)
+    if (m_npoints > UINT32_MAX)
     {
         g_logger.error("Mutation with more than 2^32 points is not supported");
         return;
@@ -421,21 +423,17 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
         }
     }
 
-    // Currently doesn't matter if a field isn't found
-    // Convenient way to ignore "index" but is not robust
     for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
     {
         if (mut_fields[mut_field_idx].name == "index")
             continue;
 
-        bool found = false;
-
+        // Attempt to find a matching index
+        size_t found_idx = -1;
         for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
         {
-
             if (m_fields[field_idx].name == mut_fields[mut_field_idx].name)
             {
-                found = true;
                 if (!(m_fields[field_idx].spec == mut_fields[mut_field_idx].spec))
                 {
                     g_logger.warning("Fields with name \"%s\" do not have matching types, skipping.", m_fields[field_idx].name);
@@ -445,22 +443,26 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
                 if (mut_fields[mut_field_idx].name == "position")
                     g_logger.warning("Moving points by large distances may result in visual artefacts");
 
-                // Now we copy data from the mutator to the object
-                char* ptr_to = m_fields[field_idx].data.get();
-                char* ptr_from = mut_fields[mut_field_idx].data.get();
-                size_t fieldsize = m_fields[field_idx].spec.size();
-                for (size_t j = 0; j < npoints; ++j)
-                {
-                    memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
-                }
+                found_idx = field_idx;
                 break;
             }
         }
 
-        if (!found)
+        if (found_idx == -1)
+        {
             g_logger.warning("Couldn't find a field labeled \"%s\"", mut_fields[mut_field_idx].name);
-    }
+            continue;
+        }
 
+        // Now we copy data from the mutator to the object
+        char* ptr_to = m_fields[found_idx].data.get();
+        char* ptr_from = mut_fields[mut_field_idx].data.get();
+        size_t fieldsize = m_fields[found_idx].spec.size();
+        for (size_t j = 0; j < npoints; ++j)
+        {
+            memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
+        }
+    }
 }
 
 

@@ -36,7 +36,7 @@ bool GeometryMutator::loadFile(const QString& fileName)
         p_ply_element vertexElement = findVertexElement(ply.get(), m_npoints);
         if (vertexElement)
         {
-            g_logger.error("Expected displaz formated ply for file %s", fileName);
+            g_logger.error("Expected displaz formatted ply for file %s", fileName);
             return false;
         }
         else
@@ -55,18 +55,23 @@ bool GeometryMutator::loadFile(const QString& fileName)
     m_indexFieldIdx = -1;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        if (m_fields[i].name == "index" && m_fields[i].spec.count == 1)
+        if (m_fields[i].name == "index")
         {
+            if (!(m_fields[i].spec == TypeSpec::uint32()))
+            {
+                g_logger.error("The \"index\" field found in file %s is not of type uint32", fileName);
+                return false;
+            }
             m_indexFieldIdx = (int)i;
             break;
         }
     }
     if (m_indexFieldIdx == -1)
     {
-        g_logger.error("No index field found in file %s", fileName);
+        g_logger.error("No \"index\" field found in file %s", fileName);
         return false;
     }
-    m_index = (uint*)m_fields[m_indexFieldIdx].as<uint>();
+    m_index = m_fields[m_indexFieldIdx].as<uint32_t>();
 
     g_logger.info("Loaded %d point mutations from file %s",
                   m_npoints, fileName);

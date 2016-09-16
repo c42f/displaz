@@ -66,9 +66,11 @@ struct TypeSpec
     static TypeSpec vec3float32() { return TypeSpec(Float, 4, 3, Vector); }
     static TypeSpec float32() { return TypeSpec(Float, 4, 1); }
     // Non-scaled integers
+    static TypeSpec uint32_i()  { return TypeSpec(Uint, 4, 1, Array, false); }
     static TypeSpec uint16_i()  { return TypeSpec(Uint, 2, 1, Array, false); }
     static TypeSpec uint8_i()   { return TypeSpec(Uint, 1, 1, Array, false); }
     // Scaled fixed point integers
+    static TypeSpec uint32()  { return TypeSpec(Uint, 4, 1); }
     static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1); }
     static TypeSpec uint8()   { return TypeSpec(Uint, 1, 1); }
 
@@ -81,7 +83,7 @@ struct TypeSpec
 
     /// Get number of bytes required to store the field for a single point
     int size() const { return elsize*count; }
-
+    /// Check that two TypeSpecs are exactly equal
     bool operator==(const TypeSpec& other) const
     {
         return type == other.type && elsize == other.elsize &&

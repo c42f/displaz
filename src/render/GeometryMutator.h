@@ -57,7 +57,7 @@ class GeometryMutator : public QObject
         std::vector<GeomField> m_fields;
         /// An index field is required, plus an alias for convenience:
         int m_indexFieldIdx;
-        uint* m_index;
+        uint32_t* m_index;
 };
 
 Q_DECLARE_METATYPE(std::shared_ptr<GeometryMutator>)
