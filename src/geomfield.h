@@ -43,6 +43,14 @@ struct GeomField
         return reinterpret_cast<T*>(data.get());
     }
 
+    /// Get pointer to the underlying data as array of the base spec
+    template<typename T>
+    const T* as() const
+    {
+        assert(sizeof(T) == spec.elsize);
+        return reinterpret_cast<const T*>(data.get());
+    }
+
     /// Print human readable form of `data[index]` to output stream
     void format(std::ostream& out, size_t index) const;
 

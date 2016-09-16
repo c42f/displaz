@@ -42,6 +42,9 @@ class GeometryMutator : public QObject
         /// Get index of points to mutate
         uint32_t* index() const { return m_index; }
 
+        /// Return offset applied to "position" field.
+        const V3d& offset() const { return m_offset; }
+
         /// Get fields to mutate
         const std::vector<GeomField>& fields() const { return m_fields; }
 

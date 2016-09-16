@@ -429,7 +429,7 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
             continue;
 
         // Attempt to find a matching index
-        size_t found_idx = -1;
+        int found_idx = -1;
         for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
         {
             if (m_fields[field_idx].name == mut_fields[mut_field_idx].name)
@@ -443,7 +443,7 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
                 if (mut_fields[mut_field_idx].name == "position")
                     g_logger.warning("Moving points by large distances may result in visual artefacts");
 
-                found_idx = field_idx;
+                found_idx = (int)field_idx;
                 break;
             }
         }
@@ -454,13 +454,32 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
             continue;
         }
 
-        // Now we copy data from the mutator to the object
-        char* ptr_to = m_fields[found_idx].data.get();
-        char* ptr_from = mut_fields[mut_field_idx].data.get();
-        size_t fieldsize = m_fields[found_idx].spec.size();
-        for (size_t j = 0; j < npoints; ++j)
+        if (mut_fields[mut_field_idx].name == "position")
         {
-            memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
+            assert(m_fields[found_idx].spec == TypeSpec::float32());
+            // Special case for floating point position with offset.
+            float* dest = m_fields[found_idx].as<float>();
+            const float* src = mut_fields[mut_field_idx].as<float>();
+            V3d off = offset() - mutator->offset();
+            for (size_t j = 0; j < npoints; ++j)
+            {
+                float* d = &dest[3*m_inds[mut_idx[j]]];
+                const float* s = &src[3*j];
+                d[0] = s[0] - off.x;
+                d[1] = s[1] - off.y;
+                d[2] = s[2] - off.z;
+            }
+        }
+        else
+        {
+            // Now we copy data from the mutator to the object
+            char* ptr_to = m_fields[found_idx].data.get();
+            char* ptr_from = mut_fields[mut_field_idx].data.get();
+            size_t fieldsize = m_fields[found_idx].spec.size();
+            for (size_t j = 0; j < npoints; ++j)
+            {
+                memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
+            }
         }
     }
 }
