@@ -40,7 +40,7 @@ class GeometryMutator : public QObject
         size_t pointCount() const { return m_npoints; }
 
         /// Get index of points to mutate
-        uint* index() const { return m_index; }
+        uint32_t* index() const { return m_index; }
 
         /// Get fields to mutate
         const std::vector<GeomField>& fields() const { return m_fields; }
