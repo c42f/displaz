@@ -137,7 +137,7 @@ void GeometryCollection::mutateGeometry(std::shared_ptr<GeometryMutator> mutator
 {
     mutator->moveToThread(QThread::currentThread());
 
-    g_logger.info("Attempting to mutate data with label \"%s\"\n", mutator->label());
+    g_logger.info("Attempting to mutate data with label \"%s\"", mutator->label());
 
     for (size_t i = 0; i < m_geometries.size(); ++i)
     {

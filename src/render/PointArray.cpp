@@ -425,14 +425,26 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     // Convenient way to ignore "index" but is not robust
     for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
     {
+        if (mut_fields[mut_field_idx].name == "index")
+            continue;
+
+        bool found = false;
+
         for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
         {
-            if (mut_fields[mut_field_idx].name == "Index")
-                continue;
 
-            if (m_fields[field_idx].name == mut_fields[mut_field_idx].name &&
-                m_fields[field_idx].spec == mut_fields[mut_field_idx].spec)
+            if (m_fields[field_idx].name == mut_fields[mut_field_idx].name)
             {
+                found = true;
+                if (!(m_fields[field_idx].spec == mut_fields[mut_field_idx].spec))
+                {
+                    g_logger.warning("Fields with name \"%s\" do not have matching types, skipping.", m_fields[field_idx].name);
+                    break;
+                }
+
+                if (mut_fields[mut_field_idx].name == "position")
+                    g_logger.warning("Moving points by large distances may result in visual artefacts");
+
                 // Now we copy data from the mutator to the object
                 char* ptr_to = m_fields[field_idx].data.get();
                 char* ptr_from = mut_fields[mut_field_idx].data.get();
@@ -445,8 +457,10 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
             }
         }
 
-        g_logger.warning("Didn't encounter a field labeled \"%s\"", mut_fields[mut_field_idx].name);
+        if (!found)
+            g_logger.warning("Couldn't find a field labeled \"%s\"", mut_fields[mut_field_idx].name);
     }
+
 }
 
 
