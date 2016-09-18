@@ -83,6 +83,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     render/View3D.h
     render/PointArray.h
     render/Shader.h
+    render/GeometryMutator.h
 )
 
 set(gui_srcs
@@ -110,6 +111,7 @@ set(gui_srcs
     render/PointArray.cpp
     render/View3D.cpp
     render/Shader.cpp
+    render/GeometryMutator.cpp
 
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp
@@ -280,4 +282,3 @@ if (DISPLAZ_USE_TESTS)
     endif ()
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
-

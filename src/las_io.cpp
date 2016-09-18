@@ -13,8 +13,7 @@
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totalPoints,
-                         Imath::Box3d& bbox, V3d& centroid)
+                         size_t& npoints, uint64_t& totalPoints)
 {
     g_logger.error("Cannot load %s: Displaz built without las support!", fileName);
     return false;
@@ -67,10 +66,8 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totalPoints,
-                         Imath::Box3d& bbox, V3d& centroid)
+                         size_t& npoints, uint64_t& totalPoints)
 {
-    V3d Psum(0);
 #ifdef DISPLAZ_USE_PDAL
     // Open file
     if (!pdal::FileUtils::fileExists(fileName.toLatin1().constData()))
@@ -153,8 +150,6 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 //             V3d P = V3d(xDim.applyScaling(buf.getField<int32_t>(xDim, i)),
 //                         yDim.applyScaling(buf.getField<int32_t>(yDim, i)),
 //                         zDim.applyScaling(buf.getField<int32_t>(zDim, i)));
-            bbox.extendBy(P);
-            Psum += P;
             if(readCount < nextStore)
                 continue;
             ++storeCount;
@@ -257,8 +252,6 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         if(readCount % 10000 == 0)
             emit loadProgress(100*readCount/totalPoints);
         V3d P = V3d(point.get_x(), point.get_y(), point.get_z());
-        bbox.extendBy(P);
-        Psum += P;
         if(readCount < nextStore)
             continue;
         ++storeCount;
@@ -308,8 +301,6 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
             fields[i].size = npoints;
         totalPoints = readCount;
     }
-    if (totalPoints > 0)
-        centroid = (1.0/totalPoints)*Psum;
     return true;
 }
 

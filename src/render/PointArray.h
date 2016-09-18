@@ -12,6 +12,7 @@
 #include "Geometry.h"
 #include "typespec.h"
 #include "geomfield.h"
+#include "GeometryMutator.h"
 
 class QGLShaderProgram;
 
@@ -30,6 +31,8 @@ class PointArray : public Geometry
 
         // Overridden Geometry functions
         virtual bool loadFile(QString fileName, size_t maxVertexCount);
+
+        virtual void mutate(std::shared_ptr<GeometryMutator> mutator);
 
         virtual void draw(const TransformState& transState, double quality) const;
 
@@ -59,18 +62,15 @@ class PointArray : public Geometry
     private:
         bool loadLas(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, uint64_t& totalPoints,
-                     Imath::Box3d& bbox, V3d& centroid);
+                     size_t& npoints, uint64_t& totalPoints);
 
         bool loadText(QString fileName, size_t maxPointCount,
                       std::vector<GeomField>& fields, V3d& offset,
-                      size_t& npoints, uint64_t& totalPoints,
-                      Imath::Box3d& bbox, V3d& centroid);
+                      size_t& npoints, uint64_t& totalPoints);
 
         bool loadPly(QString fileName, size_t maxPointCount,
                      std::vector<GeomField>& fields, V3d& offset,
-                     size_t& npoints, uint64_t& totalPoints,
-                     Imath::Box3d& bbox, V3d& centroid);
+                     size_t& npoints, uint64_t& totalPoints);
 
         friend struct ProgressFunc;
 
@@ -83,6 +83,7 @@ class PointArray : public Geometry
         /// A position field is required.  Alias for convenience:
         int m_positionFieldIdx;
         V3f* m_P;
+        std::unique_ptr<uint32_t[]> m_inds;
 };
 
 

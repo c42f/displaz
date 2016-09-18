@@ -22,15 +22,17 @@ struct FileLoadInfo
     QString dataSetLabel; /// Human readable label for the dataset
     bool replaceLabel;    /// Replace any existing dataset in the UI with the same label
     bool deleteAfterLoad; /// Delete file after load - for use with temporary files.
+    bool mutateExisting;  /// Replace vertex data in-place and discard the result
 
-    FileLoadInfo() : replaceLabel(true), deleteAfterLoad(false) {}
+    FileLoadInfo() : replaceLabel(true), deleteAfterLoad(false), mutateExisting(false) {}
     FileLoadInfo(const QString& filePath_, const QString& dataSetLabel_ = "",
                  bool replaceLabel_ = true)
         : filePath(filePath_),
         dataSetLabel(dataSetLabel_),
         replaceLabel(replaceLabel_),
         // Following must be set explicitly - getting it wrong will delete user data!
-        deleteAfterLoad(false)
+        deleteAfterLoad(false),
+        mutateExisting(false)
     {
         if (dataSetLabel_.isEmpty())
         {
@@ -94,6 +96,8 @@ class FileLoader : public QObject
         void geometryLoaded(std::shared_ptr<Geometry> geom,
                             bool replaceLabel, bool reloaded);
 
+        void geometryMutatorLoaded(std::shared_ptr<GeometryMutator> mutator);
+
     private slots:
         void asyncLoadFile(const FileLoadInfo& loadInfo, bool reloaded)
         {
@@ -105,6 +109,32 @@ class FileLoader : public QObject
 
         void loadFileImpl(const FileLoadInfo& loadInfo, bool reloaded)
         {
+            // Different codepath for mutating existing data.
+            // TODO Geometry and GeometryMutator have different exception handling
+            //      that could be made more consistent.
+            if (loadInfo.mutateExisting)
+            {
+                std::shared_ptr<GeometryMutator> mutator(new GeometryMutator());
+                if (!mutator->loadFile(loadInfo.filePath))
+                {
+                    g_logger.error("Could not load %s", loadInfo.filePath);
+                    return;
+                }
+                mutator->moveToThread(0);
+                mutator->setLabel(loadInfo.dataSetLabel);
+                emit geometryMutatorLoaded(mutator);
+
+                if (loadInfo.deleteAfterLoad)
+                {
+                    // Only delete after successful load:  Load errors
+                    // are somewhat likely to be user error trying to load
+                    // something they didn't mean to.
+                    QFile::remove(loadInfo.filePath);
+                }
+                return;
+            }
+
+            // Standard loading code
             std::shared_ptr<Geometry> geom = Geometry::create(loadInfo.filePath);
             geom->setLabel(loadInfo.dataSetLabel);
             connect(geom.get(), SIGNAL(loadProgress(int)),

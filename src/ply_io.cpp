@@ -302,13 +302,10 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
 // Utilities for loading ply in "displaz-native" format
 
 /// Find all elements with name "vertex_*"
-///
-/// The position element will always be in vertexElements[0] if present.
 bool findVertexElements(std::vector<p_ply_element>& vertexElements,
                         p_ply ply, size_t& npoints)
 {
     int64_t np = -1;
-    int positionIndex = -1;
     for (p_ply_element elem = ply_get_next_element(ply, NULL);
          elem != NULL; elem = ply_get_next_element(ply, elem))
     {
@@ -326,21 +323,13 @@ bool findVertexElements(std::vector<p_ply_element>& vertexElements,
                 return false;
             }
             vertexElements.push_back(elem);
-            if (strcmp(name, "vertex_position") == 0)
-                positionIndex = (int)vertexElements.size()-1;
         }
         else
         {
             g_logger.warning("Ignoring unrecogized ply element: %s", name);
         }
     }
-    if (positionIndex == -1)
-    {
-        g_logger.error("%s", "No vertex position found in ply file");
-        return false;
-    }
-    if (positionIndex != 0)
-        std::swap(vertexElements[0], vertexElements[positionIndex]);
+
     npoints = np;
     return true;
 }

@@ -8,6 +8,7 @@
 
 #include <QRegExp>
 #include <QThread>
+#include <QDebug>
 
 GeometryCollection::GeometryCollection(QObject* parent)
     : QAbstractListModel(parent)
@@ -130,4 +131,25 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                          (int)m_geometries.size());
     m_geometries.push_back(geom);
     emit endInsertRows();
+}
+
+void GeometryCollection::mutateGeometry(std::shared_ptr<GeometryMutator> mutator)
+{
+    mutator->moveToThread(QThread::currentThread());
+
+    g_logger.info("Attempting to mutate data with label \"%s\"", mutator->label());
+
+    for (size_t i = 0; i < m_geometries.size(); ++i)
+    {
+        if ( m_geometries[i]->label() == mutator->label() )
+        {
+            m_geometries[i]->mutate(mutator);
+
+            QModelIndex idx = createIndex((int)i, 0);
+            emit dataChanged(idx, idx);
+
+            return;
+        }
+    }
+    g_logger.error("Didn't match mutation label \"%s\"\n", mutator->label());
 }
