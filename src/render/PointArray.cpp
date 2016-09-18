@@ -387,8 +387,8 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
 {
     // Now we need to find the matching columns
     auto npoints = mutator->pointCount();
-    const std::vector<GeomField>& mut_fields = mutator->fields();
-    auto mut_idx = mutator->index();
+    const std::vector<GeomField>& mutFields = mutator->fields();
+    auto mutIdx = mutator->index();
 
     if (m_npoints > UINT32_MAX)
     {
@@ -399,54 +399,54 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     // Check index is valid
     for (size_t j = 0; j < npoints; ++j)
     {
-        if (mut_idx[j] < 0 || mut_idx[j] >= m_npoints)
+        if (mutIdx[j] < 0 || mutIdx[j] >= m_npoints)
         {
-            g_logger.error("Index out of bounds - got %d (should be between zero and %d)", mut_idx[j], m_npoints-1);
+            g_logger.error("Index out of bounds - got %d (should be between zero and %d)", mutIdx[j], m_npoints-1);
             return;
         }
     }
 
-    for (size_t mut_field_idx = 0; mut_field_idx < mut_fields.size(); ++mut_field_idx)
+    for (size_t mutFieldIdx = 0; mutFieldIdx < mutFields.size(); ++mutFieldIdx)
     {
-        if (mut_fields[mut_field_idx].name == "index")
+        if (mutFields[mutFieldIdx].name == "index")
             continue;
 
         // Attempt to find a matching index
-        int found_idx = -1;
-        for (size_t field_idx = 0; field_idx < m_fields.size(); ++field_idx)
+        int foundIdx = -1;
+        for (size_t fieldIdx = 0; fieldIdx < m_fields.size(); ++fieldIdx)
         {
-            if (m_fields[field_idx].name == mut_fields[mut_field_idx].name)
+            if (m_fields[fieldIdx].name == mutFields[mutFieldIdx].name)
             {
-                if (!(m_fields[field_idx].spec == mut_fields[mut_field_idx].spec))
+                if (!(m_fields[fieldIdx].spec == mutFields[mutFieldIdx].spec))
                 {
-                    g_logger.warning("Fields with name \"%s\" do not have matching types, skipping.", m_fields[field_idx].name);
+                    g_logger.warning("Fields with name \"%s\" do not have matching types, skipping.", m_fields[fieldIdx].name);
                     break;
                 }
 
-                if (mut_fields[mut_field_idx].name == "position")
+                if (mutFields[mutFieldIdx].name == "position")
                     g_logger.warning("Moving points by large distances may result in visual artefacts");
 
-                found_idx = (int)field_idx;
+                foundIdx = (int)fieldIdx;
                 break;
             }
         }
 
-        if (found_idx == -1)
+        if (foundIdx == -1)
         {
-            g_logger.warning("Couldn't find a field labeled \"%s\"", mut_fields[mut_field_idx].name);
+            g_logger.warning("Couldn't find a field labeled \"%s\"", mutFields[mutFieldIdx].name);
             continue;
         }
 
-        if (mut_fields[mut_field_idx].name == "position")
+        if (mutFields[mutFieldIdx].name == "position")
         {
-            assert(m_fields[found_idx].spec == TypeSpec::float32());
+            assert(m_fields[foundIdx].spec == TypeSpec::float32());
             // Special case for floating point position with offset.
-            float* dest = m_fields[found_idx].as<float>();
-            const float* src = mut_fields[mut_field_idx].as<float>();
+            float* dest = m_fields[foundIdx].as<float>();
+            const float* src = mutFields[mutFieldIdx].as<float>();
             V3d off = offset() - mutator->offset();
             for (size_t j = 0; j < npoints; ++j)
             {
-                float* d = &dest[3*m_inds[mut_idx[j]]];
+                float* d = &dest[3*m_inds[mutIdx[j]]];
                 const float* s = &src[3*j];
                 d[0] = s[0] - off.x;
                 d[1] = s[1] - off.y;
@@ -456,12 +456,12 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
         else
         {
             // Now we copy data from the mutator to the object
-            char* ptr_to = m_fields[found_idx].data.get();
-            char* ptr_from = mut_fields[mut_field_idx].data.get();
-            size_t fieldsize = m_fields[found_idx].spec.size();
+            char* dest = m_fields[foundIdx].data.get();
+            char* src = mutFields[mutFieldIdx].data.get();
+            size_t fieldsize = m_fields[foundIdx].spec.size();
             for (size_t j = 0; j < npoints; ++j)
             {
-                memcpy(ptr_to + fieldsize*m_inds[mut_idx[j]], ptr_from + fieldsize*j, fieldsize);
+                memcpy(dest + fieldsize*m_inds[mutIdx[j]], src + fieldsize*j, fieldsize);
             }
         }
     }
