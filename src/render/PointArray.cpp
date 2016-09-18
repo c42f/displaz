@@ -192,8 +192,7 @@ PointArray::~PointArray()
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
                           std::vector<GeomField>& fields, V3d& offset,
-                          size_t& npoints, uint64_t& totalPoints,
-                          Imath::Box3d& bbox, V3d& centroid)
+                          size_t& npoints, uint64_t& totalPoints)
 {
     V3d Psum(0);
     // Use C file IO here, since it's about 40% faster than C++ streams for
@@ -226,13 +225,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     V3f* position = (V3f*)fields[0].as<float>();
     for (size_t i = 0; i < npoints; ++i)
-    {
         position[i] = points[i] - offset;
-        bbox.extendBy(points[i]);
-        Psum += points[i];
-    }
-    if (npoints > 0)
-        centroid = (1.0/npoints)*Psum;
     return true;
 }
 
@@ -240,8 +233,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totalPoints,
-                         Imath::Box3d& bbox, V3d& centroid)
+                         size_t& npoints, uint64_t& totalPoints)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
             ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
@@ -260,20 +252,6 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
             return false;
     }
     totalPoints = npoints;
-
-    // Compute bounding box and centroid
-    const V3f* P = (V3f*)fields[0].as<float>();
-    V3d Psum(0);
-    for (size_t i = 0; i < npoints; ++i)
-    {
-        Psum += P[i];
-        bbox.extendBy(P[i]);
-    }
-    if (npoints > 0)
-        centroid = (1.0/npoints) * Psum;
-    centroid += offset;
-    bbox.min += offset;
-    bbox.max += offset;
     return true;
 }
 
@@ -286,25 +264,17 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     // Read file into point data fields.  Use very basic file type detection
     // based on extension.
     uint64_t totalPoints = 0;
-    Imath::Box3d bbox;
     V3d offset(0);
-    V3d centroid(0);
     emit loadStepStarted("Reading file");
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
     {
-        if (!loadLas(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadLas(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
     else if (fileName.endsWith(".ply"))
     {
-        if (!loadPly(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadPly(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
 #if 0
     else if (fileName.endsWith(".dat"))
@@ -332,17 +302,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     else
     {
         // Last resort: try loading as text
-        if (!loadText(fileName, maxPointCount, m_fields, offset,
-                      m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadText(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
     // Search for position field
     m_positionFieldIdx = -1;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        if (m_fields[i].name == "position" && m_fields[i].spec.count == 3)
+        if (m_fields[i].name == "position" && m_fields[i].spec == TypeSpec::vec3float32())
         {
             m_positionFieldIdx = (int)i;
             break;
@@ -354,6 +321,22 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         return false;
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+
+    // Compute bounding box and centroid
+    Imath::Box3d bbox;
+    V3d centroid(0);
+    V3d Psum(0);
+    for (size_t i = 0; i < m_npoints; ++i)
+    {
+        Psum += m_P[i];
+        bbox.extendBy(m_P[i]);
+    }
+    if (m_npoints > 0)
+        centroid = (1.0/m_npoints) * Psum;
+    centroid += offset;
+    bbox.min += offset;
+    bbox.max += offset;
+
     setBoundingBox(bbox);
     setOffset(offset);
     setCentroid(centroid);
