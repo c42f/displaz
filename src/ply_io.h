@@ -77,7 +77,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
 /// Parameters:
 ///   fileName - ply file name
 ///   ply - open ply file
-///   fields - returned point fields.  fields[0] will contain position
+///   fields - returned point fields.
 ///   offset - offset to be applied to position field
 ///   npoints - total number of points
 bool loadDisplazNativePly(QString fileName, p_ply ply,
