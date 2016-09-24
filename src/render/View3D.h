@@ -73,6 +73,7 @@ class View3D : public QGLWidget
 
         // Qt event callbacks
         void mousePressEvent(QMouseEvent* event);
+        void mouseDoubleClickEvent(QMouseEvent* event);
         void mouseMoveEvent(QMouseEvent* event);
         void wheelEvent(QWheelEvent* event);
         void keyPressEvent(QKeyEvent* event);

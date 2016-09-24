@@ -486,6 +486,11 @@ void View3D::mousePressEvent(QMouseEvent* event)
     }
 }
 
+void View3D::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    snapToPoint(guessClickPosition(event->pos()));
+}
+
 void View3D::snapToPoint(const Imath::V3d & pos)
 {
 
@@ -513,16 +518,16 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_mouseButton == Qt::MidButton)
         return;
-    bool zooming = m_mouseButton == Qt::RightButton;
+    bool panning = (m_mouseButton == Qt::RightButton);
     if(event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = m_camera.mouseMovePoint(m_cursorPos,
                                               event->pos() - m_prevMousePos,
-                                              zooming);
+                                              panning);
         restartRender();
     }
     else
-        m_camera.mouseDrag(m_prevMousePos, event->pos(), zooming);
+        m_camera.mouseDrag(m_prevMousePos, event->pos(), panning);
 
     m_prevMousePos = event->pos();
 }
@@ -531,7 +536,7 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
 void View3D::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
-    m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
+    m_camera.mouseZoom(QPoint(0,0), QPoint(0, -event->delta()/2));
 }
 
 

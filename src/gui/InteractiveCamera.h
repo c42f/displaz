@@ -218,20 +218,75 @@ class InteractiveCamera : public QObject
             m_trackballInteraction = trackballInteraction;
         }
 
+        /// Zoom the camera using a drag of the mouse
+        ///
+        /// The previous and current positions of the mouse during the move are
+        /// given by prevPos and currPos. The camera position is zoomed in
+        /// toward the center.
+        void mouseZoom(QPoint prevPos, QPoint currPos)
+        {
+            // exponential zooming gives scale-independent sensitivity
+            qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
+            const qreal zoomSpeed = 3.0f;
+            m_dist *= std::exp(zoomSpeed*dy);
+            emit viewChanged();
+        }
+
+
         /// Move the camera using a drag of the mouse.
         ///
         /// The previous and current positions of the mouse during the move are
         /// given by prevPos and currPos.  By default this rotates the camera
-        /// around the center, but if zoom is true, the camera position is
-        /// zoomed in toward the center instead.
-        void mouseDrag(QPoint prevPos, QPoint currPos, bool zoom = false)
+        /// around the center, but if pan is true, the camera position is
+        /// panned in the x-y plane (or image plane in trackball mode) instead.
+        void mouseDrag(QPoint prevPos, QPoint currPos, bool pan = false)
         {
-            if(zoom)
+            if(pan)
             {
                 // exponential zooming gives scale-independent sensitivity
+                //qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
+                //const qreal zoomSpeed = 3.0f;
+                //m_dist *= std::exp(zoomSpeed*dy);
+
+                qreal dx = qreal(currPos.x() - prevPos.x())/m_viewport.height();
                 qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
-                const qreal zoomSpeed = 3.0f;
-                m_dist *= std::exp(zoomSpeed*dy);
+
+                if (m_trackballInteraction)
+                {
+                    // Trackball mode is straightforard: just rotate a
+                    // translation in the image plane to the global coordinates
+                    QVector3D dr(-dx, dy, 0);
+                    dr = m_rot.inverted() * dr; // Rotate it
+
+                    m_center.x += m_dist * dr.x();
+                    m_center.y += m_dist * dr.y();
+                    m_center.z += m_dist * dr.z();
+                }
+                else
+                {
+                    // In this mode we move in the x-y plane. Need to project
+                    // translation seperately for x and y to avoid the vertical
+                    // drag being scaled by cos(angle from vertical).
+
+                    // vertical drag
+                    QVector3D dr_x(0, dy, 0);
+                    dr_x = m_rot.inverted() * dr_x; // Rotate it
+                    qreal len = dr_x.length();
+                    qreal len_xy = sqrt(dr_x.x()*dr_x.x() + dr_x.y()*dr_x.y());
+                    if (len_xy > 0)
+                    {
+                        qreal scale = len / len_xy;
+                        m_center.x += m_dist * dr_x.x() * scale;
+                        m_center.y += m_dist * dr_x.y() * scale;
+                    }
+
+                    // horizontal drag
+                    QVector3D dr_y(-dx, 0, 0);
+                    dr_y = m_rot.inverted() * dr_y; // Rotate it
+
+                    m_center.x += m_dist * dr_y.x();
+                    m_center.y += m_dist * dr_y.y();
+                }
             }
             else
             {
