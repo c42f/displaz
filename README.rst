@@ -84,6 +84,17 @@ The following commands may be used to build displaz on linux::
     sudo make install
 
 
+Troubleshooting:
+
+* Some people have had issues with a version of qt in their path clashing with
+  the qt headers installed on the system. This may give an error such as
+  "undefined reference to qt_version_tag", or some other qt library-related
+  link error.  For example having the qt version distributed with the python
+  package system ``conda`` has been known to cause issues, which can be solved
+  by unloading it from the path before calling the make steps in the script
+  above.
+
+
 Windows x64
 ~~~~~~~~~~~
 The windows releases are built using cmake and
