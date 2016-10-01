@@ -465,7 +465,11 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
                         commandTokens.size()-1);
             return;
         }
+#       ifdef DISPLAZ_USE_QT4
+        qreal rot[9] = {0};
+#       else
         float rot[9] = {0};
+#       endif
         for (int i = 0; i < 9; ++i)
         {
             bool ok = true;
