@@ -318,7 +318,7 @@ void _glFrameBufferStatus(GLenum target, const char *file, int line)
 
     switch(fbStatus) {
         case GL_INVALID_ENUM:           status="?? (bad target)"; break;
-        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
+        //case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
         case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";        break;
         //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
