@@ -399,7 +399,7 @@ void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
     // Check index is valid
     for (size_t j = 0; j < npoints; ++j)
     {
-        if (mutIdx[j] < 0 || mutIdx[j] >= m_npoints)
+        if (mutIdx[j] >= m_npoints)
         {
             g_logger.error("Index out of bounds - got %d (should be between zero and %d)", mutIdx[j], m_npoints-1);
             return;
