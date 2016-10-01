@@ -12,7 +12,8 @@ HookFormatter::HookFormatter(PointViewerMainWindow* getPayload, QByteArray hookS
     : QObject(parent),
     m_hookSpec(hookSpec),
     m_hookPayload(hookPayload),
-    m_getPayload(getPayload)
+    m_getPayload(getPayload),
+    m_eventId(0)
 {
     connect(this, SIGNAL(sendIpcMessage(QByteArray)), parent, SLOT(sendMessage(QByteArray)));
     connect(parent, SIGNAL(disconnected()), this, SLOT(channelDisconnected()));
