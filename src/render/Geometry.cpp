@@ -67,8 +67,6 @@ std::shared_ptr<Geometry> Geometry::create(QString fileName)
 void Geometry::initializeGL()
 {
     destroyBuffers();
-
-    initializeBboxGL(shaderId("boundingbox"));
 }
 
 void Geometry::destroyBuffers()
@@ -92,59 +90,6 @@ void Geometry::destroyBuffers()
 
     m_VAO.clear();
 
-}
-
-void Geometry::initializeBboxGL(unsigned int bboxShader)
-{
-
-    // tfm::printfln("Geometry :: initializeGL - %i", bboxShader);
-
-    if (!bboxShader)
-    {
-        tfm::printfln("Bounding box shader was not defined for geometry.");
-        return;
-    }
-
-    // Transform to box min for stability with large offsets
-    Imath::Box3f box2(V3f(0), V3f(m_bbox.max - m_bbox.min));
-
-    GLfloat verts[] = {
-            (GLfloat)box2.min.x, (GLfloat)box2.min.y, (GLfloat)box2.min.z,
-            (GLfloat)box2.min.x, (GLfloat)box2.max.y, (GLfloat)box2.min.z,
-            (GLfloat)box2.max.x, (GLfloat)box2.max.y, (GLfloat)box2.min.z,
-            (GLfloat)box2.max.x, (GLfloat)box2.min.y, (GLfloat)box2.min.z,
-            (GLfloat)box2.min.x, (GLfloat)box2.min.y, (GLfloat)box2.max.z,
-            (GLfloat)box2.min.x, (GLfloat)box2.max.y, (GLfloat)box2.max.z,
-            (GLfloat)box2.max.x, (GLfloat)box2.max.y, (GLfloat)box2.max.z,
-            (GLfloat)box2.max.x, (GLfloat)box2.min.y, (GLfloat)box2.max.z
-    };
-    unsigned char inds[] = {
-            // rows: bottom, sides, top
-            0,1, 1,2, 2,3, 3,0,
-            0,4, 1,5, 2,6, 3,7,
-            4,5, 5,6, 6,7, 7,4
-    };
-
-    // create VBA VBO for rendering ...
-    GLuint bboxVertexArray;
-    glGenVertexArrays(1, &bboxVertexArray);
-    glBindVertexArray(bboxVertexArray);
-
-    setVAO("boundingbox", bboxVertexArray);
-
-    GlBuffer positionBuffer;
-    positionBuffer.bind(GL_ARRAY_BUFFER);
-    glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
-
-    GLuint positionAttribute = glGetAttribLocation(bboxShader, "position");
-    glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
-    glEnableVertexAttribArray(positionAttribute);
-
-    GlBuffer elementBuffer;
-    elementBuffer.bind(GL_ELEMENT_ARRAY_BUFFER);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*4*3*sizeof(char), inds, GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
 }
 
 const unsigned int Geometry::getVAO(const char * vertexArrayName) const

@@ -112,7 +112,6 @@ void View3D::initializeGLGeometry(int begin, int end)
         if (m_boundingBoxShader->isValid())
         {
             // TODO: build a shader manager for this
-            geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
             geoms[i]->initializeGL();
@@ -258,14 +257,9 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
                   (const char*)glewGetString(GLEW_VERSION));
 
-    // GL_CHECK has to be defined for this to actually do something
-    glCheckError();
-
     initCursor(10, 1);
     initAxes();
     initGrid(2.0f);
-
-    glCheckError();
 
     m_boundingBoxShader.reset(new ShaderProgram());
     m_boundingBoxShader->setShaderFromSourceFile("shaders:bounding_box.glsl");
@@ -300,7 +294,6 @@ void View3D::resizeGL(int w, int h)
     //Note: This function receives "device pixel sizes" for correct OpenGL viewport setup
     //      Under OS X with retina display, this becomes important as it is 2x the width() or height()
     //      of the normal window (there is a devicePixelRatio() function to deal with this).
-
     if (m_badOpenGL)
         return;
 
@@ -406,15 +399,11 @@ void View3D::paintGL()
         if (m_boundingBoxShader->isValid())
         {
             QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
-            // shader
             boundingBoxShader.bind();
-            // matrix stack
-            transState.setUniforms(boundingBoxShader.programId());
-
             for (size_t i = 0; i < geoms.size(); ++i)
             {
-                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
-                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
+                drawBox(transState, geoms[i]->boundingBox(), Imath::C3f(1),
+                        boundingBoxShader.programId());
             }
         }
     }
@@ -435,6 +424,7 @@ void View3D::paintGL()
         m_incrementalFrameTimer->start(10);
 
     m_incrementalDraw = true;
+    glCheckError();
 }
 
 void View3D::drawMeshes(const TransformState& transState,
@@ -464,6 +454,7 @@ void View3D::drawMeshes(const TransformState& transState,
         for(size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawEdges(meshEdgeShader, transState);
     }
+    glCheckError();
 }
 
 
@@ -994,6 +985,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    glCheckError();
     return totDrawCount;
 }
 
@@ -1003,6 +995,8 @@ DrawCount View3D::drawPoints(const TransformState& transState,
 /// `clickPos` - 2D position in viewport, as from a mouse event.
 Imath::V3d View3D::guessClickPosition(const QPoint& clickPos)
 {
+    // TODO: Handle device pixel ratio here by scaling clickPos rather than elsewhere?
+
     // Get new point in the projected coordinate system using the click
     // position x,y and the z of a reference position.  Take the reference point
     // of interest to be between the camera rotation center and the camera

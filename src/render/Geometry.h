@@ -180,7 +180,6 @@ class Geometry : public QObject
         void setBoundingBox(const Imath::Box3d& bbox) { m_bbox = bbox; }
 
         void destroyBuffers();
-        void initializeBboxGL(unsigned int bboxShader);
 
         /// Set VAO
         void setVAO(const char * vertexArrayName, const unsigned int vertArrayId) { m_VAO[std::string(vertexArrayName)] = vertArrayId; }

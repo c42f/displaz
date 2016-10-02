@@ -70,55 +70,79 @@ void TransformState::setOrthoProjection(double left, double right, double bottom
 //------------------------------------------------------------------------------
 
 void drawBox(const TransformState& transState,
-             const Imath::Box3d& bbox,
+             const Imath::Box3d& box,
              const Imath::C3f& col,
-             const GLuint& shaderProgram)
+             const GLuint shaderProgram)
 {
-    // Transform to box min for stability with large offsets
-    // This function is allowing you to render any box
-    TransformState trans2 = transState.translate(bbox.min);
-    Imath::Box3f box2(V3f(0), V3f(bbox.max - bbox.min));
+    // Transform to box min in double on CPU side to remove float cancellation
+    // error on GPU side
+    TransformState trans2 = transState.translate(box.min);
+    Imath::Box3f box2(V3f(0), V3f(box.max - box.min));
     drawBox(trans2, box2, col, shaderProgram);
 }
 
+
 void drawBox(const TransformState& transState,
-             const Imath::Box3f& bbox,
+             const Imath::Box3f& box,
              const Imath::C3f& col,
-             const GLuint& shaderProgram)
+             const GLuint shaderProgram)
 {
-    // This function is allowing you to render any box
-    // TODO: FIX ME
-    tfm::printfln("drawBox :: has not been implemented, yet.");
-}
+    // Set shader uniform parameters.  `shaderProgram` should already be bound
+    transState.setUniforms(shaderProgram);
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+    if (colorLoc >= 0)
+        glUniform4f(colorLoc, col.x, col.y, col.z, 1.0);
+    // Shader varying parameters.
+    GLint positionLoc = glGetAttribLocation(shaderProgram, "position");
+    assert(positionLoc >= 0);
 
-void drawBoundingBox(const TransformState& transState,
-                     const GLuint& bboxVertexArray,
-                     const Imath::V3f& offset,
-                     const Imath::C3f& col,
-                     const GLuint& shaderProgram)
-{
-    // Transform to box min for stability with large offsets
-    TransformState trans2 = transState.translate(offset);
+    // BBox geometry
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
+    // Send vertex data to GPU
+    GLfloat verts[] = {
+        box.min.x, box.min.y, box.min.z,
+        box.min.x, box.max.y, box.min.z,
+        box.max.x, box.max.y, box.min.z,
+        box.max.x, box.min.y, box.min.z,
+        box.min.x, box.min.y, box.max.z,
+        box.min.x, box.max.y, box.max.z,
+        box.max.x, box.max.y, box.max.z,
+        box.max.x, box.min.y, box.max.z
+    };
+    GlBuffer vertexData;
+    vertexData.bind(GL_ARRAY_BUFFER);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+    // Enable position location in VAO & connect to shader location
+    glEnableVertexAttribArray(positionLoc);
+    glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+
+    // Send line connectivity to GPU
+    GLubyte inds[] = {
+        // rows: bottom, sides, top
+        0,1, 1,2, 2,3, 3,0,
+        0,4, 1,5, 2,6, 3,7,
+        4,5, 5,6, 6,7, 7,4
+    };
+    GlBuffer topologyData;
+    topologyData.bind(GL_ELEMENT_ARRAY_BUFFER);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(inds), inds, GL_STREAM_DRAW);
+
+    // Schedule lines for draw.
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glLineWidth(1);
-
-    // should already be bound ...
-    //glUseProgram(shaderProg);
-
-    trans2.setUniforms(shaderProgram);
-    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
-    //assert(colorLoc >= 0); //this can easily happen, if you don't USE "color" in the shader due to optimization
-    glUniform4f(colorLoc, col.x, col.y, col.z, 1.0); // , col.a
-
-    glBindVertexArray(bboxVertexArray);
-    glDrawElements(GL_LINES, 3*8, GL_UNSIGNED_BYTE, 0);
-    glBindVertexArray(0);
-
+    glDrawElements(GL_LINES, sizeof(inds)/sizeof(inds[0]), GL_UNSIGNED_BYTE, 0);
+    //glDrawArrays(GL_POINTS, 0, 8);
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
+
+    // Cleanup!
+    glDisableVertexAttribArray(positionLoc);
+    glDeleteVertexArrays(1, &vao);
+    glCheckError();
 }
 
 
