@@ -118,9 +118,9 @@ int main(int argc, char *argv[])
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
         "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
-        "-notify %s %s", &notifySpec, notifyMessage, "Send a GUI notification <spec> <message> to the user. "
-                                         "<spec> is a specification of how the user will see the message, it must be one of: "
-                                         "'log:<level>' - add logging message at <level> in {error,warning,info,debug}",
+        "-notify %s %s", &notifySpec, &notifyMessage, "Send a GUI notification [spec message] to the user. "
+                                         "spec is a specification of how the user will see the message, it must be "
+                                         "'log' to add an info message, or 'log:<level>' to add logging message at one of {error,warning,info,debug} levels.",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
