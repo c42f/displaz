@@ -78,6 +78,9 @@ int main(int argc, char *argv[])
     std::string hookSpecDef;
     std::string hookPayloadDef;
 
+    std::string notifySpec;
+    std::string notifyMessage;
+
     ArgParse::ArgParse ap;
     ap.options(
         "displaz - A lidar point cloud viewer\n"
@@ -115,6 +118,9 @@ int main(int argc, char *argv[])
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
         "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
+        "-notify %s %s", &notifySpec, notifyMessage, "Send a GUI notification <spec> <message> to the user. "
+                                         "<spec> is a specification of how the user will see the message, it must be one of: "
+                                         "'log:<level>' - add logging message at <level> in {error,warning,info,debug}",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -309,6 +315,12 @@ int main(int argc, char *argv[])
         // out how to make it nicer?
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
+    }
+    if (!notifySpec.empty())
+    {
+        channel->sendMessage(QByteArray("NOTIFY\n") +
+                             notifySpec.c_str() + "\n" +
+                             notifyMessage.c_str());
     }
     if(!hookPayload.empty())
     {

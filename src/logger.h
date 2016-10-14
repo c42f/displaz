@@ -30,6 +30,11 @@ class Logger
             m_logMessageLimit(logMessageLimit)
         { }
 
+        /// Parse logging level to the given string level.  Must be one of
+        /// "error", "warning", "info" or "debug".  For badly formatted
+        /// strings, `defaultLevel` is returned.
+        static Logger::LogLevel parseLogLevel(const std::string& logLevel, LogLevel defaultLevel = Info);
+
         void setLogLevel(LogLevel logLevel) { m_logLevel = logLevel; }
         void setLogProgress(bool logProgress) { m_logProgress = logProgress; }
 

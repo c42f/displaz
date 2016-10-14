@@ -6,6 +6,17 @@
 #include <cmath>
 
 //------------------------------------------------------------------------------
+Logger::LogLevel Logger::parseLogLevel(const std::string& logLevel, LogLevel defaultLevel)
+{
+    if      (logLevel == "error")   return Logger::Error;
+    else if (logLevel == "warning") return Logger::Warning;
+    else if (logLevel == "info")    return Logger::Info;
+    else if (logLevel == "debug")   return Logger::Debug;
+    else                            return defaultLevel;
+}
+
+
+//------------------------------------------------------------------------------
 void Logger::log(LogLevel level, const char* fmt, tfm::FormatListRef flist, int maxMsgs)
 {
     if (level > m_logLevel)
