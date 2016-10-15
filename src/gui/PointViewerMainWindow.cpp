@@ -518,6 +518,37 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     {
         openShaderFile(commandTokens[1]);
     }
+    else if (commandTokens[0] == "NOTIFY")
+    {
+        if (commandTokens.size() < 3)
+        {
+            g_logger.error("Could not parse NOTIFY message: %s", QString::fromUtf8(message));
+            return;
+        }
+        QString spec = QString::fromUtf8(commandTokens[1]);
+        QList<QString> specList = spec.split(':');
+        if (specList[0].toLower() != "log")
+        {
+            g_logger.error("Could not parse NOTIFY spec: %s", spec);
+            return;
+        }
+
+        Logger::LogLevel level = Logger::Info;
+        if (specList.size() > 1)
+            level = Logger::parseLogLevel(specList[1].toLower().toStdString());
+
+        // Ugh, reassemble message from multiple lines.  Need a better
+        // transport serialization!
+        QByteArray message;
+        for (int i = 2; i < commandTokens.size(); ++i)
+        {
+            if (i > 2)
+                message += "\n";
+            message += commandTokens[i];
+        }
+
+        g_logger.log(level, "%s", tfm::makeFormatList(message.constData()));
+    }
     else if(commandTokens[0] == "HOOK")
     {
         IpcChannel* channel = dynamic_cast<IpcChannel*>(sender());
