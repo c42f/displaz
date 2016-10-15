@@ -28,10 +28,19 @@ before_install:
     - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew update; fi
 
 install:
-    - if [ "$TRAVIS_OS_NAME" == "linux" ]; then sudo apt-get install -qq -y git g++ cmake qt5-default python-docutils; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install qt5; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew unlink qt5; fi
-    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew link qt5 --force; fi
+    - >
+      if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+        sudo apt-get install -qq -y git g++ cmake qt5-default python-docutils
+      fi
+    - >
+      if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+        # There seems to be some inconsistency about whether git is installed
+        # on OSX worker nodes.  See https://github.com/github/git-lfs/pull/1557
+        brew ls --versions git && brew upgrade git || brew install git
+        brew install qt5
+        brew unlink qt5
+        brew link qt5 --force
+      fi
 
 before_script:
     # Build external tools
