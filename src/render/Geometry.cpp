@@ -136,7 +136,7 @@ void Geometry::initializeBboxGL(unsigned int bboxShader)
     positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, 3*8*sizeof(float), verts, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(bboxShader, "position");
+    GLint positionAttribute = glGetAttribLocation(bboxShader, "position");
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 

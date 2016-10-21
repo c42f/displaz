@@ -572,7 +572,7 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
     positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), cursorPoints, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
@@ -680,12 +680,12 @@ void View3D::initAxes()
     glBindBuffer(GL_ARRAY_BUFFER, axesQuadVertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, (2 + 2) * 6 * sizeof(float), axesQuad, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "position");
 
     glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLuint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
+    GLint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
     glEnableVertexAttribArray(texCoordAttribute);
@@ -755,7 +755,7 @@ void View3D::initAxes()
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLuint colorAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "color");
+    GLint colorAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "color");
 
     glVertexAttribPointer(colorAttribute, 4, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)(sizeof(float)*3));
     glEnableVertexAttribArray(colorAttribute);
@@ -929,7 +929,7 @@ void View3D::initGrid(const float scale)
     glBindBuffer(GL_ARRAY_BUFFER, gridVertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, (22 * 2) * 3 * sizeof(float), gridLines, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
 
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);

@@ -381,7 +381,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     GlBuffer positionBuffer;
     positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, m_verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
-    GLuint positionAttribute = glGetAttribLocation(vertexShaderId, positionAttrName);
+    GLint positionAttribute = glGetAttribLocation(vertexShaderId, positionAttrName);
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(positionAttribute);
 
@@ -389,7 +389,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     GlBuffer normalBuffer;
     normalBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
-    GLuint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
+    GLint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
     glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(normalAttribute);
 
@@ -405,7 +405,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
         std::vector<float> tmp_colors(m_verts.size(), 1.0f);
         glBufferData(GL_ARRAY_BUFFER, tmp_colors.size() * sizeof(float), &tmp_colors[0], GL_STATIC_DRAW);
     }
-    GLuint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
+    GLint colorAttribute = glGetAttribLocation(vertexShaderId, colorAttrName);
     glVertexAttribPointer(colorAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
     glEnableVertexAttribArray(colorAttribute);
 
