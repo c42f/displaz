@@ -98,8 +98,6 @@ void View3D::restartRender()
 
 void View3D::geometryChanged()
 {
-    if (m_geometries->rowCount() == 1 && !m_explicitCursorPos)
-        centerOnGeometry(m_geometries->index(0));
     restartRender();
 }
 
@@ -128,7 +126,13 @@ void View3D::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRi
 
 void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
 {
+    // NB: Geometry inserted at indices i in [firstRow,lastRow]  (end inclusive)
     initializeGLGeometry(firstRow, lastRow+1);
+    if (m_geometries->rowCount() == (lastRow+1-firstRow) && !m_explicitCursorPos)
+    {
+        // When loading first geometry (or geometries), centre on it.
+        centerOnGeometry(m_geometries->index(0));
+    }
     geometryChanged();
 }
 
