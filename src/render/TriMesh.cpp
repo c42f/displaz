@@ -92,18 +92,22 @@ static int vertex_cb(p_ply_argument argument)
     void* pinfo = 0;
     ply_get_argument_user_data(argument, &pinfo, NULL);
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
-    double v = ply_get_argument_value(argument);
+    const double v = ply_get_argument_value(argument);
+    const int i = info.verts.size() % 3;
     if (info.verts.size() < 3)
     {
         // First vertex is used for the constant offset
         info.offset[info.verts.size()] = v;
     }
-    v -= info.offset[info.verts.size() % 3];
-    info.verts.push_back((float)v);
-    // Default Z to zero as necessary
-    if (!info.gotZ && (info.verts.size()%3) == 2)
+    // Append x, y or z
+    if (info.gotZ || (i < 2))
     {
-        info.verts.push_back(-info.offset[info.verts.size() % 3]);
+        info.verts.push_back(float(v-info.offset[i]));
+    }
+    // Default z to zero as necessary
+    if (!info.gotZ && (i == 1))
+    {
+        info.verts.push_back(-info.offset[i]);
     }
 
     return 1;
