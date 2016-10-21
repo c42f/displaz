@@ -1,0 +1,14 @@
+ply
+format ascii 1.0
+comment A simple nonconvex polygon
+element face 1
+property list int int vertex_index
+element vertex 4
+property double x
+property double y
+end_header
+4 0 1 2 3
+0 0
+1 1
+2 0
+1 2
