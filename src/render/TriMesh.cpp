@@ -54,6 +54,7 @@ struct PlyLoadInfo
     long nvertices;
     std::vector<float> verts;
     double offset[3]; /// Global offset for verts array
+    bool gotZ;
     std::vector<float> colors;
     std::vector<float> texcoords;
     QString textureFileName;
@@ -66,6 +67,7 @@ struct PlyLoadInfo
 
     PlyLoadInfo()
         : nvertices(0),
+        gotZ(true),
         prevEdgeIndex(-1)
     {
         offset[0] = offset[1] = offset[2] = 0;
@@ -98,6 +100,12 @@ static int vertex_cb(p_ply_argument argument)
     }
     v -= info.offset[info.verts.size() % 3];
     info.verts.push_back((float)v);
+    // Default Z to zero as necessary
+    if (!info.gotZ && (info.verts.size()%3) == 2)
+    {
+        info.verts.push_back(-info.offset[info.verts.size() % 3]);
+    }
+
     return 1;
 }
 
@@ -192,12 +200,12 @@ bool loadPlyFile(const QString& fileName,
         return false;
     }
     long nvertices = ply_set_read_cb(ply.get(), "vertex", "x", vertex_cb, &info, 0);
-    if (ply_set_read_cb(ply.get(), "vertex", "y", vertex_cb, &info, 1) != nvertices ||
-        ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) != nvertices)
+    if (ply_set_read_cb(ply.get(), "vertex", "y", vertex_cb, &info, 1) != nvertices)
     {
-        g_logger.error("Expected vertex properties (x,y,z) in ply file");
+        g_logger.error("Expected vertex properties (x,y) in ply file");
         return false;
     }
+    info.gotZ = (ply_set_read_cb(ply.get(), "vertex", "z", vertex_cb, &info, 2) == nvertices);
     info.nvertices = nvertices;
     info.currPoly.setVertexCount(nvertices);
     info.verts.reserve(3*nvertices);
