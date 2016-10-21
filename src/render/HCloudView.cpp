@@ -181,7 +181,6 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     V3f cameraPos = V3d(0) * transState.modelViewMatrix.inverse();
     QGLShaderProgram& prog = m_shader->shaderProgram();
     prog.bind();
-    glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 
     transState.setUniforms(prog.programId());
@@ -321,7 +320,6 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     prog.disableAttributeArray("intensity");
     prog.disableAttributeArray("simplifyThreshold");
 
-    glDisable(GL_POINT_SPRITE);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // prog.release();
 
