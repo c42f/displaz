@@ -386,12 +386,23 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     glEnableVertexAttribArray(positionAttribute);
 
     // Normal attribute
-    GlBuffer normalBuffer;
-    normalBuffer.bind(GL_ARRAY_BUFFER);
-    glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
     GLint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
-    glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
-    glEnableVertexAttribArray(normalAttribute);
+    GlBuffer normalBuffer;
+    if (normalAttribute != -1)
+    {
+        if (m_normals.empty())
+        {
+            glDisableVertexAttribArray(normalAttribute);
+            glVertexAttrib3f(normalAttribute, 0, 0, 1);
+        }
+        else
+        {
+            normalBuffer.bind(GL_ARRAY_BUFFER);
+            glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
+            glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
+            glEnableVertexAttribArray(normalAttribute);
+        }
+    }
 
     // Color attribute
     GlBuffer colorBuffer;
