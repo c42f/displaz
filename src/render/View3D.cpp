@@ -796,10 +796,10 @@ void View3D::drawAxes() const
     {
         QGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
         GLint textureSampler = glGetUniformLocation(axesBackgroundShader.programId(), "texture0");
-        // texture
-        m_drawAxesBackground.bind(textureSampler);
         // shader
         axesBackgroundShader.bind();
+        // texture
+        m_drawAxesBackground.bind(textureSampler);
         // vertex buffer
         glBindVertexArray(m_quadVertexArray);
         // matrix stack
@@ -852,10 +852,9 @@ void View3D::drawAxes() const
     if (m_axesLabelShader->isValid())
     {
         QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
-        GLint textureSampler = glGetUniformLocation(axesLabelShader.programId(), "texture0");
-
         // shader
         axesLabelShader.bind();
+        GLint texLocation = glGetUniformLocation(axesLabelShader.programId(), "texture0");
         // vertex buffer
         glBindVertexArray(m_quadLabelVertexArray);
         // matrix stack
@@ -865,17 +864,17 @@ void View3D::drawAxes() const
         // offset
         axesLabelShader.setUniformValue("offset", px.x, px.y, px.z);
         // texture
-        m_drawAxesLabelX.bind(textureSampler);
+        m_drawAxesLabelX.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         axesLabelShader.setUniformValue("offset", py.x, py.y, py.z);
         // texture
-        m_drawAxesLabelY.bind(textureSampler);
+        m_drawAxesLabelY.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         axesLabelShader.setUniformValue("offset", pz.x, pz.y, pz.z);
         // texture
-        m_drawAxesLabelZ.bind(textureSampler);
+        m_drawAxesLabelZ.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
