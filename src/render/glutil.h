@@ -298,8 +298,16 @@ public:
         }
     }
 
-    void bind(int sampler) const
+    /// Bind a glsl sampler location to a given texture unit.
+    ///
+    /// `samplerLocation` should be the location of a sampler variable in the
+    /// shader, as determined via glGetUniformLocation().
+    ///
+    /// `textureUnit` is the unit which will be used; textures in simultaneous
+    /// use must be assigned to distinct texture units.
+    void bind(int samplerLocation, int textureUnit = 0) const
     {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
         if (!m_texture)
         {
             glGenTextures(1, &m_texture);
@@ -315,12 +323,9 @@ public:
         {
             glBindTexture(m_target, m_texture);
         }
-        // TODO: this has to become more sophisticated, if we ever want to have
-        // more than one texture bound
-        glActiveTexture(GL_TEXTURE0);
-        if (sampler >= 0)
+        if (samplerLocation >= 0)
         {
-            glBindSampler(m_texture, sampler);
+            glUniform1i(samplerLocation, textureUnit);
         }
     }
 
