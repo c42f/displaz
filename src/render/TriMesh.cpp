@@ -107,7 +107,7 @@ static int vertex_cb(p_ply_argument argument)
     // Default z to zero as necessary
     if (!info.gotZ && (i == 1))
     {
-        info.verts.push_back(-info.offset[i]);
+        info.verts.push_back(float(-info.offset[2]));
     }
 
     return 1;
