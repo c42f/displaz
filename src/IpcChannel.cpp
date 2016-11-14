@@ -33,13 +33,13 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
     {
         socket->connectToServer(serverName);
 #       ifdef _WIN32
-        while (m_socket->state() != QLocalSocket::ConnectedState &&
+        while (socket->state() != QLocalSocket::ConnectedState &&
                (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
         {
             QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             milliSleep(1); // Crude, but whatever.  This is a workaround.
         }
-        if (m_socket->state() == QLocalSocket::ConnectedState)
+        if (socket->state() == QLocalSocket::ConnectedState)
         {
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
         }
