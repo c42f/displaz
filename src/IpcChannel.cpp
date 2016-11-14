@@ -32,8 +32,21 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
     while (true)
     {
         socket->connectToServer(serverName);
+#       ifdef _WIN32
+        while (m_socket->state() != QLocalSocket::ConnectedState &&
+               (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
+        {
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+            milliSleep(1); // Crude, but whatever.  This is a workaround.
+        }
+        if (m_socket->state() == QLocalSocket::ConnectedState)
+        {
+            return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
+        }
+#       else
         if (socket->waitForConnected(currTimeout))
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
+#       endif
         if (timeoutMsecs >= 0)
             currTimeout = timeoutMsecs - timer.elapsed();
         if (socket->error() == QLocalSocket::SocketTimeoutError)
@@ -68,12 +81,12 @@ QByteArray IpcChannel::receiveMessage(int timeoutMsecs)
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         milliSleep(1); // Crude, but whatever.  This is a workaround.
     }
-	if (appendCurrentMessage())
-	{
+    if (appendCurrentMessage())
+    {
         QByteArray msg = m_message;
         clearCurrentMessage();
         return msg;
-	}
+    }
 #   else
     while (m_socket->waitForReadyRead(timeoutMsecs))
     {
