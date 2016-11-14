@@ -33,6 +33,7 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
     {
         socket->connectToServer(serverName);
 #       ifdef _WIN32
+/*
         while (socket->state() != QLocalSocket::ConnectedState &&
                (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
         {
@@ -43,6 +44,9 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
         {
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
         }
+*/
+        if (socket->waitForConnected(currTimeout))
+            return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
 #       else
         if (socket->waitForConnected(currTimeout))
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
