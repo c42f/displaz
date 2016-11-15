@@ -25,9 +25,9 @@ def _interpret_spec(specstr):
     }
     spec = {}
     for c in specstr:
-        if colors.has_key(c):
+        if c in colors:
             spec['color'] = np.array(colors[c], dtype=np.float32)
-        elif markershapes.has_key(c):
+        elif c in markershapes:
             spec['markershape'] = np.array(markershapes[c], dtype=np.int32)
         else:
             raise Exception('Plot spec %s not recognized' % (c,))
