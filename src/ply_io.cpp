@@ -440,3 +440,42 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
 }
 
 
+bool findPrefixedElements(const std::string& elementPrefix,
+                          std::vector<p_ply_element>& elements,
+                          p_ply ply, size_t& elementLengths)
+{
+    elementLengths = -1;
+    for (p_ply_element elem = ply_get_next_element(ply, NULL);
+         elem != NULL; elem = ply_get_next_element(ply, elem))
+    {
+        const char* name = 0;
+        long ninstances = 0;
+        if (!ply_get_element_info(elem, &name, &ninstances))
+            continue;
+        if (strncmp(name, elementPrefix.c_str(), elementPrefix.size()) == 0)
+        {
+            if (elementLengths == -1)
+                elementLengths = ninstances;
+            if (elementLengths != ninstances)
+            {
+                g_logger.error("Inconsistent number of points in fields with prefix \"%s\"",
+                               elementPrefix);
+                return false;
+            }
+            elements.push_back(elem);
+        }
+    }
+    return true;
+}
+
+
+void PlyLoader::hookPrefixedDisplazFields(const std::string& elementPrefix,
+                                          std::vector<GeomField>& fields)
+{
+    size_t numPoints = -1;
+    std::vector<p_ply_element> vertexElements;
+    if (!findPrefixedElements("vertex_", vertexElements, m_ply, numPoints))
+        return false;
+    
+}
+

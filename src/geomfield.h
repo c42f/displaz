@@ -69,4 +69,24 @@ void reorder(GeomField& field, const size_t* inds, size_t indsSize);
 std::ostream& operator<<(std::ostream& out, const GeomField& field);
 
 
+class GeomFields
+{
+    public:
+        GeomFields()
+            : m_positionOffset(0,0,0)
+        { }
+
+        /// The "position" field has a special offset
+        V3d positionOffset() const { return m_positionOffset; }
+
+        const std::vector<GeomField>& fields() const { return m_fields; }
+
+        std::vector<GeomField>& fields() { return m_fields; }
+
+    private:
+        V3d m_positionOffset;
+        std::vector<GeomField> m_fields;
+};
+
+
 #endif // DISPLAZ_GEOMFIELD_H_INCLUDED

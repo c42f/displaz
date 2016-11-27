@@ -55,7 +55,7 @@ class PlyLoader
         void hookPlyVertexPropertyNames(const std::string& elementName,
                                         std::vector<GeomField>& fields);
 
-        /// Connect elements prefixed with displaz naming convention to displaz
+        /// Connect elements prefixed with `elementPrefix` to displaz
         /// `GeomFields`s for loading.
         ///
         /// The displaz native field format has a fairly rigid and specific
@@ -66,7 +66,7 @@ class PlyLoader
         /// by the names of the first property: "x" implies a vector, "r" a
         /// color, and "0" an array.
         ///
-        /// Example header elements for a vertex_ prefix:
+        /// Example header elements for a "vertex_" prefix:
         ///
         ///   element vertex_position 20
         ///   property float x
@@ -87,7 +87,7 @@ class PlyLoader
         ///   array float[2] myarray
         ///
         void hookPrefixedDisplazFields(const std::string& elementPrefix,
-                                       std::vector<GeomField>& fields);
+                                       GeomFields& fields);
 
         /// Read the ply file, filling all previously hooked fields with data.
         bool read();
