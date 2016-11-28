@@ -6,6 +6,8 @@
 
 #include <QPlainTextEdit>
 
+#include "GLSLHighlighter.h"
+
 /// Very basic shader editor widget
 class ShaderEditor : public QPlainTextEdit
 {
@@ -26,6 +28,7 @@ class ShaderEditor : public QPlainTextEdit
 
     private:
         QAction* m_compileShaderAct;
+        GLSLHighlighter* m_highlighter;
 };
 
 #endif // DISPLAZ_SHADER_EDITOR_H_INCLUDED

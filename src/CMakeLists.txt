@@ -72,6 +72,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
 
     gui/DataSetUI.h
     gui/DragSpinBox.h
+    gui/GLSLHighlighter.h
     gui/HelpDialog.h
     gui/InteractiveCamera.h
     gui/PointViewerMainWindow.h
@@ -99,6 +100,7 @@ set(gui_srcs
     HookManager.cpp
 
     gui/DataSetUI.cpp
+    gui/GLSLHighlighter.cpp
     gui/guimain.cpp
     gui/PointViewerMainWindow.cpp
     gui/QtLogger.cpp
