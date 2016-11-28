@@ -36,6 +36,7 @@ GLSLHighlighter::GLSLHighlighter(QTextDocument *parent)
     // Strings
     addRule("#183691", TextStyle::Plain, "\".*\"");
     // Comments
+    addRule("#969896", TextStyle::Italic, "//");
     addRule("#969896", TextStyle::Italic, "//[^#][^\n]*");
     m_comment.setForeground(QColor("#969896"));
     m_comment.setFontItalic(true);
