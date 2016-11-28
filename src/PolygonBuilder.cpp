@@ -66,24 +66,21 @@ static bool triangulatePolygon(const std::vector<float>& verts,
                                const std::vector<GLuint>& innerRingInds,
                                std::vector<GLuint>& triangleInds)
 {
-    // Figure out which dimension the bounding box is smallest along, and
-    // discard it to reduce dimensionality to 2D.
-    Imath::Box3d bbox;
-    for (size_t i = 0; i < outerRingInds.size(); ++i)
+    // Figure out which axis the normal is maximum along, and discard it to
+    // reduce dimensionality to 2D.  The polygon is guaranteed to be
+    // non-singular in the remaining dimensions.
+    V3d normal = polygonNormal(verts, outerRingInds);
+    normal.x = std::abs(normal.x);
+    normal.y = std::abs(normal.y);
+    normal.z = std::abs(normal.z);
+    int ind1 = 0;
+    int ind2 = 1;
+    if (normal.z < std::max(normal.x, normal.y))
     {
-        GLuint j = 3*outerRingInds[i];
-        assert(j + 2 < verts.size());
-        bbox.extendBy(V3d(verts[j], verts[j+1], verts[j+2]));
-    }
-    V3d diag = bbox.size();
-    int xind = 0;
-    int yind = 1;
-    if (diag.z > std::min(diag.x, diag.y))
-    {
-        if (diag.x < diag.y)
-            xind = 2;
+        if (normal.x > normal.y)
+            ind1 = 2;
         else
-            yind = 2;
+            ind2 = 2;
     }
     std::list<TPPLPoly> triangles;
     if (innerRingSizes.empty())
@@ -93,7 +90,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
         //
         // TODO: Use Triangulate_MONO, after figuring out why it's not always
         // working?
-        initTPPLPoly(poly, verts, xind, yind,
+        initTPPLPoly(poly, verts, ind1, ind2,
                      outerRingInds.data(), (int)outerRingInds.size(), false);
         TPPLPartition polypartition;
         if (!polypartition.Triangulate_EC(&poly, &triangles))
@@ -108,7 +105,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
         std::list<TPPLPoly> inputPolys;
         inputPolys.resize(1 + innerRingSizes.size());
         auto polyIter = inputPolys.begin();
-        initTPPLPoly(*polyIter, verts, xind, yind,
+        initTPPLPoly(*polyIter, verts, ind1, ind2,
                      outerRingInds.data(), (int)outerRingInds.size(), false);
         ++polyIter;
         for (size_t i = 0, j = 0; i < innerRingSizes.size(); ++i, ++polyIter)
@@ -120,7 +117,7 @@ static bool triangulatePolygon(const std::vector<float>& verts,
                                  i, innerRingSizes.size());
                 return false;
             }
-            initTPPLPoly(*polyIter, verts, xind, yind,
+            initTPPLPoly(*polyIter, verts, ind1, ind2,
                          innerRingInds.data() + j, (int)count, true);
             j += count;
         }

@@ -121,6 +121,28 @@ void makeBoundingCylinder(const Box3d& box, const V3d& axis,
 }
 
 
+V3d polygonNormal(const std::vector<float>& verts,
+                  const std::vector<unsigned int>& outerRingInds)
+{
+    V3d normal(0,0,0);
+    // Do some extra work removing a fixed origin to greatly reduce
+    // cancellation error.  Start with the last vertex for convenience looping
+    // circularly around all vertex pairs.
+    unsigned int j = 3*outerRingInds.back();
+    V3d origin = V3d(verts[j], verts[j+1], verts[j+2]);
+    V3d prevVert = V3d(0,0,0); // origin-origin
+    for (size_t i = 0; i < outerRingInds.size(); ++i)
+    {
+        unsigned int j = 3*outerRingInds[i];
+        assert(j + 2 < verts.size());
+        V3d vert = V3d(verts[j], verts[j+1], verts[j+2]) - origin;
+        normal += prevVert.cross(vert);
+        prevVert = vert;
+    }
+    return normal.normalized();
+}
+
+
 //------------------------------------------------------------------------------
 
 void milliSleep(int msecs)

@@ -10,6 +10,56 @@
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
+
+TEST_CASE("Polygon normals")
+{
+    // Oriented triangle
+    CHECK(polygonNormal({0,0,0,
+                         1,0,0,
+                         1,1,0},
+                         {0,1,2}) == V3d(0,0,1));
+    // Opposite orientation
+    CHECK(polygonNormal({0,0,0,
+                         1,0,0,
+                         1,1,0},
+                         {0,2,1}) == V3d(0,0,-1));
+    // Large translation
+    float T = 1e5;
+    CHECK(polygonNormal({T+0,T+0,T+0,
+                         T+1,T+0,T+0,
+                         T+1,T+1,T+0},
+                         {0,1,2}) == V3d(0,0,1));
+    // Simple oriented quad
+    CHECK(polygonNormal({0,0,0,
+                         1,0,0,
+                         1,1,0,
+                         0,1,0},
+                         {0,1,2,3}) == V3d(0,0,1));
+    // Non-convex
+    CHECK(polygonNormal({0,0,0,
+                         0.5,0.5,0,
+                         1,0,0,
+                         0.5,1,0},
+                         {0,1,2,3}) == V3d(0,0,1));
+    // Non-planar
+    CHECK(polygonNormal({0,0,0,
+                         1,0,0.1,
+                         1,1,0,
+                         0,1,0.1},
+                         {0,1,2,3}) == V3d(0,0,1));
+
+    // Singular - Repeated vertices and consecutive parallel edges
+    CHECK(polygonNormal({0,0,0,
+                         0,0,0,
+                         0.5,0,0,
+                         1,0,0,
+                         1,1,0,
+                         1,1,0,
+                         0,1,0},
+                         {0,1,2,3,4,5,6}) == V3d(0,0,1));
+}
+
+
 int identity(int i) { return i; }
 
 TEST_CASE("Simple test for multi_partition")

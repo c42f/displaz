@@ -108,6 +108,19 @@ void makeBoundingCylinder(const Box3d& box, const V3d& axis,
                           double& radius);
 
 
+// Robustly compute a polygon normal with Newell's method
+//
+// This can handle non-convex, non-planar polygons with arbitrarily many
+// consecutive parallel edges.
+//
+// verts - 3D vertex positions
+// outerRingInds  - Indices of outer boundary vertices in `verts` array;
+//                  the j'th component of the i'th polygon vertex is
+//                  verts[3*outerRingInds[i]+j].
+V3d polygonNormal(const std::vector<float>& verts,
+                  const std::vector<unsigned int>& outerRingInds);
+
+
 /// In-place partition of elements into multiple classes.
 ///
 /// multi_partition partitions the range [first,last) into numClasses groups,
