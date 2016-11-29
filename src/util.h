@@ -4,6 +4,7 @@
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 
+#include <cmath>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
