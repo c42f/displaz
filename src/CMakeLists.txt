@@ -185,9 +185,11 @@ else()
     if (Qt5_POSITION_INDEPENDENT_CODE)
         set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     endif()
-    # TODO this is a workaround for Ubuntu 16.04 x86-64
     if (UNIX)
+        # TODO this is a workaround for Ubuntu 16.04 x86-64
         add_definitions(-fPIC)
+        # TODO this is a workaround for Ubuntu 16.10 x86-64
+        add_definitions(-DQT_NO_VERSION_TAGGING)
     endif()
 endif()
 
