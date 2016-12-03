@@ -159,6 +159,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
     drawGrid->setCheckable(true);
     drawGrid->setChecked(false);
+    QAction* drawAnnotations = viewMenu->addAction(tr("Draw A&nnotations"));
+    drawAnnotations->setCheckable(true);
+    drawAnnotations->setChecked(true);
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -193,6 +196,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
             m_pointView, SLOT(toggleDrawAxes()));
     connect(drawGrid, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawGrid()));
+    connect(drawAnnotations, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawAnnotations()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -414,6 +419,26 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QModelIndex index = m_geometries->findLabel(regex);
         if (index.isValid())
             m_pointView->centerOnGeometry(index);
+    }
+    else if (commandTokens[0] == "ANNOTATE")
+    {
+        if (commandTokens.size() - 1 != 4)
+        {
+            tfm::format(std::cerr, "Expected four arguments, got %d\n",
+                        commandTokens.size() - 1);
+            return;
+        }
+        QString text = commandTokens[1];
+        bool xOk = false, yOk = false, zOk = false;
+        double x = commandTokens[2].toDouble(&xOk);
+        double y = commandTokens[3].toDouble(&yOk);
+        double z = commandTokens[4].toDouble(&zOk);
+        if (!zOk || !yOk || !zOk)
+        {
+            std::cerr << "Could not parse XYZ coordinates for position\n";
+            return;
+        }
+        m_pointView->addAnnotation(text, Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {

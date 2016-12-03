@@ -287,6 +287,7 @@ public:
           // an unexpected way.
         m_image(QGLWidget::convertToGLFormat(image.mirrored(false,true))),
         m_target(GL_TEXTURE_2D),
+        m_resizeFilter(GL_LINEAR),
         m_texture(0)
     { }
 
@@ -314,8 +315,8 @@ public:
             glBindTexture(m_target, m_texture);
             glTexImage2D(m_target, 0, GL_RGBA, m_image.width(), m_image.height(),
                          0, GL_RGBA, GL_UNSIGNED_BYTE, m_image.constBits());
-            glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, m_resizeFilter);
+            glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, m_resizeFilter);
             glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
@@ -334,10 +335,28 @@ public:
         bind(-1);
     }
 
+    int width() const
+    {
+        return m_image.width();
+    }
+
+    int height() const
+    {
+        return m_image.height();
+    }
+
+    /// Set the GL_TEXTURE_MIN_FILTER and GL_TEXTURE_MAG_FILTER filter for the
+    /// texture. Must be GL_LINEAR (default) or GL_NEAREST.
+    void setResizeFilter(GLint filter)
+    {
+        m_resizeFilter = filter;
+    }
+
 
 private:
     QImage m_image;
     GLint  m_target;
+    GLint m_resizeFilter;
     mutable GLuint m_texture;
 };
 

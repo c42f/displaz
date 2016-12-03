@@ -12,12 +12,14 @@
 #define QT_NO_OPENGL_ES_2
 
 
+#include <QVector>
 #include <QGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
 #include "InteractiveCamera.h"
 #include "geometrycollection.h"
+#include "Billboard.h"
 
 class QGLShaderProgram;
 class QItemSelectionModel;
@@ -51,6 +53,7 @@ class View3D : public QGLWidget
         const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
+        void addAnnotation(const QString& text, const Imath::V3d& pos);
 
     public slots:
         /// Set the backgroud color
@@ -59,6 +62,7 @@ class View3D : public QGLWidget
         void toggleDrawCursor();
         void toggleDrawAxes();
         void toggleDrawGrid();
+        void toggleDrawAnnotations();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
@@ -98,6 +102,8 @@ class View3D : public QGLWidget
         void initGrid(const float scale);
         void drawGrid() const;
 
+        void drawText(const QString& text);
+
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
@@ -130,6 +136,7 @@ class View3D : public QGLWidget
         bool m_drawCursor;
         bool m_drawAxes;
         bool m_drawGrid;
+        bool m_drawAnnotations;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
@@ -140,6 +147,7 @@ class View3D : public QGLWidget
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;
+        QVector<std::shared_ptr<Billboard>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
@@ -161,6 +169,7 @@ class View3D : public QGLWidget
         std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
         std::unique_ptr<ShaderProgram> m_axesLabelShader;
         std::unique_ptr<ShaderProgram> m_boundingBoxShader;
+        std::unique_ptr<ShaderProgram> m_billboardShader;
 
         unsigned int m_cursorVertexArray;
         unsigned int m_axesVertexArray;
