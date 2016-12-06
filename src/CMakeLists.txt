@@ -114,7 +114,7 @@ set(gui_srcs
     render/View3D.cpp
     render/Shader.cpp
     render/GeometryMutator.cpp
-    render/Billboard.cpp
+    render/Annotation.cpp
 
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp

@@ -2,14 +2,14 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-// Draws billboards, which are textured quads that always face the camera,
+// Draws annotations, which are textured quads that always face the camera,
 // arent't obscured by other objects, and don't shrink when they're further
 // away.
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewProjectionMatrix;
-uniform vec2 billboardSize; // In pixels
+uniform vec2 annotationSize; // In pixels
 uniform vec2 viewportSize; // In pixels
 
 //------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ void main()
 {
     gl_Position = modelViewProjectionMatrix * vec4(0, 0, 0, 1.0);
     gl_Position /= gl_Position.w;
-    gl_Position.xy += position * billboardSize / viewportSize * 2;
+    gl_Position.xy += position * annotationSize / viewportSize * 2;
     ftexCoord = texCoord;
 }
 

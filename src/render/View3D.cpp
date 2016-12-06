@@ -176,8 +176,8 @@ void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
 
 void View3D::addAnnotation(const QString& text, const Imath::V3d& pos)
 {
-    Billboard* annotation = new Billboard(m_billboardShader->shaderProgram(), text, pos);
-    m_annotations.append(std::shared_ptr<Billboard>(annotation));
+    Annotation* annotation = new Annotation(m_annotationShader->shaderProgram(), text, pos);
+    m_annotations.append(std::shared_ptr<Annotation>(annotation));
 }
 
 
@@ -294,8 +294,8 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 
-    m_billboardShader.reset(new ShaderProgram());
-    m_billboardShader->setShaderFromSourceFile("shaders:billboard.glsl");
+    m_annotationShader.reset(new ShaderProgram());
+    m_annotationShader->setShaderFromSourceFile("shaders:annotation.glsl");
 
     double dPR = getDevicePixelRatio();
     int w = width() * dPR;
@@ -452,14 +452,14 @@ void View3D::paintGL()
     // Draw annotations
     if (m_drawAnnotations)
     {
-        QGLShaderProgram& billboardShaderProg = m_billboardShader->shaderProgram();
-        billboardShaderProg.bind();
-        billboardShaderProg.setUniformValue("viewportSize", w, h);
+        QGLShaderProgram& annotationShaderProg = m_annotationShader->shaderProgram();
+        annotationShaderProg.bind();
+        annotationShaderProg.setUniformValue("viewportSize", w, h);
         // TODO: Use painter's algorithm
         for (int i = 0; i < m_annotations.size(); i++)
         {
-            const Billboard& annotation = *m_annotations[i];
-            annotation.draw(billboardShaderProg, transState);
+            const Annotation& annotation = *m_annotations[i];
+            annotation.draw(annotationShaderProg, transState);
         }
     }
 

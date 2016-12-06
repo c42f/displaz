@@ -1,7 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "Billboard.h"
+#include "Annotation.h"
 
 #include <cmath>
 
@@ -46,7 +46,7 @@ static std::unique_ptr<Texture> makeTextureFromText(const QString& text)
 }
 
 /// Creates a texturable rectangle VAO and returns it's name.
-static GLuint makeVAO(QGLShaderProgram& billboardShaderProg)
+static GLuint makeVAO(QGLShaderProgram& annotationShaderProg)
 {
     GLuint vao;
     glGenVertexArrays(1, &vao);
@@ -66,7 +66,7 @@ static GLuint makeVAO(QGLShaderProgram& billboardShaderProg)
     glBufferData(GL_ARRAY_BUFFER, sizeof data, data, GL_STATIC_DRAW);
 
     // Setup attributes
-    GLint positionAttribute = glGetAttribLocation(billboardShaderProg.programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(annotationShaderProg.programId(), "position");
     glVertexAttribPointer(positionAttribute,
                           2,
                           GL_FLOAT,
@@ -75,7 +75,7 @@ static GLuint makeVAO(QGLShaderProgram& billboardShaderProg)
                           (void*) xyzOffset);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLint texCoordAttribute = glGetAttribLocation(billboardShaderProg.programId(), "texCoord");
+    GLint texCoordAttribute = glGetAttribLocation(annotationShaderProg.programId(), "texCoord");
     glVertexAttribPointer(texCoordAttribute,
                           2,
                           GL_FLOAT,
@@ -89,33 +89,33 @@ static GLuint makeVAO(QGLShaderProgram& billboardShaderProg)
     return vao;
 }
 
-Billboard::Billboard(QGLShaderProgram& billboardShaderProg,
+Annotation::Annotation(QGLShaderProgram& annotationShaderProg,
                      const QString& text,
                      Imath::V3d position)
      : m_text(text),
      m_position(position)
 {
     m_texture = makeTextureFromText(text);
-    m_vao = makeVAO(billboardShaderProg);
+    m_vao = makeVAO(annotationShaderProg);
 }
 
-Billboard::~Billboard()
+Annotation::~Annotation()
 {
     glDeleteVertexArrays(1, &m_vao);
 }
 
-void Billboard::draw(QGLShaderProgram& billboardShaderProg,
+void Annotation::draw(QGLShaderProgram& annotationShaderProg,
                      const TransformState& transState) const
 {
     glBindVertexArray(m_vao);
-    GLint texture0 = glGetUniformLocation(billboardShaderProg.programId(),
+    GLint texture0 = glGetUniformLocation(annotationShaderProg.programId(),
                                           "texture0");
     m_texture->bind(texture0);
-    billboardShaderProg.setUniformValue("billboardSize",
+    annotationShaderProg.setUniformValue("annotationSize",
                                         m_texture->width(),
                                         m_texture->height());
     transState.translate(m_position)
-              .setUniforms(billboardShaderProg.programId());
+              .setUniforms(annotationShaderProg.programId());
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);

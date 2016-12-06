@@ -19,7 +19,7 @@
 #include "DrawCostModel.h"
 #include "InteractiveCamera.h"
 #include "geometrycollection.h"
-#include "Billboard.h"
+#include "Annotation.h"
 
 class QGLShaderProgram;
 class QItemSelectionModel;
@@ -147,7 +147,7 @@ class View3D : public QGLWidget
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;
-        QVector<std::shared_ptr<Billboard>> m_annotations;
+        QVector<std::shared_ptr<Annotation>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
@@ -169,7 +169,7 @@ class View3D : public QGLWidget
         std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
         std::unique_ptr<ShaderProgram> m_axesLabelShader;
         std::unique_ptr<ShaderProgram> m_boundingBoxShader;
-        std::unique_ptr<ShaderProgram> m_billboardShader;
+        std::unique_ptr<ShaderProgram> m_annotationShader;
 
         unsigned int m_cursorVertexArray;
         unsigned int m_axesVertexArray;
