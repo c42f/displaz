@@ -15,6 +15,8 @@ uniform vec2 viewportSize; // In pixels
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
+// Position of the current quad vertex. The bottom-left vertex is at (-1,-1)
+// and the top-right at (1,1).
 in vec2 position;
 in vec2 texCoord;
 
@@ -24,7 +26,7 @@ void main()
 {
     gl_Position = modelViewProjectionMatrix * vec4(0, 0, 0, 1.0);
     gl_Position /= gl_Position.w;
-    gl_Position.xy += position * annotationSize / viewportSize * 2;
+    gl_Position.xy += position * annotationSize / viewportSize;
     ftexCoord = texCoord;
 }
 

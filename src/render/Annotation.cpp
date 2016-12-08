@@ -53,11 +53,11 @@ static GLuint makeVAO(GLuint annotationShaderProg)
     // Setup buffer
     GlBuffer buffer;
     buffer.bind(GL_ARRAY_BUFFER);
-    float data[] = { // x,    y, s, t
-                     -0.5, -0.5, 0, 0,
-                      0.5, -0.5, 1, 0,
-                     -0.5,  0.5, 0, 1,
-                      0.5,  0.5, 1, 1, };
+    float data[] = { // x,  y, s, t
+                       -1, -1, 0, 0, // bottom-left
+                        1, -1, 1, 0, // bottom-right
+                       -1,  1, 0, 1, // top-left
+                        1,  1, 1, 1, }; // top-right
     size_t rowSize = sizeof (float) * 4;
     size_t xyzOffset = 0;
     size_t stOffset = sizeof (float) * 2;
