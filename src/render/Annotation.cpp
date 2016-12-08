@@ -14,8 +14,6 @@
 /// Creates and returns a texture containing some text.
 static std::unique_ptr<Texture> makeTextureFromText(const QString& text)
 {
-    // TODO: Rewrite this to use a power-of-2 texture because I suspect using
-    // a NPOT is causing blurriness
     QFont font("Sans", 13);
     // Text outline makes the text thinner so we have to bold it
     font.setWeight(QFont::DemiBold);

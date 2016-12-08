@@ -29,7 +29,7 @@ class Annotation
         /// Requires that `annotationShaderProg` is already bound and that
         /// the viewportSize uniform variable has been set.
         ///
-        /// transState specifies the camrea transform.
+        /// transState specifies the camera transform.
         void draw(QGLShaderProgram& annotationShaderProg,
                   const TransformState& transState) const;
 

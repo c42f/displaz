@@ -346,7 +346,7 @@ public:
     }
 
     /// Set the GL_TEXTURE_MIN_FILTER and GL_TEXTURE_MAG_FILTER filter for the
-    /// texture. Must be GL_LINEAR (default) or GL_NEAREST.
+    /// texture. Must be GL_LINEAR (default) or GL_NEAREST. Call before bind().
     void setResizeFilter(GLint filter)
     {
         m_resizeFilter = filter;
