@@ -53,7 +53,6 @@ class View3D : public QGLWidget
         const QItemSelectionModel* selectionModel() const { return m_selectionModel; }
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
-        void addAnnotation(const QString& text, const Imath::V3d& pos);
 
     public slots:
         /// Set the backgroud color
@@ -147,7 +146,6 @@ class View3D : public QGLWidget
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;
-        QVector<std::shared_ptr<Annotation>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame

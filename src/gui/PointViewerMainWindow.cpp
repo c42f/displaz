@@ -422,23 +422,35 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     }
     else if (commandTokens[0] == "ANNOTATE")
     {
-        if (commandTokens.size() - 1 != 4)
+        if (commandTokens.size() - 1 != 5)
         {
-            tfm::format(std::cerr, "Expected four arguments, got %d\n",
+            tfm::format(std::cerr, "Expected five arguments, got %d\n",
                         commandTokens.size() - 1);
             return;
         }
-        QString text = commandTokens[1];
+        QString label = commandTokens[1];
+        QRegExp regex(label, Qt::CaseSensitive, QRegExp::FixedString);
+        if (!regex.isValid())
+        {
+            g_logger.error("Invalid pattern in -annotation command: '%s': %s",
+                           label, regex.errorString());
+            return;
+        }
+        int index = m_geometries->findLabel(regex).row();
+        if (index == -1)
+            return;
+        std::shared_ptr<Geometry> parent = m_geometries->get()[index];
+        QString text = commandTokens[2];
         bool xOk = false, yOk = false, zOk = false;
-        double x = commandTokens[2].toDouble(&xOk);
-        double y = commandTokens[3].toDouble(&yOk);
-        double z = commandTokens[4].toDouble(&zOk);
+        double x = commandTokens[3].toDouble(&xOk);
+        double y = commandTokens[4].toDouble(&yOk);
+        double z = commandTokens[5].toDouble(&zOk);
         if (!zOk || !yOk || !zOk)
         {
             std::cerr << "Could not parse XYZ coordinates for position\n";
             return;
         }
-        m_pointView->addAnnotation(text, Imath::V3d(x, y, z));
+        parent->addAnnotation(text, Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {

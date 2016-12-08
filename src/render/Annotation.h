@@ -18,7 +18,7 @@ class Annotation
 {
 
     public:
-        Annotation(QGLShaderProgram& annotationShaderProg,
+        Annotation(GLuint annotationShaderProg,
                   const QString& text,
                   Imath::V3d position);
 

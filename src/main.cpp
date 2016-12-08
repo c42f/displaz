@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
     bool clearFiles = false;
     bool addFiles = false;
     bool mutateData = false;
+    std::string annotationLabel;
     std::string annotationText;
     double annotationX = -DBL_MAX;
     double annotationY = -DBL_MAX;
@@ -117,7 +118,9 @@ int main(int argc, char *argv[])
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
         "-modify",       &mutateData,    "Remote: mutate data already loaded with the matching label (requires displaz .ply with an \"index\" field to indicate mutated points)",
-        "-annotate %s %F %F %F", &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation at a position [text, x, y, z]",
+        "-annotation %s %s %F %F %F", &annotationLabel, &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation [label, text, x, y, z]. "
+                                         "label is the parent geometry, when the parent is removed so is the text. "
+                                         "text is the annotation's message. ",
         "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
@@ -249,9 +252,14 @@ int main(int argc, char *argv[])
         }
         channel->sendMessage(command);
     }
-    if (annotationText != "" && annotationX != -DBL_MAX && annotationY != -DBL_MAX && annotationZ != -DBL_MAX)
+    if (annotationLabel != "" &&
+        annotationText != "" &&
+        annotationX != -DBL_MAX &&
+        annotationY != -DBL_MAX &&
+        annotationZ != -DBL_MAX)
     {
         channel->sendMessage(QByteArray("ANNOTATE\n") +
+                             annotationLabel.c_str() + "\n" +
                              annotationText.c_str() + "\n" +
                              QByteArray().setNum(annotationX, 'e', 17) + "\n" +
                              QByteArray().setNum(annotationY, 'e', 17) + "\n" +

@@ -114,6 +114,7 @@ void View3D::initializeGLGeometry(int begin, int end)
             geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->setShaderId("annotation", m_annotationShader->shaderProgram().programId());
             geoms[i]->initializeGL();
         }
     }
@@ -171,13 +172,6 @@ void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
     m_selectionModel = selectionModel;
     connect(m_selectionModel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
             this, SLOT(restartRender()));
-}
-
-
-void View3D::addAnnotation(const QString& text, const Imath::V3d& pos)
-{
-    Annotation* annotation = new Annotation(m_annotationShader->shaderProgram(), text, pos);
-    m_annotations.append(std::shared_ptr<Annotation>(annotation));
 }
 
 
@@ -450,17 +444,13 @@ void View3D::paintGL()
         drawAxes();
 
     // Draw annotations
-    if (m_drawAnnotations)
+    if (m_drawAnnotations && m_annotationShader->isValid())
     {
-        QGLShaderProgram& annotationShaderProg = m_annotationShader->shaderProgram();
-        annotationShaderProg.bind();
-        annotationShaderProg.setUniformValue("viewportSize", w, h);
-        // TODO: Use painter's algorithm
-        for (int i = 0; i < m_annotations.size(); i++)
-        {
-            const Annotation& annotation = *m_annotations[i];
-            annotation.draw(annotationShaderProg, transState);
-        }
+        QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
+        annotationShader.bind();
+        annotationShader.setUniformValue("viewportSize", w, h);
+        for (auto& geom : geoms)
+            geom->drawAnnotations(annotationShader, transState);
     }
 
     // Set up timer to draw a high quality frame if necessary

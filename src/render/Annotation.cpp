@@ -46,7 +46,7 @@ static std::unique_ptr<Texture> makeTextureFromText(const QString& text)
 }
 
 /// Creates a texturable rectangle VAO and returns it's name.
-static GLuint makeVAO(QGLShaderProgram& annotationShaderProg)
+static GLuint makeVAO(GLuint annotationShaderProg)
 {
     GLuint vao;
     glGenVertexArrays(1, &vao);
@@ -66,7 +66,7 @@ static GLuint makeVAO(QGLShaderProgram& annotationShaderProg)
     glBufferData(GL_ARRAY_BUFFER, sizeof data, data, GL_STATIC_DRAW);
 
     // Setup attributes
-    GLint positionAttribute = glGetAttribLocation(annotationShaderProg.programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(annotationShaderProg, "position");
     glVertexAttribPointer(positionAttribute,
                           2,
                           GL_FLOAT,
@@ -75,7 +75,7 @@ static GLuint makeVAO(QGLShaderProgram& annotationShaderProg)
                           (void*) xyzOffset);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLint texCoordAttribute = glGetAttribLocation(annotationShaderProg.programId(), "texCoord");
+    GLint texCoordAttribute = glGetAttribLocation(annotationShaderProg, "texCoord");
     glVertexAttribPointer(texCoordAttribute,
                           2,
                           GL_FLOAT,
@@ -89,9 +89,9 @@ static GLuint makeVAO(QGLShaderProgram& annotationShaderProg)
     return vao;
 }
 
-Annotation::Annotation(QGLShaderProgram& annotationShaderProg,
-                     const QString& text,
-                     Imath::V3d position)
+Annotation::Annotation(GLuint annotationShaderProg,
+                       const QString& text,
+                       Imath::V3d position)
      : m_text(text),
      m_position(position)
 {
@@ -105,7 +105,7 @@ Annotation::~Annotation()
 }
 
 void Annotation::draw(QGLShaderProgram& annotationShaderProg,
-                     const TransformState& transState) const
+                      const TransformState& transState) const
 {
     glBindVertexArray(m_vao);
     GLint texture0 = glGetUniformLocation(annotationShaderProg.programId(),
