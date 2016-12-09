@@ -191,4 +191,5 @@ void Geometry::addAnnotation(const QString& text, const Imath::V3d& pos)
 {
     Annotation* annotation = new Annotation(shaderId("annotation"), text, pos);
     m_annotations.append(std::shared_ptr<Annotation>(annotation));
+    emit annotationAdded();
 }

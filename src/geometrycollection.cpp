@@ -131,6 +131,8 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                          (int)m_geometries.size());
     m_geometries.push_back(geom);
     emit endInsertRows();
+    connect(geom.get(), SIGNAL(annotationAdded()), this,
+            SIGNAL(annotationAdded()));
 }
 
 void GeometryCollection::mutateGeometry(std::shared_ptr<GeometryMutator> mutator)
