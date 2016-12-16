@@ -87,14 +87,16 @@ static GLuint makeVAO(GLuint annotationShaderProg)
     return vao;
 }
 
-Annotation::Annotation(GLuint annotationShaderProg,
+Annotation::Annotation(const QString& label,
+                       GLuint annotationShaderProg,
                        const QString& text,
                        Imath::V3d position)
-     : m_text(text),
-     m_position(position)
+     : m_label(label),
+     m_text(text),
+     m_position(position),
+     m_texture(makeTextureFromText(text)),
+     m_vao(makeVAO(annotationShaderProg))
 {
-    m_texture = makeTextureFromText(text);
-    m_vao = makeVAO(annotationShaderProg);
 }
 
 Annotation::~Annotation()

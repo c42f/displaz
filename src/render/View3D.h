@@ -54,6 +54,13 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
+        void addAnnotation(const QString& label, const QString& text,
+                           const Imath::V3d& pos);
+
+        /// Remove all anontations who's label matches the given QRegExp
+        void removeAnnotations(const QRegExp& labelRegex);
+
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -109,6 +116,9 @@ class View3D : public QGLWidget
 
         void drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const;
+        void drawAnnotations(const TransformState& transState,
+                             int viewportPixelWidth,
+                             int viewportPixelHeight) const;
 
         Imath::V3d guessClickPosition(const QPoint& clickPos);
 
@@ -146,6 +156,7 @@ class View3D : public QGLWidget
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;
+        QVector<std::shared_ptr<Annotation>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame

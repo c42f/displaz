@@ -58,9 +58,6 @@ class GeometryCollection : public QAbstractListModel
         void addGeometry(std::shared_ptr<Geometry> geom, bool replaceLabel = false, bool reloaded = false);
         void mutateGeometry(std::shared_ptr<GeometryMutator> mutator);
 
-    signals:
-        void annotationAdded();
-
     private:
         void loadPointFilesImpl(const QStringList& fileNames, bool removeAfterLoad);
         int findMatchingRow(const QRegExp & filenameRegex);

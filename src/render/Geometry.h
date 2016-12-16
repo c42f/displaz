@@ -14,7 +14,6 @@
 #include <QMetaType>
 
 #include "GeometryMutator.h"
-#include "Annotation.h"
 
 class ShaderProgram;
 class QGLShaderProgram;
@@ -105,9 +104,6 @@ class Geometry : public QObject
         virtual void drawFaces(QGLShaderProgram& faceShaderProg,
                                const TransformState& transState) const {}
 
-        void drawAnnotations(QGLShaderProgram& annotationShaderProg,
-                             const TransformState& transState) const;
-
         /// Return total number of vertices
         virtual size_t pointCount() const = 0;
 
@@ -171,14 +167,11 @@ class Geometry : public QObject
         const unsigned int getVBO(const char * vertexBufferName) const;
         const unsigned int vboCount() const { return (int)m_VBO.size(); }
 
-        void addAnnotation(const QString& text, const Imath::V3d& pos);
-
     signals:
         /// Emitted at the start of a point loading step
         void loadStepStarted(QString stepDescription);
         /// Emitted as progress is made loading points
         void loadProgress(int percentLoaded);
-        void annotationAdded();
 
     protected:
         void setFileName(const QString& fileName) { m_fileName = fileName; }
@@ -200,7 +193,6 @@ class Geometry : public QObject
         V3d m_offset;
         V3d m_centroid;
         Imath::Box3d m_bbox;
-        QVector<std::shared_ptr<Annotation>> m_annotations;
 
         std::map<std::string, unsigned int> m_VAO;
         std::map<std::string, unsigned int> m_VBO;

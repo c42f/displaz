@@ -405,6 +405,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             return;
         }
         m_geometries->unloadFiles(regex);
+        m_pointView->removeAnnotations(regex);
     }
     else if (commandTokens[0] == "SET_VIEW_LABEL")
     {
@@ -429,17 +430,6 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             return;
         }
         QString label = commandTokens[1];
-        QRegExp regex(label, Qt::CaseSensitive, QRegExp::FixedString);
-        if (!regex.isValid())
-        {
-            g_logger.error("Invalid pattern in -annotation command: '%s': %s",
-                           label, regex.errorString());
-            return;
-        }
-        int index = m_geometries->findLabel(regex).row();
-        if (index == -1)
-            return;
-        std::shared_ptr<Geometry> parent = m_geometries->get()[index];
         QString text = commandTokens[2];
         bool xOk = false, yOk = false, zOk = false;
         double x = commandTokens[3].toDouble(&xOk);
@@ -450,7 +440,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             std::cerr << "Could not parse XYZ coordinates for position\n";
             return;
         }
-        parent->addAnnotation(text, Imath::V3d(x, y, z));
+        m_pointView->addAnnotation(label, text, Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {

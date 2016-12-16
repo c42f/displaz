@@ -63,7 +63,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     connect(m_geometries, SIGNAL(dataChanged(QModelIndex,QModelIndex)), this, SLOT(dataChanged(QModelIndex,QModelIndex)));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),    this, SLOT(geometryInserted(const QModelIndex&, int,int)));
     connect(m_geometries, SIGNAL(rowsRemoved(QModelIndex,int,int)),     this, SLOT(geometryChanged()));
-    connect(m_geometries, SIGNAL(annotationAdded()),                    this, SLOT(restartRender()));
 
     setSelectionModel(new QItemSelectionModel(m_geometries, this));
 
@@ -173,6 +172,28 @@ void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
     m_selectionModel = selectionModel;
     connect(m_selectionModel, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
             this, SLOT(restartRender()));
+}
+
+
+void View3D::addAnnotation(const QString& label, const QString& text,
+                           const Imath::V3d& pos)
+{
+    GLuint programId = m_annotationShader->shaderProgram().programId();
+    auto annotation = std::make_shared<Annotation>(label, programId, text, pos);
+    m_annotations.append(annotation);
+    restartRender();
+}
+
+
+void View3D::removeAnnotations(const QRegExp& labelRegex)
+{
+    QVector<std::shared_ptr<Annotation>> annotations;
+    foreach (auto annotation, m_annotations)
+    {
+        if (!labelRegex.exactMatch(annotation->label()))
+            annotations.append(annotation);
+    }
+    m_annotations = annotations;
 }
 
 
@@ -447,11 +468,7 @@ void View3D::paintGL()
     // Draw annotations
     if (m_drawAnnotations && m_annotationShader->isValid())
     {
-        QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
-        annotationShader.bind();
-        annotationShader.setUniformValue("viewportSize", w, h);
-        for (auto& geom : geoms)
-            geom->drawAnnotations(annotationShader, transState);
+        drawAnnotations(transState, w, h);
     }
 
     // Set up timer to draw a high quality frame if necessary
@@ -492,6 +509,20 @@ void View3D::drawMeshes(const TransformState& transState,
     }
 }
 
+void View3D::drawAnnotations(const TransformState& transState,
+                             int viewportPixelWidth,
+                             int viewportPixelHeight) const
+{
+    QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
+    annotationShader.bind();
+    annotationShader.setUniformValue("viewportSize",
+                                     viewportPixelWidth,
+                                     viewportPixelHeight);
+    // TODO: Draw further annotations first for correct ordering. Not super
+    // important because annotations rarely overlap.
+    for (auto annotation : m_annotations)
+        annotation->draw(m_annotationShader->shaderProgram(), transState);
+}
 
 void View3D::mousePressEvent(QMouseEvent* event)
 {

@@ -18,11 +18,14 @@ class Annotation
 {
 
     public:
-        Annotation(GLuint annotationShaderProg,
-                  const QString& text,
-                  Imath::V3d position);
+        Annotation(const QString& label,
+                   GLuint annotationShaderProg,
+                   const QString& text,
+                   Imath::V3d position);
 
         ~Annotation();
+
+        QString label() const { return m_label; }
 
         /// Draw the annotation using the given shader program
         ///
@@ -34,6 +37,7 @@ class Annotation
                   const TransformState& transState) const;
 
     private:
+        QString m_label;
         QString m_text;
         Imath::V3d m_position;
         std::shared_ptr<Texture> m_texture;

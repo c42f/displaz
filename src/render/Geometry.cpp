@@ -64,14 +64,6 @@ std::shared_ptr<Geometry> Geometry::create(QString fileName)
         return std::shared_ptr<Geometry>(new PointArray());
 }
 
-void Geometry::drawAnnotations(QGLShaderProgram& annotationShaderProg,
-                               const TransformState& transState) const
-{
-    // TODO: Draw further annotations first for correct ordering
-    for (auto annotation : m_annotations)
-        annotation->draw(annotationShaderProg, transState);
-}
-
 void Geometry::initializeGL()
 {
     destroyBuffers();
@@ -185,11 +177,4 @@ const unsigned int Geometry::shaderId(const char * shaderName) const
     }
     tfm::printfln("Geometry :: shaderId not found - %s", shaderName);
     return 0;
-}
-
-void Geometry::addAnnotation(const QString& text, const Imath::V3d& pos)
-{
-    Annotation* annotation = new Annotation(shaderId("annotation"), text, pos);
-    m_annotations.append(std::shared_ptr<Annotation>(annotation));
-    emit annotationAdded();
 }
