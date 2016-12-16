@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
         "-modify",       &mutateData,    "Remote: mutate data already loaded with the matching label (requires displaz .ply with an \"index\" field to indicate mutated points)",
-        "-annotation %s %F %F %F", &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation [text, x, y, z]."
+        "-annotation %s %F %F %F", &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation [text, x, y, z].",
         "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
