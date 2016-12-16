@@ -50,12 +50,6 @@ static int hooks(int argc, const char *argv[])
 }
 
 
-static std::string getAnnotationLabel()
-{
-    // TODO
-    return g_dataSetLabel;
-}
-
 int main(int argc, char *argv[])
 {
     int maxPointCount = -1;
@@ -261,7 +255,7 @@ int main(int argc, char *argv[])
         annotationZ != -DBL_MAX)
     {
         channel->sendMessage(QByteArray("ANNOTATE\n") +
-                             getAnnotationLabel().c_str() + "\n" +
+                             g_dataSetLabel.c_str() + "\n" +
                              annotationText.c_str() + "\n" +
                              QByteArray().setNum(annotationX, 'e', 17) + "\n" +
                              QByteArray().setNum(annotationY, 'e', 17) + "\n" +
