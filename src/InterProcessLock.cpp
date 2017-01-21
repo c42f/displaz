@@ -13,6 +13,7 @@
 #else
 #   include <unistd.h>
 #   include <sys/file.h> // flock()
+#   include <sys/stat.h> // S_IWUSR defines
 #   include <string.h>   // strerror()
 #endif
 
