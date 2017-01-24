@@ -93,7 +93,7 @@ void drawBox(const TransformState& transState,
 
 void drawBoundingBox(const TransformState& transState,
                      const GLuint& bboxVertexArray,
-                     const Imath::V3f& offset,
+                     const Imath::V3d& offset,
                      const Imath::C3f& col,
                      const GLuint& shaderProgram)
 {
