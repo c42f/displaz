@@ -159,6 +159,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
     drawGrid->setCheckable(true);
     drawGrid->setChecked(false);
+    QAction* drawAnnotations = viewMenu->addAction(tr("Draw A&nnotations"));
+    drawAnnotations->setCheckable(true);
+    drawAnnotations->setChecked(true);
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -193,6 +196,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
             m_pointView, SLOT(toggleDrawAxes()));
     connect(drawGrid, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawGrid()));
+    connect(drawAnnotations, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawAnnotations()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -400,6 +405,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             return;
         }
         m_geometries->unloadFiles(regex);
+        m_pointView->removeAnnotations(regex);
     }
     else if (commandTokens[0] == "SET_VIEW_LABEL")
     {
@@ -414,6 +420,27 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QModelIndex index = m_geometries->findLabel(regex);
         if (index.isValid())
             m_pointView->centerOnGeometry(index);
+    }
+    else if (commandTokens[0] == "ANNOTATE")
+    {
+        if (commandTokens.size() - 1 != 5)
+        {
+            tfm::format(std::cerr, "Expected five arguments, got %d\n",
+                        commandTokens.size() - 1);
+            return;
+        }
+        QString label = commandTokens[1];
+        QString text = commandTokens[2];
+        bool xOk = false, yOk = false, zOk = false;
+        double x = commandTokens[3].toDouble(&xOk);
+        double y = commandTokens[4].toDouble(&yOk);
+        double z = commandTokens[5].toDouble(&zOk);
+        if (!zOk || !yOk || !zOk)
+        {
+            std::cerr << "Could not parse XYZ coordinates for position\n";
+            return;
+        }
+        m_pointView->addAnnotation(label, text, Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {

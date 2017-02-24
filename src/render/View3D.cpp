@@ -37,6 +37,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawCursor(true),
     m_drawAxes(true),
     m_drawGrid(false),
+    m_drawAnnotations(true),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
@@ -113,6 +114,7 @@ void View3D::initializeGLGeometry(int begin, int end)
             geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->setShaderId("annotation", m_annotationShader->shaderProgram().programId());
             geoms[i]->initializeGL();
         }
     }
@@ -173,6 +175,28 @@ void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
 }
 
 
+void View3D::addAnnotation(const QString& label, const QString& text,
+                           const Imath::V3d& pos)
+{
+    GLuint programId = m_annotationShader->shaderProgram().programId();
+    auto annotation = std::make_shared<Annotation>(label, programId, text, pos);
+    m_annotations.append(annotation);
+    restartRender();
+}
+
+
+void View3D::removeAnnotations(const QRegExp& labelRegex)
+{
+    QVector<std::shared_ptr<Annotation>> annotations;
+    foreach (auto annotation, m_annotations)
+    {
+        if (!labelRegex.exactMatch(annotation->label()))
+            annotations.append(annotation);
+    }
+    m_annotations = annotations;
+}
+
+
 void View3D::setBackground(QColor col)
 {
     m_backgroundColor = col;
@@ -201,6 +225,12 @@ void View3D::toggleDrawAxes()
 void View3D::toggleDrawGrid()
 {
     m_drawGrid = !m_drawGrid;
+    restartRender();
+}
+
+void View3D::toggleDrawAnnotations()
+{
+    m_drawAnnotations = !m_drawAnnotations;
     restartRender();
 }
 
@@ -279,6 +309,9 @@ void View3D::initializeGL()
 
     m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
+
+    m_annotationShader.reset(new ShaderProgram());
+    m_annotationShader->setShaderFromSourceFile("shaders:annotation.glsl");
 
     double dPR = getDevicePixelRatio();
     int w = width() * dPR;
@@ -432,6 +465,12 @@ void View3D::paintGL()
     if (m_drawAxes)
         drawAxes();
 
+    // Draw annotations
+    if (m_drawAnnotations && m_annotationShader->isValid())
+    {
+        drawAnnotations(transState, w, h);
+    }
+
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
@@ -470,6 +509,20 @@ void View3D::drawMeshes(const TransformState& transState,
     }
 }
 
+void View3D::drawAnnotations(const TransformState& transState,
+                             int viewportPixelWidth,
+                             int viewportPixelHeight) const
+{
+    QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
+    annotationShader.bind();
+    annotationShader.setUniformValue("viewportSize",
+                                     viewportPixelWidth,
+                                     viewportPixelHeight);
+    // TODO: Draw further annotations first for correct ordering. Not super
+    // important because annotations rarely overlap.
+    for (auto annotation : m_annotations)
+        annotation->draw(m_annotationShader->shaderProgram(), transState);
+}
 
 void View3D::mousePressEvent(QMouseEvent* event)
 {
@@ -964,6 +1017,7 @@ void View3D::drawGrid() const
         glBindVertexArray(0);
     }
 }
+
 
 /// Draw point cloud
 DrawCount View3D::drawPoints(const TransformState& transState,

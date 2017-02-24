@@ -60,13 +60,17 @@ int main(int argc, char *argv[])
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
-    std::string unloadFiles;
+    std::string unloadRegex;
     std::string viewLabelName;
     bool noServer = false;
 
     bool clearFiles = false;
     bool addFiles = false;
     bool mutateData = false;
+    std::string annotationText;
+    double annotationX = -DBL_MAX;
+    double annotationY = -DBL_MAX;
+    double annotationZ = -DBL_MAX;
     bool deleteAfterLoad = false;
     bool quitRemote = false;
     bool queryCursor = false;
@@ -109,10 +113,11 @@ int main(int argc, char *argv[])
                                          "This alternative to -viewangles is supplied to simplify "
                                          "setting camera rotations from a script.",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
-        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
+        "-unload %s",    &unloadRegex,   "Remote: unload loaded files or annotations who's label matches the given (unix shell style) pattern",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
         "-modify",       &mutateData,    "Remote: mutate data already loaded with the matching label (requires displaz .ply with an \"index\" field to indicate mutated points)",
+        "-annotation %s %F %F %F", &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation [text, x, y, z]",
         "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
@@ -175,7 +180,7 @@ int main(int argc, char *argv[])
             std::cerr << "ERROR: No remote displaz instance found\n";
             return EXIT_FAILURE;
         }
-        if (quitRemote || !unloadFiles.empty())
+        if (quitRemote || !unloadRegex.empty())
         {
             return EXIT_SUCCESS;
         }
@@ -244,9 +249,21 @@ int main(int argc, char *argv[])
         }
         channel->sendMessage(command);
     }
-    if (!unloadFiles.empty())
+    if (annotationText != "" &&
+        annotationX != -DBL_MAX &&
+        annotationY != -DBL_MAX &&
+        annotationZ != -DBL_MAX)
     {
-        channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadFiles.c_str());
+        channel->sendMessage(QByteArray("ANNOTATE\n") +
+                             g_dataSetLabel.c_str() + "\n" +
+                             annotationText.c_str() + "\n" +
+                             QByteArray().setNum(annotationX, 'e', 17) + "\n" +
+                             QByteArray().setNum(annotationY, 'e', 17) + "\n" +
+                             QByteArray().setNum(annotationZ, 'e', 17));
+    }
+    if (!unloadRegex.empty())
+    {
+        channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadRegex.c_str());
     }
     if (!viewLabelName.empty())
     {

@@ -65,7 +65,7 @@ class Geometry : public QObject
         //--------------------------------------------------
         /// Mutate a geometry
         ///
-        /// Apply a per-vertex modification of geometry data with the data in a 
+        /// Apply a per-vertex modification of geometry data with the data in a
         /// GeometryMutator, which keeps an index to a subset of vertices and
         /// new data for a subset of fields. The number of vertices remains
         /// constant.
