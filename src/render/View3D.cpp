@@ -194,6 +194,7 @@ void View3D::removeAnnotations(const QRegExp& labelRegex)
             annotations.append(annotation);
     }
     m_annotations = annotations;
+    restartRender();
 }
 
 
