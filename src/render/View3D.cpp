@@ -470,7 +470,7 @@ void View3D::paintGL()
     {
         drawCursor(transState, m_cursorPos, 10);
         //drawCursor(transState, m_camera.center(), 10);
-        drawSelectionSphere(transState, m_cursorPos, m_selectionRadius);
+        //drawSelectionSphere(transState, m_cursorPos, m_selectionRadius);
     }
 
     // Draw overlay axes
@@ -571,8 +571,7 @@ void View3D::snapToPoint(const Imath::V3d & pos)
     double snapScale = 0.025;
     QString pointInfo;
     V3d newPos(0.0,0.0,0.0); //init newPos to origin
-    if (snapToGeometry(pos, snapScale,
-                &newPos, &pointInfo))
+    if (snapToGeometry(pos, snapScale, &newPos, &pointInfo))
     {
         V3d posDiff = newPos - m_prevCursorSnap;
         g_logger.info("Selected Point Attributes:\n"
@@ -725,6 +724,8 @@ void View3D::selectVerticesInSphere(const V3d& center, double radius)
 /// Draw a selection sphere at given `center` and `radius`
 ///
 /// `transState` represents the camera and model transforms
+///
+/// FIXME: Needs fixing for OpenGL-3.2 core.
 void View3D::drawSelectionSphere(const TransformState& transState,
                                  const V3d& center, double radius) const
 {
@@ -1148,6 +1149,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         if(geom.pointCount() == 0)
             continue;
         V3f relCursor = m_cursorPos - geom.offset();
+        prog.setUniformValue("selectionRadius", (GLfloat)m_selectionRadius);
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
         prog.setUniformValue("fileNumber", (GLint)(selection[(int)i].row() + 1));
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*dPR*m_camera.projectionMatrix()[0][0]));
