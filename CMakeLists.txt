@@ -162,12 +162,12 @@ find_program(RST2HTML NAMES rst2html rst2html.py)
 if (RST2HTML)
     set (readmeHtml ${PROJECT_BINARY_DIR}/README.html)
     add_custom_command(OUTPUT ${readmeHtml}
-        COMMAND python ${RST2HTML} ${PROJECT_SOURCE_DIR}/README.rst ${readmeHtml}
+        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/README.rst ${readmeHtml}
         DEPENDS README.rst
     )
     set (userguideHtml ${PROJECT_BINARY_DIR}/userguide.html)
     add_custom_command(OUTPUT ${userguideHtml}
-        COMMAND python ${RST2HTML} ${PROJECT_SOURCE_DIR}/doc/userguide.rst ${userguideHtml}
+        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/doc/userguide.rst ${userguideHtml}
         DEPENDS doc/userguide.rst
     )
     add_custom_target(doc ALL DEPENDS ${readmeHtml} ${userguideHtml})
