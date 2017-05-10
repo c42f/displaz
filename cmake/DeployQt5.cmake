@@ -324,7 +324,7 @@ function(install_qt5_executable executable)
       get_property(loc TARGET Qt5::QWindowsIntegrationPlugin
         PROPERTY LOCATION_RELEASE)
       install_qt5_plugin("${loc}" "${executable}" 0 installed_plugin_paths
-        "platforms" "${component}")
+        "${component}")
       list(APPEND libs ${installed_plugin_paths})
     endif()
     foreach(plugin ${qtplugins})

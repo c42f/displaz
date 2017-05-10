@@ -10,7 +10,8 @@ branches:
 # scripts that are called at very beginning, before repo cloning
 init:
   - git config --global core.autocrlf input
-
+  - set QTDIR=C:\Qt\5.6\msvc2015_64
+  - set PATH=%PATH%;%QTDIR%\bin
 # scripts that run after cloning repository
 #install:
 #  - Install rst2html for docs?
@@ -52,7 +53,7 @@ build_script:
   - echo Build displaz:
   - mkdir build
   - cd build
-  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.6\msvc2015_64 -DDISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.6\msvc2015_64 -D DISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
   - cmake --build . --config %CONFIGURATION%
 
 after_build:
