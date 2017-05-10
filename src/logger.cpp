@@ -5,6 +5,34 @@
 
 #include <cmath>
 
+//------------------------------------------------------------------------------
+Logger::LogLevel Logger::parseLogLevel(const std::string& logLevel, LogLevel defaultLevel)
+{
+    if      (logLevel == "error")   return Logger::Error;
+    else if (logLevel == "warning") return Logger::Warning;
+    else if (logLevel == "info")    return Logger::Info;
+    else if (logLevel == "debug")   return Logger::Debug;
+    else                            return defaultLevel;
+}
+
+
+//------------------------------------------------------------------------------
+void Logger::log(LogLevel level, const char* fmt, tfm::FormatListRef flist, int maxMsgs)
+{
+    if (level > m_logLevel)
+        return;
+    if (maxMsgs > 0)
+    {
+        int& count = m_logCountLimit[LogCountKey(fmt, level)];
+        if (count >= maxMsgs)
+            return;
+        ++count;
+    }
+    std::ostringstream ss;
+    tfm::vformat(ss, fmt, flist);
+    logImpl(level, ss.str());
+}
+
 
 //------------------------------------------------------------------------------
 StreamLogger::StreamLogger(std::ostream& outStream)
@@ -19,7 +47,7 @@ StreamLogger::~StreamLogger()
         m_out << "\n";
 }
 
-void StreamLogger::log(LogLevel level, const std::string& msg)
+void StreamLogger::logImpl(LogLevel level, const std::string& msg)
 {
     if (m_prevPrintWasProgress)
         tfm::format(m_out, "\n");

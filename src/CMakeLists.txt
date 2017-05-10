@@ -72,6 +72,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
 
     gui/DataSetUI.h
     gui/DragSpinBox.h
+    gui/GLSLHighlighter.h
     gui/HelpDialog.h
     gui/InteractiveCamera.h
     gui/PointViewerMainWindow.h
@@ -83,6 +84,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     render/View3D.h
     render/PointArray.h
     render/Shader.h
+    render/GeometryMutator.h
 )
 
 set(gui_srcs
@@ -98,6 +100,7 @@ set(gui_srcs
     HookManager.cpp
 
     gui/DataSetUI.cpp
+    gui/GLSLHighlighter.cpp
     gui/guimain.cpp
     gui/PointViewerMainWindow.cpp
     gui/QtLogger.cpp
@@ -110,6 +113,8 @@ set(gui_srcs
     render/PointArray.cpp
     render/View3D.cpp
     render/Shader.cpp
+    render/GeometryMutator.cpp
+    render/Annotation.cpp
 
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp
@@ -263,9 +268,10 @@ if (DISPLAZ_USE_TESTS)
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
     if (DISPLAZ_USE_QT4)
         target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
+        target_link_libraries(unit_tests ${QT_QTCORE_LIBRARY})
     else ()
         target_link_libraries(InterProcessLock_test Qt5::Core)
+        target_link_libraries(unit_tests Qt5::Core)
     endif ()
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()
-

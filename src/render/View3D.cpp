@@ -37,13 +37,14 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawCursor(true),
     m_drawAxes(true),
     m_drawGrid(false),
+    m_drawAnnotations(true),
     m_badOpenGL(false),
     m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
-    m_incrementalFramebuffer(0),
+    m_incrementalFramebuffer(),
     m_incrementalDraw(false),
     m_drawAxesBackground(QImage(":/resource/axes.png")),
     m_drawAxesLabelX(QImage(":/resource/x.png")),
@@ -69,13 +70,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     setFocus();
 
-    m_camera.setClipFar(FLT_MAX*0.5f); //using FLT_MAX appears to cause issues under OS X for Qt to handle
-    // Setting a good value for the near camera clipping plane is difficult
-    // when trying to show a large variation of length scales:  Setting a very
-    // small value allows us to see objects very close to the camera; the
-    // tradeoff is that this reduces the resolution of the z-buffer leading to
-    // z-fighting in the distance.
-    m_camera.setClipNear(1);
     connect(&m_camera, SIGNAL(projectionChanged()), this, SLOT(restartRender()));
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
@@ -105,8 +99,6 @@ void View3D::restartRender()
 
 void View3D::geometryChanged()
 {
-    if (m_geometries->rowCount() == 1 && !m_explicitCursorPos)
-        centerOnGeometry(m_geometries->index(0));
     restartRender();
 }
 
@@ -122,6 +114,7 @@ void View3D::initializeGLGeometry(int begin, int end)
             geoms[i]->setShaderId("boundingbox", m_boundingBoxShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshface", m_meshFaceShader->shaderProgram().programId());
             geoms[i]->setShaderId("meshedge", m_meshEdgeShader->shaderProgram().programId());
+            geoms[i]->setShaderId("annotation", m_annotationShader->shaderProgram().programId());
             geoms[i]->initializeGL();
         }
     }
@@ -135,7 +128,13 @@ void View3D::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRi
 
 void View3D::geometryInserted(const QModelIndex& /*unused*/, int firstRow, int lastRow)
 {
+    // NB: Geometry inserted at indices i in [firstRow,lastRow]  (end inclusive)
     initializeGLGeometry(firstRow, lastRow+1);
+    if (m_geometries->rowCount() == (lastRow+1-firstRow) && !m_explicitCursorPos)
+    {
+        // When loading first geometry (or geometries), centre on it.
+        centerOnGeometry(m_geometries->index(0));
+    }
     geometryChanged();
 }
 
@@ -176,6 +175,29 @@ void View3D::setSelectionModel(QItemSelectionModel* selectionModel)
 }
 
 
+void View3D::addAnnotation(const QString& label, const QString& text,
+                           const Imath::V3d& pos)
+{
+    GLuint programId = m_annotationShader->shaderProgram().programId();
+    auto annotation = std::make_shared<Annotation>(label, programId, text, pos);
+    m_annotations.append(annotation);
+    restartRender();
+}
+
+
+void View3D::removeAnnotations(const QRegExp& labelRegex)
+{
+    QVector<std::shared_ptr<Annotation>> annotations;
+    foreach (auto annotation, m_annotations)
+    {
+        if (!labelRegex.exactMatch(annotation->label()))
+            annotations.append(annotation);
+    }
+    m_annotations = annotations;
+    restartRender();
+}
+
+
 void View3D::setBackground(QColor col)
 {
     m_backgroundColor = col;
@@ -207,6 +229,12 @@ void View3D::toggleDrawGrid()
     restartRender();
 }
 
+void View3D::toggleDrawAnnotations()
+{
+    m_drawAnnotations = !m_drawAnnotations;
+    restartRender();
+}
+
 void View3D::toggleCameraMode()
 {
     m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
@@ -219,7 +247,7 @@ void View3D::centerOnGeometry(const QModelIndex& index)
     m_cursorPos = geom.centroid();
     m_camera.setCenter(m_cursorPos);
     double diag = (geom.boundingBox().max - geom.boundingBox().min).length();
-    m_camera.setEyeToCenterDistance(std::max<double>(2*m_camera.clipNear(), diag*0.7));
+    m_camera.setEyeToCenterDistance(diag*0.7 + 0.01);
 }
 
 void View3D::centerOnPoint(const Imath::V3d& pos)
@@ -246,13 +274,6 @@ double View3D::getDevicePixelRatio()
 
 void View3D::initializeGL()
 {
-    // GLEW has a problem with core contexts. It calls glGetString(GL_EXTENSIONS),
-    // which causes GL_INVALID_ENUM on GL 3.2+ core context as soon as glewInit() is called.
-    // It also doesn't fetch the function pointers. The solution is for GLEW to use glGetStringi instead.
-    // The current version of GLEW is 1.10.0 but they still haven't corrected it.
-    // The only fix is to use glewExperimental for now.
-    // https://www.opengl.org/wiki/OpenGL_Loading_Library
-    glewExperimental = true;
     if (glewInit() != GLEW_OK)
     {
         g_logger.error("%s", "Failed to initialize GLEW");
@@ -290,14 +311,14 @@ void View3D::initializeGL()
     m_meshEdgeShader.reset(new ShaderProgram());
     m_meshEdgeShader->setShaderFromSourceFile("shaders:meshedge.glsl");
 
+    m_annotationShader.reset(new ShaderProgram());
+    m_annotationShader->setShaderFromSourceFile("shaders:annotation.glsl");
+
     double dPR = getDevicePixelRatio();
     int w = width() * dPR;
     int h = height() * dPR;
 
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(w, h);
-
-    glFrameBufferStatus(m_incrementalFramebuffer);
-    glCheckError();
+    m_incrementalFramebuffer.init(w, h);
 
     initializeGLGeometry(0, m_geometries->get().size());
 
@@ -328,50 +349,8 @@ void View3D::resizeGL(int w, int h)
 
     m_camera.setViewport(QRect(0,0,double(w)/dPR,double(h)/dPR));
 
-    m_incrementalFramebuffer = allocIncrementalFramebuffer(w,h);
-
+    m_incrementalFramebuffer.init(w,h);
     glCheckError();
-}
-
-
-unsigned int View3D::allocIncrementalFramebuffer(int w, int h) const
-{
-    if (w < 1 || h < 1)
-        return 0;
-
-    //should we really delete this every time?
-    GLuint fb;
-    glDeleteFramebuffers(1, &fb);
-
-    const QGLFormat fmt = context()->format();
-
-    glGenFramebuffers(1, &fb);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
-
-    // TODO:
-    // * Should we use multisampling 1 to avoid binding to a texture?
-
-    // Intel HD 3000 driver doesn't like the multisampling mode that Qt 4.8 uses
-    // for samples==1, so work around it by forcing 0, if possible
-
-    // requires OpenGL 4
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_WIDTH, w);
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_HEIGHT, h);
-    //glFramebufferParameteri(GL_DRAW_FRAMEBUFFER, GL_FRAMEBUFFER_DEFAULT_SAMPLES, fmt.samples() > 1 ? fmt.samples() : 0);
-
-    GLuint c_buff;
-    glGenRenderbuffers(1, &c_buff);
-    glBindRenderbuffer(GL_RENDERBUFFER, c_buff);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
-    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, c_buff);
-
-    GLuint z_buff;
-    glGenRenderbuffers(1, &z_buff);
-    glBindRenderbuffer(GL_RENDERBUFFER, z_buff);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, z_buff);
-
-    return fb;
 }
 
 
@@ -395,7 +374,7 @@ void View3D::paintGL()
         resizeGL(w, h);
     }
 
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer.id());
 
     //--------------------------------------------------
     // Draw main scene
@@ -413,24 +392,13 @@ void View3D::paintGL()
 
     std::vector<const Geometry*> geoms = selectedGeometry();
 
-    // Draw bounding boxes
-    if(m_drawBoundingBoxes && !m_incrementalDraw)
-    {
-        if (m_boundingBoxShader->isValid())
-        {
-            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
-            // shader
-            boundingBoxShader.bind();
-            // matrix stack
-            transState.setUniforms(boundingBoxShader.programId());
+    // Aim for 40ms frame time - an ok tradeoff for desktop usage
+    const double targetMillisecs = 40;
+    double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
+                                             m_incrementalDraw);
 
-            for (size_t i = 0; i < geoms.size(); ++i)
-            {
-                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
-                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
-            }
-        }
-    }
+    // Render points
+    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
 
     // Draw meshes and lines
     if (!m_incrementalDraw)
@@ -443,15 +411,6 @@ void View3D::paintGL()
         for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->draw(transState, quality);
     }
-
-
-    // Aim for 40ms frame time - an ok tradeoff for desktop usage
-    const double targetMillisecs = 40;
-    double quality = m_drawCostModel.quality(targetMillisecs, geoms, transState,
-                                             m_incrementalDraw);
-
-    // Render points
-    DrawCount drawCount = drawPoints(transState, geoms, quality, m_incrementalDraw);
 
     // Measure frame time to update estimate for how much geometry we can draw
     // with a reasonable frame rate
@@ -471,13 +430,32 @@ void View3D::paintGL()
 
     // TODO: this should really render a texture onto a quad and not use glBlitFramebuffer
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer.id());
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
 
     // Draw a grid for orientation purposes
     if (m_drawGrid)
         drawGrid();
+
+    // Draw bounding boxes
+    if(m_drawBoundingBoxes)
+    {
+        if (m_boundingBoxShader->isValid())
+        {
+            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
+            // shader
+            boundingBoxShader.bind();
+            // matrix stack
+            transState.setUniforms(boundingBoxShader.programId());
+
+            for (size_t i = 0; i < geoms.size(); ++i)
+            {
+                drawBoundingBox(transState, geoms[i]->getVAO("boundingbox"), geoms[i]->boundingBox().min,
+                                Imath::C3f(1), geoms[i]->shaderId("boundingbox")); //boundingBoxShader.programId()
+            }
+        }
+    }
 
     // Draw overlay stuff, including cursor position.
     if (m_drawCursor)
@@ -488,6 +466,12 @@ void View3D::paintGL()
     if (m_drawAxes)
         drawAxes();
 
+    // Draw annotations
+    if (m_drawAnnotations && m_annotationShader->isValid())
+    {
+        drawAnnotations(transState, w, h);
+    }
+
     // Set up timer to draw a high quality frame if necessary
     if (!drawCount.moreToDraw)
         m_incrementalFrameTimer->stop();
@@ -495,9 +479,6 @@ void View3D::paintGL()
         m_incrementalFrameTimer->start(10);
 
     m_incrementalDraw = true;
-
-    glFrameBufferStatus(m_incrementalFramebuffer);
-    glCheckError();
 }
 
 void View3D::drawMeshes(const TransformState& transState,
@@ -529,6 +510,20 @@ void View3D::drawMeshes(const TransformState& transState,
     }
 }
 
+void View3D::drawAnnotations(const TransformState& transState,
+                             int viewportPixelWidth,
+                             int viewportPixelHeight) const
+{
+    QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
+    annotationShader.bind();
+    annotationShader.setUniformValue("viewportSize",
+                                     viewportPixelWidth,
+                                     viewportPixelHeight);
+    // TODO: Draw further annotations first for correct ordering. Not super
+    // important because annotations rarely overlap.
+    for (auto annotation : m_annotations)
+        annotation->draw(m_annotationShader->shaderProgram(), transState);
+}
 
 void View3D::mousePressEvent(QMouseEvent* event)
 {
@@ -627,17 +622,15 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
     glGenVertexArrays(1, &m_cursorVertexArray);
     glBindVertexArray(m_cursorVertexArray);
 
-    GLuint cursorVertexBuffer;
-    glGenBuffers(1, &cursorVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cursorVertexBuffer);
+    GlBuffer positionBuffer;
+    positionBuffer.bind(GL_ARRAY_BUFFER);
     glBufferData(GL_ARRAY_BUFFER, (3) * 8 * sizeof(float), cursorPoints, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
-
+    GLint positionAttribute = glGetAttribLocation(m_cursorShader->shaderProgram().programId(), "position");
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 /// Draw the 3D cursor
@@ -702,6 +695,8 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
         cursorShader.setUniformValue("color", 0.0f, 0.0f, 0.0f, 1.0f);
         transState.setUniforms(cursorShader.programId());
         glDrawArrays( GL_LINES, 0, 8 );
+
+        glBindVertexArray(0);
     }
 }
 
@@ -739,17 +734,18 @@ void View3D::initAxes()
     glBindBuffer(GL_ARRAY_BUFFER, axesQuadVertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, (2 + 2) * 6 * sizeof(float), axesQuad, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "position");
 
     glVertexAttribPointer(positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLuint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
+    GLint texCoordAttribute = glGetAttribLocation(m_axesBackgroundShader->shaderProgram().programId(), "texCoord");
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
     glEnableVertexAttribArray(texCoordAttribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
 
     const GLint l = 16;     // Label is 16 pixels wide
@@ -778,6 +774,7 @@ void View3D::initAxes()
 
     glVertexAttribPointer(texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(float)*(2 + 2), (const GLvoid *)(sizeof(float)*2));
     glEnableVertexAttribArray(texCoordAttribute);
+    glBindVertexArray(0);
 
 
     // Center of axis overlay
@@ -812,7 +809,7 @@ void View3D::initAxes()
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
-    GLuint colorAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "color");
+    GLint colorAttribute = glGetAttribLocation(m_axesShader->shaderProgram().programId(), "color");
 
     glVertexAttribPointer(colorAttribute, 4, GL_FLOAT, GL_FALSE, sizeof(float)*(3 + 4), (const GLvoid *)(sizeof(float)*3));
     glEnableVertexAttribArray(colorAttribute);
@@ -820,6 +817,7 @@ void View3D::initAxes()
     //glBindFragDataLocation(m_axesShader->shaderProgram().programId(), 0, "fragColor");
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void View3D::drawAxes() const
@@ -852,10 +850,10 @@ void View3D::drawAxes() const
     {
         QGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
         GLint textureSampler = glGetUniformLocation(axesBackgroundShader.programId(), "texture0");
-        // texture
-        m_drawAxesBackground.bind(textureSampler);
         // shader
         axesBackgroundShader.bind();
+        // texture
+        m_drawAxesBackground.bind(textureSampler);
         // vertex buffer
         glBindVertexArray(m_quadVertexArray);
         // matrix stack
@@ -886,6 +884,8 @@ void View3D::drawAxes() const
         glLineWidth(1); // this won't work anymore for values larger than 1 (4.0f);
         glDrawArrays( GL_LINES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+
+        glBindVertexArray(0);
     }
 
     // Draw Labels
@@ -906,10 +906,9 @@ void View3D::drawAxes() const
     if (m_axesLabelShader->isValid())
     {
         QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
-        GLint textureSampler = glGetUniformLocation(axesLabelShader.programId(), "texture0");
-
         // shader
         axesLabelShader.bind();
+        GLint texLocation = glGetUniformLocation(axesLabelShader.programId(), "texture0");
         // vertex buffer
         glBindVertexArray(m_quadLabelVertexArray);
         // matrix stack
@@ -919,20 +918,22 @@ void View3D::drawAxes() const
         // offset
         axesLabelShader.setUniformValue("offset", px.x, px.y, px.z);
         // texture
-        m_drawAxesLabelX.bind(textureSampler);
+        m_drawAxesLabelX.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         axesLabelShader.setUniformValue("offset", py.x, py.y, py.z);
         // texture
-        m_drawAxesLabelY.bind(textureSampler);
+        m_drawAxesLabelY.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         axesLabelShader.setUniformValue("offset", pz.x, pz.y, pz.z);
         // texture
-        m_drawAxesLabelZ.bind(textureSampler);
+        m_drawAxesLabelZ.bind(texLocation);
         // draw
         glDrawArrays( GL_TRIANGLES, 0, 6 );
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+
+        glBindVertexArray(0);
     }
 }
 
@@ -981,12 +982,13 @@ void View3D::initGrid(const float scale)
     glBindBuffer(GL_ARRAY_BUFFER, gridVertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, (22 * 2) * 3 * sizeof(float), gridLines, GL_STATIC_DRAW);
 
-    GLuint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
+    GLint positionAttribute = glGetAttribLocation(m_gridShader->shaderProgram().programId(), "position");
 
     glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float)*(3), (const GLvoid *)0);
     glEnableVertexAttribArray(positionAttribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 void View3D::drawGrid() const
@@ -1013,8 +1015,10 @@ void View3D::drawGrid() const
         glLineWidth(1); // this won't work anymore for values larger than 1 (2.0f);
         glDrawArrays(GL_LINES, 0, (22 * 2));
         // do NOT release shader, this is no longer supported in OpenGL 3.2
+        glBindVertexArray(0);
     }
 }
+
 
 /// Draw point cloud
 DrawCount View3D::drawPoints(const TransformState& transState,
@@ -1029,7 +1033,6 @@ DrawCount View3D::drawPoints(const TransformState& transState,
 
     double dPR = getDevicePixelRatio();
 
-    glEnable(GL_POINT_SPRITE);
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();

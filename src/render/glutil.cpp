@@ -93,7 +93,7 @@ void drawBox(const TransformState& transState,
 
 void drawBoundingBox(const TransformState& transState,
                      const GLuint& bboxVertexArray,
-                     const Imath::V3f& offset,
+                     const Imath::V3d& offset,
                      const Imath::C3f& col,
                      const GLuint& shaderProgram)
 {
@@ -115,6 +115,7 @@ void drawBoundingBox(const TransformState& transState,
 
     glBindVertexArray(bboxVertexArray);
     glDrawElements(GL_LINES, 3*8, GL_UNSIGNED_BYTE, 0);
+    glBindVertexArray(0);
 
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
@@ -306,16 +307,20 @@ void _glError(const char *file, int line) {
     }
 }
 
-void _glFrameBufferStatus(GLenum target, const char *file, int line) {
+void _glFrameBufferStatus(GLenum target, const char *file, int line)
+{
+    GLenum fbStatus = glCheckFramebufferStatus(target);
 
-    GLenum fb_status(glCheckFramebufferStatus(target));
+    if (fbStatus == GL_FRAMEBUFFER_COMPLETE)
+        return;
 
     std::string status;
 
-    switch(fb_status) {
-        case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
+    switch(fbStatus) {
+        case GL_INVALID_ENUM:           status="?? (bad target)"; break;
+        //case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
         case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";      break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";        break;
         //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
         case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
         case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
@@ -324,9 +329,9 @@ void _glFrameBufferStatus(GLenum target, const char *file, int line) {
         //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
         case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
-        default:                        status="INCOMPLETE";    break;
+        default:                        status="???";    break;
     }
 
-    tfm::printfln("GL_FRAMEBUFFER_%s - %s:%i", status, file, line);
+    tfm::printfln("GL_FRAMEBUFFER_%s (%d) - %s:%i", status, fbStatus, file, line);
 }
 

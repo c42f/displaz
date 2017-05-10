@@ -192,8 +192,7 @@ PointArray::~PointArray()
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
                           std::vector<GeomField>& fields, V3d& offset,
-                          size_t& npoints, uint64_t& totalPoints,
-                          Imath::Box3d& bbox, V3d& centroid)
+                          size_t& npoints, uint64_t& totalPoints)
 {
     V3d Psum(0);
     // Use C file IO here, since it's about 40% faster than C++ streams for
@@ -226,13 +225,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     V3f* position = (V3f*)fields[0].as<float>();
     for (size_t i = 0; i < npoints; ++i)
-    {
         position[i] = points[i] - offset;
-        bbox.extendBy(points[i]);
-        Psum += points[i];
-    }
-    if (npoints > 0)
-        centroid = (1.0/npoints)*Psum;
     return true;
 }
 
@@ -240,8 +233,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
 /// Load ascii version of the point cloud library PCD format
 bool PointArray::loadPly(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
-                         size_t& npoints, uint64_t& totalPoints,
-                         Imath::Box3d& bbox, V3d& centroid)
+                         size_t& npoints, uint64_t& totalPoints)
 {
     std::unique_ptr<t_ply_, int(*)(p_ply)> ply(
             ply_open(fileName.toUtf8().constData(), logRplyError, 0, NULL), ply_close);
@@ -260,20 +252,6 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
             return false;
     }
     totalPoints = npoints;
-
-    // Compute bounding box and centroid
-    const V3f* P = (V3f*)fields[0].as<float>();
-    V3d Psum(0);
-    for (size_t i = 0; i < npoints; ++i)
-    {
-        Psum += P[i];
-        bbox.extendBy(P[i]);
-    }
-    if (npoints > 0)
-        centroid = (1.0/npoints) * Psum;
-    centroid += offset;
-    bbox.min += offset;
-    bbox.max += offset;
     return true;
 }
 
@@ -286,25 +264,17 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     // Read file into point data fields.  Use very basic file type detection
     // based on extension.
     uint64_t totalPoints = 0;
-    Imath::Box3d bbox;
     V3d offset(0);
-    V3d centroid(0);
     emit loadStepStarted("Reading file");
     if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
     {
-        if (!loadLas(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadLas(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
     else if (fileName.endsWith(".ply"))
     {
-        if (!loadPly(fileName, maxPointCount, m_fields, offset,
-                     m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadPly(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
 #if 0
     else if (fileName.endsWith(".dat"))
@@ -332,17 +302,14 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     else
     {
         // Last resort: try loading as text
-        if (!loadText(fileName, maxPointCount, m_fields, offset,
-                      m_npoints, totalPoints, bbox, centroid))
-        {
+        if (!loadText(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
-        }
     }
     // Search for position field
     m_positionFieldIdx = -1;
     for (size_t i = 0; i < m_fields.size(); ++i)
     {
-        if (m_fields[i].name == "position" && m_fields[i].spec.count == 3)
+        if (m_fields[i].name == "position" && m_fields[i].spec == TypeSpec::vec3float32())
         {
             m_positionFieldIdx = (int)i;
             break;
@@ -354,6 +321,22 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
         return false;
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+
+    // Compute bounding box and centroid
+    Imath::Box3d bbox;
+    V3d centroid(0);
+    V3d Psum(0);
+    for (size_t i = 0; i < m_npoints; ++i)
+    {
+        Psum += m_P[i];
+        bbox.extendBy(m_P[i]);
+    }
+    if (m_npoints > 0)
+        centroid = (1.0/m_npoints) * Psum;
+    centroid += offset;
+    bbox.min += offset;
+    bbox.max += offset;
+
     setBoundingBox(bbox);
     setOffset(offset);
     setCentroid(centroid);
@@ -386,13 +369,103 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     {
         g_logger.debug("Reordering field %d: %s", i, m_fields[i]);
         reorder(m_fields[i], inds.get(), m_npoints);
-        emit loadProgress(int(100*(i+1)/m_fields.size()));
+        emit loadProgress(int(100*(i+1)/(m_fields.size()+1))); // denominator +1 for permutation reorder below
     }
     m_P = (V3f*)m_fields[m_positionFieldIdx].as<float>();
+
+    // The index we want to store is the reverse permutation of the index above
+    // This is necessary if we want to mutate the data later
+    m_inds = std::unique_ptr<uint32_t[]>(new uint32_t[m_npoints]);
+    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = i; // Works for m_npoints < UINT32_MAX
+    emit loadProgress(int(100));
 
     return true;
 }
 
+
+void PointArray::mutate(std::shared_ptr<GeometryMutator> mutator)
+{
+    // Now we need to find the matching columns
+    auto npoints = mutator->pointCount();
+    const std::vector<GeomField>& mutFields = mutator->fields();
+    auto mutIdx = mutator->index();
+
+    if (m_npoints > UINT32_MAX)
+    {
+        g_logger.error("Mutation with more than 2^32 points is not supported");
+        return;
+    }
+
+    // Check index is valid
+    for (size_t j = 0; j < npoints; ++j)
+    {
+        if (mutIdx[j] >= m_npoints)
+        {
+            g_logger.error("Index out of bounds - got %d (should be between zero and %d)", mutIdx[j], m_npoints-1);
+            return;
+        }
+    }
+
+    for (size_t mutFieldIdx = 0; mutFieldIdx < mutFields.size(); ++mutFieldIdx)
+    {
+        if (mutFields[mutFieldIdx].name == "index")
+            continue;
+
+        // Attempt to find a matching index
+        int foundIdx = -1;
+        for (size_t fieldIdx = 0; fieldIdx < m_fields.size(); ++fieldIdx)
+        {
+            if (m_fields[fieldIdx].name == mutFields[mutFieldIdx].name)
+            {
+                if (!(m_fields[fieldIdx].spec == mutFields[mutFieldIdx].spec))
+                {
+                    g_logger.warning("Fields with name \"%s\" do not have matching types, skipping.", m_fields[fieldIdx].name);
+                    break;
+                }
+
+                if (mutFields[mutFieldIdx].name == "position")
+                    g_logger.warning("Moving points by large distances may result in visual artefacts");
+
+                foundIdx = (int)fieldIdx;
+                break;
+            }
+        }
+
+        if (foundIdx == -1)
+        {
+            g_logger.warning("Couldn't find a field labeled \"%s\"", mutFields[mutFieldIdx].name);
+            continue;
+        }
+
+        if (mutFields[mutFieldIdx].name == "position")
+        {
+            assert(m_fields[foundIdx].spec == TypeSpec::float32());
+            // Special case for floating point position with offset.
+            float* dest = m_fields[foundIdx].as<float>();
+            const float* src = mutFields[mutFieldIdx].as<float>();
+            V3d off = offset() - mutator->offset();
+            for (size_t j = 0; j < npoints; ++j)
+            {
+                float* d = &dest[3*m_inds[mutIdx[j]]];
+                const float* s = &src[3*j];
+                d[0] = s[0] - off.x;
+                d[1] = s[1] - off.y;
+                d[2] = s[2] - off.z;
+            }
+        }
+        else
+        {
+            // Now we copy data from the mutator to the object
+            char* dest = m_fields[foundIdx].data.get();
+            char* src = mutFields[mutFieldIdx].data.get();
+            size_t fieldsize = m_fields[foundIdx].spec.size();
+            for (size_t j = 0; j < npoints; ++j)
+            {
+                memcpy(dest + fieldsize*m_inds[mutIdx[j]], src + fieldsize*j, fieldsize);
+            }
+        }
+    }
+}
 
 
 bool PointArray::pickVertex(const V3d& cameraPos,
@@ -551,12 +624,10 @@ void PointArray::initializeGL()
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
     setVAO("points", vao);
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
     setVBO("point_buffer", vbo);
 }
 
@@ -567,7 +638,6 @@ void PointArray::draw(const TransformState& transState, double quality) const
 DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
-
     GLuint vao = getVAO("points");
     glBindVertexArray(vao);
 
@@ -609,7 +679,18 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     for (size_t i = 0; i < attributes.size(); ++i)
     {
         if (attributes[i])
-            prog.enableAttributeArray(attributes[i]->location);
+            glEnableVertexAttribArray(attributes[i]->location);
+    }
+
+    // Compute number of bytes required to store all attributes of a vertex, in
+    // bytes.
+    size_t perVertexBytes = 0;
+    for (size_t i = 0; i < m_fields.size(); ++i)
+    {
+        const GeomField &field = m_fields[i];
+        unsigned int arraySize = field.spec.arraySize();
+        unsigned int vecSize = field.spec.vectorSize();
+        perVertexBytes += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
     }
 
     DrawCount drawCount;
@@ -637,85 +718,75 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             }
             continue;
         }
-        size_t idx = node->beginIndex;
         if (!incrementalDraw)
             node->nextBeginIndex = node->beginIndex;
 
         DrawCount nodeDrawCount = node->drawCount(relCamera, quality, incrementalDraw);
         drawCount += nodeDrawCount;
 
-        idx = node->nextBeginIndex;
         if (nodeDrawCount.numVertices == 0)
             continue;
 
         if (m_fields.size() < 1)
             continue;
 
-        long bufferSize = 0;
-        for (size_t i = 0; i < m_fields.size(); ++i)
-        {
-            const GeomField &field = m_fields[i];
-            unsigned int arraySize = field.spec.arraySize();
-            unsigned int vecSize = field.spec.vectorSize();
+        // Create a new uninitialized buffer for the current node, reserving
+        // enough space for the entire set of vertex attributes which will be
+        // passed to the shader.
+        //
+        // (This new memory area will be bound to the "point_buffer" VBO until
+        // the memory is orphaned by calling glBufferData() next time through
+        // the loop.  The orphaned memory should be cleaned up by the driver,
+        // and this may actually be quite efficient, see
+        // http://stackoverflow.com/questions/25111565/how-to-deallocate-glbufferdata-memory
+        // http://hacksoflife.blogspot.com.au/2015/06/glmapbuffer-no-longer-cool.html )
+        GLsizeiptr nodeBufferSize = perVertexBytes * nodeDrawCount.numVertices;
+        glBufferData(GL_ARRAY_BUFFER, nodeBufferSize, NULL, GL_STREAM_DRAW);
 
-            // tfm::printfln("FIELD-NAME: %s", field.name);
-            // tfm::printfln("AS: %i, VS: %i, FSS: %i, FSES: %i, GLBTFSS: %i", arraySize, vecSize, field.spec.size(), field.spec.elsize, sizeof(glBaseType(field.spec)));
-
-            bufferSize += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
-        }
-
-        bufferSize = bufferSize * (GLsizei)nodeDrawCount.numVertices;
-
-        // TODO: might be able to do something more efficient here, for example use glBufferSubData to avoid re-allocation of memory by glBufferData
-        // INITIALIZE THE BUFFER TO FULL SIZE
-        // tfm::printfln("INIT BUFFER: %i, BS: %i", vbo, bufferSize);
-
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)bufferSize, NULL, GL_STREAM_DRAW);
-        /// ========================================================================
-        /// ========================================================================
         GLintptr bufferOffset = 0;
-
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
             int arraySize = field.spec.arraySize();
             int vecSize = field.spec.vectorSize();
 
-            // TODO: should use a single data-array that isn't split into vertex / normal / color / etc. sections, but has interleaved data ?
-            // OpenGL has a stride value in glVertexAttribPointer for exactly this purpose, which should be used for better efficiency
-            // here we write only the current attribute data into this the buffer (e.g. all positions, then all colors)
-            bufferSize = arraySize * vecSize * field.spec.elsize * (GLsizei)nodeDrawCount.numVertices; //sizeof(glBaseType(field.spec))
+            // TODO?: Could use a single data-array that isn't split into
+            // vertex / normal / color / etc. sections, but has interleaved
+            // data ?  OpenGL has a stride value in glVertexAttribPointer for
+            // exactly this purpose, which should be used for better efficiency
+            // here we write only the current attribute data into this the
+            // buffer (e.g. all positions, then all colors)
+            GLsizeiptr fieldBufferSize = arraySize * vecSize * field.spec.elsize * nodeDrawCount.numVertices;
 
-            char* bufferData = field.data.get() + idx*field.spec.size();
-            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, bufferSize, bufferData);
+            // Upload raw data for `field` to the appropriate part of the buffer.
+            char* bufferData = field.data.get() + node->nextBeginIndex*field.spec.size();
+            glBufferSubData(GL_ARRAY_BUFFER, bufferOffset, fieldBufferSize, bufferData);
 
-            // tfm::printfln("UPDATE BUFFER: %i, BS: %i", vbo, bufferSize);
-
+            // Tell OpenGL how to interpret the buffer of raw data which was
+            // just uploaded.  This should be a single call, but OpenGL spec
+            // insanity says we need `arraySize` calls (though arraySize=1
+            // for most usage.)
             for (int j = 0; j < arraySize; ++j)
             {
                 const ShaderAttribute* attr = attributes[k+j];
                 if (!attr)
                     continue;
 
-                // we have to create an intermediate buffer offsets for glVertexAttribPointer, but we can still upload the whole data array earlier !?
-                GLintptr intermediate_bufferOffset = bufferOffset + j*field.spec.elsize;
+                GLintptr arrayElementOffset = bufferOffset + j*field.spec.elsize;
 
                 if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
                 {
-                    glVertexAttribIPointer(attr->location, vecSize,
-                                           glBaseType(field.spec), 0, (const GLvoid *)intermediate_bufferOffset);
+                    glVertexAttribIPointer(attr->location, vecSize, glBaseType(field.spec),
+                                           0, (const GLvoid *)arrayElementOffset);
                 }
                 else
                 {
-                    glVertexAttribPointer(attr->location, vecSize,
-                                          glBaseType(field.spec),
-                                          field.spec.fixedPoint, 0, (const GLvoid *)intermediate_bufferOffset);
+                    glVertexAttribPointer(attr->location, vecSize, glBaseType(field.spec),
+                                          field.spec.fixedPoint, 0, (const GLvoid *)arrayElementOffset);
                 }
-
-                glEnableVertexAttribArray(attr->location);
             }
 
-            bufferOffset += bufferSize;
+            bufferOffset += fieldBufferSize;
         }
 
         glDrawArrays(GL_POINTS, 0, (GLsizei)nodeDrawCount.numVertices);
@@ -728,10 +799,11 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     for (size_t i = 0; i < attributes.size(); ++i)
     {
         if (attributes[i])
-            prog.disableAttributeArray(attributes[i]->location);
+            glDisableVertexAttribArray(attributes[i]->location);
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 
     return drawCount;
 }
-
-

@@ -12,12 +12,14 @@
 #define QT_NO_OPENGL_ES_2
 
 
+#include <QVector>
 #include <QGLWidget>
 #include <QModelIndex>
 
 #include "DrawCostModel.h"
 #include "InteractiveCamera.h"
 #include "geometrycollection.h"
+#include "Annotation.h"
 
 class QGLShaderProgram;
 class QItemSelectionModel;
@@ -52,6 +54,13 @@ class View3D : public QGLWidget
         QItemSelectionModel* selectionModel() { return m_selectionModel; }
         void setSelectionModel(QItemSelectionModel* selectionModel);
 
+        void addAnnotation(const QString& label, const QString& text,
+                           const Imath::V3d& pos);
+
+        /// Remove all anontations who's label matches the given QRegExp
+        void removeAnnotations(const QRegExp& labelRegex);
+
+
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
@@ -59,6 +68,7 @@ class View3D : public QGLWidget
         void toggleDrawCursor();
         void toggleDrawAxes();
         void toggleDrawGrid();
+        void toggleDrawAnnotations();
         void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
@@ -87,7 +97,6 @@ class View3D : public QGLWidget
 
     private:
         double getDevicePixelRatio();
-        unsigned int allocIncrementalFramebuffer(int w, int h) const;
         void initializeGLGeometry(int begin, int end);
 
         void initCursor(float cursorRadius, float centerPointRadius);
@@ -99,12 +108,17 @@ class View3D : public QGLWidget
         void initGrid(const float scale);
         void drawGrid() const;
 
+        void drawText(const QString& text);
+
         DrawCount drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw);
 
         void drawMeshes(const TransformState& transState,
                         const std::vector<const Geometry*>& geoms) const;
+        void drawAnnotations(const TransformState& transState,
+                             int viewportPixelWidth,
+                             int viewportPixelHeight) const;
 
         Imath::V3d guessClickPosition(const QPoint& clickPos);
 
@@ -131,6 +145,7 @@ class View3D : public QGLWidget
         bool m_drawCursor;
         bool m_drawAxes;
         bool m_drawGrid;
+        bool m_drawAnnotations;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
@@ -141,11 +156,12 @@ class View3D : public QGLWidget
         /// Collection of geometries
         GeometryCollection* m_geometries;
         QItemSelectionModel* m_selectionModel;
+        QVector<std::shared_ptr<Annotation>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
         /// Timer for next incremental frame
         QTimer* m_incrementalFrameTimer;
-        unsigned int m_incrementalFramebuffer;
+        Framebuffer m_incrementalFramebuffer;
         bool m_incrementalDraw;
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
@@ -162,6 +178,7 @@ class View3D : public QGLWidget
         std::unique_ptr<ShaderProgram> m_axesBackgroundShader;
         std::unique_ptr<ShaderProgram> m_axesLabelShader;
         std::unique_ptr<ShaderProgram> m_boundingBoxShader;
+        std::unique_ptr<ShaderProgram> m_annotationShader;
 
         unsigned int m_cursorVertexArray;
         unsigned int m_axesVertexArray;

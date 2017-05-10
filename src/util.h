@@ -4,9 +4,11 @@
 #ifndef UTIL_H_INCLUDED
 #define UTIL_H_INCLUDED
 
+#include <cmath>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #ifdef __clang__
 #pragma GCC diagnostic push
@@ -106,6 +108,19 @@ class EllipticalDist
 void makeBoundingCylinder(const Box3d& box, const V3d& axis,
                           double& dmin, double& dmax,
                           double& radius);
+
+
+// Robustly compute a polygon normal with Newell's method
+//
+// This can handle non-convex, non-planar polygons with arbitrarily many
+// consecutive parallel edges.
+//
+// verts - 3D vertex positions
+// outerRingInds  - Indices of outer boundary vertices in `verts` array;
+//                  the j'th component of the i'th polygon vertex is
+//                  verts[3*outerRingInds[i]+j].
+V3d polygonNormal(const std::vector<float>& verts,
+                  const std::vector<unsigned int>& outerRingInds);
 
 
 /// In-place partition of elements into multiple classes.
@@ -234,6 +249,14 @@ class SigIntTransferHandler
         class Impl; // System-dependent implementation
         std::unique_ptr<Impl> m_impl;
 };
+
+
+/// Get socket and lock file names for displaz IPC
+///
+/// This is a combination of the program name and user name to avoid any name
+/// clashes, along with a user-defined serverName.
+void getDisplazIpcNames(std::string& socketName, std::string& lockFileName,
+                        const std::string& serverName);
 
 
 //------------------------------------------------------------------------------

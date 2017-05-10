@@ -26,13 +26,15 @@ void HookManager::connectHook(QByteArray eventSpec, HookFormatter* formatter)
 
     if(specifier.count() != 2)
     {
-        dynamic_cast<IpcChannel*>(formatter->parent())->sendMessage(QByteArray("Error: Hook event specifier must be of the form 'key:x+y'.\n"));
+        IpcChannel* channel = dynamic_cast<IpcChannel*>(formatter->parent());
+        if (channel) channel->sendMessage(QByteArray("Error: Hook event specifier must be of the form 'key:x+y'.\n"));
         delete formatter;
         return;
     }
     else if(specifier[0] != "key")
     {
-        dynamic_cast<IpcChannel*>(formatter->parent())->sendMessage(QByteArray("Error: Hook event specifier must be of the form 'key:x+y'.\n"));
+        IpcChannel* channel = dynamic_cast<IpcChannel*>(formatter->parent());
+        if (channel) channel->sendMessage(QByteArray("Error: Hook event specifier must be of the form 'key:x+y'.\n"));
         delete formatter;
         return;
     }

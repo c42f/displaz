@@ -7,6 +7,8 @@
 #include "fileloader.h"
 
 #include <QRegExp>
+#include <QThread>
+#include <QDebug>
 
 GeometryCollection::GeometryCollection(QObject* parent)
     : QAbstractListModel(parent)
@@ -46,6 +48,11 @@ void GeometryCollection::unloadFiles(const QRegExp & filenameRegex)
     }
 }
 
+QModelIndex GeometryCollection::findLabel(const QRegExp & labelPattern)
+{
+    int row = findMatchingRow(labelPattern);
+    return (row == -1) ? QModelIndex() : createIndex(row, 0);
+}
 
 int GeometryCollection::rowCount(const QModelIndex & parent) const
 {
@@ -101,6 +108,7 @@ bool GeometryCollection::removeRows(int row, int count, const QModelIndex& paren
 void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                                      bool replaceLabel, bool reloaded)
 {
+    geom->moveToThread(QThread::currentThread());
     if (replaceLabel || reloaded)
     {
         // FIXME: Doing it this way seems a bit nasty.  The geometry should
@@ -123,4 +131,25 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                          (int)m_geometries.size());
     m_geometries.push_back(geom);
     emit endInsertRows();
+}
+
+void GeometryCollection::mutateGeometry(std::shared_ptr<GeometryMutator> mutator)
+{
+    mutator->moveToThread(QThread::currentThread());
+
+    g_logger.info("Attempting to mutate data with label \"%s\"", mutator->label());
+
+    for (size_t i = 0; i < m_geometries.size(); ++i)
+    {
+        if ( m_geometries[i]->label() == mutator->label() )
+        {
+            m_geometries[i]->mutate(mutator);
+
+            QModelIndex idx = createIndex((int)i, 0);
+            emit dataChanged(idx, idx);
+
+            return;
+        }
+    }
+    g_logger.error("Didn't match mutation label \"%s\"\n", mutator->label());
 }

@@ -98,6 +98,7 @@ void DataSetListView::keyPressEvent(QKeyEvent* event)
     if(event->key() == Qt::Key_Delete)
     {
         QModelIndexList sel = selectionModel()->selectedRows();
+        qSort(sel);
         for (int i = sel.size()-1; i >= 0; --i)
             model()->removeRows(sel[i].row(), 1);
     }

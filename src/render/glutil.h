@@ -16,6 +16,7 @@
 #define QT_NO_OPENGL_ES_2
 
 #include <QImage>
+#include <QGLWidget>
 
 #include <vector>
 #include <cassert>
@@ -23,6 +24,29 @@
 #include "util.h"
 #include "typespec.h"
 
+
+//-------------------------------------------------------------------------------
+// OpenGL Debug tools
+void _glError(const char *file, int line);
+void _glFrameBufferStatus(GLenum target, const char *file, int line);
+
+
+// #define GL_CHECK
+#ifdef GL_CHECK
+
+    #define glCheckError() _glError(__FILE__,__LINE__)
+    #define glCheckFrameBufferStatus() _glFrameBufferStatus(GL_FRAMEBUFFER, __FILE__,__LINE__)
+
+#else
+
+    #define glCheckError()
+    #define glCheckFrameBufferStatus()
+
+#endif //GL_CHECK
+
+
+
+//-------------------------------------------------------------------------------
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -71,7 +95,7 @@ void drawBox(const TransformState& transState,
 void drawBox(const TransformState& transState,
              const Imath::Box3f& bbox, const Imath::C3f& col, const GLuint& shaderProgram);
 void drawBoundingBox(const TransformState& transState, const GLuint& bboxVertexArray,
-                     const Imath::V3f& offset, const Imath::C3f& col, const GLuint& shaderProgram);
+                     const Imath::V3d& offset, const Imath::C3f& col, const GLuint& shaderProgram);
 
 /// Draw a sphere using the given shader.  May be semitransparent.
 ///
@@ -122,48 +146,187 @@ inline void glLoadMatrix(const Imath::M44f& m)
     glLoadMatrixf((GLfloat*)m[0]);
 }
 
+
+//------------------------------------------------------------------------------
+/// OpenGL buffer lifetime management.
+///
+/// Use this to allocate a temporary buffer for passing data to the GPU.  For
+/// instance, for associating vertex buffer data with a vertex array object:
+///
+/// ```
+/// {
+///     GLuint vertexArray;
+///     glGenVertexArrays(1, &vertexArray);
+///     glBindVertexArray(vertexArray);
+///
+///     // Associate some array data with the VBO
+///     GlBuffer positionBuffer;
+///     positionBuffer.bind(GL_ARRAY_BUFFER)
+///     glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float), &m_verts[0], GL_STATIC_DRAW);
+///
+///     // Critical: unbind the VBO to ensure that OpenGL state doesn't leak
+///     // out of the function
+///     glBindVertexArray(0);
+/// }
+/// ```
+class GlBuffer
+{
+public:
+    GlBuffer() : m_id(0) {}
+
+    GlBuffer(const GlBuffer&) = delete;
+
+    GlBuffer(GlBuffer&& rhs)
+    {
+        m_id = rhs.m_id;
+        rhs.m_id = 0;
+    }
+
+    bool init()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+        m_id = 0;
+        glGenBuffers(1, &m_id);
+        return m_id != 0;
+    }
+
+    void bind(GLenum target)
+    {
+        if (m_id || init())
+            glBindBuffer(target, m_id);
+    }
+
+    ~GlBuffer()
+    {
+        if (m_id)
+            glDeleteBuffers(1, &m_id);
+    }
+
+private:
+    GLuint m_id;
+};
+
+
+//------------------------------------------------------------------------------
+/// Framebuffer resource wrapper with color and depth attachements for the
+/// particular framebuffer settings needed in the incremental framebuffer in
+/// View3D.cpp
+class Framebuffer
+{
+    public:
+        /// Generate an uninitialized framebuffer.
+        Framebuffer()
+            : m_fbo(0), m_colorBuf(0), m_zBuf(0)
+        { }
+
+        ~Framebuffer()
+        {
+            destroy();
+        }
+
+        /// Initialize framebuffer with given width and height.
+        void init(int width, int height)
+        {
+            destroy();
+
+            glGenFramebuffers(1, &m_fbo);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+
+            glGenRenderbuffers(1, &m_colorBuf);
+            glBindRenderbuffer(GL_RENDERBUFFER, m_colorBuf);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_colorBuf);
+
+            glGenRenderbuffers(1, &m_zBuf);
+            glBindRenderbuffer(GL_RENDERBUFFER, m_zBuf);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
+
+            glCheckFrameBufferStatus();
+            glCheckError();
+        }
+
+        void destroy()
+        {
+            if (m_fbo != 0)
+                glDeleteFramebuffers(1, &m_fbo);
+            if (m_colorBuf != 0)
+                glDeleteRenderbuffers(1, &m_colorBuf);
+            if (m_zBuf != 0)
+                glDeleteRenderbuffers(1, &m_zBuf);
+            m_fbo = 0;
+            m_colorBuf = 0;
+            m_zBuf = 0;
+        }
+
+        /// Get OpenGL identifier for the buffer
+        GLuint id() const
+        {
+            assert(m_fbo != 0);
+            return m_fbo;
+        }
+
+    private:
+        GLuint m_fbo;
+        GLuint m_colorBuf;
+        GLuint m_zBuf;
+};
+
+
 //------------------------------------------------------------------------------
 // Texture utility
 
-struct Texture
+class Texture
 {
-    Texture(const QImage& i)
-    :   image(i),
-        target(GL_TEXTURE_2D),
-        texture(0)
-    {
-    }
+public:
+    Texture(const QImage& image)
+        : // Note that convertToGLFormat "helpfully" inverts the image top to
+          // bottom in addition to doing format conversion.  We need to undo
+          // this using mirrored() to avoid texture coordinates coming out in
+          // an unexpected way.
+        m_image(QGLWidget::convertToGLFormat(image.mirrored(false,true))),
+        m_target(GL_TEXTURE_2D),
+        m_resizeFilter(GL_LINEAR),
+        m_texture(0)
+    { }
 
     ~Texture()
     {
-        if (texture)
+        if (m_texture)
         {
-            glDeleteTextures(1, &texture);
+            glDeleteTextures(1, &m_texture);
         }
     }
 
-    void bind(int sampler) const
+    /// Bind a glsl sampler location to a given texture unit.
+    ///
+    /// `samplerLocation` should be the location of a sampler variable in the
+    /// shader, as determined via glGetUniformLocation().
+    ///
+    /// `textureUnit` is the unit which will be used; textures in simultaneous
+    /// use must be assigned to distinct texture units.
+    void bind(int samplerLocation, int textureUnit = 0) const
     {
-        if (!texture)
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        if (!m_texture)
         {
-            glGenTextures(1, &texture);
-            glBindTexture(target, texture);
-            // TODO better handling for non-RGBA formats
-            assert(image.format()==QImage::Format_ARGB32);
-            if (image.format()==QImage::Format_ARGB32)
-                glTexImage2D(target, 0, GL_RGBA, image.width(), image.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, image.constBits());       
-            glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glGenTextures(1, &m_texture);
+            glBindTexture(m_target, m_texture);
+            glTexImage2D(m_target, 0, GL_RGBA, m_image.width(), m_image.height(),
+                         0, GL_RGBA, GL_UNSIGNED_BYTE, m_image.constBits());
+            glTexParameterf(m_target, GL_TEXTURE_MIN_FILTER, m_resizeFilter);
+            glTexParameterf(m_target, GL_TEXTURE_MAG_FILTER, m_resizeFilter);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         }
         else
         {
-            // TODO: this has to become more sophisticated, if we ever want to have more than one texture bound
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(target, texture);
-            if (sampler >= 0)
-            {
-                glBindSampler(texture, sampler);
-            }
+            glBindTexture(m_target, m_texture);
+        }
+        if (samplerLocation >= 0)
+        {
+            glUniform1i(samplerLocation, textureUnit);
         }
     }
 
@@ -172,9 +335,29 @@ struct Texture
         bind(-1);
     }
 
-            QImage image;
-            GLint  target;
-    mutable GLuint texture;
+    int width() const
+    {
+        return m_image.width();
+    }
+
+    int height() const
+    {
+        return m_image.height();
+    }
+
+    /// Set the GL_TEXTURE_MIN_FILTER and GL_TEXTURE_MAG_FILTER filter for the
+    /// texture. Must be GL_LINEAR (default) or GL_NEAREST. Call before bind().
+    void setResizeFilter(GLint filter)
+    {
+        m_resizeFilter = filter;
+    }
+
+
+private:
+    QImage m_image;
+    GLint  m_target;
+    GLint m_resizeFilter;
+    mutable GLuint m_texture;
 };
 
 
@@ -209,22 +392,5 @@ void printActiveShaderAttributes(GLuint prog);
 const ShaderAttribute* findAttr(const std::string& name,
                                 const std::vector<ShaderAttribute>& attrs);
 
-
-void _glError(const char *file, int line);
-void _glFrameBufferStatus(GLenum target, const char *file, int line);
-
-
-// #define GL_CHECK
-#ifdef GL_CHECK
-
-    #define glCheckError() _glError(__FILE__,__LINE__)
-    #define glFrameBufferStatus(TARGET) _glFrameBufferStatus(TARGET, __FILE__,__LINE__)
-
-#else
-
-    #define glCheckError()
-    #define glFrameBufferStatus(TARGET)
-
-#endif //GL_CHECK
 
 #endif // GLUTIL_H_INCLUDED

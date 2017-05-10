@@ -16,19 +16,6 @@
 
 //------------------------------------------------------------------------------
 
-/// Get resource name for displaz IPC
-///
-/// This is a combination of the program name and user name to avoid any name
-/// clashes, along with a user-defined suffix.
-static std::string displazIpcName(const std::string& suffix = "")
-{
-    std::string name = "displaz-ipc-" + currentUserUid();
-    if (!suffix.empty())
-        name += "-" + suffix;
-    return name;
-}
-
-
 /// Callback and globals for positional argument parsing
 struct PositionalArg
 {
@@ -69,14 +56,21 @@ int main(int argc, char *argv[])
     std::string serverName = "default";
     double posX = -DBL_MAX, posY = -DBL_MAX, posZ = -DBL_MAX;
     double yaw = -DBL_MAX, pitch = -DBL_MAX, roll = -DBL_MAX;
+    double rot[9] = {-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX}; // Camera rotation matrix
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
-    std::string unloadFiles;
+    std::string unloadRegex;
+    std::string viewLabelName;
     bool noServer = false;
 
     bool clearFiles = false;
     bool addFiles = false;
+    bool mutateData = false;
+    std::string annotationText;
+    double annotationX = -DBL_MAX;
+    double annotationY = -DBL_MAX;
+    double annotationZ = -DBL_MAX;
     bool deleteAfterLoad = false;
     bool quitRemote = false;
     bool queryCursor = false;
@@ -87,6 +81,9 @@ int main(int argc, char *argv[])
 
     std::string hookSpecDef;
     std::string hookPayloadDef;
+
+    std::string notifySpec;
+    std::string notifyMessage;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -103,17 +100,32 @@ int main(int argc, char *argv[])
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
         "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
-        "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]",
-        "-viewradius %F", &viewRadius,   "Set distance to view point",
+        "-viewradius %F", &viewRadius,   "Set distance to view focus point",
+        "-viewlabel %s", &viewLabelName, "Set view on the first index to geometry that matches the given label",
+        "-viewangles %F %F %F", &yaw, &pitch, &roll, "Set view angles in degrees [yaw, pitch, roll]. "
+                                         "Equivalent to -viewrotation with rotation matrix "
+                                         "R_z(roll)*R_x(pitch-90)*R_z(yaw).",
+        "-viewrotation %F %F %F %F %F %F %F %F %F", rot+0, rot+1, rot+2, rot+3, rot+4, rot+5, rot+6, rot+7, rot+8,
+                                         "Set 3x3 camera rotation matrix. "
+                                         "The matrix must be a rotation in row major format; "
+                                         "it transforms points into the standard OpenGL camera coordinates "
+                                         "(+x right, +y up, -z into the scene). "
+                                         "This alternative to -viewangles is supplied to simplify "
+                                         "setting camera rotations from a script.",
         "-clear",        &clearFiles,    "Remote: clear all currently loaded files",
-        "-unload %s",    &unloadFiles,   "Remote: unload loaded files matching the given (unix shell style) pattern",
+        "-unload %s",    &unloadRegex,   "Remote: unload loaded files or annotations who's label matches the given (unix shell style) pattern",
         "-quit",         &quitRemote,    "Remote: close the existing displaz window",
         "-add",          &addFiles,      "Remote: add files to currently open set, instead of replacing those with duplicate labels",
+        "-modify",       &mutateData,    "Remote: mutate data already loaded with the matching label (requires displaz .ply with an \"index\" field to indicate mutated points)",
+        "-annotation %s %F %F %F", &annotationText, &annotationX, &annotationY, &annotationZ, "Add a text annotation [text, x, y, z]",
         "-rmtemp",       &deleteAfterLoad, "*Delete* files after loading - use with caution to clean up single-use temporary files after loading",
         "-querycursor",  &queryCursor,   "Query 3D cursor location from displaz instance",
         "-script",       &script,        "Script mode: enable several settings which are useful when calling displaz from a script:"
                                          " (a) do not wait for displaz GUI to exit before returning,",
         "-hook %@ %s %s", hooks, &hookSpecDef, &hookPayloadDef, "Hook to listen for specified event [hook_specifier hook_payload]. Payload is cursor or null",
+        "-notify %s %s", &notifySpec, &notifyMessage, "Send a GUI notification [spec message] to the user. "
+                                         "spec is a specification of how the user will see the message, it must be "
+                                         "'log' to add an info message, or 'log:<level>' to add logging message at one of {error,warning,info,debug} levels.",
 
         "<SEPARATOR>", "\nAdditional information:",
         "-version",      &printVersion,  "Print version number",
@@ -155,10 +167,8 @@ int main(int argc, char *argv[])
         serverName = QUuid::createUuid().toByteArray().constData();
     }
 
-    std::string ipcResourceName = displazIpcName(serverName);
-    QString socketName = QString::fromStdString(ipcResourceName);
-
-    std::string lockName = ipcResourceName + ".lock";
+    std::string socketName, lockName;
+    getDisplazIpcNames(socketName, lockName, serverName);
     InterProcessLock instanceLock(lockName);
     bool startedGui = false;
     qint64 guiPid = -1;
@@ -170,7 +180,7 @@ int main(int argc, char *argv[])
             std::cerr << "ERROR: No remote displaz instance found\n";
             return EXIT_FAILURE;
         }
-        if (quitRemote || !unloadFiles.empty())
+        if (quitRemote || !unloadRegex.empty())
         {
             return EXIT_SUCCESS;
         }
@@ -179,7 +189,7 @@ int main(int argc, char *argv[])
         QStringList args;
         args << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
-             << "-socketname"   << socketName;
+             << "-socketname"   << QString::fromStdString(socketName);
         QString guiExe = QDir(QCoreApplication::applicationDirPath())
                          .absoluteFilePath("displaz-gui");
         if (!QProcess::startDetached(guiExe, args,
@@ -194,7 +204,7 @@ int main(int argc, char *argv[])
     // Remote displaz instance should now be running (either it existed
     // already, or we started it above).  Communicate with it via the socket
     // interface to set any requested parameters, load additional files etc.
-    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(socketName);
+    std::unique_ptr<IpcChannel> channel = IpcChannel::connectToServer(QString::fromStdString(socketName));
     if (!channel)
     {
         std::cerr << "ERROR: Could not open IPC channel to remote instance - exiting\n";
@@ -214,6 +224,11 @@ int main(int argc, char *argv[])
         QByteArray command;
         QDir currentDir = QDir::current();
         command = "OPEN_FILES\n";
+        if (mutateData)
+        {
+            command += QByteArray("MUTATE_EXISTING");
+            command += '\0';
+        }
         if (!addFiles)
         {
             command += QByteArray("REPLACE_LABEL");
@@ -234,9 +249,25 @@ int main(int argc, char *argv[])
         }
         channel->sendMessage(command);
     }
-    if (!unloadFiles.empty())
+    if (annotationText != "" &&
+        annotationX != -DBL_MAX &&
+        annotationY != -DBL_MAX &&
+        annotationZ != -DBL_MAX)
     {
-        channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadFiles.c_str());
+        channel->sendMessage(QByteArray("ANNOTATE\n") +
+                             g_dataSetLabel.c_str() + "\n" +
+                             annotationText.c_str() + "\n" +
+                             QByteArray().setNum(annotationX, 'e', 17) + "\n" +
+                             QByteArray().setNum(annotationY, 'e', 17) + "\n" +
+                             QByteArray().setNum(annotationZ, 'e', 17));
+    }
+    if (!unloadRegex.empty())
+    {
+        channel->sendMessage(QByteArray("UNLOAD_FILES\n") + unloadRegex.c_str());
+    }
+    if (!viewLabelName.empty())
+    {
+        channel->sendMessage(QByteArray("SET_VIEW_LABEL\n") + viewLabelName.c_str());
     }
     if (posX != -DBL_MAX)
     {
@@ -251,6 +282,17 @@ int main(int argc, char *argv[])
                              QByteArray().setNum(yaw)   + "\n" +
                              QByteArray().setNum(pitch) + "\n" +
                              QByteArray().setNum(roll));
+    }
+    if (rot[0] != -DBL_MAX)
+    {
+        QByteArray command("SET_VIEW_ROTATION\n");
+        for(int i = 0; i < 9; ++i)
+        {
+            command += QByteArray().setNum(rot[i]);
+            if (i != 8)
+                command += "\n";
+        }
+        channel->sendMessage(command);
     }
     if (viewRadius != -DBL_MAX)
     {
@@ -290,6 +332,12 @@ int main(int argc, char *argv[])
         // out how to make it nicer?
         channel->sendMessage(QByteArray("OPEN_SHADER\n") +
                              shaderName.c_str());
+    }
+    if (!notifySpec.empty())
+    {
+        channel->sendMessage(QByteArray("NOTIFY\n") +
+                             notifySpec.c_str() + "\n" +
+                             notifyMessage.c_str());
     }
     if(!hookPayload.empty())
     {
@@ -332,4 +380,3 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
-

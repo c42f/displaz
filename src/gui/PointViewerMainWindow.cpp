@@ -78,6 +78,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     //connect(m_fileLoader, SIGNAL(finished()), this, SIGNAL(fileLoadFinished()));
     connect(m_fileLoader, SIGNAL(geometryLoaded(std::shared_ptr<Geometry>, bool, bool)),
             m_geometries, SLOT(addGeometry(std::shared_ptr<Geometry>, bool, bool)));
+    connect(m_fileLoader, SIGNAL(geometryMutatorLoaded(std::shared_ptr<GeometryMutator>)),
+            m_geometries, SLOT(mutateGeometry(std::shared_ptr<GeometryMutator>)));
     loaderThread->start();
 
     //--------------------------------------------------
@@ -157,6 +159,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
     drawGrid->setCheckable(true);
     drawGrid->setChecked(false);
+    QAction* drawAnnotations = viewMenu->addAction(tr("Draw A&nnotations"));
+    drawAnnotations->setCheckable(true);
+    drawAnnotations->setChecked(true);
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -191,6 +196,8 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
             m_pointView, SLOT(toggleDrawAxes()));
     connect(drawGrid, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawGrid()));
+    connect(drawAnnotations, SIGNAL(triggered()),
+            m_pointView, SLOT(toggleDrawAnnotations()));
     connect(trackballMode, SIGNAL(triggered()),
             m_pointView, SLOT(toggleCameraMode()));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -367,6 +374,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
         QList<QByteArray> flags = commandTokens[1].split('\0');
         bool replaceLabel = flags.contains("REPLACE_LABEL");
         bool deleteAfterLoad = flags.contains("DELETE_AFTER_LOAD");
+        bool mutateExisting = flags.contains("MUTATE_EXISTING");
         for (int i = 2; i < commandTokens.size(); ++i)
         {
             QList<QByteArray> pathAndLabel = commandTokens[i].split('\0');
@@ -378,6 +386,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             }
             FileLoadInfo loadInfo(pathAndLabel[0], pathAndLabel[1], replaceLabel);
             loadInfo.deleteAfterLoad = deleteAfterLoad;
+            loadInfo.mutateExisting = mutateExisting;
             m_fileLoader->loadFile(loadInfo);
         }
     }
@@ -396,6 +405,42 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             return;
         }
         m_geometries->unloadFiles(regex);
+        m_pointView->removeAnnotations(regex);
+    }
+    else if (commandTokens[0] == "SET_VIEW_LABEL")
+    {
+        QString regex_str = commandTokens[1];
+        QRegExp regex(regex_str, Qt::CaseSensitive, QRegExp::FixedString);
+        if (!regex.isValid())
+        {
+            g_logger.error("Invalid pattern in -unload command: '%s': %s",
+                           regex_str, regex.errorString());
+            return;
+        }
+        QModelIndex index = m_geometries->findLabel(regex);
+        if (index.isValid())
+            m_pointView->centerOnGeometry(index);
+    }
+    else if (commandTokens[0] == "ANNOTATE")
+    {
+        if (commandTokens.size() - 1 != 5)
+        {
+            tfm::format(std::cerr, "Expected five arguments, got %d\n",
+                        commandTokens.size() - 1);
+            return;
+        }
+        QString label = commandTokens[1];
+        QString text = commandTokens[2];
+        bool xOk = false, yOk = false, zOk = false;
+        double x = commandTokens[3].toDouble(&xOk);
+        double y = commandTokens[4].toDouble(&yOk);
+        double z = commandTokens[5].toDouble(&zOk);
+        if (!zOk || !yOk || !zOk)
+        {
+            std::cerr << "Could not parse XYZ coordinates for position\n";
+            return;
+        }
+        m_pointView->addAnnotation(label, text, Imath::V3d(x, y, z));
     }
     else if (commandTokens[0] == "SET_VIEW_POSITION")
     {
@@ -439,6 +484,31 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
             QQuaternion::fromAxisAndAngle(0,0,1, yaw)
         );
     }
+    else if (commandTokens[0] == "SET_VIEW_ROTATION")
+    {
+        if (commandTokens.size()-1 != 9)
+        {
+            tfm::format(std::cerr, "Expected 9 rotation matrix components, got %d\n",
+                        commandTokens.size()-1);
+            return;
+        }
+#       ifdef DISPLAZ_USE_QT4
+        qreal rot[9] = {0};
+#       else
+        float rot[9] = {0};
+#       endif
+        for (int i = 0; i < 9; ++i)
+        {
+            bool ok = true;
+            rot[i] = commandTokens[i+1].toDouble(&ok);
+            if(!ok)
+            {
+                tfm::format(std::cerr, "badly formatted view matrix message:\n%s", message.constData());
+                return;
+            }
+        }
+        m_pointView->camera().setRotation(QMatrix3x3(rot));
+    }
     else if (commandTokens[0] == "SET_VIEW_RADIUS")
     {
         bool ok = false;
@@ -474,6 +544,37 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
     else if (commandTokens[0] == "OPEN_SHADER")
     {
         openShaderFile(commandTokens[1]);
+    }
+    else if (commandTokens[0] == "NOTIFY")
+    {
+        if (commandTokens.size() < 3)
+        {
+            g_logger.error("Could not parse NOTIFY message: %s", QString::fromUtf8(message));
+            return;
+        }
+        QString spec = QString::fromUtf8(commandTokens[1]);
+        QList<QString> specList = spec.split(':');
+        if (specList[0].toLower() != "log")
+        {
+            g_logger.error("Could not parse NOTIFY spec: %s", spec);
+            return;
+        }
+
+        Logger::LogLevel level = Logger::Info;
+        if (specList.size() > 1)
+            level = Logger::parseLogLevel(specList[1].toLower().toStdString());
+
+        // Ugh, reassemble message from multiple lines.  Need a better
+        // transport serialization!
+        QByteArray message;
+        for (int i = 2; i < commandTokens.size(); ++i)
+        {
+            if (i > 2)
+                message += "\n";
+            message += commandTokens[i];
+        }
+
+        g_logger.log(level, "%s", tfm::makeFormatList(message.constData()));
     }
     else if(commandTokens[0] == "HOOK")
     {
@@ -708,5 +809,3 @@ void PointViewerMainWindow::updateTitle()
     }
     setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
 }
-
-
