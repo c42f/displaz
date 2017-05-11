@@ -11,7 +11,7 @@ branches:
 init:
   - git config --global core.autocrlf input
   - set QTDIR=C:\Qt\5.6\msvc2015_64
-  - set PATH=%PATH%;%QTDIR%\bin
+  - set PATH=%QTDIR%\bin;%PATH%
 # scripts that run after cloning repository
 #install:
 #  - Install rst2html for docs?
