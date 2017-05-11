@@ -79,6 +79,7 @@ artifacts:
 deploy:
   # Deploy CI builds of master to s3://displaz-data/builds/
   - provider: S3
+    region: ap-southeast-2
     on:
       # Only deploy CI builds from master
       branch: master
