@@ -198,6 +198,7 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
 if (WIN32)
     # Some paths need at at least one backslash to workaround NSIS bug
     set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/package\\\\displaz.ico")
+    set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/package\\\\displaz.ico")
 else()
     set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/package/displaz.ico")
 endif()
