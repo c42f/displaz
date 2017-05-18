@@ -51,6 +51,11 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_ipcServer(0),
     m_hookManager(0)
 {
+#ifndef _WIN32
+    setWindowIcon(QIcon(":resource/displaz_icon_256.png"));
+#else
+    // On windows, application icon is set via windows resource file
+#endif
     setWindowTitle("Displaz");
     setAcceptDrops(true);
 

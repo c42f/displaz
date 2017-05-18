@@ -13,4 +13,6 @@ done
 
 convert $files displaz.ico
 
+cp tmp_icon_256.png ../src/resource/displaz_icon_256.png
+
 rm $files
