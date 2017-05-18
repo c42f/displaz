@@ -4,5 +4,6 @@
     <file>resource/x.png</file>
     <file>resource/y.png</file>
     <file>resource/z.png</file>
+    <file>resource/displaz_icon_256.png</file>
 </qresource>
 </RCC>
