@@ -49,7 +49,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 #   endif
 #endif
 // Note... laslib generates a small horde of warnings
-#include <lasreader.hpp>
+#include <lasreader_las.hpp>
 #ifdef _MSC_VER
 #   pragma warning(push)
 #elif __GNUC__
@@ -181,16 +181,14 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         emit loadProgress(100*readCount/totalPoints);
     }
 #else
-    LASreadOpener lasReadOpener;
+    FILE* file = 0;
+    std::unique_ptr<LASreaderLAS> lasReader(new LASreaderLAS());
 #ifdef _WIN32
-    // Hack: liblas doesn't like forward slashes as path separators on windows
-    fileName = fileName.replace('/', '\\');
+    file = _wfopen(fileName.toStdWString().data(), L"rb");
+#else
+    file = fopen(fileName.toUtf8().constData(), "rb");
 #endif
-    // FIXME: Figure out how to pass non-ascii file names on windows.
-    lasReadOpener.set_file_name(fileName.toUtf8().constData());
-    std::unique_ptr<LASreader> lasReader(lasReadOpener.open());
-
-    if(!lasReader)
+    if(!file || !lasReader->open(file))
     {
         g_logger.error("Couldn't open file \"%s\"", fileName);
         return false;
