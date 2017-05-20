@@ -13,6 +13,7 @@
 #include "IpcChannel.h"
 #include "InterProcessLock.h"
 #include "util.h"
+#include "windows.h"
 
 //------------------------------------------------------------------------------
 
@@ -52,6 +53,8 @@ static int hooks(int argc, const char *argv[])
 
 int main(int argc, char *argv[])
 {
+    ensureUtf8Argv(&argc, &argv);
+
     int maxPointCount = -1;
     std::string serverName = "default";
     double posX = -DBL_MAX, posY = -DBL_MAX, posZ = -DBL_MAX;

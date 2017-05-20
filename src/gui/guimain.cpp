@@ -42,6 +42,8 @@ static void setupQFileSearchPaths()
 /// Run the main GUI window
 int main(int argc, char* argv[])
 {
+    ensureUtf8Argv(&argc, &argv);
+
     std::string lockName;
     std::string lockId;
     std::string socketName;

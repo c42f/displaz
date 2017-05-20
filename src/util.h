@@ -269,6 +269,12 @@ bool iequals(const std::string& a, const std::string& b);
 /// Return true if string ends with the given suffix
 bool endswith(const std::string& str, const std::string& suffix);
 
-
+/// Get the argument string array to main() in UTF-8 encoding.
+///
+/// On windows, this function looks up the true unicode command line argument
+/// list via GetCommandLineW() and re-encodes it as UTF-8, overriding the
+/// input.  On other platforms, this function does nothing (ie, we assume the
+/// input is already encoded in UTF-8.
+void ensureUtf8Argv(int* argc, char*** argv);
 
 #endif // UTIL_H_INCLUDED

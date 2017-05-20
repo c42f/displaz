@@ -12,6 +12,7 @@
 #       define NOMINMAX
 #   endif
 #   include <windows.h>
+#   include <shellapi.h> // For CommandLineToArgvW
 #   include <io.h>
 #else
 #   include <unistd.h>
@@ -252,4 +253,39 @@ bool endswith(const std::string& str, const std::string& suffix)
 {
     return str.rfind(suffix) == str.size() - suffix.size();
 }
+
+#ifdef _WIN32
+/// Utility for windows: Convert to UTF-8 from UTF-16
+static std::string utf8FromUtf16(const std::wstring &wstr)
+{
+    if (wstr.empty())
+        return std::string();
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(),
+                                         NULL, 0, NULL, NULL);
+    std::string strTo(sizeNeeded, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(),
+                        &strTo[0], sizeNeeded, NULL, NULL);
+    return strTo;
+}
+#endif
+
+void ensureUtf8Argv(int* argc, char*** argv)
+{
+#   ifdef _WIN32
+    static std::vector<std::string> stringStorage;
+    static std::vector<char*> argvStorage;
+    int argc2 = 0;
+    LPWSTR* argvw = CommandLineToArgvW(GetCommandLineW(), &argc2);
+    stringStorage.resize(argc2);
+    argvStorage.resize(argc2);
+    for (int i = 0; i < argc2; ++i)
+    {
+        stringStorage[i] = utf8FromUtf16(argvw[i]);
+        argvStorage[i] = &stringStorage[i][0];
+    }
+    *argc = argc2;
+    *argv = &argvStorage[0];
+#   endif
+}
+
 
