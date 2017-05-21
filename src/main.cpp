@@ -13,7 +13,7 @@
 #include "IpcChannel.h"
 #include "InterProcessLock.h"
 #include "util.h"
-#include "windows.h"
+#include "guimain.h"
 
 //------------------------------------------------------------------------------
 
@@ -54,6 +54,13 @@ static int hooks(int argc, const char *argv[])
 int main(int argc, char *argv[])
 {
     ensureUtf8Argv(&argc, &argv);
+
+    if (argc > 1 && std::string(argv[1]) == "-gui")
+    {
+        // Detect special command line argument and run the GUI instead of
+        // attempting to talk to a remote displaz instance via IPC.
+        return guimain(argc-1, argv+1);
+    }
 
     int maxPointCount = -1;
     std::string serverName = "default";
@@ -190,12 +197,11 @@ int main(int argc, char *argv[])
 
         // Launch the main GUI window in a separate process.
         QStringList args;
-        args << "-instancelock" << QString::fromStdString(lockName)
+        args << "-gui"
+             << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
              << "-socketname"   << QString::fromStdString(socketName);
-        QString guiExe = QDir(QCoreApplication::applicationDirPath())
-                         .absoluteFilePath("displaz-gui");
-        if (!QProcess::startDetached(guiExe, args,
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), args,
                                      QDir::currentPath(), &guiPid))
         {
             std::cerr << "ERROR: Could not start remote displaz process\n";

@@ -91,6 +91,7 @@ set(gui_srcs
     ${util_srcs}
     ${ipc_srcs}
     ${gui_moc_srcs}
+    main.cpp
     DrawCostModel.cpp
     geometrycollection.cpp
     ply_io.cpp
@@ -120,12 +121,6 @@ set(gui_srcs
     ../thirdparty/polypartition/polypartition.cpp
 )
 
-set(cli_srcs
-    ${util_srcs}
-    ${ipc_srcs}
-    main.cpp
-)
-
 if(DISPLAZ_USE_QT4)
     qt4_add_resources(RCC_GENERATED resource.qrc)
 else()
@@ -146,8 +141,7 @@ configure_file(config.h.in.cmake config.h @ONLY)
 include_directories(${PROJECT_BINARY_DIR})
 
 
-add_executable(displaz ${cli_srcs})
-add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
+add_executable(displaz WIN32 ${gui_srcs} ${RCC_GENERATED})
 
 if (DISPLAZ_BUILD_DVOX)
     add_executable(dvox
@@ -163,10 +157,6 @@ endif()
 # Library dependencies
 if (DISPLAZ_USE_QT4)
     target_link_libraries(displaz
-        ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY}
-        ${ILMBASE_LIBRARIES}
-    )
-    target_link_libraries(displaz-gui
         ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
         ${QT_QTNETWORK_LIBRARY} ${QT_QTWIDGETS_LIBRARY}
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
@@ -174,17 +164,13 @@ if (DISPLAZ_USE_QT4)
     )
 else()
     target_link_libraries(displaz
-        Qt5::Core Qt5::Network Qt5::Widgets
-        ${ILMBASE_LIBRARIES}
-    )
-    target_link_libraries(displaz-gui
         Qt5::Core Qt5::Gui Qt5::OpenGL
         Qt5::Network Qt5::Widgets
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
         ${ILMBASE_LIBRARIES}
     )
     if (Qt5_POSITION_INDEPENDENT_CODE)
-        set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        set_target_properties(displaz PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     endif()
     # TODO this is a workaround for Ubuntu 16.04 x86-64
     if (UNIX)
@@ -193,7 +179,7 @@ else()
 endif()
 
 if(APPLE)
-    target_link_libraries(displaz-gui
+    target_link_libraries(displaz
         ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
     )
 endif()
@@ -209,12 +195,12 @@ endif()
 
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
-        target_link_libraries (displaz-gui ${PDAL_LIBRARIES})
+        target_link_libraries (displaz ${PDAL_LIBRARIES})
         if (DISPLAZ_BUILD_DVOX)
             message(SEND_ERROR "experimental dvox utility doesn't support pdal as a backend")
         endif()
     else()
-        target_link_libraries (displaz-gui ${LASLIB_LIBRARIES})
+        target_link_libraries (displaz ${LASLIB_LIBRARIES})
         if (DISPLAZ_BUILD_DVOX)
             target_link_libraries (dvox ${LASLIB_LIBRARIES})
         endif()
@@ -234,12 +220,11 @@ endif()
 
 
 # Install
-install(TARGETS displaz     DESTINATION "${DISPLAZ_BIN_DIR}")
-install(TARGETS displaz-gui DESTINATION "${DISPLAZ_BIN_DIR}")
+install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 
 if(WIN32)
     include(DeployQt5)
-    install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz-gui${CMAKE_EXECUTABLE_SUFFIX})
+    install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX})
 endif()
 
 if (DISPLAZ_BUILD_DVOX)
