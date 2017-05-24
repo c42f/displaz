@@ -13,6 +13,7 @@
 #include "IpcChannel.h"
 #include "InterProcessLock.h"
 #include "util.h"
+#include "guimain.h"
 
 //------------------------------------------------------------------------------
 
@@ -52,6 +53,21 @@ static int hooks(int argc, const char *argv[])
 
 int main(int argc, char *argv[])
 {
+    ensureUtf8Argv(&argc, &argv);
+
+    if (argc > 1 && std::string(argv[1]) == "-gui")
+    {
+        // Detect special command line argument and run the GUI instead of
+        // attempting to talk to a remote displaz instance via IPC.
+#       ifdef DISPLAZ_CLI_ONLY
+        // GUI-less compile - used on windows to create displaz.com
+        tfm::format(std::cerr, "ERROR: %s was compiled as without the GUI.", argv[0]);
+        return EXIT_FAILURE;
+#       else
+        return guimain(argc-1, argv+1);
+#       endif
+    }
+
     int maxPointCount = -1;
     std::string serverName = "default";
     double posX = -DBL_MAX, posY = -DBL_MAX, posZ = -DBL_MAX;
@@ -186,13 +202,17 @@ int main(int argc, char *argv[])
         }
 
         // Launch the main GUI window in a separate process.
+        QString exeName = QCoreApplication::applicationFilePath();
+#       ifdef _WIN32
+        if (exeName.endsWith(".com"))
+            exeName = exeName.replace(exeName.size()-3,3,"exe");
+#       endif
         QStringList args;
-        args << "-instancelock" << QString::fromStdString(lockName)
+        args << "-gui"
+             << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
              << "-socketname"   << QString::fromStdString(socketName);
-        QString guiExe = QDir(QCoreApplication::applicationDirPath())
-                         .absoluteFilePath("displaz-gui");
-        if (!QProcess::startDetached(guiExe, args,
+        if (!QProcess::startDetached(exeName, args,
                                      QDir::currentPath(), &guiPid))
         {
             std::cerr << "ERROR: Could not start remote displaz process\n";
@@ -314,7 +334,7 @@ int main(int argc, char *argv[])
         }
         catch (DisplazError & e)
         {
-            std::cerr << "ERROR: QUERY_CURSOR message timed out waiting for a response.\n";
+            std::cerr << "ERROR: QUERY_CURSOR message failed:\n" << e.what();
             return EXIT_FAILURE;
         }
     }
@@ -363,7 +383,7 @@ int main(int argc, char *argv[])
         }
         catch (DisplazError & e)
         {
-            std::cerr << "ERROR: Connection to GUI broken.\n";
+            std::cerr << "ERROR: Connection to GUI broken: " << e.what();
             return EXIT_FAILURE;
         }
     }

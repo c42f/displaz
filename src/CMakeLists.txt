@@ -91,6 +91,7 @@ set(gui_srcs
     ${util_srcs}
     ${ipc_srcs}
     ${gui_moc_srcs}
+    main.cpp
     DrawCostModel.cpp
     geometrycollection.cpp
     ply_io.cpp
@@ -120,12 +121,6 @@ set(gui_srcs
     ../thirdparty/polypartition/polypartition.cpp
 )
 
-set(cli_srcs
-    ${util_srcs}
-    ${ipc_srcs}
-    main.cpp
-)
-
 if(DISPLAZ_USE_QT4)
     qt4_add_resources(RCC_GENERATED resource.qrc)
 else()
@@ -146,16 +141,24 @@ configure_file(config.h.in.cmake config.h @ONLY)
 include_directories(${PROJECT_BINARY_DIR})
 
 
-add_executable(displaz ${cli_srcs})
-add_executable(displaz-gui WIN32 ${gui_srcs} ${RCC_GENERATED})
-
-if (DISPLAZ_BUILD_DVOX)
-    add_executable(dvox
-        ${util_srcs}
-        dvox.cpp
-        pointdbwriter.cpp
-        pointdb.cpp
-        voxelizer.cpp
+add_executable(displaz WIN32 ${gui_srcs} ${RCC_GENERATED})
+if (WIN32)
+    # For windows, create a version of displaz which is linked as a console
+    # program (ie, without WIN32 flag) in order have good behaviour from the
+    # windows command line.  This version only needs to talk the IPC protocol,
+    # so we disable the GUI code to avoid unnecessary bloat.
+    #
+    # To get this to be found before displaz.exe proper, we copy the trick used
+    # in devenv, and create an executable displaz.com (this is not truly in the
+    # old DOS .com format, but windows doesn't care about that).
+    #
+    # What a mess!  See issues #71, #84 and
+    # https://blogs.msdn.microsoft.com/oldnewthing/20090101-00/?p=19643
+    add_executable(displaz_com main.cpp ${util_srcs} ${ipc_srcs})
+    set_target_properties(displaz_com PROPERTIES
+        COMPILE_DEFINITIONS "DISPLAZ_CLI_ONLY"
+        RUNTIME_OUTPUT_NAME "displaz"
+        SUFFIX ".com"
     )
 endif()
 
@@ -163,10 +166,6 @@ endif()
 # Library dependencies
 if (DISPLAZ_USE_QT4)
     target_link_libraries(displaz
-        ${QT_QTCORE_LIBRARY} ${QT_QTNETWORK_LIBRARY}
-        ${ILMBASE_LIBRARIES}
-    )
-    target_link_libraries(displaz-gui
         ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
         ${QT_QTNETWORK_LIBRARY} ${QT_QTWIDGETS_LIBRARY}
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
@@ -174,17 +173,21 @@ if (DISPLAZ_USE_QT4)
     )
 else()
     target_link_libraries(displaz
-        Qt5::Core Qt5::Network Qt5::Widgets
-        ${ILMBASE_LIBRARIES}
-    )
-    target_link_libraries(displaz-gui
         Qt5::Core Qt5::Gui Qt5::OpenGL
         Qt5::Network Qt5::Widgets
         ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
         ${ILMBASE_LIBRARIES}
     )
+    if (TARGET displaz_com)
+        target_link_libraries(displaz_com
+            Qt5::Core Qt5::Network
+        )
+    endif()
     if (Qt5_POSITION_INDEPENDENT_CODE)
-        set_target_properties(displaz-gui PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        set_target_properties(displaz PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        if (TARGET displaz_com)
+            set_target_properties(displaz_com PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+        endif()
     endif()
     # TODO this is a workaround for Ubuntu 16.04 x86-64
     if (UNIX)
@@ -193,34 +196,18 @@ else()
 endif()
 
 if(APPLE)
-    target_link_libraries(displaz-gui
+    target_link_libraries(displaz
         ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
     )
 endif()
 
-if (DISPLAZ_BUILD_DVOX)
-    # TODO: Remove this dependency
-    if (DISPLAZ_USE_QT4)
-        target_link_libraries(dvox ${QT_QTCORE_LIBRARY})
-    else()
-        target_link_libraries(dvox Qt5::Core)
-    endif()
-endif()
-
 if (DISPLAZ_USE_LAS)
     if (DISPLAZ_USE_PDAL)
-        target_link_libraries (displaz-gui ${PDAL_LIBRARIES})
-        if (DISPLAZ_BUILD_DVOX)
-            message(SEND_ERROR "experimental dvox utility doesn't support pdal as a backend")
-        endif()
+        target_link_libraries(displaz ${PDAL_LIBRARIES})
     else()
-        target_link_libraries (displaz-gui ${LASLIB_LIBRARIES})
-        if (DISPLAZ_BUILD_DVOX)
-            target_link_libraries (dvox ${LASLIB_LIBRARIES})
-        endif()
+        target_link_libraries(displaz ${LASLIB_LIBRARIES})
     endif()
 endif()
-
 
 if(WIN32)
     if(DISPLAZ_STATIC)
@@ -232,17 +219,28 @@ if(WIN32)
     endif()
 endif()
 
+install(TARGETS displaz DESTINATION "${DISPLAZ_BIN_DIR}")
 
-# Install
-install(TARGETS displaz     DESTINATION "${DISPLAZ_BIN_DIR}")
-install(TARGETS displaz-gui DESTINATION "${DISPLAZ_BIN_DIR}")
+if (TARGET displaz_com)
+    install(TARGETS displaz_com DESTINATION "${DISPLAZ_BIN_DIR}")
+endif()
 
 if(WIN32)
     include(DeployQt5)
-    install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz-gui${CMAKE_EXECUTABLE_SUFFIX})
+    install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX})
 endif()
 
+#------------------------------------------------------------------------------
+# Experimental dvox utility
 if (DISPLAZ_BUILD_DVOX)
+    add_executable(dvox
+        ${util_srcs}
+        dvox.cpp
+        pointdbwriter.cpp
+        pointdb.cpp
+        voxelizer.cpp
+    )
+    target_link_libraries(dvox Qt5::Core ${LASLIB_LIBRARIES})
     install(TARGETS dvox DESTINATION "${DISPLAZ_BIN_DIR}")
 endif()
 

@@ -40,7 +40,7 @@ static void setupQFileSearchPaths()
 
 
 /// Run the main GUI window
-int main(int argc, char* argv[])
+int guimain(int argc, char* argv[])
 {
     std::string lockName;
     std::string lockId;
@@ -49,7 +49,8 @@ int main(int argc, char* argv[])
 
     ArgParse::ArgParse ap;
     ap.options(
-        "displaz-gui - don't use this directly, use the displaz commandline helper instead)",
+        "displaz -gui - Start graphical user interface "
+        "(internal - use this only if you know what you're doing!)",
         "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
         "-socketname %s",      &socketName,        "Local socket name for IPC",
         "-server %s",          &serverName,        "DEBUG: Compute lock file and socket name; do not inherit lock",
