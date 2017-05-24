@@ -32,25 +32,8 @@ std::unique_ptr<IpcChannel> IpcChannel::connectToServer(QString serverName, int 
     while (true)
     {
         socket->connectToServer(serverName);
-#       ifdef _WIN32
-/*
-        while (socket->state() != QLocalSocket::ConnectedState &&
-               (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
-        {
-            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-            milliSleep(1); // Crude, but whatever.  This is a workaround.
-        }
-        if (socket->state() == QLocalSocket::ConnectedState)
-        {
-            return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
-        }
-*/
         if (socket->waitForConnected(currTimeout))
             return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
-#       else
-        if (socket->waitForConnected(currTimeout))
-            return std::unique_ptr<IpcChannel>(new IpcChannel(socket.release()));
-#       endif
         if (timeoutMsecs >= 0)
             currTimeout = timeoutMsecs - timer.elapsed();
         if (socket->error() == QLocalSocket::SocketTimeoutError)
@@ -77,19 +60,20 @@ QByteArray IpcChannel::receiveMessage(int timeoutMsecs)
 {
     disconnect(m_socket, SIGNAL(readyRead()), 0, 0);
 #   ifdef _WIN32
+    // Win32 workaround - see waitForDisconnected()
     QElapsedTimer timer;
     timer.start();
-    while (!appendCurrentMessage() &&
+    while (m_socket->state() != QLocalSocket::UnconnectedState &&
            (timeoutMsecs == -1 || timer.elapsed() < timeoutMsecs))
     {
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-        milliSleep(1); // Crude, but whatever.  This is a workaround.
-    }
-    if (appendCurrentMessage())
-    {
-        QByteArray msg = m_message;
-        clearCurrentMessage();
-        return msg;
+        milliSleep(1);
+        if (appendCurrentMessage())
+        {
+            QByteArray msg = m_message;
+            clearCurrentMessage();
+            return msg;
+        }
     }
 #   else
     while (m_socket->waitForReadyRead(timeoutMsecs))
@@ -104,7 +88,6 @@ QByteArray IpcChannel::receiveMessage(int timeoutMsecs)
 #   endif
     throw DisplazError("Could not read message from socket: %s",
                        m_socket->errorString());
-    connect(m_socket, SIGNAL(readyRead()), this, SLOT(readReadyData()));
 }
 
 void IpcChannel::sendMessage(const QByteArray& message)
