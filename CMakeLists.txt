@@ -196,6 +196,7 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
 set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.rst")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Displaz")
 if (WIN32)
     # Some paths need at at least one backslash to workaround NSIS bug
     set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/package\\\\displaz.ico")
