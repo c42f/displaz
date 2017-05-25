@@ -65,9 +65,7 @@ after_build:
   - cp displaz-*.exe ..\latest\displaz-win64.exe
 
 test_script:
-  # TODO: Figure out why IPC lock test seems to be timing out (or just very
-  # slow?), and re-enable it.
-  - ctest --timeout 10 -C %CONFIGURATION%   -E InterProcessLock_test
+  - ctest --timeout 100 -C %CONFIGURATION%
 
 artifacts:
   - path: displaz-*.exe
