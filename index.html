@@ -20,7 +20,7 @@
   <p class="header">A las viewer for geospatial point clouds</p>
 
   <ul>
-    <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/releases/download/v0.3.2/displaz-0.3.2-win64.exe">Win64 Installer</a></li>
+    <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/releases/download/v0.4.0/displaz-0.4.0-win64.exe">Win64 Installer</a></li>
     <li class="download"><a class="buttons" href="https://github.com/c42f/displaz/tarball/master">Download TAR</a></li>
     <li><a class="buttons github" href="https://github.com/c42f/displaz">View On GitHub</a></li>
   </ul>
@@ -31,25 +31,25 @@
 <!-- ======================================================================= -->
 <h3><a name="overview" class="anchor" href="#overview"><span class="octicon octicon-link"></span></a>Overview</h3>
 
-<p>
-<strong>displaz</strong> is a cross platform viewer for displaying lidar point
-clouds and high level features deduced from such point clouds.  The interface is
-optimised for viewing airborne laser scans of geographic data, but should also
-work for point clouds taken from other sources.
-</p>
+<p><strong>displaz</strong> is a cross platform viewer for displaying lidar point clouds and
+derived artifacts such as fitted meshes.  The interface was originally
+developed for viewing large airborne laser scans, but also works quite well for
+point clouds acquired using terrestrial lidar and other sources such as
+bathymetric sonar.</p>
 
-<p>
-The goal is to provide a fully programmable technical tool for exploring lidar
-point data sets and vector geometry arising from them.  Currently this consists
-of programmable OpenGL shaders which may be customised on the fly &mdash; either
-with user-definable GUI controls or by editing the shader directly.
-</p>
-
-<p>
-Displaz uses incremental rendering to gracefully handle point clouds up to the
-size of a machine's main memory.  As of release 0.2 this is roughly 300 million
-standard lidar points for a machine with 8GB of RAM.
-</p>
+<p>The goal is to provide a flexible and programmable technical tool for exploring
+large lidar point data sets and derived geometry.</p>
+<li><em>Open point clouds up to the size of main memory.</em>  Performance remains
+interactive as the number of points becomes too large to draw in a single
+frame.</li>
+<li><em>Create custom point visualizations.</em>  The OpenGL shader can be
+edited interactively.  In the shader program, you automatically have access
+to any per-point attributes defined in the input file.  Shader parameters are
+connected to user-defined graphical interface controls.</li>
+<li><em>Plot interactively from your favourite programming language.</em>
+Displaz interprocess communication lets you script the interface from the
+command line.  Experimental language bindings are available for C++, python,
+julia and Matlab.</li>
 
 
 <!-- ======================================================================= -->
