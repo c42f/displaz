@@ -91,8 +91,8 @@ Troubleshooting:
   "undefined reference to qt_version_tag", or some other qt library-related
   link error.  For example having the qt version distributed with the python
   package system ``conda`` has been known to cause issues, which can be solved
-  by unloading it from the path before calling the make steps in the script
-  above.
+  by removing it from the ``$PATH`` variable *before* calling cmake in the
+  script above.
 
 
 Windows x64
