@@ -59,16 +59,22 @@ struct TypeSpec
         elsize(elsize),
         count(count),
         semantics(semantics),
-        fixedPoint(fixedPoint)
+        fixedPoint(type == Float ? false : fixedPoint)
     {}
 
     /// Named constructors for common types
     static TypeSpec vec3float32() { return TypeSpec(Float, 4, 3, Vector); }
+    static TypeSpec color() { return TypeSpec(Float, 2, 4, Color); }
     static TypeSpec float32() { return TypeSpec(Float, 4, 1); }
+    static TypeSpec float64() { return TypeSpec(Float, 8, 1); }
+    static TypeSpec colorf32()  { return TypeSpec(Float, 4, 3, Color); }
+
     // Non-scaled integers
     static TypeSpec uint32_i()  { return TypeSpec(Uint, 4, 1, Array, false); }
     static TypeSpec uint16_i()  { return TypeSpec(Uint, 2, 1, Array, false); }
     static TypeSpec uint8_i()   { return TypeSpec(Uint, 1, 1, Array, false); }
+
+    static TypeSpec int32_i()  { return TypeSpec(Int, 4, 1, Array, false); }
     // Scaled fixed point integers
     static TypeSpec uint32()  { return TypeSpec(Uint, 4, 1); }
     static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1); }

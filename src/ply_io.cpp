@@ -270,7 +270,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
         }
         else
         {
-            TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics);
+            TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics, false);
             //tfm::printf("%s: type %s\n", fieldName, type);
             fields.push_back(GeomField(type, fieldName, npoints));
             fieldLoaders.push_back(PlyFieldLoader(fields.back()));
@@ -402,7 +402,7 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
         }
 
         // Create loader callback object
-        TypeSpec type(baseType, elsize, numProps, semantics);
+        TypeSpec type(baseType, elsize, numProps, semantics, false);
         fields.push_back(GeomField(type, fieldName, npoints));
         fieldLoaders.push_back(PlyFieldLoader(fields.back()));
         // Connect callbacks for each property

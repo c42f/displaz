@@ -266,6 +266,15 @@ int PointArray::findField(const std::string& name, const TypeSpec& spec)
     return -1;
 }
 
+// int PointArray::findField(const std::string& name)
+// {
+//     for (size_t i = 0; i < m_fields.size(); ++i)
+//     {
+//         if (m_fields[i].name == name)
+//             return i;
+//     }
+//     return -1;
+// }
 
 bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 {
@@ -388,23 +397,88 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 
 void PointArray::saveFile(QString fileName)
 {
+    for (size_t j = 0; j < m_fields.size(); ++j)
+    {
+        tfm::format(std::cerr, "Name: %s \n", m_fields[j].name);
+        tfm::format(std::cerr, "Type: %s \n", m_fields[j].spec.type);
+        tfm::format(std::cerr, "elsize: %s \n", m_fields[j].spec.elsize);
+        tfm::format(std::cerr, "count: %s \n", m_fields[j].spec.count);
+        tfm::format(std::cerr, "Semantic: %s \n", m_fields[j].spec.semantics);
+        tfm::format(std::cerr, "fixedpoint: %s \n", m_fields[j].spec.fixedPoint);
+    }
+
     int classificationIdx = findField("classification", TypeSpec::uint8_i());
     if (classificationIdx < 0)
     {
         g_logger.error("No classification attribute in file %s", this->fileName());
         return;
     }
+    int numberOfReturnsIdx = findField("numberOfReturns", TypeSpec::uint8_i());
+    if (numberOfReturnsIdx < 0)
+    {
+        g_logger.error("No numberOfReturns attribute in file %s", this->fileName());
+        return;
+    }
+    int returnNumberIdx = findField("returnNumber", TypeSpec::uint8_i());
+    if (returnNumberIdx < 0)
+    {
+        g_logger.error("No returnNumber attribute in file %s", this->fileName());
+        return;
+    }
+    int intensityIdx = findField("intensity", TypeSpec::uint16_i());
+    if (intensityIdx < 0)
+    {
+        g_logger.error("No intensity attribute in file %s", this->fileName());
+        return;
+    }
+    int aglIdx = findField("agl", TypeSpec::float32());
+    if (aglIdx < 0)
+    {
+        g_logger.error("No agl attribute in file %s", this->fileName());
+        return;
+    }
+    int stringIdIdx = findField("stringId", TypeSpec::uint32_i());
+    if (stringIdIdx < 0)
+    {
+        g_logger.error("No stringId attribute in file %s", this->fileName());
+        return;
+    }
+    int pointSourceIdIdx = findField("pointSourceId", TypeSpec::uint16_i());
+    if (stringIdIdx < 0)
+    {
+        g_logger.error("No pointSourceIdIdx attribute in file %s", this->fileName());
+        return;
+    }
+    int colorIdx = findField("color", TypeSpec::colorf32());
+    if (colorIdx == -1)
+    {
+        g_logger.error("No color field found in file %s", this->fileName());
+        return;
+    }
+    V3f* colors;
+    colors = (V3f*)m_fields[colorIdx].as<float>();
 
     uint8_t* classification = m_fields[classificationIdx].as<uint8_t>();
+    float* agl = m_fields[aglIdx].as<float>();
+    uint8_t* numberOfReturns = m_fields[numberOfReturnsIdx].as<uint8_t>();
+    uint8_t* returnNumber = m_fields[returnNumberIdx].as<uint8_t>();
+    uint16_t* intensity = m_fields[intensityIdx].as<uint16_t>();
+    uint32_t* stringId = m_fields[stringIdIdx].as<uint32_t>();
+    uint16_t* pointSourceId = m_fields[pointSourceIdIdx].as<uint16_t>();
 
     // Hack: save classified points as XYZC
     V3d off = offset();
     std::ofstream out(fileName.toStdString());
+
+    // write header
+    tfm::format(out, "posx posy posz classification agl intensity returnNumber numberOfReturns stringId pointSourceId colorx colory colorz\n");
+
     for (size_t i = 0; i < m_npoints; ++i)
     {
-        tfm::format(out, "%.3f %.3f %.3f %d\n",
+        tfm::format(out, "%.3f %.3f %.3f %d %.3f %.3f %d %d %d %d %.3f %.3f %.3f\n",
                     m_P[i].x + off.x, m_P[i].y + off.y, m_P[i].z + off.z,
-                    classification[i]);
+                    classification[i], agl[i], intensity[i], returnNumber[i],
+                    numberOfReturns[i], stringId[i], pointSourceId[i], colors[i].x, colors[i].y, colors[i].z);
     }
     g_logger.info("Saved classified points to file: %s", fileName);
 }

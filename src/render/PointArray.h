@@ -78,6 +78,7 @@ class PointArray : public Geometry
                      size_t& npoints, uint64_t& totalPoints);
 
         int findField(const std::string& name, const TypeSpec& spec);
+        int findField(const std::string& name);
 
         friend struct ProgressFunc;
 
