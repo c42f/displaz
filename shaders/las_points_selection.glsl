@@ -69,7 +69,18 @@ void main()
     float rr = length(position - cursorPos);
     // Compute vertex color
     if (colorMode == 0)
-        pointColor = vec3(classification,0,float(rr<selectionRadius)) + tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+    {
+        // Colour according to some common classifications defined in the LAS spec
+        vec3 classColor = vec3(1.0, 0.0, 1.0);
+        if      (classification == 0) classColor = vec3(0.0, 0.0,  0.0);
+        else if (classification == 1) classColor = vec3(0.36, 0.7,  0.0);
+        else if (classification == 2) classColor = vec3(0.33, 0.18, 0.0);
+        else if (classification == 3) classColor = vec3(1.0,  0.0,  0.0);
+        else if (classification == 4) classColor = vec3(0.0,  1.0,  1.0);
+        pointColor = classColor +
+                     vec3(0,0,float(rr<selectionRadius)) +
+                     tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+    }
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)

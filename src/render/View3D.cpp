@@ -35,7 +35,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_cursorPos(0),
     m_prevCursorSnap(0),
     m_selectionRadius(1),
-    m_selectionClassFrom(0),
+    m_selectionClassFrom(-1),
     m_selectionClassTo(1),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(true),
@@ -335,7 +335,7 @@ void View3D::initializeGL()
     // shaders after it has a valid OpenGL context.
     PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
     if (pv_parent)
-        pv_parent->openShaderFile("shaders:las_points.glsl");
+        pv_parent->openShaderFile("shaders:las_points_selection.glsl");
 
     setFocus();
 }
@@ -650,9 +650,45 @@ void View3D::keyPressEvent(QKeyEvent *event)
     {
         m_camera.setCenter(m_cursorPos);
     }
-    else if(event->key() == Qt::Key_T)
+    else if(event->key() == Qt::Key_0)
     {
-        std::swap(m_selectionClassFrom, m_selectionClassTo);
+        m_selectionClassTo = 0;
+    }
+    else if(event->key() == Qt::Key_1)
+    {
+        m_selectionClassTo = 1;
+    }
+    else if(event->key() == Qt::Key_2)
+    {
+        m_selectionClassTo = 2;
+    }
+    else if(event->key() == Qt::Key_3)
+    {
+        m_selectionClassTo = 3;
+    }
+    else if(event->key() == Qt::Key_4)
+    {
+        m_selectionClassTo = 4;
+    }
+    else if(event->key() == Qt::Key_5)
+    {
+        m_selectionClassTo = 5;
+    }
+    else if(event->key() == Qt::Key_6)
+    {
+        m_selectionClassTo = 6;
+    }
+    else if(event->key() == Qt::Key_7)
+    {
+        m_selectionClassTo = 7;
+    }
+    else if(event->key() == Qt::Key_8)
+    {
+        m_selectionClassTo = 8;
+    }
+    else if(event->key() == Qt::Key_9)
+    {
+        m_selectionClassTo = 9;
     }
     else if(event->key() == Qt::Key_S && (event->modifiers() & Qt::ControlModifier))
     {

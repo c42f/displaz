@@ -697,10 +697,12 @@ void PointArray::selectVerticesInSphere(const V3d& centre, double radius,
         }
         for (size_t i = node->beginIndex; i < node->endIndex; ++i)
         {
-            if ((m_P[i] - relCenter).length2() < radius2)
+            if (class1 < 0 || classification[i] == class1)
             {
-                if (classification[i] == class1)
+                if ((m_P[i] - relCenter).length2() < radius2)
+                {
                     classification[i] = class2;
+                }
             }
         }
     }
