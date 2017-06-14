@@ -16,6 +16,14 @@ env:
         - DISPLAZ_BUILD_TYPE=Release
         - DISPLAZ_BUILD_TYPE=Debug
 
+matrix:
+    exclude:
+        # Only check gcc on linux and clang on OS X
+        - os: linux
+          compiler: clang
+        - os: osx
+          compiler: gcc
+
 # either whitelist or blacklist branches
 branches:
     only:
@@ -63,10 +71,8 @@ script:
     - if [ "$TRAVIS_OS_NAME" != "osx" ] ; then ctest -VV ; fi
     - cd ..
 
-matrix:
-    exclude:
-        # Only check gcc on linux and clang on OS X
-        - os: linux
-          compiler: clang
-        - os: osx
-          compiler: gcc
+after_success:
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -G DEB -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -G RPM -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cpack -G DragNDrop -C ${DISPLAZ_BUILD_TYPE}; fi
+
