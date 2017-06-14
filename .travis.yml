@@ -72,7 +72,8 @@ script:
     - cd ..
 
 after_success:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -G DEB -C ${DISPLAZ_BUILD_TYPE}; fi
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -G RPM -C ${DISPLAZ_BUILD_TYPE}; fi
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cpack -G DragNDrop -C ${DISPLAZ_BUILD_TYPE}; fi
+    - cpack --help
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G DEB -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G RPM -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cpack -V -G DragNDrop -C ${DISPLAZ_BUILD_TYPE}; fi
 
