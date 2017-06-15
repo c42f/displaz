@@ -69,10 +69,7 @@ script:
     # Needs investigation by someone with an OSX machine.
     - if [ "$TRAVIS_OS_NAME" == "osx" ] ; then ctest -VV -E InterProcessLock_test ; fi
     - if [ "$TRAVIS_OS_NAME" != "osx" ] ; then ctest -VV ; fi
-    - cd ..
-
-after_success:
-    - cd build
+    # Packaging
     - cpack --help
     - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G DEB -C ${DISPLAZ_BUILD_TYPE}; fi
     - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G RPM -C ${DISPLAZ_BUILD_TYPE}; fi
