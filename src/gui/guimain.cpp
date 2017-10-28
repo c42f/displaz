@@ -24,7 +24,7 @@ class GeometryMutator;
 /// as a path to a shader/documentation in the rest of the code, regardless
 /// of the system-specific details of how
 /// the install directories are laid out.
-static void addSearchPath(const QString &prefix, QString& searchPath)
+static void addSearchPath(const QString &prefix, QString& searchPath, const QString& defaultPath)
 {
     if (searchPath.isEmpty())
     {
@@ -38,7 +38,7 @@ static void addSearchPath(const QString &prefix, QString& searchPath)
         }
         QString installBaseDir = installBinDir;
         installBaseDir.chop(4);
-        searchPath = QDir(installBaseDir).absoluteFilePath(DISPLAZ_SHADER_DIR);
+        searchPath = QDir(installBaseDir).absoluteFilePath(defaultPath);
     }
     else
     {
