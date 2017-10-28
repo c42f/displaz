@@ -214,6 +214,10 @@ int main(int argc, char *argv[])
              << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
              << "-socketname"   << QString::fromStdString(socketName);
+        if(!shadersDir.empty())
+        {
+            args << "-shadersDir" << QString::fromStdString(shadersDir);
+        }
         if (!QProcess::startDetached(exeName, args,
                                      QDir::currentPath(), &guiPid))
         {
