@@ -23,6 +23,33 @@ class GeometryMutator;
 /// This allows us to use "shaders:las_points.glsl" as a path to a shader
 /// in the rest of the code, regardless of the system-specific details of how
 /// the install directories are laid out.
+static void addSearchPath(const QString &prefix, QString& searchPath)
+{
+    if (searchPath.isEmpty())
+    {
+        QString installBinDir = QCoreApplication::applicationDirPath();
+        if (!installBinDir.endsWith("/bin"))
+        {
+            std::cerr << "WARNING: strange install location detected - "
+                      << prefix.toStdString()
+                      << " will not be found\n";
+            return;
+        }
+        QString installBaseDir = installBinDir;
+        installBaseDir.chop(4);
+        searchPath = QDir(installBaseDir).absoluteFilePath(DISPLAZ_SHADER_DIR);
+    }
+    else
+    {
+        searchPath = QDir::fromNativeSeparators(searchPath);
+        if (QDir(searchPath).isRelative())
+        {
+            QDir sDir(QCoreApplication::applicationDirPath());
+            searchPath = sDir.absoluteFilePath(searchPath);
+        }
+    }
+    QDir::addSearchPath(prefix, searchPath);
+}
 static void setupQFileSearchPaths()
 {
     QString installBinDir = QCoreApplication::applicationDirPath();
