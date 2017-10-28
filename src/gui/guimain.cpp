@@ -24,11 +24,12 @@ class GeometryMutator;
 /// as a path to a shader/documentation in the rest of the code, regardless
 /// of the system-specific details of how
 /// the install directories are laid out.
-static void addSearchPath(const QString &prefix, QString& searchPath, const QString& defaultPath)
+static void addSearchPath(const QString &prefix, const QString& searchPath, const QString& defaultPath)
 {
+    QString localSearchPath(searchPath);
     // If path argument is not provided via command line then
     // old behaviour - use DISPLAZ_SHADER_DIR or DISPLAZ_DOC_DIR
-    if (searchPath.isEmpty())
+    if (localSearchPath.isEmpty())
     {
         QString installBinDir = QCoreApplication::applicationDirPath();
 
@@ -42,30 +43,30 @@ static void addSearchPath(const QString &prefix, QString& searchPath, const QStr
         }
         QString installBaseDir = installBinDir;
         installBaseDir.chop(4);
-        searchPath = QDir(installBaseDir).absoluteFilePath(defaultPath);
+        localSearchPath = QDir(installBaseDir).absoluteFilePath(defaultPath);
     }
     else // if path is provided via command line then
     {
-        searchPath = QDir::fromNativeSeparators(searchPath);
+        localSearchPath = QDir::fromNativeSeparators(localSearchPath);
         // If path is relative, then it will be relative of application exe file,
         // not its base path as in the old behaviour
-        if (QDir(searchPath).isRelative())
+        if (QDir(localSearchPath).isRelative())
         {
             QDir sDir(QCoreApplication::applicationDirPath());
-            searchPath = sDir.absoluteFilePath(searchPath);
+            localSearchPath = sDir.absoluteFilePath(localSearchPath);
         }
         //If path is absolute then it will be used without changes
     }
-    if (!QDir(searchPath).exists())
+    if (!QDir(localSearchPath).exists())
     {
         std::cerr << "WARNING: Path \""
-                  << searchPath.toStdString()
+                  << localSearchPath.toStdString()
                   << "\" does not exist - "
                   << prefix.toStdString()
                   << " will not be found\n";
         return;
     }
-    QDir::addSearchPath(prefix, searchPath);
+    QDir::addSearchPath(prefix, localSearchPath);
 }
 
 
@@ -104,7 +105,6 @@ int guimain(int argc, char* argv[])
     // Qt5: no longer required
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 #endif
-
     addSearchPath("shaders", QString::fromStdString(shadersDir), DISPLAZ_SHADER_DIR);
     addSearchPath("doc", QString::fromStdString(docsDir), DISPLAZ_DOC_DIR);
 
