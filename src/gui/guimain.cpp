@@ -109,6 +109,8 @@ int guimain(int argc, char* argv[])
 #endif
 
     setupQFileSearchPaths();
+    addSearchPath("shaders", QString::fromStdString(shadersDir), DISPLAZ_SHADER_DIR);
+    addSearchPath("doc", QString::fromStdString(docsDir), DISPLAZ_DOC_DIR);
 
     Q_INIT_RESOURCE(resource);
 
