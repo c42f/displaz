@@ -26,9 +26,13 @@ class GeometryMutator;
 /// the install directories are laid out.
 static void addSearchPath(const QString &prefix, QString& searchPath, const QString& defaultPath)
 {
+    // If path argument is not provided via command line then
+    // old behaviour - use DISPLAZ_SHADER_DIR or DISPLAZ_DOC_DIR
     if (searchPath.isEmpty())
     {
         QString installBinDir = QCoreApplication::applicationDirPath();
+
+        // It will fail everytime when the program is started via VC++ Ide
         if (!installBinDir.endsWith("/bin"))
         {
             std::cerr << "WARNING: strange install location detected - "
@@ -40,14 +44,17 @@ static void addSearchPath(const QString &prefix, QString& searchPath, const QStr
         installBaseDir.chop(4);
         searchPath = QDir(installBaseDir).absoluteFilePath(defaultPath);
     }
-    else
+    else // if path is provided via command line then
     {
         searchPath = QDir::fromNativeSeparators(searchPath);
+        // If path is relative, then it will be relative of application exe file,
+        // not its base path as in the old behaviour
         if (QDir(searchPath).isRelative())
         {
             QDir sDir(QCoreApplication::applicationDirPath());
             searchPath = sDir.absoluteFilePath(searchPath);
         }
+        //If path is absolute then it will be used without changes
     }
     QDir::addSearchPath(prefix, searchPath);
 }
