@@ -56,6 +56,15 @@ static void addSearchPath(const QString &prefix, QString& searchPath, const QStr
         }
         //If path is absolute then it will be used without changes
     }
+    if (!QDir(searchPath).exists())
+    {
+        std::cerr << "WARNING: Path \""
+                  << searchPath.toStdString()
+                  << "\" does not exist - "
+                  << prefix.toStdString()
+                  << " will not be found\n";
+        return;
+    }
     QDir::addSearchPath(prefix, searchPath);
 }
 
