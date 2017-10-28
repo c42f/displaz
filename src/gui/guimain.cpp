@@ -46,6 +46,8 @@ int guimain(int argc, char* argv[])
     std::string lockId;
     std::string socketName;
     std::string serverName;
+    std::string shadersDir;
+    std::string docsDir;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -54,6 +56,8 @@ int guimain(int argc, char* argv[])
         "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
         "-socketname %s",      &socketName,        "Local socket name for IPC",
         "-server %s",          &serverName,        "DEBUG: Compute lock file and socket name; do not inherit lock",
+        "-shadersDir %s",       &shadersDir,         "Path to the shaders folder",
+        "-docsDir %s",          &docsDir,            "Path to the docs folder",
         NULL
     );
 
