@@ -58,20 +58,8 @@ static void addSearchPath(const QString &prefix, QString& searchPath, const QStr
     }
     QDir::addSearchPath(prefix, searchPath);
 }
-static void setupQFileSearchPaths()
-{
-    QString installBinDir = QCoreApplication::applicationDirPath();
-    if (!installBinDir.endsWith("/bin"))
-    {
-        std::cerr << "WARNING: strange install location detected "
-                     "- shaders will not be found\n";
-        return;
-    }
-    QString installBaseDir = installBinDir;
-    installBaseDir.chop(4);
-    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
-    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
-}
+
+
 
 
 /// Run the main GUI window
@@ -108,7 +96,6 @@ int guimain(int argc, char* argv[])
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 #endif
 
-    setupQFileSearchPaths();
     addSearchPath("shaders", QString::fromStdString(shadersDir), DISPLAZ_SHADER_DIR);
     addSearchPath("doc", QString::fromStdString(docsDir), DISPLAZ_DOC_DIR);
 
