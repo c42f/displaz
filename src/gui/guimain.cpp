@@ -20,8 +20,9 @@ class GeometryMutator;
 /// Set up search paths to our application directory for Qt's file search
 /// mechanism.
 ///
-/// This allows us to use "shaders:las_points.glsl" as a path to a shader
-/// in the rest of the code, regardless of the system-specific details of how
+/// This allows us to use "shaders:las_points.glsl" or "doc:userguide.html"
+/// as a path to a shader/documentation in the rest of the code, regardless
+/// of the system-specific details of how
 /// the install directories are laid out.
 static void addSearchPath(const QString &prefix, QString& searchPath)
 {
