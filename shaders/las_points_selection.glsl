@@ -77,6 +77,8 @@ void main()
         else if (classification == 2) classColor = vec3(0.33, 0.18, 0.0);
         else if (classification == 3) classColor = vec3(1.0,  0.0,  0.0);
         else if (classification == 4) classColor = vec3(0.0,  1.0,  1.0);
+        else if (classification == 5) classColor = vec3(0.295, 0.0, 0.5);
+        else if (classification == 6) classColor = vec3(1.0, 0.63, 0.5);
         pointColor = classColor +
                      vec3(0,0,float(rr<selectionRadius)) +
                      tonemap(intensity/400.0, exposure, contrast) * vec3(1);
@@ -227,4 +229,3 @@ void main()
 }
 
 #endif
-

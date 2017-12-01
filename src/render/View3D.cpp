@@ -38,7 +38,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_selectionClassFrom(-1),
     m_selectionClassTo(1),
     m_backgroundColor(60, 50, 50),
-    m_drawBoundingBoxes(true),
+    m_drawBoundingBoxes(false),
     m_drawCursor(true),
     m_drawAxes(true),
     m_drawGrid(false),
@@ -645,50 +645,58 @@ void View3D::wheelEvent(QWheelEvent* event)
 
 void View3D::keyPressEvent(QKeyEvent *event)
 {
+    #include <string>
     // Centre camera on current cursor location
     if(event->key() == Qt::Key_C)
     {
         m_camera.setCenter(m_cursorPos);
     }
-    else if(event->key() == Qt::Key_0)
+    else if(!(event->modifiers()& Qt::AltModifier))
     {
-        m_selectionClassTo = 0;
-    }
-    else if(event->key() == Qt::Key_1)
-    {
-        m_selectionClassTo = 1;
-    }
-    else if(event->key() == Qt::Key_2)
-    {
-        m_selectionClassTo = 2;
-    }
-    else if(event->key() == Qt::Key_3)
-    {
-        m_selectionClassTo = 3;
-    }
-    else if(event->key() == Qt::Key_4)
-    {
-        m_selectionClassTo = 4;
-    }
-    else if(event->key() == Qt::Key_5)
-    {
-        m_selectionClassTo = 5;
-    }
-    else if(event->key() == Qt::Key_6)
-    {
-        m_selectionClassTo = 6;
-    }
-    else if(event->key() == Qt::Key_7)
-    {
-        m_selectionClassTo = 7;
-    }
-    else if(event->key() == Qt::Key_8)
-    {
-        m_selectionClassTo = 8;
-    }
-    else if(event->key() == Qt::Key_9)
-    {
-        m_selectionClassTo = 9;
+      if(event->key() == Qt::Key_0)
+      {
+          m_selectionClassTo = 0;
+      }
+      else if(event->key() == Qt::Key_1)
+      {
+          m_selectionClassTo = 1;
+      }
+      else if(event->key() == Qt::Key_2)
+      {
+          m_selectionClassTo = 2;
+      }
+      else if(event->key() == Qt::Key_3)
+      {
+          m_selectionClassTo = 3;
+      }
+      else if(event->key() == Qt::Key_4)
+      {
+          m_selectionClassTo = 4;
+      }
+      else if(event->key() == Qt::Key_5)
+      {
+          m_selectionClassTo = 5;
+      }
+      else if(event->key() == Qt::Key_6)
+      {
+          m_selectionClassTo = 6;
+      }
+      else if(event->key() == Qt::Key_7)
+      {
+          m_selectionClassTo = 7;
+      }
+      else if(event->key() == Qt::Key_8)
+      {
+          m_selectionClassTo = 8;
+      }
+      else if(event->key() == Qt::Key_9)
+      {
+          m_selectionClassTo = 9;
+      }
+      else if(event->modifiers() == 0)
+      {
+        event->ignore();
+      }
     }
     else if(event->key() == Qt::Key_S && (event->modifiers() & Qt::ControlModifier))
     {
@@ -698,6 +706,56 @@ void View3D::keyPressEvent(QKeyEvent *event)
         {
             QString fileName = QString("classified_points_%1.txt").arg(i);
             m_geometries->get()[sel[i].row()]->saveFile(fileName);
+        }
+    }
+    else if(event->modifiers() & Qt::AltModifier){
+        if(event->key() == Qt::Key_0)
+        {
+            m_selectionClassFrom = 0;
+        }
+        else if(event->key() == Qt::Key_1)
+        {
+            m_selectionClassFrom = 1;
+        }
+        else if(event->key() == Qt::Key_2)
+        {
+            m_selectionClassFrom = 2;
+        }
+        else if(event->key() == Qt::Key_3)
+        {
+            m_selectionClassFrom = 3;
+        }
+        else if(event->key() == Qt::Key_4)
+        {
+            m_selectionClassFrom = 4;
+        }
+        else if(event->key() == Qt::Key_5)
+        {
+            m_selectionClassFrom = 5;
+        }
+        else if(event->key() == Qt::Key_6)
+        {
+            m_selectionClassFrom = 6;
+        }
+        else if(event->key() == Qt::Key_7)
+        {
+            m_selectionClassFrom = 7;
+        }
+        else if(event->key() == Qt::Key_8)
+        {
+            m_selectionClassFrom = 8;
+        }
+        else if(event->key() == Qt::Key_9)
+        {
+            m_selectionClassFrom = 9;
+        }
+        else if(event->key() == Qt::Key_R)
+        {
+            m_selectionClassFrom = 1;
+        }
+        else
+        {
+            event->ignore();
         }
     }
     else
