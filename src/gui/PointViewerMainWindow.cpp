@@ -154,7 +154,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     viewMenu->addSeparator();
     QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw Bounding bo&xes"));
     drawBoundingBoxes->setCheckable(true);
-    drawBoundingBoxes->setChecked(true);
+    drawBoundingBoxes->setChecked(false);
     QAction* drawCursor = viewMenu->addAction(tr("Draw 3D &Cursor"));
     drawCursor->setCheckable(true);
     drawCursor->setChecked(true);

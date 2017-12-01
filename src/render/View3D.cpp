@@ -38,7 +38,7 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_selectionClassFrom(-1),
     m_selectionClassTo(1),
     m_backgroundColor(60, 50, 50),
-    m_drawBoundingBoxes(true),
+    m_drawBoundingBoxes(false),
     m_drawCursor(true),
     m_drawAxes(true),
     m_drawGrid(false),

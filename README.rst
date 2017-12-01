@@ -171,22 +171,6 @@ Both the LASlib and IlmBase libraries may be built using the separate third
 party build system in ``thirdparty/external/CMakeLists.txt``.
 
 
-Build options
-~~~~~~~~~~~~~
-To read the .las and .laz file formats, you'll need one of the following:
-
-* LASlib >= something-recent (known to work with 150406).  This is the default
-  because it's reasonably fast and has no additional library dependencies.
-* PDAL >= something-recent (known to work with 0.1.0-3668-gff73c08).  You may
-  select PDAL by setting the build option ``DISPLAZ_USE_PDAL=TRUE``.  Note that
-  building PDAL also requires several libraries including boost, laszip and
-  GDAL.
-
-If you only want to read ply files (for example, to use the scripting language
-bindings), and don't care about las you may set the build option
-``DISPLAZ_USE_LAS=FALSE``.
-
-
 Supported Systems
 -----------------
 
