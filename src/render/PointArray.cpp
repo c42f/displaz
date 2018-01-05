@@ -266,18 +266,18 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     uint64_t totalPoints = 0;
     V3d offset(0);
     emit loadStepStarted("Reading file");
-    if (fileName.endsWith(".las") || fileName.endsWith(".laz"))
+    if (fileName.toLower().endsWith(".las") || fileName.toLower().endsWith(".laz"))
     {
         if (!loadLas(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
     }
-    else if (fileName.endsWith(".ply"))
+    else if (fileName.toLower().endsWith(".ply"))
     {
         if (!loadPly(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
             return false;
     }
 #if 0
-    else if (fileName.endsWith(".dat"))
+    else if (fileName.toLower().endsWith(".dat"))
     {
         // Load crappy db format for debugging
         std::ifstream file(fileName.toUtf8(), std::ios::binary);

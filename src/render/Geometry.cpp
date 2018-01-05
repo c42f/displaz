@@ -56,9 +56,9 @@ Geometry::~Geometry()
 
 std::shared_ptr<Geometry> Geometry::create(QString fileName)
 {
-    if (fileName.endsWith(".ply") && plyHasMesh(fileName))
+    if (fileName.toLower().endsWith(".ply") && plyHasMesh(fileName))
         return std::shared_ptr<Geometry>(new TriMesh());
-    else if(fileName.endsWith(".hcloud"))
+    else if(fileName.toLower().endsWith(".hcloud"))
         return std::shared_ptr<Geometry>(new HCloudView());
     else
         return std::shared_ptr<Geometry>(new PointArray());
