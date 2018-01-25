@@ -99,20 +99,20 @@ int main(int argc, char* argv[])
         std::string outputPath = g_positionalArgs.back();
         std::vector<std::string> inputPaths(g_positionalArgs.begin(),
                                             g_positionalArgs.end()-1);
-        if (endswith(outputPath, ".pointdb"))
+        if (endswith(outputPath.toLower(), ".pointdb"))
         {
             convertLasToPointDb(outputPath, inputPaths,
                                 Imath::Box3d(), dbTileSize, logger);
         }
         else
         {
-            if (!endswith(g_positionalArgs[0], ".pointdb") ||
+            if (!endswith(g_positionalArgs[0].toLower(), ".pointdb") ||
                 inputPaths.size() != 1)
             {
                 logger.error("Need exactly one input .pointdb file");
                 return EXIT_FAILURE;
             }
-            if (!endswith(outputPath, ".hcloud"))
+            if (!endswith(outputPath.toLower(), ".hcloud"))
             {
                 logger.error("Expected .hcloud file as output path");
                 return EXIT_FAILURE;

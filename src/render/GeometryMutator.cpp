@@ -20,7 +20,7 @@ GeometryMutator::~GeometryMutator()
 bool GeometryMutator::loadFile(const QString& fileName)
 {
     // Check it is ply
-    if (!fileName.endsWith(".ply"))
+    if (!fileName.toLower().endsWith(".ply"))
     {
         g_logger.error("Expected ply for file %s", fileName);
         return false;
