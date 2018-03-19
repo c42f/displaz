@@ -267,6 +267,8 @@ double View3D::getDevicePixelRatio()
 {
 #ifdef DISPLAZ_USE_QT4
     return 1.0;
+#elif QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+    return devicePixelRatioF();
 #else
     return devicePixelRatio();
 #endif
