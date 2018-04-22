@@ -264,7 +264,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
 #       endif
         *pointSourceId++ = point.point_source_ID;
 
-        if (point.extended_classification) {
+        if (point.extended_point_type) {
             *classification++ = point.extended_classification;
         } else {
             // Put flags back in classification byte to avoid memory bloat
