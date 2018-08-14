@@ -61,7 +61,17 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 #endif
 
+class File
+{
+public:
+    File(FILE *f = NULL) : m_f(f) {}
+    ~File()                       { if (m_f) fclose(m_f); m_f = NULL; }
+    File & operator=(FILE *f)     { if (m_f) fclose(m_f); m_f = f; return *this; }
+    operator FILE * ()            { return m_f; }
 
+private:
+    FILE *m_f;
+};
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
@@ -180,7 +190,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         emit loadProgress(100*readCount/totalPoints);
     }
 #else
-    FILE* file = 0;
+    File file;
     std::unique_ptr<LASreaderLAS> lasReader(new LASreaderLAS());
 #ifdef _WIN32
     file = _wfopen(fileName.toStdWString().data(), L"rb");
