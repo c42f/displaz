@@ -5,6 +5,7 @@
 #define UTIL_H_INCLUDED
 
 #include <cmath>
+#include <cstdio>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -192,6 +193,21 @@ struct TilePosLess
             return p1.y < p2.y;
         return p1.z < p2.z;
     }
+};
+
+
+//------------------------------------------------------------------------------
+// Resource Acquisition Is Initialization (RAII) utility for FILE pointer
+class File
+{
+public:
+    inline File(FILE* f = NULL) : file(f) {}
+    inline ~File()                        { if (file) fclose(file); file = NULL; }
+    inline File & operator=(FILE* f)      { if (file) fclose(file); file = f; return *this; }
+    inline operator FILE* ()              { return file; }
+
+private:
+    FILE* file;
 };
 
 

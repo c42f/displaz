@@ -1,6 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+#include "util.h"
 #include "QtLogger.h"
 #include "PointArray.h"
 
@@ -61,17 +62,7 @@ class MonkeyChops { MonkeyChops() { (void)LAS_TOOLS_FORMAT_NAMES; } };
 
 #endif
 
-class File
-{
-public:
-    File(FILE *f = NULL) : m_f(f) {}
-    ~File()                       { if (m_f) fclose(m_f); m_f = NULL; }
-    File & operator=(FILE *f)     { if (m_f) fclose(m_f); m_f = f; return *this; }
-    operator FILE * ()            { return m_f; }
 
-private:
-    FILE *m_f;
-};
 
 bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                          std::vector<GeomField>& fields, V3d& offset,
