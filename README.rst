@@ -55,8 +55,8 @@ dependencies for several distributions::
     # Older ubuntu (qt4 based - add cmake flag -DDISPLAZ_USE_QT4=TRUE)
     sudo apt-get install git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils
 
-    # Fedora 23
-    sudo yum install git gcc-c++ make patch cmake qt5-qtbase-devel python-docutils
+    # Fedora 28
+    sudo yum install git gcc-c++ make patch cmake qt5-qtbase-devel mesa-libGLU-devel python-docutils
 
     # OpenSuse
     sudo zypper install git gcc-c++ libqt5-qtbase-devel glu-devel python-docutils
