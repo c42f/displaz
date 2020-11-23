@@ -10,6 +10,7 @@
 #include <QColor>
 #include <QImage>
 #include <QPainter>
+#include <QPainterPath>
 
 /// Creates and returns a texture containing some text.
 static std::unique_ptr<Texture> makeTextureFromText(const QString& text)
