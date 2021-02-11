@@ -23,8 +23,8 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-register"
 #endif
 
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathMatrix.h>
+#include <Imath/ImathVec.h>
+#include <Imath/ImathMatrix.h>
 
 #ifdef __clang__
 #pragma GCC diagnostic pop

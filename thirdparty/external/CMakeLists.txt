@@ -23,9 +23,9 @@ set(CMAKE_INSTALL_PREFIX ${THIRDPARTY_INSTALL_PREFIX})
 include(ExternalProject)
 
 ExternalProject_Add(
-    ilmbase
-    URL http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.2.0.tar.gz
-    URL_MD5 b540db502c5fa42078249f43d18a4652
+    Imath
+    URL https://github.com/AcademySoftwareFoundation/Imath/archive/03b50286eb2114120a119f7f1c1f50aa4a4073f4.zip
+    URL_MD5 c788ba06d4c11609ad3431578919567b
     CMAKE_ARGS
         -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
         -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}

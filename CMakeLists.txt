@@ -62,7 +62,7 @@ else()
     message(STATUS "DISPLAZ_EXTERNAL_DIR (= \"${DISPLAZ_EXTERNAL_DIR}\") does not exist.  If you would like LASlib and ilmbase to be built for you, please run the cmake build system in thirdparty/external (see build instructions for details)")
 endif()
 
-find_package(Ilmbase 1.0.1 REQUIRED)
+find_package(Imath 1.0.1 REQUIRED)
 
 if (DISPLAZ_USE_LAS)
     add_definitions(-DDISPLAZ_USE_LAS)
@@ -111,7 +111,7 @@ else ()
 endif()
 
 
-include_directories(${ILMBASE_INCLUDE_DIRS})
+include_directories(${IMATH_INCLUDE_DIRS})
 
 
 #------------------------------------------------------------------------------

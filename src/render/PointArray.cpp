@@ -15,6 +15,8 @@
 #include <fstream>
 #include <queue>
 
+#include <cfloat>
+
 #include "ply_io.h"
 
 #include "ClipBox.h"
