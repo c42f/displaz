@@ -11,8 +11,8 @@ uniform mat4 modelViewProjectionMatrix;
 
 uniform float radiusMultiplier = 1;//# uiname=Radius Multiplier; min=0.00001; max=100
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
-uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
-uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
+uniform float exposure = 1.0;      //# uiname=Exposure; min=0.001; max=10000
+uniform float contrast = 1.0;      //# uiname=Contrast; min=0.001; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Colour|Intensity
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;

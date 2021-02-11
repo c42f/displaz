@@ -11,8 +11,8 @@ uniform mat4 modelViewProjectionMatrix;
 
 uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
 uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
-uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
-uniform float contrast = 1.0;      //# uiname=Contrast; min=0.01; max=10000
+uniform float exposure = 1.0;      //# uiname=Exposure; min=0.001; max=10000
+uniform float contrast = 1.0;      //# uiname=Contrast; min=0.001; max=10000
 uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Coverage|Number Of Returns|Moreton Index|Las Classification|Classified|File Number|Height Above Ground
 uniform int selectedTreeLevel = 0;         //# uiname=Tree Level
 uniform float minPointSize = 0;
