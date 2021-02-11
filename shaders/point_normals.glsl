@@ -55,7 +55,7 @@ void main()
 //------------------------------------------------------------------------------
 #elif defined(FRAGMENT_SHADER)
 
-uniform float markerWidth = 0.3;  // # uiname=Marker Width; min=0.01; max=1
+uniform float markerWidth = 0.3;  // # uiname=Marker Width; min=0.001; max=1
 
 flat in float pointScreenSize;
 flat in vec3 pointColor;

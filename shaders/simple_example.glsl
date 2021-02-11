@@ -11,7 +11,7 @@ uniform mat4 modelViewProjectionMatrix;
 
 // Shader parameters which may be set via the user interface
 uniform float pointRadius = 0.1;   //# uiname=Point Radius (m); min=0.001; max=10
-uniform float exposure = 1.0;      //# uiname=Exposure; min=0.01; max=10000
+uniform float exposure = 1.0;      //# uiname=Exposure; min=0.001; max=10000
 
 // Point size multiplier to get from a width in projected coordinates to the
 // number of pixels across as required for gl_PointSize
