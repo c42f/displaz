@@ -9,12 +9,13 @@ uniform mat4 modelViewProjectionMatrix;
 //------------------------------------------------------------------------------
 #if defined(VERTEX_SHADER)
 
-uniform float pointRadius = 0.1;   //# uiname=Point Radius; min=0.001; max=10
-uniform float trimRadius = 1000000;//# uiname=Trim Radius; min=1; max=1000000
-uniform float exposure = 1.0;      //# uiname=Exposure; min=0.001; max=10000
-uniform float contrast = 1.0;      //# uiname=Contrast; min=0.001; max=10000
-uniform int colorMode = 0;         //# uiname=Colour Mode; enum=Intensity|Colour|Return Index|Point Source|Las Classification|File Number
-uniform int selectionMode = 0;     //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
+uniform float pointRadius = 0.1;    //# uiname=Point Radius; min=0.001; max=10
+uniform float trimRadius = 1000000; //# uiname=Trim Radius; min=1; max=1000000
+uniform float reference = 400.0;    //# uiname=Reference Intensity; min=0.001; max=100000
+uniform float exposure = 1.0;       //# uiname=Exposure; min=0.001; max=10000
+uniform float contrast = 1.0;       //# uiname=Contrast; min=0.001; max=10000
+uniform int colorMode = 0;          //# uiname=Colour Mode; enum=Intensity|Colour|Return Index|Point Source|Las Classification|File Number
+uniform int selectionMode = 0;      //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
 // Point size multiplier to get from a width in projected coordinates to the
@@ -36,9 +37,9 @@ flat out float pointScreenSize;
 flat out vec3 pointColor;
 flat out int markerShape;
 
-float tonemap(float x, float exposure, float contrast)
+float tonemap(float x, float reference, float contrast)
 {
-    float Y = pow(exposure*x, contrast);
+    float Y = pow(x/reference, contrast);
     Y = Y / (1.0 + Y);
     return Y;
 }
@@ -67,7 +68,7 @@ void main()
     markerShape = 1;
     // Compute vertex color
     if (colorMode == 0)
-        pointColor = tonemap(intensity/400.0, exposure, contrast) * vec3(1);
+        pointColor = tonemap(intensity, reference, contrast) * vec3(1);
     else if (colorMode == 1)
         pointColor = contrast*(exposure*color - vec3(0.5)) + vec3(0.5);
     else if (colorMode == 2)
