@@ -7,7 +7,7 @@
 #   - LASLIB_VERSION: the version string for LASlib
 
 find_path (LASLIB_INCLUDE_DIRS NAMES lasdefinitions.hpp)
-find_library (LASLIB_LIBRARY NAMES laslib)
+find_library (LASLIB_LIBRARY NAMES LASlib)
 
 set (LASLIB_LIBRARIES ${LASLIB_LIBRARY})
 
