@@ -24,8 +24,8 @@ include(ExternalProject)
 
 ExternalProject_Add(
     Imath
-    URL https://github.com/AcademySoftwareFoundation/Imath/archive/03b50286eb2114120a119f7f1c1f50aa4a4073f4.zip
-    URL_MD5 c788ba06d4c11609ad3431578919567b
+    URL https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.0.1.tar.gz
+    URL_MD5 29d4f51913eba76b55552218a17473a6
     CMAKE_ARGS
         -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
         -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
