@@ -44,7 +44,7 @@ BOOL LASreaderQFIT::open(const char* file_name)
 {
   if (file_name == 0)
   {
-    fprintf(stderr,"ERROR: fine name pointer is zero\n");
+    fprintf(stderr,"ERROR: file name pointer is zero\n");
     return FALSE;
   }
 
@@ -352,7 +352,10 @@ BOOL LASreaderQFIT::read_point_default()
     point.set_attribute(scan_azimuth_start, (I32)buffer[6]);
     point.set_attribute(pitch_start, (I32)buffer[7]);
     point.set_attribute(roll_start, (I32)buffer[8]);
-    point.set_attribute(pulse_width_start, (U8)buffer[10]);
+    if (version == 48)
+    {
+      point.set_attribute(pulse_width_start, (U8)buffer[10]);
+    }
 
     if (!populated_header)
     {
@@ -399,7 +402,7 @@ BOOL LASreaderQFIT::reopen(const char* file_name)
 {
   if (file_name == 0)
   {
-    fprintf(stderr,"ERROR: fine name pointer is zero\n");
+    fprintf(stderr,"ERROR: file name pointer is zero\n");
     return FALSE;
   }
 

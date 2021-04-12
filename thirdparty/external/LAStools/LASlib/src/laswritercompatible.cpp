@@ -57,6 +57,10 @@ BOOL LASwriterCompatibleDown::open(LASheader* header, LASwriteOpener* laswriteop
   {
     return FALSE;
   }
+  if (header->extended_number_of_point_records > U32_MAX) // only less than 2^32-1 points are supported
+  {
+    return FALSE;
+  }
   this->header = header;
 
   // downgrade it to LAS 1.2 or LAS 1.3
@@ -90,8 +94,8 @@ BOOL LASwriterCompatibleDown::open(LASheader* header, LASwriteOpener* laswriteop
   else
     out = new ByteStreamOutArrayBE();
   // write control info
-  U16 lastools_version = (U16)LAS_TOOLS_VERSION;
-  out->put16bitsLE((U8*)&lastools_version);
+  U16 laszip_version = (U16)LASZIP_VERSION_BUILD_DATE;
+  out->put16bitsLE((U8*)&laszip_version);
   U16 compatible_version = 3;
   out->put16bitsLE((U8*)&compatible_version);
   U32 unused = 0;
@@ -128,17 +132,36 @@ BOOL LASwriterCompatibleDown::open(LASheader* header, LASwriteOpener* laswriteop
   out->put32bitsLE((U8*)&number_of_extended_variable_length_records);
   U64 extended_number_of_point_records;
   if (header->number_of_point_records)
+  {
     extended_number_of_point_records = header->number_of_point_records;
+    fprintf(stderr,"WARNING: legacy number_of_point_records in header of LAS 1.4 file should be zero.\n");
+  }
   else
+  {
     extended_number_of_point_records = header->extended_number_of_point_records;
+    header->number_of_point_records = (U32)header->extended_number_of_point_records;
+  }
   out->put64bitsLE((U8*)&extended_number_of_point_records);
   U64 extended_number_of_points_by_return;
   for (i = 0; i < 15; i++)
   {
-    if ((i < 5) && header->number_of_points_by_return[i])
-      extended_number_of_points_by_return = header->number_of_points_by_return[i];
+    if (i < 5)
+    {
+      if (header->number_of_points_by_return[i])
+      {
+        extended_number_of_points_by_return = header->number_of_points_by_return[i];
+        fprintf(stderr,"WARNING: legacy number_of_points_by_return[%d] in header of LAS 1.4 file should be zero.\n", i);
+      }
+      else
+      {
+        extended_number_of_points_by_return = header->extended_number_of_points_by_return[i];
+        header->number_of_points_by_return[i] = (U32)header->extended_number_of_points_by_return[i];
+      }
+    }
     else
+    {
       extended_number_of_points_by_return = header->extended_number_of_points_by_return[i];
+    }
     out->put64bitsLE((U8*)&extended_number_of_points_by_return);
   }
   // add the compatibility VLR
@@ -147,7 +170,7 @@ BOOL LASwriterCompatibleDown::open(LASheader* header, LASwriteOpener* laswriteop
 
   // scan_angle (difference or remainder) is stored as a I16
   LASattribute lasattribute_scan_angle(3, "LAS 1.4 scan angle", "additional attributes");
-  lasattribute_scan_angle.set_scale(0.006, 0);
+  lasattribute_scan_angle.set_scale(0.006);
   I32 index_scan_angle = header->add_attribute(lasattribute_scan_angle);
   start_scan_angle = header->get_attribute_start(index_scan_angle);
   // extended returns stored as a U8
@@ -253,6 +276,13 @@ BOOL LASwriterCompatibleDown::open(LASheader* header, LASwriteOpener* laswriteop
     }
   }
 
+  // remove the old LASzip (in case it exists)
+
+  if (header->laszip)
+  {
+    header->clean_laszip();
+  }
+  
   writer = laswriteopener->open(header);
 
   if (writer == 0)
@@ -601,7 +631,7 @@ BOOL LASwriterCompatibleUp::write_point(const LASpoint* point)
   pointCompatibleUp.extended_number_of_returns = number_of_returns_increment + pointCompatibleUp.number_of_returns;
   pointCompatibleUp.extended_classification = classification + pointCompatibleUp.get_classification();
   pointCompatibleUp.extended_scanner_channel = scanner_channel;
-  pointCompatibleUp.extended_classification_flags = (overlap_bit << 3) | (pointCompatibleUp.classification >> 5);
+  pointCompatibleUp.extended_classification_flags = (overlap_bit << 3) | ((pointCompatibleUp.withheld_flag) << 2) | ((pointCompatibleUp.keypoint_flag) << 1) | (pointCompatibleUp.synthetic_flag);
 
   writer->write_point(&pointCompatibleUp);
   p_count++;

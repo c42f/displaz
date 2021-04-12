@@ -25,6 +25,7 @@
   
   CHANGE HISTORY:
   
+    13 September 2018 -- removed tuples and triple support from attributes
     19 July 2015 -- created after FOSS4GE in the train back from Lake Como
   
 ===============================================================================
@@ -68,57 +69,84 @@ public:
     this->options = size;
   };
 
-  LASattribute(U32 type, const CHAR* name, const CHAR* description=0, U32 dim=1)
+  LASattribute(U32 type, const CHAR* name, const CHAR* description=0)
   {
     if (type > LAS_ATTRIBUTE_F64) throw;
-    if ((dim < 1) || (dim > 3)) throw;
     if (name == 0) throw;
     memset(this, 0, sizeof(LASattribute));
     scale[0] = scale[1] = scale[2] = 1.0;
-    this->data_type = (dim-1)*10+type+1;
+    this->data_type = type+1;
     strncpy(this->name, name, 32);
     if (description) strncpy(this->description, description, 32);
   };
 
-  inline BOOL set_no_data(U8 no_data, I32 dim=0) { if ((0 == get_type()) && (dim < get_dim())) { this->no_data[dim].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(I8 no_data, I32 dim=0) { if ((1 == get_type()) && (dim < get_dim())) { this->no_data[dim].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(U16 no_data, I32 dim=0) { if ((2 == get_type()) && (dim < get_dim())) { this->no_data[dim].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(I16 no_data, I32 dim=0) { if ((3 == get_type()) && (dim < get_dim())) { this->no_data[dim].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(U32 no_data, I32 dim=0) { if ((4 == get_type()) && (dim < get_dim())) { this->no_data[dim].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(I32 no_data, I32 dim=0) { if ((5 == get_type()) && (dim < get_dim())) { this->no_data[dim].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(U64 no_data, I32 dim=0) { if ((6 == get_type()) && (dim < get_dim())) { this->no_data[dim].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(I64 no_data, I32 dim=0) { if ((7 == get_type()) && (dim < get_dim())) { this->no_data[dim].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(F32 no_data, I32 dim=0) { if ((8 == get_type()) && (dim < get_dim())) { this->no_data[dim].f64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
-  inline BOOL set_no_data(F64 no_data, I32 dim=0) { if ((9 == get_type()) && (dim < get_dim())) { this->no_data[dim].f64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(U8  no_data) { if (0 == get_type()) { this->no_data[0].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(I8  no_data) { if (1 == get_type()) { this->no_data[0].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(U16 no_data) { if (2 == get_type()) { this->no_data[0].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(I16 no_data) { if (3 == get_type()) { this->no_data[0].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(U32 no_data) { if (4 == get_type()) { this->no_data[0].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(I32 no_data) { if (5 == get_type()) { this->no_data[0].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(U64 no_data) { if (6 == get_type()) { this->no_data[0].u64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(I64 no_data) { if (7 == get_type()) { this->no_data[0].i64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(F32 no_data) { if (8 == get_type()) { this->no_data[0].f64 = no_data; options |= 0x01; return TRUE; } return FALSE; };
+  inline BOOL set_no_data(F64 no_data)
+  {
+    switch (get_type())
+    {
+    case 0:
+    case 2:
+    case 4:
+    case 6:
+      this->no_data[0].u64 = (U64)no_data;
+      options |= 0x01;
+      return TRUE;
+    case 1:
+    case 3:
+    case 5:
+    case 7:
+      this->no_data[0].i64 = (I64)no_data;
+      options |= 0x01;
+      return TRUE;
+    case 8:
+    case 9:
+      this->no_data[0].f64 = no_data;
+      options |= 0x01;
+      return TRUE;
+    }
+    return FALSE;
+  };
 
-  inline void set_min(U8* min, I32 dim=0) { this->min[dim] = cast(min); options |= 0x02; };
-  inline void update_min(U8* min, I32 dim=0) { this->min[dim] = smallest(cast(min), this->min[dim]); };
-  inline BOOL set_min(U8 min, I32 dim=0) { if ((0 == get_type()) && (dim < get_dim())) { this->min[dim].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(I8 min, I32 dim=0) { if ((1 == get_type()) && (dim < get_dim())) { this->min[dim].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(U16 min, I32 dim=0) { if ((2 == get_type()) && (dim < get_dim())) { this->min[dim].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(I16 min, I32 dim=0) { if ((3 == get_type()) && (dim < get_dim())) { this->min[dim].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(U32 min, I32 dim=0) { if ((4 == get_type()) && (dim < get_dim())) { this->min[dim].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(I32 min, I32 dim=0) { if ((5 == get_type()) && (dim < get_dim())) { this->min[dim].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(U64 min, I32 dim=0) { if ((6 == get_type()) && (dim < get_dim())) { this->min[dim].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(I64 min, I32 dim=0) { if ((7 == get_type()) && (dim < get_dim())) { this->min[dim].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(F32 min, I32 dim=0) { if ((8 == get_type()) && (dim < get_dim())) { this->min[dim].f64 = min; options |= 0x02; return TRUE; } return FALSE; };
-  inline BOOL set_min(F64 min, I32 dim=0) { if ((9 == get_type()) && (dim < get_dim())) { this->min[dim].f64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline void set_min(U8* min) { this->min[0] = cast(min); options |= 0x02; };
+  inline void update_min(U8* min) { this->min[0] = smallest(cast(min), this->min[0]); };
+  inline BOOL set_min(U8  min) { if (0 == get_type()) { this->min[0].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(I8  min) { if (1 == get_type()) { this->min[0].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(U16 min) { if (2 == get_type()) { this->min[0].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(I16 min) { if (3 == get_type()) { this->min[0].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(U32 min) { if (4 == get_type()) { this->min[0].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(I32 min) { if (5 == get_type()) { this->min[0].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(U64 min) { if (6 == get_type()) { this->min[0].u64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(I64 min) { if (7 == get_type()) { this->min[0].i64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(F32 min) { if (8 == get_type()) { this->min[0].f64 = min; options |= 0x02; return TRUE; } return FALSE; };
+  inline BOOL set_min(F64 min) { if (9 == get_type()) { this->min[0].f64 = min; options |= 0x02; return TRUE; } return FALSE; };
 
-  inline void set_max(U8* max, I32 dim=0) { this->max[dim] = cast(max); options |= 0x04; };
-  inline void update_max(U8* max, I32 dim=0) { this->max[dim] = biggest(cast(max), this->max[dim]); };
-  inline BOOL set_max(U8 max, I32 dim=0) { if ((0 == get_type()) && (dim < get_dim())) { this->max[dim].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(I8 max, I32 dim=0) { if ((1 == get_type()) && (dim < get_dim())) { this->max[dim].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(U16 max, I32 dim=0) { if ((2 == get_type()) && (dim < get_dim())) { this->max[dim].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(I16 max, I32 dim=0) { if ((3 == get_type()) && (dim < get_dim())) { this->max[dim].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(U32 max, I32 dim=0) { if ((4 == get_type()) && (dim < get_dim())) { this->max[dim].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(I32 max, I32 dim=0) { if ((5 == get_type()) && (dim < get_dim())) { this->max[dim].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(U64 max, I32 dim=0) { if ((6 == get_type()) && (dim < get_dim())) { this->max[dim].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(I64 max, I32 dim=0) { if ((7 == get_type()) && (dim < get_dim())) { this->max[dim].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(F32 max, I32 dim=0) { if ((8 == get_type()) && (dim < get_dim())) { this->max[dim].f64 = max; options |= 0x04; return TRUE; } return FALSE; };
-  inline BOOL set_max(F64 max, I32 dim=0) { if ((9 == get_type()) && (dim < get_dim())) { this->max[dim].f64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline void set_max(U8* max) { this->max[0] = cast(max); options |= 0x04; };
+  inline void update_max(U8* max) { this->max[0] = biggest(cast(max), this->max[0]); };
+  inline BOOL set_max(U8  max) { if (0 == get_type()) { this->max[0].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(I8  max) { if (1 == get_type()) { this->max[0].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(U16 max) { if (2 == get_type()) { this->max[0].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(I16 max) { if (3 == get_type()) { this->max[0].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(U32 max) { if (4 == get_type()) { this->max[0].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(I32 max) { if (5 == get_type()) { this->max[0].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(U64 max) { if (6 == get_type()) { this->max[0].u64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(I64 max) { if (7 == get_type()) { this->max[0].i64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(F32 max) { if (8 == get_type()) { this->max[0].f64 = max; options |= 0x04; return TRUE; } return FALSE; };
+  inline BOOL set_max(F64 max) { if (9 == get_type()) { this->max[0].f64 = max; options |= 0x04; return TRUE; } return FALSE; };
 
-  inline BOOL set_scale(F64 scale, I32 dim=0) { if (data_type) { this->scale[dim] = scale; options |= 0x08; return TRUE; } return FALSE; };
-  inline BOOL set_offset(F64 offset, I32 dim=0) { if (data_type) { this->offset[dim] = offset; options |= 0x10; return TRUE; } return FALSE; };
+  inline BOOL set_scale(F64 scale) { if (data_type) { this->scale[0] = scale; options |= 0x08; return TRUE; } return FALSE; };
+  inline BOOL set_offset(F64 offset) { if (data_type) { this->offset[0] = offset; options |= 0x10; return TRUE; } return FALSE; };
+
+  inline BOOL unset_scale() { if (data_type) { options &= (~0x08); return TRUE; } return FALSE; };
+  inline BOOL unset_offset() { if (data_type) { options &= (~0x10); return TRUE; } return FALSE; };
 
   inline BOOL has_no_data() const { return options & 0x01; };
   inline BOOL has_min() const { return options & 0x02; };
@@ -131,9 +159,9 @@ public:
     if (data_type)
     {
       const U32 size_table[10] = { 1, 1, 2, 2, 4, 4, 8, 8, 4, 8 };
-      U32 type = get_type();
-      U32 dim = get_dim();
-      return size_table[type]*dim;
+      I32 type = get_type();
+      I32 dim = get_dim();
+      return size_table[type] * dim;
     }
     else
     {
@@ -141,31 +169,100 @@ public:
     }
   };
 
-  inline F64 get_value_as_float(U8* value) const
+  inline F64 get_value_as_float(U8* pointer) const
   {
-    F64 casted_value;
+    F64 cast_value;
     I32 type = get_type();
     if (type == 0)
-      casted_value = (F64)*((U8*)value);
+      cast_value = (F64)*((U8*)pointer);
     else if (type == 1)
-      casted_value = (F64)*((I8*)value);
+      cast_value = (F64)*((I8*)pointer);
     else if (type == 2)
-      casted_value = (F64)*((U16*)value);
+      cast_value = (F64)*((U16*)pointer);
     else if (type == 3)
-      casted_value = (F64)*((I16*)value);
+      cast_value = (F64)*((I16*)pointer);
     else if (type == 4)
-      casted_value = (F64)*((U32*)value);
+      cast_value = (F64)*((U32*)pointer);
     else if (type == 5)
-      casted_value = (F64)*((I32*)value);
+      cast_value = (F64)*((I32*)pointer);
     else if (type == 6)
-      casted_value = (F64)(I64)*((U64*)value);
+      cast_value = (F64)(I64)*((U64*)pointer);
     else if (type == 7)
-      casted_value = (F64)*((I64*)value);
+      cast_value = (F64)*((I64*)pointer);
     else if (type == 8)
-      casted_value = (F64)*((F32*)value);
+      cast_value = (F64)*((F32*)pointer);
     else
-      casted_value = *((F64*)value);
-    return offset[0]+scale[0]*casted_value;
+      cast_value = *((F64*)pointer);
+    if (options & 0x08)
+    {
+      if (options & 0x10)
+      {
+        return offset[0]+scale[0]*cast_value;
+      }
+      else
+      {
+        return scale[0]*cast_value;
+      }
+    }
+    else
+    {
+      if (options & 0x10)
+      {
+        return offset[0]+cast_value;
+      }
+      else
+      {
+        return cast_value;
+      }
+    }
+  };
+
+  inline void set_value_as_float(U8* pointer, F64 value) const
+  {
+    F64 unoffset_and_unscaled_value;
+    if (options & 0x08)
+    {
+      if (options & 0x10)
+      {
+        unoffset_and_unscaled_value = (value - offset[0])/scale[0];
+      }
+      else
+      {
+        unoffset_and_unscaled_value = value/scale[0];
+      }
+    }
+    else
+    {
+      if (options & 0x10)
+      {
+        unoffset_and_unscaled_value = value - offset[0];
+      }
+      else
+      {
+        unoffset_and_unscaled_value = value;
+      }
+    }
+    I32 type = get_type();
+    if (type == 0)
+      *((U8*)pointer) = U8_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 1)
+      *((I8*)pointer) = I8_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 2)
+      *((U16*)pointer) = U16_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 3)
+      *((I16*)pointer) = I16_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 4)
+      *((U32*)pointer) = U32_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 5)
+      *((I32*)pointer) = U32_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 6)
+      *((U64*)pointer) = U64_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 7)
+      *((I64*)pointer) = I64_QUANTIZE(unoffset_and_unscaled_value);
+    else if (type == 8)
+      *((F32*)pointer) = (F32)unoffset_and_unscaled_value;
+    else
+      *((F64*)pointer) = unoffset_and_unscaled_value;
   };
 
 private:
@@ -173,35 +270,35 @@ private:
   {
     return ((I32)data_type - 1)%10;
   };
-  inline I32 get_dim() const
+  inline I32 get_dim() const // compute dimension of deprecated tuple and triple attributes 
   {
-    return 1 + ((I32)data_type - 1)/10;
+    return ((I32)data_type - 1)/10 + 1;
   };
-  inline U64I64F64 cast(U8* value) const
+  inline U64I64F64 cast(U8* pointer) const
   {
     I32 type = get_type();
-    U64I64F64 casted_value;
+    U64I64F64 cast_value;
     if (type == 0)
-      casted_value.u64 = *((U8*)value);
+      cast_value.u64 = *((U8*)pointer);
     else if (type == 1)
-      casted_value.i64 = *((I8*)value);
+      cast_value.i64 = *((I8*)pointer);
     else if (type == 2)
-      casted_value.u64 = *((U16*)value);
+      cast_value.u64 = *((U16*)pointer);
     else if (type == 3)
-      casted_value.i64 = *((I16*)value);
+      cast_value.i64 = *((I16*)pointer);
     else if (type == 4)
-      casted_value.u64 = *((U32*)value);
+      cast_value.u64 = *((U32*)pointer);
     else if (type == 5)
-      casted_value.i64 = *((I32*)value);
+      cast_value.i64 = *((I32*)pointer);
     else if (type == 6)
-      casted_value.u64 = *((U64*)value);
+      cast_value.u64 = *((U64*)pointer);
     else if (type == 7)
-      casted_value.i64 = *((I64*)value);
+      cast_value.i64 = *((I64*)pointer);
     else if (type == 8)
-      casted_value.f64 = *((F32*)value);
+      cast_value.f64 = *((F32*)pointer);
     else
-      casted_value.f64 = *((F64*)value);
-    return casted_value;
+      cast_value.f64 = *((F64*)pointer);
+    return cast_value;
   };
   inline U64I64F64 smallest(U64I64F64 a, U64I64F64 b) const
   {
@@ -240,6 +337,7 @@ private:
 class LASattributer
 {
 public:
+  BOOL attributes_linked;
   I32 number_attributes;
   LASattribute* attributes;
   I32* attribute_starts;
@@ -247,6 +345,7 @@ public:
 
   LASattributer()
   {
+    attributes_linked = TRUE;
     number_attributes = 0;
     attributes = 0;
     attribute_starts = 0;
@@ -260,12 +359,15 @@ public:
 
   void clean_attributes()
   {
-    if (number_attributes)
+    if (attributes_linked)
     {
-      number_attributes = 0;
-      free(attributes); attributes = 0;
-      free(attribute_starts); attribute_starts = 0;
-      free(attribute_sizes); attribute_sizes = 0;
+      if (attributes)
+      {
+        number_attributes = 0;
+        free(attributes); attributes = 0;
+        free(attribute_starts); attribute_starts = 0;
+        free(attribute_sizes); attribute_sizes = 0;
+      }
     }
   };
 
@@ -400,6 +502,15 @@ public:
       return attribute_sizes[index];
     }
     return -1;
+  }
+
+  const CHAR* get_attribute_name(I32 index) const
+  {
+    if (index < number_attributes)
+    {
+      return attributes[index].name;
+    }
+    return 0;
   }
 
   BOOL remove_attribute(I32 index)

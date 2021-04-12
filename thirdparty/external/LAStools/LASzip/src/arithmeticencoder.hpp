@@ -2,9 +2,9 @@
 ===============================================================================
 
   FILE:  arithmeticencoder.hpp
-  
+
   CONTENTS:
-      
+
     A modular C++ wrapper for an adapted version of Amir Said's FastAC Code.
     see: http://www.cipr.rpi.edu/~said/FastAC.html
 
@@ -14,7 +14,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2014, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -25,11 +25,12 @@
   
   CHANGE HISTORY:
   
+     1 July 2016 -- can be used as init dummy by "native LAS 1.4 compressor"
      6 September 2014 -- removed the (unused) inheritance from EntropyEncoder
     10 January 2011 -- licensing change for LGPL release and liblas integration
      8 December 2010 -- unified framework for all entropy coders
     30 October 2009 -- refactoring Amir Said's FastAC code
-  
+
 ===============================================================================
 */
 #ifndef ARITHMETIC_ENCODER_HPP
@@ -93,6 +94,9 @@ public:
 /* Encode a double without modelling                         */
   void writeDouble(F64 sym);
 
+/* Only write to outstream if ArithmeticEncoder is dummy     */
+  ByteStreamOut* getByteStreamOut() const { return outstream; };
+
 private:
 
   ByteStreamOut* outstream;
@@ -104,7 +108,7 @@ private:
   U8* endbuffer;
   U8* outbyte;
   U8* endbyte;
-  U32 base, value, length;
+  U32 base, length;
 };
 
 #endif

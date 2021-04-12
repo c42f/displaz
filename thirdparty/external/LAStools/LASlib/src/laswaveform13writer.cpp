@@ -2,11 +2,11 @@
 ===============================================================================
 
   FILE:  laswaveform13writer.cpp
-  
+
   CONTENTS:
-  
+
     see corresponding header file
-  
+
   PROGRAMMERS:
 
     martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
@@ -21,11 +21,11 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
     see corresponding header file
-  
+
 ===============================================================================
 */
 #include "laswaveform13writer.hpp"
@@ -51,13 +51,13 @@ LASwaveform13writer::LASwaveform13writer()
   ic8 = 0;
   ic16 = 0;
 }
-  
+
 LASwaveform13writer::~LASwaveform13writer()
 {
   if (waveforms)
   {
     I32 i;
-    for (i = 0; i < 256; i++)
+    for (i = 1; i < 256; i++)
     {
       if (waveforms[i]) delete waveforms[i];
     }
@@ -77,13 +77,23 @@ BOOL LASwaveform13writer::open(const char* file_name, const LASvlr_wave_packet_d
     return FALSE;
   }
 
+  // we need wave packet descriptors
+
   if (wave_packet_descr == 0)
   {
     fprintf(stderr,"ERROR: wave packet descriptor pointer is zero\n");
     return FALSE;
   }
 
-  // copy relevant wave packet descriptions and check if compressed or not
+  // only array positions 1 through 255 should have a wave packet descriptor
+
+  if (wave_packet_descr[0] != 0)
+  {
+    fprintf(stderr,"ERROR: wave_packet_descr[0] with index 0 must be zero\n");
+    return FALSE;
+  }
+
+  // copy relevant wave packet descriptors and check if compressed or not
 
   U16 i, number = 0;
   BOOL compressed = FALSE;
@@ -94,7 +104,7 @@ BOOL LASwaveform13writer::open(const char* file_name, const LASvlr_wave_packet_d
     for (i = 0; i < 256; i++) waveforms[i] = 0;
   }
 
-  for (i = 0; i < 256; i++)
+  for (i = 1; i < 256; i++)
   {
     if (wave_packet_descr[i])
     {
@@ -120,9 +130,9 @@ BOOL LASwaveform13writer::open(const char* file_name, const LASvlr_wave_packet_d
 
   // create file name and open file
 
-  char* file_name_temp = strdup(file_name);
+  char* file_name_temp = LASCopyString(file_name);
 
-  int len = strlen(file_name_temp);
+  I32 len = (I32)strlen(file_name_temp);
   if (file_name_temp[len-3] == 'L' || file_name_temp[len-3] == 'W')
   {
     file_name_temp[len-3] = 'W';
@@ -186,7 +196,7 @@ BOOL LASwaveform13writer::open(const char* file_name, const LASvlr_wave_packet_d
   }
   I8 description[32];
   memset(description, 0, 32);
-  sprintf(description, "%s by LAStools (%d)", (compressed ? "compressed" : "created"), LAS_TOOLS_VERSION);  
+  sprintf(description, "%s by LAStools (%d)", (compressed ? "compressed" : "created"), LAS_TOOLS_VERSION);
   if (!stream->putBytes((U8*)description, 32))
   {
     fprintf(stderr,"ERROR: writing EVLR description\n");
@@ -210,7 +220,7 @@ BOOL LASwaveform13writer::open(const char* file_name, const LASvlr_wave_packet_d
     return FALSE;
   }
 
-  for (i = 0; i < 256; i++)
+  for (i = 1; i < 256; i++)
   {
     if (waveforms[i])
     {

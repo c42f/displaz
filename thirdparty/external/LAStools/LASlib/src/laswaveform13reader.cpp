@@ -2,11 +2,11 @@
 ===============================================================================
 
   FILE:  laswaveform13reader.cpp
-  
+
   CONTENTS:
-  
+
     see corresponding header file
-  
+
   PROGRAMMERS:
 
     martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
@@ -21,11 +21,11 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
     see corresponding header file
-  
+
 ===============================================================================
 */
 #include "laswaveform13reader.hpp"
@@ -63,7 +63,7 @@ LASwaveform13reader::LASwaveform13reader()
   ic8 = 0;
   ic16 = 0;
 }
-  
+
 LASwaveform13reader::~LASwaveform13reader()
 {
   if (samples) delete [] samples;
@@ -85,9 +85,19 @@ BOOL LASwaveform13reader::open(const char* file_name, I64 start_of_waveform_data
     return FALSE;
   }
 
+  // we need wave packet descriptors
+
   if (wave_packet_descr == 0)
   {
     fprintf(stderr,"ERROR: wave packet descriptor pointer is zero\n");
+    return FALSE;
+  }
+
+  // only array positions 1 through 255 should have a wave packet descriptor
+
+  if (wave_packet_descr[0] != 0)
+  {
+    fprintf(stderr,"ERROR: wave_packet_descr[0] with index 0 must be zero\n");
     return FALSE;
   }
 
@@ -96,7 +106,7 @@ BOOL LASwaveform13reader::open(const char* file_name, I64 start_of_waveform_data
   I32 i;
   compressed = FALSE;
 
-  for (i = 0; i < 256; i++)
+  for (i = 1; i < 256; i++)
   {
     if (wave_packet_descr[i])
     {
@@ -108,18 +118,18 @@ BOOL LASwaveform13reader::open(const char* file_name, I64 start_of_waveform_data
 
   if (start_of_waveform_data_packet_record == 0)
   {
-    if (!compressed && (strstr(".wdp", file_name) || strstr(".WDP", file_name))) 
+    if (!compressed && (strstr(".wdp", file_name) || strstr(".WDP", file_name)))
     {
       file = fopen(file_name, "rb");
     }
-    else if (compressed && (strstr(".wdz", file_name) || strstr(".WDZ", file_name))) 
+    else if (compressed && (strstr(".wdz", file_name) || strstr(".WDZ", file_name)))
     {
       file = fopen(file_name, "rb");
     }
     else
     {
-      char* file_name_temp = strdup(file_name);
-      int len = strlen(file_name_temp);
+      char* file_name_temp = LASCopyString(file_name);
+      I32 len = (I32)strlen(file_name_temp);
       if ((file_name_temp[len-3] == 'L') || (file_name_temp[len-3] == 'W'))
       {
         file_name_temp[len-3] = 'W';
@@ -173,7 +183,7 @@ BOOL LASwaveform13reader::open(const char* file_name, I64 start_of_waveform_data
 
   if (strncmp(magic, "LAStools waveform ", 18) == 0)
   {
-    // do waveform descriptor cross-check 
+    // do waveform descriptor cross-check
 
     U16 i, number;
     try { stream->get16bitsLE((U8*)&number); } catch(...)
@@ -189,7 +199,7 @@ BOOL LASwaveform13reader::open(const char* file_name, I64 start_of_waveform_data
         fprintf(stderr,"ERROR: reading index of waveform descriptor %d\n", i);
         return FALSE;
       }
-      if (index > 255)
+      if ((index == 0) || (index > 255))
       {
         fprintf(stderr,"ERROR: cross-check - index %d of waveform descriptor %d out-of-range\n", index, i);
         return FALSE;
@@ -278,7 +288,7 @@ BOOL LASwaveform13reader::read_waveform(const LASpoint* point)
   nsamples = wave_packet_descr[index]->getNumberOfSamples();
 
 //  temporary Optech Fix
-//  nsamples = point->wavepacket.getSize(); 
+//  nsamples = point->wavepacket.getSize();
 //  if (nbits == 16) nsamples / 2;
 
   if (nsamples == 0)

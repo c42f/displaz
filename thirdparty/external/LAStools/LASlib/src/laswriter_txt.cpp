@@ -2,11 +2,11 @@
 ===============================================================================
 
   FILE:  laswriter_txt.cpp
-  
+
   CONTENTS:
-  
+
     see corresponding header file
-  
+
   PROGRAMMERS:
 
     martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
@@ -21,11 +21,11 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
     see corresponding header file
-  
+
 ===============================================================================
 */
 #include "laswriter_txt.hpp"
@@ -89,7 +89,7 @@ BOOL LASwriterTXT::open(FILE* file, const LASheader* header, const CHAR* parse_s
   if (this->parse_string) free (this->parse_string);
   if (parse_string)
   {
-    this->parse_string = strdup(parse_string);
+    this->parse_string = LASCopyString(parse_string);
   }
   else
   {
@@ -145,11 +145,11 @@ BOOL LASwriterTXT::open(FILE* file, const LASheader* header, const CHAR* parse_s
         if (this->parse_string) free(this->parse_string);
         if (ptsVLR && (ptsVLR->record_length_after_header >= 32))
         {
-          this->parse_string = strdup((CHAR*)(ptsVLR->data + 16));
+          this->parse_string = LASCopyString((CHAR*)(ptsVLR->data + 16));
         }
         else if (ptxVLR && (ptxVLR->record_length_after_header >= 32))
         {
-          this->parse_string = strdup((CHAR*)(ptxVLR->data + 16));
+          this->parse_string = LASCopyString((CHAR*)(ptxVLR->data + 16));
         }
         else if (ptsVLR)
         {
@@ -196,7 +196,7 @@ BOOL LASwriterTXT::open(FILE* file, const LASheader* header, const CHAR* parse_s
       if ((this->parse_string == 0) || (strcmp(this->parse_string, "original") == 0))
       {
         if (this->parse_string) free(this->parse_string);
-        this->parse_string = strdup((CHAR*)(payload + 16));
+        this->parse_string = LASCopyString((CHAR*)(payload + 16));
       }
       fprintf(file, "%u     \012", (U32)((I64*)payload)[4]); // ncols
       fprintf(file, "%u     \012", (U32)((I64*)payload)[5]); // nrows
@@ -247,19 +247,19 @@ BOOL LASwriterTXT::open(FILE* file, const LASheader* header, const CHAR* parse_s
   {
     if (header->point_data_format == 1 || header->point_data_format == 4)
     {
-      this->parse_string = strdup("xyzt");
+      this->parse_string = LASCopyString("xyzt");
     }
     else if (header->point_data_format == 2)
     {
-      this->parse_string = strdup("xyzRGB");
+      this->parse_string = LASCopyString("xyzRGB");
     }
     else if (header->point_data_format == 3 || header->point_data_format == 5)
     {
-      this->parse_string = strdup("xyztRGB");
+      this->parse_string = LASCopyString("xyztRGB");
     }
     else
     {
-      this->parse_string = strdup("xyz");
+      this->parse_string = LASCopyString("xyz");
     }
   }
 
@@ -484,23 +484,38 @@ BOOL LASwriterTXT::write_point(const LASpoint* point)
     case 'd': // the direction of scan flag
       fprintf(file, "%d", point->get_scan_direction_flag());
       break;
+    case 'h': // the withheld flag
+      fprintf(file, "%d", point->get_withheld_flag());
+      break;
+    case 'k': // the keypoint flag
+      fprintf(file, "%d", point->get_keypoint_flag());
+      break;
+    case 'g': // the synthetic flag
+      fprintf(file, "%d", point->get_synthetic_flag());
+      break;
+    case 'o': // the overlap flag
+      fprintf(file, "%d", point->get_extended_overlap_flag());
+      break;
+    case 'l': // the scanner channel
+      fprintf(file, "%d", point->get_extended_scanner_channel());
+      break;
     case 'R': // the red channel of the RGB field
       if (scale_rgb != 1.0f)
-        fprintf(file, "%.2f", scale_rgb*point->get_rgb()[0]);
+        fprintf(file, "%.2f", scale_rgb*point->get_R());
       else
-        fprintf(file, "%d", point->get_rgb()[0]);
+        fprintf(file, "%d", point->get_R());
       break;
     case 'G': // the green channel of the RGB field
       if (scale_rgb != 1.0f)
-        fprintf(file, "%.2f", scale_rgb*point->get_rgb()[1]);
+        fprintf(file, "%.2f", scale_rgb*point->get_G());
       else
-        fprintf(file, "%d", point->get_rgb()[1]);
+        fprintf(file, "%d", point->get_G());
       break;
     case 'B': // the blue channel of the RGB field
       if (scale_rgb != 1.0f)
-        fprintf(file, "%.2f", scale_rgb*point->get_rgb()[2]);
+        fprintf(file, "%.2f", scale_rgb*point->get_B());
       else
-        fprintf(file, "%d", point->get_rgb()[2]);
+        fprintf(file, "%d", point->get_B());
       break;
     case 'm': // the index of the point (count starts at 0)
 #ifdef _WIN32
@@ -616,6 +631,11 @@ BOOL LASwriterTXT::check_parse_string(const CHAR* parse_string)
         (p[0] != 'p') && // the point source ID
         (p[0] != 'e') && // the edge of flight line flag
         (p[0] != 'd') && // the direction of scan flag
+        (p[0] != 'h') && // the withheld flag
+        (p[0] != 'k') && // the keypoint flag
+        (p[0] != 'g') && // the synthetic flag
+        (p[0] != 'o') && // the overlap flag
+        (p[0] != 'l') && // the scanner channel
         (p[0] != 'm') && // the index of the point (count starts at 0)
         (p[0] != 'M') && // the index of the point (count starts at 1)
         (p[0] != 'w') && // the wavepacket descriptor index
@@ -654,6 +674,11 @@ BOOL LASwriterTXT::check_parse_string(const CHAR* parse_string)
         fprintf(stderr, "       'p' : the point source ID\n");
         fprintf(stderr, "       'e' : the edge of flight line flag\n");
         fprintf(stderr, "       'd' : the direction of scan flag\n");
+        fprintf(stderr, "       'h' : the withheld flag\n");
+        fprintf(stderr, "       'k' : the keypoint flag\n");
+        fprintf(stderr, "       'g' : the synthetic flag\n");
+        fprintf(stderr, "       'o' : the overlap flag\n");
+        fprintf(stderr, "       'l' : the scanner channel\n");
         fprintf(stderr, "       'M' : the index of the point\n");
         fprintf(stderr, "       'w' : the wavepacket descriptor index\n");
         fprintf(stderr, "       'W' : all wavepacket attributes\n");

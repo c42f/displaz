@@ -1,7 +1,7 @@
 /*
 ===============================================================================
 
-  FILE:  LASreaditem.hpp
+  FILE:  lasreaditem.hpp
   
   CONTENTS:
   
@@ -13,7 +13,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2012, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -24,13 +24,15 @@
   
   CHANGE HISTORY:
   
+    28 August 2017 -- moving 'context' from global development hack to interface  
+    23 August 2016 -- layering of items for selective decompression in LAS 1.4 
     10 January 2011 -- licensing change for LGPL release and liblas integration
     7 December 2010 -- refactored after getting invited to KAUST in Saudi Arabia
   
 ===============================================================================
 */
-#ifndef LAS_READ_ITEM_H
-#define LAS_READ_ITEM_H
+#ifndef LAS_READ_ITEM_HPP
+#define LAS_READ_ITEM_HPP
 
 #include "mydefs.hpp"
 
@@ -39,7 +41,7 @@ class ByteStreamIn;
 class LASreadItem
 {
 public:
-  virtual void read(U8* item)=0;
+  virtual void read(U8* item, U32& context)=0;
 
   virtual ~LASreadItem(){};
 };
@@ -65,7 +67,8 @@ protected:
 class LASreadItemCompressed : public LASreadItem
 {
 public:
-  virtual BOOL init(const U8* item)=0;
+  virtual BOOL chunk_sizes() { return FALSE; };
+  virtual BOOL init(const U8* item, U32& context)=0;
 
   virtual ~LASreadItemCompressed(){};
 };

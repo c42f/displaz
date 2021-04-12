@@ -13,7 +13,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2014, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -35,12 +35,14 @@
 #include "lasreaditemraw.hpp"
 #include "lasreaditemcompressed_v1.hpp"
 #include "lasreaditemcompressed_v2.hpp"
+#include "lasreaditemcompressed_v3.hpp"
+#include "lasreaditemcompressed_v4.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-LASreadPoint::LASreadPoint()
+LASreadPoint::LASreadPoint(U32 decompress_selective)
 {
   point_size = 0;
   instream = 0;
@@ -49,6 +51,7 @@ LASreadPoint::LASreadPoint()
   readers_raw = 0;
   readers_compressed = 0;
   dec = 0;
+  layered_las14_compression = FALSE;
   // used for chunking
   chunk_size = U32_MAX;
   chunk_count = 0;
@@ -57,6 +60,8 @@ LASreadPoint::LASreadPoint()
   tabled_chunks = 0;
   chunk_totals = 0;
   chunk_starts = 0;
+  // used for selective decompression (new LAS 1.4 point types only)
+  this->decompress_selective = decompress_selective;
   // used for seeking
   point_start = 0;
   seek_point = 0;
@@ -72,18 +77,24 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
   // is laszip exists then we must use its items
   if (laszip)
   {
+    if (num_items == 0) return FALSE;
+    if (items == 0) return FALSE;
     if (num_items != laszip->num_items) return FALSE;
     if (items != laszip->items) return FALSE;
   }
 
-  // create entropy decoder (if requested)
+  // delete old entropy decoder
   if (dec)
   {
     delete dec;
     dec = 0;
+    layered_las14_compression = FALSE;
   }
+
+  // is the content compressed?
   if (laszip && laszip->compressor)
   {
+    // create new entropy decoder (if requested)
     switch (laszip->coder)
     {
     case LASZIP_CODER_ARITHMETIC:
@@ -93,6 +104,8 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
       // entropy decoder not supported
       return FALSE;
     }
+    // maybe layered compression for LAS 1.4 
+    layered_las14_compression = (laszip->compressor == LASZIP_COMPRESSOR_LAYERED_CHUNKED);
   }
  
   // initizalize the readers
@@ -119,33 +132,36 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
         readers_raw[i] = new LASreadItemRaw_GPSTIME11_LE();
       else
         readers_raw[i] = new LASreadItemRaw_GPSTIME11_BE();
-        break;
+       break;
     case LASitem::RGB12:
+    case LASitem::RGB14:
       if (IS_LITTLE_ENDIAN())
         readers_raw[i] = new LASreadItemRaw_RGB12_LE();
       else
         readers_raw[i] = new LASreadItemRaw_RGB12_BE();
       break;
-    case LASitem::WAVEPACKET13:
-      if (IS_LITTLE_ENDIAN())
-        readers_raw[i] = new LASreadItemRaw_WAVEPACKET13_LE();
-      else
-        readers_raw[i] = new LASreadItemRaw_WAVEPACKET13_BE();
-      break;
     case LASitem::BYTE:
+    case LASitem::BYTE14:
       readers_raw[i] = new LASreadItemRaw_BYTE(items[i].size);
       break;
     case LASitem::POINT14:
       if (IS_LITTLE_ENDIAN())
         readers_raw[i] = new LASreadItemRaw_POINT14_LE();
       else
-        return FALSE;
+        readers_raw[i] = new LASreadItemRaw_POINT14_BE();
       break;
     case LASitem::RGBNIR14:
       if (IS_LITTLE_ENDIAN())
         readers_raw[i] = new LASreadItemRaw_RGBNIR14_LE();
       else
         readers_raw[i] = new LASreadItemRaw_RGBNIR14_BE();
+      break;
+    case LASitem::WAVEPACKET13:
+    case LASitem::WAVEPACKET14:
+      if (IS_LITTLE_ENDIAN())
+        readers_raw[i] = new LASreadItemRaw_WAVEPACKET13_LE();
+      else
+        readers_raw[i] = new LASreadItemRaw_WAVEPACKET13_BE();
       break;
     default:
       return FALSE;
@@ -164,7 +180,17 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
     }
     seek_point = new U8*[num_items];
     if (!seek_point) return FALSE;
-    seek_point[0] = new U8[point_size];
+    if (layered_las14_compression)
+    {
+      // because combo LAS 1.0 - 1.4 point struct has padding
+      seek_point[0] = new U8[(point_size*2)];
+      // because extended_point_type must be set
+      seek_point[0][22] = 1;
+    }
+    else
+    {
+      seek_point[0] = new U8[point_size];
+    }
     if (!seek_point[0]) return FALSE;
     for (i = 0; i < num_readers; i++)
     {
@@ -194,12 +220,6 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
         else
           return FALSE;
         break;
-      case LASitem::WAVEPACKET13:
-        if (items[i].version == 1)
-          readers_compressed[i] = new LASreadItemCompressed_WAVEPACKET13_v1(dec);
-        else
-          return FALSE;
-        break;
       case LASitem::BYTE:
         if (items[i].version == 1)
           readers_compressed[i] = new LASreadItemCompressed_BYTE_v1(dec, items[i].size);
@@ -208,12 +228,69 @@ BOOL LASreadPoint::setup(U32 num_items, const LASitem* items, const LASzip* lasz
         else
           return FALSE;
         break;
+      case LASitem::POINT14:
+        if ((items[i].version == 3) || (items[i].version == 2)) // version == 2 from lasproto
+          readers_compressed[i] = new LASreadItemCompressed_POINT14_v3(dec, decompress_selective);
+        else if (items[i].version == 4)
+          readers_compressed[i] = new LASreadItemCompressed_POINT14_v4(dec, decompress_selective);
+        else
+          return FALSE;
+        break;
+      case LASitem::RGB14:
+        if ((items[i].version == 3) || (items[i].version == 2)) // version == 2 from lasproto
+          readers_compressed[i] = new LASreadItemCompressed_RGB14_v3(dec, decompress_selective);
+        else if (items[i].version == 4)
+          readers_compressed[i] = new LASreadItemCompressed_RGB14_v4(dec, decompress_selective);
+        else
+          return FALSE;
+        break;
+      case LASitem::RGBNIR14:
+        if ((items[i].version == 3) || (items[i].version == 2)) // version == 2 from lasproto
+          readers_compressed[i] = new LASreadItemCompressed_RGBNIR14_v3(dec, decompress_selective);
+        else if (items[i].version == 4)
+          readers_compressed[i] = new LASreadItemCompressed_RGBNIR14_v4(dec, decompress_selective);
+        else
+          return FALSE;
+        break;
+      case LASitem::BYTE14:
+        if ((items[i].version == 3) || (items[i].version == 2)) // version == 2 from lasproto
+          readers_compressed[i] = new LASreadItemCompressed_BYTE14_v3(dec, items[i].size, decompress_selective);
+        else if (items[i].version == 4)
+          readers_compressed[i] = new LASreadItemCompressed_BYTE14_v4(dec, items[i].size, decompress_selective);
+        else
+          return FALSE;
+        break;
+      case LASitem::WAVEPACKET13:
+        if (items[i].version == 1)
+          readers_compressed[i] = new LASreadItemCompressed_WAVEPACKET13_v1(dec);
+        else
+          return FALSE;
+        break;
+      case LASitem::WAVEPACKET14:
+        if (items[i].version == 3)
+          readers_compressed[i] = new LASreadItemCompressed_WAVEPACKET14_v3(dec, decompress_selective);
+        else if (items[i].version == 4)
+          readers_compressed[i] = new LASreadItemCompressed_WAVEPACKET14_v4(dec, decompress_selective);
+        else
+          return FALSE;
+        break;
       default:
         return FALSE;
       }
-      if (i) seek_point[i] = seek_point[i-1]+items[i-1].size;
+      if (i)
+      {
+        if (layered_las14_compression)
+        {
+          // because combo LAS 1.0 - 1.4 point struct has padding
+          seek_point[i] = seek_point[i-1]+(2*items[i-1].size);
+        }
+        else
+        {
+          seek_point[i] = seek_point[i-1]+items[i-1].size;
+        }
+      }
     }
-    if (laszip->compressor == LASZIP_COMPRESSOR_POINTWISE_CHUNKED)
+    if (laszip->compressor != LASZIP_COMPRESSOR_POINTWISE)
     {
       if (laszip->chunk_size) chunk_size = laszip->chunk_size;
       number_chunks = U32_MAX;
@@ -319,7 +396,7 @@ BOOL LASreadPoint::seek(const U32 current, const U32 target)
   {
     if (current != target)
     {
-      instream->seek(point_start+point_size*target);
+      instream->seek(point_start+(I64)point_size*target);
     }
   }
   return TRUE;
@@ -328,6 +405,7 @@ BOOL LASreadPoint::seek(const U32 current, const U32 target)
 BOOL LASreadPoint::read(U8* const * point)
 {
   U32 i;
+  U32 context = 0;
 
   try
   {
@@ -354,7 +432,7 @@ BOOL LASreadPoint::read(U8* const * point)
         init_dec();
         if (current_chunk == tabled_chunks) // no or incomplete chunk table?
         {
-          if (current_chunk == number_chunks)
+          if (current_chunk >= number_chunks)
           {
             number_chunks += 256;
             chunk_starts = (I64*)realloc(chunk_starts, sizeof(I64)*(number_chunks+1));
@@ -374,25 +452,49 @@ BOOL LASreadPoint::read(U8* const * point)
       {
         for (i = 0; i < num_readers; i++)
         {
-          readers[i]->read(point[i]);
+          readers[i]->read(point[i], context);
         }
       }
       else
       {
         for (i = 0; i < num_readers; i++)
         {
-          readers_raw[i]->read(point[i]);
-          ((LASreadItemCompressed*)(readers_compressed[i]))->init(point[i]);
+          readers_raw[i]->read(point[i], context);
+        }
+        if (layered_las14_compression)
+        {
+          // for layered compression 'dec' only hands over the stream
+          dec->init(instream, FALSE);
+          // read how many points are in the chunk
+          U32 count;
+          instream->get32bitsLE((U8*)&count);
+          // read the sizes of all layers
+          for (i = 0; i < num_readers; i++)
+          {
+            ((LASreadItemCompressed*)(readers_compressed[i]))->chunk_sizes();
+          }
+          for (i = 0; i < num_readers; i++)
+          {
+            ((LASreadItemCompressed*)(readers_compressed[i]))->init(point[i], context);
+          }
+          if (DEBUG_OUTPUT_NUM_BYTES_DETAILS) fprintf(stderr, "\n");
+        }
+        else
+        {
+          for (i = 0; i < num_readers; i++)
+          {
+            ((LASreadItemCompressed*)(readers_compressed[i]))->init(point[i], context);
+          }
+          dec->init(instream);
         }
         readers = readers_compressed;
-        dec->init(instream);
       }
     }
     else
     {
       for (i = 0; i < num_readers; i++)
       {
-        readers[i]->read(point[i]);
+        readers[i]->read(point[i], context);
       }
     }
   }
@@ -443,11 +545,11 @@ BOOL LASreadPoint::check_end()
       if (current_chunk < tabled_chunks)
       {
         I64 here = instream->tell();
-        if (chunk_starts[current_chunk] != here)
+        if (chunk_starts[current_chunk] != here) // then last chunk was corrupt
         {
           // create error string
           if (last_error == 0) last_error = new CHAR[128];
-          // last chunk was corrupt
+          // report error
           sprintf(last_error, "chunk with index %u of %u is corrupt", current_chunk, tabled_chunks);
           return FALSE;
         }
@@ -501,6 +603,10 @@ BOOL LASreadPoint::read_chunk_table()
     // no choice but to fail if adaptive chunking was used
     if (chunk_size == U32_MAX)
     {
+      // create error string
+      if (last_error == 0) last_error = new CHAR[128];
+      // report error
+      sprintf(last_error, "compressor was interrupted before writing adaptive chunk table of LAZ file");
       return FALSE;
     }
     // otherwise we build the chunk table as we read the file
@@ -512,6 +618,10 @@ BOOL LASreadPoint::read_chunk_table()
     }
     chunk_starts[0] = chunks_start;
     tabled_chunks = 1;
+    // create warning string
+    if (last_warning == 0) last_warning = new CHAR[128];
+    // report warning
+    sprintf(last_warning, "compressor was interrupted before writing chunk table of LAZ file");
     return TRUE;
   }
 
@@ -524,7 +634,7 @@ BOOL LASreadPoint::read_chunk_table()
       return FALSE;
     }
     // then we cannot seek to the chunk table but won't need it anyways
-    number_chunks = U32_MAX-1;
+    number_chunks = 0;
     tabled_chunks = 0;
     return TRUE;
   }
@@ -545,9 +655,17 @@ BOOL LASreadPoint::read_chunk_table()
   // read the chunk table
   try
   {
+    // seek to where the chunk table
     instream->seek(chunk_table_start_position);
+    // fail if we did not manage to seek there
+    I64 where_are_we_now = instream->tell();
+    if (where_are_we_now != chunk_table_start_position)
+    {
+      throw 1;
+    }
     U32 version;
     instream->get32bitsLE((U8*)&version);
+    // fail if the version is wrong
     if (version != 0)
     {
       throw 1;
@@ -631,8 +749,32 @@ BOOL LASreadPoint::read_chunk_table()
     }
     // create warning string
     if (last_warning == 0) last_warning = new CHAR[128];
-    // report warning
-    sprintf(last_warning, "corrupt chunk table");
+    // first seek to the end of the file
+    instream->seekEnd();
+    // get position of last byte
+    I64 last_position = instream->tell();
+    // warn if last byte position is before chunk table start position
+    if (last_position <= chunk_table_start_position)
+    {
+      // report warning
+      if (last_position == chunk_table_start_position)
+      {
+        sprintf(last_warning, "chunk table is missing. improper use of LAZ compressor?");
+      }
+      else
+      {
+#ifdef _WIN32
+        sprintf(last_warning, "chunk table and %I64d bytes are missing. LAZ file truncated during copy or transfer?", chunk_table_start_position - last_position);
+#else
+        sprintf(last_warning, "chunk table and %lld bytes are missing. LAZ file truncated during copy or transfer?", chunk_table_start_position - last_position);
+#endif
+      }
+    }
+    else
+    {
+      // report warning
+      sprintf(last_warning, "corrupt chunk table");
+    }
   }
   if (!instream->seek(chunks_start))
   {
