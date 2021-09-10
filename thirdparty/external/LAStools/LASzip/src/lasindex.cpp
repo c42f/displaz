@@ -2,18 +2,18 @@
 ===============================================================================
 
   FILE:  lasindex.cpp
-  
+
   CONTENTS:
-  
+
     see corresponding header file
-  
+
   PROGRAMMERS:
-  
+
     martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
-  
+
   COPYRIGHT:
-  
-    (c) 2011-2015, martin isenburg, rapidlasso - fast tools to catch reality
+
+    (c) 2011-2017, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -21,11 +21,11 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
     see corresponding header file
-  
+
 ===============================================================================
 */
 #include "lasindex.hpp"
@@ -45,20 +45,31 @@
 #include "bytestreamout_file.hpp"
 
 #ifdef UNORDERED
-  // Check if on OS X and using cland (unordered map isn't part of tr1 namespace)
-  #if defined(_MSC_VER) || (defined(__APPLE__) && defined(__clang__))
-    #include <unordered_map>
-    using namespace std;
-  #else
-    #include <tr1/unordered_map>
+   // Figure out whether <unordered_map> is in tr1
+#  ifdef __has_include
+#    if __has_include(<unordered_map>)
+#     include <unordered_map>
+      using namespace std;
+#     define UNORDERED_FOUND
+#    endif
+#  endif
+#  ifdef HAVE_UNORDERED_MAP
+#     include <unordered_map>
+      using namespace std;
+#  elif defined(UNORDERED_FOUND)
+#    include <tr1/unordered_map>
     using namespace std;
     using namespace tr1;
-  #endif
+#  endif
 typedef unordered_map<I32,U32> my_cell_hash;
-#else
+#elif defined(LZ_WIN32_VC6)
 #include <hash_map>
 using namespace std;
 typedef hash_map<I32,U32> my_cell_hash;
+#else
+#include <unordered_map>
+using namespace std;
+typedef unordered_map<I32, U32> my_cell_hash;
 #endif
 
 LASindex::LASindex()
@@ -279,10 +290,44 @@ BOOL LASindex::has_intervals()
   return FALSE;
 }
 
+BOOL LASindex::read(FILE* file)
+{
+  if (file == 0) return FALSE;
+  ByteStreamIn* stream;
+  if (IS_LITTLE_ENDIAN())
+    stream = new ByteStreamInFileLE(file);
+  else
+    stream = new ByteStreamInFileBE(file);
+  if (!read(stream))
+  {
+    delete stream;
+    return FALSE;
+  }
+  delete stream;
+  return TRUE;
+}
+
+BOOL LASindex::write(FILE* file) const
+{
+  if (file == 0) return FALSE;
+  ByteStreamOut* stream;
+  if (IS_LITTLE_ENDIAN())
+    stream = new ByteStreamOutFileLE(file);
+  else
+    stream = new ByteStreamOutFileBE(file);
+  if (!write(stream))
+  {
+    delete stream;
+    return FALSE;
+  }
+  delete stream;
+  return TRUE;
+}
+
 BOOL LASindex::read(const char* file_name)
 {
   if (file_name == 0) return FALSE;
-  char* name = strdup(file_name);
+  char* name = LASCopyString(file_name);
   if (strstr(file_name, ".las") || strstr(file_name, ".laz"))
   {
     name[strlen(name)-1] = 'x';
@@ -297,26 +342,31 @@ BOOL LASindex::read(const char* file_name)
     name[strlen(name)-2] = 'a';
     name[strlen(name)-1] = 'x';
   }
+#ifdef _MSC_VER
   FILE* file = fopen(name, "rb");
-  free(name);
   if (file == 0)
   {
+    wchar_t* utf16_name = UTF8toUTF16(name);
+    file = _wfopen(utf16_name, L"rb");
+    delete [] utf16_name;
+  }
+#else
+  FILE* file = fopen(name, "rb");
+#endif
+  if (file == 0)
+  {
+    free(name);
     return FALSE;
   }
-  ByteStreamIn* stream;
-  if (IS_LITTLE_ENDIAN())
-    stream = new ByteStreamInFileLE(file);
-  else
-    stream = new ByteStreamInFileBE(file);
-  if (!read(stream))
+  if (!read(file))
   {
     fprintf(stderr,"ERROR (LASindex): cannot read '%s'\n", name);
-    delete stream;
     fclose(file);
+    free(name);
     return FALSE;
   }
-  delete stream;
   fclose(file);
+  free(name);
   return TRUE;
 }
 
@@ -339,7 +389,21 @@ BOOL LASindex::append(const char* file_name) const
 
   lasreader->close();
 
+#ifdef _MSC_VER
   FILE* file = fopen(file_name, "rb");
+  if (file == 0)
+  {
+    wchar_t* utf16_file_name = UTF8toUTF16(file_name);
+    file = _wfopen(utf16_file_name, L"rb");
+    if (file == 0)
+    {
+      fprintf(stderr, "ERROR: cannot open file '%ws'\n", utf16_file_name);
+    }
+    delete [] utf16_file_name;
+  }
+#else
+  FILE* file = fopen(file_name, "rb");
+#endif
   ByteStreamIn* bytestreamin = 0;
   if (IS_LITTLE_ENDIAN())
     bytestreamin = new ByteStreamInFileLE(file);
@@ -403,7 +467,21 @@ BOOL LASindex::append(const char* file_name) const
   fclose(file);
 
   ByteStreamOut* bytestreamout;
+#ifdef _MSC_VER
   file = fopen(file_name, "rb+");
+  if (file == 0)
+  {
+    wchar_t* utf16_file_name = UTF8toUTF16(file_name);
+    file = _wfopen(utf16_file_name, L"rb+");
+    if (file == 0)
+    {
+      fprintf(stderr, "ERROR: cannot open file '%ws'\n", utf16_file_name);
+    }
+    delete [] utf16_file_name;
+  }
+#else
+  file = fopen(file_name, "rb+");
+#endif
   if (IS_LITTLE_ENDIAN())
     bytestreamout = new ByteStreamOutFileLE(file);
   else
@@ -415,11 +493,11 @@ BOOL LASindex::append(const char* file_name) const
   lax_evlr.record_id = 30;
   sprintf(lax_evlr.description, "LAX spatial indexing (LASindex)");
 
-  bytestreamout->put16bitsLE((U8*)&(lax_evlr.reserved));
-  bytestreamout->putBytes((U8*)lax_evlr.user_id, 16);
-  bytestreamout->put16bitsLE((U8*)&(lax_evlr.record_id));
-  bytestreamout->put64bitsLE((U8*)&(lax_evlr.record_length_after_header));
-  bytestreamout->putBytes((U8*)lax_evlr.description, 32);
+  bytestreamout->put16bitsLE((const U8*)&(lax_evlr.reserved));
+  bytestreamout->putBytes((const U8*)lax_evlr.user_id, 16);
+  bytestreamout->put16bitsLE((const U8*)&(lax_evlr.record_id));
+  bytestreamout->put64bitsLE((const U8*)&(lax_evlr.record_length_after_header));
+  bytestreamout->putBytes((const U8*)lax_evlr.description, 32);
 
   if (!write(bytestreamout))
   {
@@ -434,15 +512,15 @@ BOOL LASindex::append(const char* file_name) const
 
   lax_evlr.record_length_after_header = bytestreamout->tell() - offset_to_special_evlrs - 60;
   bytestreamout->seek(offset_to_special_evlrs + 20);
-  bytestreamout->put64bitsLE((U8*)&(lax_evlr.record_length_after_header));
+  bytestreamout->put64bitsLE((const U8*)&(lax_evlr.record_length_after_header));
 
   // maybe update LASzip VLR
 
   if (number_of_special_evlrs != -1)
   {
     bytestreamout->seek(offset_laz_vlr + 54 + 16);
-    bytestreamout->put64bitsLE((U8*)&number_of_special_evlrs);
-    bytestreamout->put64bitsLE((U8*)&offset_to_special_evlrs);
+    bytestreamout->put64bitsLE((const U8*)&number_of_special_evlrs);
+    bytestreamout->put64bitsLE((const U8*)&offset_to_special_evlrs);
   }
 
   // close writer
@@ -462,7 +540,7 @@ BOOL LASindex::append(const char* file_name) const
 BOOL LASindex::write(const char* file_name) const
 {
   if (file_name == 0) return FALSE;
-  char* name = strdup(file_name);
+  char* name = LASCopyString(file_name);
   if (strstr(file_name, ".las") || strstr(file_name, ".laz"))
   {
     name[strlen(name)-1] = 'x';
@@ -477,27 +555,34 @@ BOOL LASindex::write(const char* file_name) const
     name[strlen(name)-2] = 'a';
     name[strlen(name)-1] = 'x';
   }
+#ifdef _MSC_VER
   FILE* file = fopen(name, "wb");
   if (file == 0)
   {
-    fprintf(stderr,"ERROR (LASindex): cannot open '%s' for write\n", name);
+    wchar_t* utf16_file_name = UTF8toUTF16(name);
+    file = _wfopen(utf16_file_name, L"wb");
+    if (file == 0)
+    {
+      fprintf(stderr, "ERROR (LASindex): cannot open file '%ws' for write\n", utf16_file_name);
+    }
+    delete [] utf16_file_name;
+  }
+#else
+  FILE* file = fopen(name, "wb");
+#endif
+  if (file == 0)
+  {
+    fprintf(stderr,"ERROR (LASindex): cannot open file '%s' for write\n", name);
     free(name);
     return FALSE;
   }
-  ByteStreamOut* stream;
-  if (IS_LITTLE_ENDIAN())
-    stream = new ByteStreamOutFileLE(file);
-  else
-    stream = new ByteStreamOutFileBE(file);
-  if (!write(stream))
+  if (!write(file))
   {
-    fprintf(stderr,"ERROR (LASindex): cannot write '%s'\n", name);
-    delete stream;
+    fprintf(stderr,"ERROR (LASindex): cannot write file '%s'\n", name);
     fclose(file);
     free(name);
     return FALSE;
   }
-  delete stream;
   fclose(file);
   free(name);
   return TRUE;
@@ -557,13 +642,13 @@ BOOL LASindex::read(ByteStreamIn* stream)
 
 BOOL LASindex::write(ByteStreamOut* stream) const
 {
-  if (!stream->putBytes((U8*)"LASX", 4))
+  if (!stream->putBytes((const U8*)"LASX", 4))
   {
     fprintf(stderr,"ERROR (LASindex): writing signature\n");
     return FALSE;
   }
   U32 version = 0;
-  if (!stream->put32bitsLE((U8*)&version))
+  if (!stream->put32bitsLE((const U8*)&version))
   {
     fprintf(stderr,"ERROR (LASindex): writing version\n");
     return FALSE;

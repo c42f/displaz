@@ -13,7 +13,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2012, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -35,9 +35,12 @@
 #include "laswriteitemraw.hpp"
 #include "laswriteitemcompressed_v1.hpp"
 #include "laswriteitemcompressed_v2.hpp"
+#include "laswriteitemcompressed_v3.hpp"
+#include "laswriteitemcompressed_v4.hpp"
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 LASwritePoint::LASwritePoint()
 {
@@ -47,6 +50,7 @@ LASwritePoint::LASwritePoint()
   writers_raw = 0;
   writers_compressed = 0;
   enc = 0;
+  layered_las14_compression = FALSE;
   // used for chunking
   chunk_size = U32_MAX;
   chunk_count = 0;
@@ -65,6 +69,8 @@ BOOL LASwritePoint::setup(const U32 num_items, const LASitem* items, const LASzi
   // is laszip exists then we must use its items
   if (laszip)
   {
+    if (num_items == 0) return FALSE;
+    if (items == 0) return FALSE;
     if (num_items != laszip->num_items) return FALSE;
     if (items != laszip->items) return FALSE;
   }
@@ -82,6 +88,8 @@ BOOL LASwritePoint::setup(const U32 num_items, const LASitem* items, const LASzi
       // entropy decoder not supported
       return FALSE;
     }
+    // maybe layered compression for LAS 1.4 
+    layered_las14_compression = (laszip->compressor == LASZIP_COMPRESSOR_LAYERED_CHUNKED);
   }
 
   // initizalize the writers
@@ -111,31 +119,34 @@ BOOL LASwritePoint::setup(const U32 num_items, const LASitem* items, const LASzi
         writers_raw[i] = new LASwriteItemRaw_GPSTIME11_BE();
       break;
     case LASitem::RGB12:
+    case LASitem::RGB14:
       if (IS_LITTLE_ENDIAN())
         writers_raw[i] = new LASwriteItemRaw_RGB12_LE();
       else
         writers_raw[i] = new LASwriteItemRaw_RGB12_BE();
       break;
-    case LASitem::WAVEPACKET13:
-      if (IS_LITTLE_ENDIAN())
-        writers_raw[i] = new LASwriteItemRaw_WAVEPACKET13_LE();
-      else
-        writers_raw[i] = new LASwriteItemRaw_WAVEPACKET13_BE();
-      break;
     case LASitem::BYTE:
+    case LASitem::BYTE14:
       writers_raw[i] = new LASwriteItemRaw_BYTE(items[i].size);
       break;
     case LASitem::POINT14:
       if (IS_LITTLE_ENDIAN())
         writers_raw[i] = new LASwriteItemRaw_POINT14_LE();
       else
-        return FALSE;
+        writers_raw[i] = new LASwriteItemRaw_POINT14_BE();
       break;
     case LASitem::RGBNIR14:
       if (IS_LITTLE_ENDIAN())
         writers_raw[i] = new LASwriteItemRaw_RGBNIR14_LE();
       else
         writers_raw[i] = new LASwriteItemRaw_RGBNIR14_BE();
+      break;
+    case LASitem::WAVEPACKET13:
+    case LASitem::WAVEPACKET14:
+      if (IS_LITTLE_ENDIAN())
+        writers_raw[i] = new LASwriteItemRaw_WAVEPACKET13_LE();
+      else
+        writers_raw[i] = new LASwriteItemRaw_WAVEPACKET13_BE();
       break;
     default:
       return FALSE;
@@ -175,12 +186,6 @@ BOOL LASwritePoint::setup(const U32 num_items, const LASitem* items, const LASzi
         else
           return FALSE;
         break;
-      case LASitem::WAVEPACKET13:
-        if (items[i].version == 1)
-         writers_compressed[i] = new LASwriteItemCompressed_WAVEPACKET13_v1(enc);
-        else
-          return FALSE;
-        break;
       case LASitem::BYTE:
         if (items[i].version == 1)
          writers_compressed[i] = new LASwriteItemCompressed_BYTE_v1(enc, items[i].size);
@@ -189,11 +194,57 @@ BOOL LASwritePoint::setup(const U32 num_items, const LASitem* items, const LASzi
         else
           return FALSE;
         break;
+      case LASitem::POINT14:
+        if (items[i].version == 3)
+          writers_compressed[i] = new LASwriteItemCompressed_POINT14_v3(enc);
+        else if (items[i].version == 4)
+          writers_compressed[i] = new LASwriteItemCompressed_POINT14_v4(enc);
+        else
+          return FALSE;
+        break;
+      case LASitem::RGB14:
+        if (items[i].version == 3)
+          writers_compressed[i] = new LASwriteItemCompressed_RGB14_v3(enc);
+        else if (items[i].version == 4)
+          writers_compressed[i] = new LASwriteItemCompressed_RGB14_v4(enc);
+        else
+          return FALSE;
+        break;
+      case LASitem::RGBNIR14:
+        if (items[i].version == 3)
+          writers_compressed[i] = new LASwriteItemCompressed_RGBNIR14_v3(enc);
+        else if (items[i].version == 4)
+          writers_compressed[i] = new LASwriteItemCompressed_RGBNIR14_v4(enc);
+        else
+          return FALSE;
+        break;
+      case LASitem::BYTE14:
+        if (items[i].version == 3)
+          writers_compressed[i] = new LASwriteItemCompressed_BYTE14_v3(enc, items[i].size);
+        else if (items[i].version == 4)
+          writers_compressed[i] = new LASwriteItemCompressed_BYTE14_v4(enc, items[i].size);
+        else
+          return FALSE;
+        break;
+      case LASitem::WAVEPACKET13:
+        if (items[i].version == 1)
+         writers_compressed[i] = new LASwriteItemCompressed_WAVEPACKET13_v1(enc);
+        else
+          return FALSE;
+        break;
+      case LASitem::WAVEPACKET14:
+        if (items[i].version == 3)
+          writers_compressed[i] = new LASwriteItemCompressed_WAVEPACKET14_v3(enc);
+        else if (items[i].version == 4)
+          writers_compressed[i] = new LASwriteItemCompressed_WAVEPACKET14_v4(enc);
+        else
+          return FALSE;
+        break;
       default:
         return FALSE;
       }
     }
-    if (laszip->compressor == LASZIP_COMPRESSOR_POINTWISE_CHUNKED)
+    if (laszip->compressor != LASZIP_COMPRESSOR_POINTWISE)
     {
       if (laszip->chunk_size) chunk_size = laszip->chunk_size;
       chunk_count = 0;
@@ -245,12 +296,38 @@ BOOL LASwritePoint::init(ByteStreamOut* outstream)
 BOOL LASwritePoint::write(const U8 * const * point)
 {
   U32 i;
+  U32 context = 0;
 
   if (chunk_count == chunk_size)
   {
-    enc->done();
-    add_chunk_to_table();
-    init(outstream);
+    if (enc)
+    {
+      if (layered_las14_compression)
+      {
+        // write how many points are in the chunk
+        outstream->put32bitsLE((U8*)&chunk_count);
+        // write all layers 
+        for (i = 0; i < num_writers; i++)
+        {
+          ((LASwriteItemCompressed*)writers[i])->chunk_sizes();
+        }
+        for (i = 0; i < num_writers; i++)
+        {
+          ((LASwriteItemCompressed*)writers[i])->chunk_bytes();
+        }
+      }
+      else
+      {
+        enc->done();
+      }
+      add_chunk_to_table();
+      init(outstream);
+    }
+    else
+    {
+      // happens *only* for uncompressed LAS with over U32_MAX points 
+      assert(chunk_size == U32_MAX);
+    }
     chunk_count = 0;
   }
   chunk_count++;
@@ -259,15 +336,15 @@ BOOL LASwritePoint::write(const U8 * const * point)
   {
     for (i = 0; i < num_writers; i++)
     {
-      writers[i]->write(point[i]);
+      writers[i]->write(point[i], context);
     }
   }
   else
   {
     for (i = 0; i < num_writers; i++)
     {
-      writers_raw[i]->write(point[i]);
-      ((LASwriteItemCompressed*)(writers_compressed[i]))->init(point[i]);
+      writers_raw[i]->write(point[i], context);
+      ((LASwriteItemCompressed*)(writers_compressed[i]))->init(point[i], context);
     }
     writers = writers_compressed;
     enc->init(outstream);
@@ -281,7 +358,25 @@ BOOL LASwritePoint::chunk()
   {
     return FALSE;
   }
-  enc->done();
+  if (layered_las14_compression)
+  {
+    U32 i;
+    // write how many points are in the chunk
+    outstream->put32bitsLE((U8*)&chunk_count);
+    // write all layers 
+    for (i = 0; i < num_writers; i++)
+    {
+      ((LASwriteItemCompressed*)writers[i])->chunk_sizes();
+    }
+    for (i = 0; i < num_writers; i++)
+    {
+      ((LASwriteItemCompressed*)writers[i])->chunk_bytes();
+    }
+  }
+  else
+  {
+    enc->done();
+  }
   add_chunk_to_table();
   init(outstream);
   chunk_count = 0;
@@ -292,7 +387,25 @@ BOOL LASwritePoint::done()
 {
   if (writers == writers_compressed)
   {
-    enc->done();
+    if (layered_las14_compression)
+    {
+      U32 i;
+      // write how many points are in the chunk
+      outstream->put32bitsLE((U8*)&chunk_count);
+      // write all layers 
+      for (i = 0; i < num_writers; i++)
+      {
+        ((LASwriteItemCompressed*)writers[i])->chunk_sizes();
+      }
+      for (i = 0; i < num_writers; i++)
+      {
+        ((LASwriteItemCompressed*)writers[i])->chunk_bytes();
+      }
+    }
+    else
+    {
+      enc->done();
+    }
     if (chunk_start_position)
     {
       if (chunk_count) add_chunk_to_table();

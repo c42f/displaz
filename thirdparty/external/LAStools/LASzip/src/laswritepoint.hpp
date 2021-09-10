@@ -2,9 +2,9 @@
 ===============================================================================
 
   FILE:  laswritepoint.hpp
-  
+
   CONTENTS:
-  
+
     Common interface for the classes that write points raw or compressed.
 
   PROGRAMMERS:
@@ -13,7 +13,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2014, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -21,9 +21,12 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
+    21 February 2019 -- fix for writing 4294967295+ points uncompressed to LAS
+    28 August 2017 -- moving 'context' from global development hack to interface  
+    23 August 2016 -- layering of items for selective decompression in LAS 1.4 
     6 September 2014 -- removed inheritance of EntropyEncoder and EntropyDecoder
     6 October 2011 -- large file support & reading with missing chunk table
     9 May 2011 -- the chunked compressor now allows variable chunk sizes
@@ -31,9 +34,9 @@
     10 January 2011 -- licensing change for LGPL release and liblas integration
     7 December 2010 -- adapted from LASpointWriter for better code modularity
     3 December 2010 -- updated to (somewhat) support LAS format 1.3
-    7 September 2008 -- updated to support LAS format 1.2 
+    7 September 2008 -- updated to support LAS format 1.2
     22 February 2007 -- created about an hour before henna's birthday
-  
+
 ===============================================================================
 */
 #ifndef LAS_WRITE_POINT_HPP
@@ -67,6 +70,7 @@ private:
   LASwriteItem** writers_raw;
   LASwriteItem** writers_compressed;
   ArithmeticEncoder* enc;
+  BOOL layered_las14_compression;
   // used for chunking
   U32 chunk_size;
   U32 chunk_count;

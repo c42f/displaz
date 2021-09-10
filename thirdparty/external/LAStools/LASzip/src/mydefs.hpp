@@ -74,6 +74,7 @@ typedef bool               BOOL;
 
 typedef union U32I32F32 { U32 u32; I32 i32; F32 f32; } U32I32F32;
 typedef union U64I64F64 { U64 u64; I64 i64; F64 f64; } U64I64F64;
+typedef union I64U32I32F32 { I64 i64; U32 u32[2]; I32 i32[2]; F32 f32[2]; } I64U32I32F32;
 
 #define F32_MAX            +2.0e+37f
 #define F32_MIN            -2.0e+37f
@@ -123,17 +124,17 @@ typedef union U64I64F64 { U64 u64; I64 i64; F64 f64; } U64I64F64;
 #define I32_CLAMP(n)    (((n) <= I32_MIN) ? I32_MIN : (((n) >= I32_MAX) ? I32_MAX : ((I32)(n))))
 #define U32_CLAMP(n)    (((n) <= U32_MIN) ? U32_MIN : (((n) >= U32_MAX) ? U32_MAX : ((U32)(n))))
 
-#define I8_QUANTIZE(n) (((n) >= 0) ? (I8)((n)+0.5f) : (I8)((n)-0.5f))
-#define U8_QUANTIZE(n) (((n) >= 0) ? (U8)((n)+0.5f) : (U8)(0))
+#define I8_QUANTIZE(n) (((n) >= 0) ? (I8)((n)+0.5) : (I8)((n)-0.5))
+#define U8_QUANTIZE(n) (((n) >= 0) ? (U8)((n)+0.5) : (U8)(0))
 
-#define I16_QUANTIZE(n) (((n) >= 0) ? (I16)((n)+0.5f) : (I16)((n)-0.5f))
-#define U16_QUANTIZE(n) (((n) >= 0) ? (U16)((n)+0.5f) : (U16)(0))
+#define I16_QUANTIZE(n) (((n) >= 0) ? (I16)((n)+0.5) : (I16)((n)-0.5))
+#define U16_QUANTIZE(n) (((n) >= 0) ? (U16)((n)+0.5) : (U16)(0))
 
-#define I32_QUANTIZE(n) (((n) >= 0) ? (I32)((n)+0.5f) : (I32)((n)-0.5f))
-#define U32_QUANTIZE(n) (((n) >= 0) ? (U32)((n)+0.5f) : (U32)(0))
+#define I32_QUANTIZE(n) (((n) >= 0) ? (I32)((n)+0.5) : (I32)((n)-0.5))
+#define U32_QUANTIZE(n) (((n) >= 0) ? (U32)((n)+0.5) : (U32)(0))
 
-#define I64_QUANTIZE(n) (((n) >= 0) ? (I64)((n)+0.5f) : (I64)((n)-0.5f))
-#define U64_QUANTIZE(n) (((n) >= 0) ? (U64)((n)+0.5f) : (U64)(0))
+#define I64_QUANTIZE(n) (((n) >= 0) ? (I64)((n)+0.5) : (I64)((n)-0.5))
+#define U64_QUANTIZE(n) (((n) >= 0) ? (U64)((n)+0.5) : (U64)(0))
 
 #define I16_FLOOR(n) ((((I16)(n)) > (n)) ? (((I16)(n))-1) : ((I16)(n)))
 #define I32_FLOOR(n) ((((I32)(n)) > (n)) ? (((I32)(n))-1) : ((I32)(n)))
@@ -147,11 +148,14 @@ typedef union U64I64F64 { U64 u64; I64 i64; F64 f64; } U64I64F64;
 #define U8_FITS_IN_RANGE(n) (((n) >= U8_MIN) && ((n) <= U8_MAX) ? TRUE : FALSE)
 #define I16_FITS_IN_RANGE(n) (((n) >= I16_MIN) && ((n) <= I16_MAX) ? TRUE : FALSE)
 #define U16_FITS_IN_RANGE(n) (((n) >= U16_MIN) && ((n) <= U16_MAX) ? TRUE : FALSE)
+#define I32_FITS_IN_RANGE(n) (((n) >= I32_MIN) && ((n) <= I32_MAX) ? TRUE : FALSE)
+#define U32_FITS_IN_RANGE(n) (((n) >= U32_MIN) && ((n) <= U32_MAX) ? TRUE : FALSE)
 
 #define F32_IS_FINITE(n) ((F32_MIN < (n)) && ((n) < F32_MAX))
 #define F64_IS_FINITE(n) ((F64_MIN < (n)) && ((n) < F64_MAX))
 
 #define U32_ZERO_BIT_0(n) (((n)&(U32)0xFFFFFFFE))
+#define U32_ZERO_BIT_0_1(n) (((n)&(U32)0xFFFFFFFC))
 
 #ifndef FALSE
 #define FALSE   0
@@ -168,7 +172,7 @@ typedef union U64I64F64 { U64 u64; I64 i64; F64 f64; } U64I64F64;
 inline BOOL IS_LITTLE_ENDIAN()
 {
   const U32 i = 1;
-  return (*((U8*)&i) == 1);
+  return (*((const U8*)&i) == 1);
 }
 
 #define ENDIANSWAP16(n) \
@@ -241,5 +245,10 @@ inline void ENDIAN_SWAP_64(const U8* from, U8* to)
   to[6] = from[1];
   to[7] = from[0];
 }
+
+#if defined(_MSC_VER)
+#include <windows.h>
+wchar_t* UTF8toUTF16(const char* utf8);
+#endif
 
 #endif

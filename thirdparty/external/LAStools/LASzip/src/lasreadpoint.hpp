@@ -13,7 +13,7 @@
 
   COPYRIGHT:
 
-    (c) 2007-2014, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2020, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -24,6 +24,11 @@
   
   CHANGE HISTORY:
   
+    23 September 2020 -- rare fix for bit-corrupted LAZ files where chunk table is zeroed
+    28 August 2017 -- moving 'context' from global development hack to interface  
+    18 July 2017 -- bug fix for spatial-indexed reading of native compressed LAS 1.4 
+    19 April 2017 -- support for selective decompression for new LAS 1.4 points 
+    23 August 2016 -- layering of items for selective decompression in LAS 1.4 
     6 September 2014 -- removed inheritance of EntropyEncoder and EntropyDecoder
     24 August 2014 -- delay read of chunk table until first read() or seek() is called
     6 October 2011 -- large file support & reading with missing chunk table
@@ -42,6 +47,7 @@
 
 #include "mydefs.hpp"
 #include "laszip.hpp"
+#include "laszip_decompress_selective_v3.hpp"
 #include "bytestreamin.hpp"
 
 class LASreadItem;
@@ -50,7 +56,7 @@ class ArithmeticDecoder;
 class LASreadPoint
 {
 public:
-  LASreadPoint();
+  LASreadPoint(U32 decompress_selective=LASZIP_DECOMPRESS_SELECTIVE_ALL);
   ~LASreadPoint();
 
   // should only be called *once*
@@ -72,6 +78,7 @@ private:
   LASreadItem** readers_raw;
   LASreadItem** readers_compressed;
   ArithmeticDecoder* dec;
+  BOOL layered_las14_compression;
   // used for chunking
   U32 chunk_size;
   U32 chunk_count;
@@ -83,6 +90,8 @@ private:
   BOOL init_dec();
   BOOL read_chunk_table();
   U32 search_chunk_table(const U32 index, const U32 lower, const U32 upper);
+  // used for selective decompression (new LAS 1.4 point types only)
+  U32 decompress_selective;
   // used for seeking
   I64 point_start;
   U32 point_size;

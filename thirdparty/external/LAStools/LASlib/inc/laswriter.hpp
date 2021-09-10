@@ -2,9 +2,9 @@
 ===============================================================================
 
   FILE:  laswriter.hpp
-  
+
   CONTENTS:
-  
+
     Interface to write LIDAR points to the LAS format versions 1.0 - 1.4 and
     per on-the-fly conversion to simple ASCII files.
 
@@ -22,9 +22,13 @@
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  
+
   CHANGE HISTORY:
-  
+
+    7 September 2018 -- replaced calls to _strdup with calls to the LASCopyString macro
+    17 August 2017 -- switch on "native LAS 1.4 extension". turns off with '-no_native'.
+    29 March 2017 -- enable "native LAS 1.4 extension" for LASzip via '-native'
+    13 November 2016 -- return early FALSE when set_directory() will not succeed
     5 September 2011 -- support for writing Terrasolid's BIN format
     11 June 2011 -- billion point support: p_count & npoints are 64 bit counters
     8 May 2011 -- DO NOT USE option for variable chunking via chunk()
@@ -32,9 +36,9 @@
     24 January 2011 -- introduced LASwriteOpener
     21 January 2011 -- turned into abstract reader to support multiple files
     3 December 2010 -- updated to (somewhat) support LAS format 1.3
-    7 September 2008 -- updated to support LAS format 1.2 
+    7 September 2008 -- updated to support LAS format 1.2
     21 February 2007 -- created after eating Sarah's veggies with peanutsauce
-  
+
 ===============================================================================
 */
 #ifndef LAS_WRITER_HPP
@@ -59,6 +63,8 @@ public:
   virtual BOOL update_header(const LASheader* header, BOOL use_inventory=FALSE, BOOL update_extra_bytes=FALSE) = 0;
   virtual I64 close(BOOL update_npoints=TRUE) = 0;
 
+  void dealloc();
+
   LASwriter() { npoints = 0; p_count = 0; };
   virtual ~LASwriter() {};
 };
@@ -70,10 +76,11 @@ class LASLIB_DLL LASwriteOpener
 public:
   void set_io_obuffer_size(I32 io_obuffer_size);
   inline I32 get_io_obuffer_size() const { return io_obuffer_size; };
-  void set_directory(const CHAR* directory);
+  BOOL set_directory(const CHAR* directory);
   void set_file_name(const CHAR* file_name);
   void set_appendix(const CHAR* appendix);
   void set_cut(U32 cut);
+  void set_native(BOOL native);
   BOOL set_format(I32 format);
   BOOL set_format(const CHAR* format);
   void set_force(BOOL force);
@@ -86,6 +93,7 @@ public:
   const CHAR* get_file_name_only() const;
   CHAR* get_file_name_base() const;
   U32 get_cut() const;
+  BOOL get_native() const;
   BOOL format_was_specified() const;
   I32 get_format() const;
   const CHAR* get_format_name() const;
@@ -119,6 +127,7 @@ private:
   U32 format;
   BOOL specified;
   BOOL force;
+  BOOL native;
   U32 chunk_size;
   BOOL use_stdout;
   BOOL use_nil;

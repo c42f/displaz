@@ -11,7 +11,7 @@
   
   COPYRIGHT:
 
-    (c) 2003-2012, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2003-2018, martin isenburg, rapidlasso - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -22,6 +22,7 @@
   
   CHANGE HISTORY:
   
+    27 December 2018 -- only act if the extension really is a file extension
     20 March 2011 -- added capability for *.zip, *.rar, and *.7z on Windows
     12 December 2003 -- adapted from Stefan Gumhold's SIGGRAPH submission hack
   
@@ -74,10 +75,10 @@ static FILE* fopen7zipped(const char* filename, const char* mode)
 		}
 
     // close original write end of pipe
-		close(hPipe[WRITE_HANDLE]);
+		_close(hPipe[WRITE_HANDLE]);
 
 		// Spawn process
-		HANDLE hProcess = (HANDLE) spawnlp(P_NOWAIT, "7z", "7z", "e", "-so", filename, NULL);
+		HANDLE hProcess = (HANDLE)_spawnlp(P_NOWAIT, "7z", "7z", "e", "-so", filename, NULL);
 
 		// redirect stdout back into stdout
 		if (_dup2(hStdOut, _fileno(stdout)) != 0)
@@ -126,10 +127,10 @@ static FILE* fopenZIPped(const char* filename, const char* mode)
 		}
 
     // close original write end of pipe
-		close(hPipe[WRITE_HANDLE]);
+		_close(hPipe[WRITE_HANDLE]);
 
 		// Spawn process
-		HANDLE hProcess = (HANDLE) spawnlp(P_NOWAIT, "unzip", "unzip", "-p", filename, NULL);
+		HANDLE hProcess = (HANDLE)_spawnlp(P_NOWAIT, "unzip", "unzip", "-p", filename, NULL);
 
 		// redirect stdout back into stdout
 		if (_dup2(hStdOut, _fileno(stdout)) != 0)
@@ -183,7 +184,7 @@ static FILE* fopenGzipped(const char* filename, const char* mode)
 		}
 
 		// close original write end of pipe
-		close(hPipe[WRITE_HANDLE]);
+		_close(hPipe[WRITE_HANDLE]);
 
 		// redirect read end of pipe to input file
 		if (_dup2(hPipe[READ_HANDLE], _fileno(gzipInput)) != 0)
@@ -193,10 +194,10 @@ static FILE* fopenGzipped(const char* filename, const char* mode)
 		}
 
 		// close original read end of pipe
-		close(hPipe[READ_HANDLE]);
+		_close(hPipe[READ_HANDLE]);
 
 		// Spawn process
-		HANDLE hProcess = (HANDLE) spawnlp(P_NOWAIT, "gzip", "gzip", "-d", NULL);
+		HANDLE hProcess = (HANDLE)_spawnlp(P_NOWAIT, "gzip", "gzip", "-d", NULL);
 
 		// redirect stdin back into stdin
 		if (_dup2(hStdIn, _fileno(stdin)) != 0)
@@ -252,10 +253,10 @@ static FILE* fopenGzippedNew(const char* filename, const char* mode)
 		}
 
     // close original write end of pipe
-		close(hPipe[WRITE_HANDLE]);
+		_close(hPipe[WRITE_HANDLE]);
 
 		// Spawn process
-		HANDLE hProcess = (HANDLE) spawnlp(P_NOWAIT, "gzip", "gzip", "-dc", filename, NULL);
+		HANDLE hProcess = (HANDLE)_spawnlp(P_NOWAIT, "gzip", "gzip", "-dc", filename, NULL);
 
 		// redirect stdout back into stdout
 		if (_dup2(hStdOut, _fileno(stdout)) != 0)
@@ -304,10 +305,10 @@ static FILE* fopenRARed(const char* filename, const char* mode)
 		}
 
     // close original write end of pipe
-		close(hPipe[WRITE_HANDLE]);
+		_close(hPipe[WRITE_HANDLE]);
 
 		// Spawn process
-		HANDLE hProcess = (HANDLE) spawnlp(P_NOWAIT, "unrar", "unrar", "p", "-ierr", filename, NULL);
+		HANDLE hProcess = (HANDLE)_spawnlp(P_NOWAIT, "unrar", "unrar", "p", "-ierr", filename, NULL);
 
 		// redirect stdout back into stdout
 		if (_dup2(hStdOut, _fileno(stdout)) != 0)
@@ -330,9 +331,11 @@ extern "C"
 {
 FILE* fopen_compressed(const char* filename, const char* mode, bool* piped)
 {
+  int len;
   FILE* file;
+  len = (int)strlen(filename);
 
-  if (strstr(filename, ".gz"))
+  if (strcmp(filename+len-3, ".gz") == 0)
   {
 #ifdef _WIN32
     file = fopenGzipped(filename, mode);
@@ -342,7 +345,7 @@ FILE* fopen_compressed(const char* filename, const char* mode, bool* piped)
     return 0;
 #endif
   }
-  else if (strstr(filename, ".zip"))
+  else if (strcmp(filename+len-4, ".zip") == 0)
   {
 #ifdef _WIN32
     file = fopenZIPped(filename, mode);
@@ -352,7 +355,7 @@ FILE* fopen_compressed(const char* filename, const char* mode, bool* piped)
     return 0;
 #endif
   }
-  else if (strstr(filename, ".7z"))
+  else if (strcmp(filename+len-3, ".7z") == 0)
   {
 #ifdef _WIN32
     file = fopen7zipped(filename, mode);
@@ -362,7 +365,7 @@ FILE* fopen_compressed(const char* filename, const char* mode, bool* piped)
     return 0;
 #endif
   }
-  else if (strstr(filename, ".rar"))
+  else if (strcmp(filename+len-4, ".rar") == 0)
   {
 #ifdef _WIN32
     file = fopenRARed(filename, mode);
