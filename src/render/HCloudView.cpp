@@ -3,6 +3,8 @@
 
 #include "HCloudView.h"
 
+#include <cfloat>
+
 #include "hcloud.h"
 #include "ClipBox.h"
 #include "glutil.h"

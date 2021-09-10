@@ -19,6 +19,8 @@
 #   include <signal.h>
 #endif
 
+#include <cfloat>
+
 #include "tinyformat.h"
 
 size_t EllipticalDist::findNearest(const V3d& offset, const V3f* points,

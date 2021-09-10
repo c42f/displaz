@@ -15,10 +15,10 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-register"
 #endif
 
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
-#include <OpenEXR/ImathColor.h>
-#include <OpenEXR/ImathMatrix.h>
+#include <Imath/ImathVec.h>
+#include <Imath/ImathBox.h>
+#include <Imath/ImathColor.h>
+#include <Imath/ImathMatrix.h>
 
 #ifdef __clang__
 #pragma GCC diagnostic pop

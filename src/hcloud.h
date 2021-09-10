@@ -7,8 +7,8 @@
 
 #include <cstdint>
 
-#include <OpenEXR/ImathVec.h>
-#include <OpenEXR/ImathBox.h>
+#include <Imath/ImathVec.h>
+#include <Imath/ImathBox.h>
 
 //------------------------------------------------------------------------------
 /// Magic number at start of each hcloud file, and size in bytes

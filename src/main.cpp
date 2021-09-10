@@ -8,6 +8,8 @@
 #include <QTextCodec>
 #include <QUuid>
 
+#include <cfloat>
+
 #include "argparse.h"
 #include "config.h"
 #include "IpcChannel.h"

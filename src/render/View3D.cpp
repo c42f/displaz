@@ -7,6 +7,8 @@
 #include "glutil.h"
 #include "View3D.h"
 
+#include <cfloat>
+
 #include <QTimer>
 #include <QTime>
 #include <QKeyEvent>
