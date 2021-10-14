@@ -264,9 +264,14 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         *numReturns++ = point.number_of_returns_of_given_pulse;
 #       endif
         *pointSourceId++ = point.point_source_ID;
-        // Put flags back in classification byte to avoid memory bloat
-        *classification++ = point.classification | (point.synthetic_flag << 5) |
-                            (point.keypoint_flag << 6) | (point.withheld_flag << 7);
+
+	if (point.extended_point_type) {
+            *classification++ = point.extended_classification;
+        } else {
+            // Put flags back in classification byte to avoid memory bloat
+            *classification++ = point.classification | (point.synthetic_flag << 5) |
+                                (point.keypoint_flag << 6) | (point.withheld_flag << 7);
+        }
         // Extract point RGB
         if (color)
         {
