@@ -175,7 +175,7 @@ else()
     target_link_libraries(displaz
         Qt5::Core Qt5::Gui Qt5::OpenGL
         Qt5::Network Qt5::Widgets
-        ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
+        OpenGL::GL ${GLEW_LIBRARIES}
         ${ILMBASE_LIBRARIES}
     )
     if (TARGET displaz_com)
