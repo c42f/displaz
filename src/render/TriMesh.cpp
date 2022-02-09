@@ -56,6 +56,7 @@ struct PlyLoadInfo
     double offset[3]; /// Global offset for verts array
     bool gotZ;
     std::vector<float> colors;
+    std::vector<float> normals;
     std::vector<float> texcoords;
     QString textureFileName;
 
@@ -81,6 +82,8 @@ struct PlyLoadInfo
             deferredPolys[i].triangulate(verts, triangles);
         if (colors.size() != size_t(3*nvertices))
             colors.clear();
+        if (normals.size() != size_t(3*nvertices))
+            normals.clear();
         if (texcoords.size() != size_t(2*nvertices))
             texcoords.clear();
     }
@@ -121,6 +124,17 @@ static int color_cb(p_ply_argument argument)
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
     double v = ply_get_argument_value(argument);
     info.colors.push_back((float)v);
+    return 1;
+}
+
+
+static int normal_cb(p_ply_argument argument)
+{
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
+    double v = ply_get_argument_value(argument);
+    info.normals.push_back((float)v);
     return 1;
 }
 
@@ -230,6 +244,13 @@ bool loadPlyFile(const QString& fileName,
             info.colors.reserve(3*nvertices);
         }
     }
+    long nnormals = ply_set_read_cb(ply.get(), "vertex", "nx", normal_cb, &info, 0);
+    if (nnormals != 0)
+    {
+        ply_set_read_cb(ply.get(), "vertex", "ny", normal_cb, &info, 1);
+        ply_set_read_cb(ply.get(), "vertex", "nz", normal_cb, &info, 2);
+        info.normals.reserve(3*nvertices);
+    }
     long ntexcoords = ply_set_read_cb(ply.get(), "vertex", "u", texcoord_cb, &info, 0);
     if (ntexcoords != 0)
     {
@@ -330,6 +351,7 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     setBoundingBox(getBoundingBox(offset, info.verts));
     m_verts.swap(info.verts);
     m_colors.swap(info.colors);
+    m_normals.swap(info.normals);
     m_texcoords.swap(info.texcoords);
     m_triangles.swap(info.triangles);
     m_edges.swap(info.edges);
@@ -370,6 +392,8 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
                                  const char * positionAttrName, const char * normAttrName,
                                  const char * colorAttrName, const char* texCoordAttrName)
 {
+    std::cout << "vertArrayName=" << vertArrayName << std::endl;
+
     unsigned int vertexShaderId = shaderId(vertArrayName);
 
     if (!vertexShaderId) {
@@ -398,17 +422,21 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     glEnableVertexAttribArray(positionAttribute);
 
     // Normal attribute
+    std::cout << "normAttrName=" << normAttrName << std::endl;
     GLint normalAttribute = glGetAttribLocation(vertexShaderId, normAttrName);
     GlBuffer normalBuffer;
+    std::cout << "normalAttribute=" << normalAttribute << std::endl;
     if (normalAttribute != -1)
     {
         if (m_normals.empty())
         {
+            std::cout << "normals empty" << std::endl;
             glDisableVertexAttribArray(normalAttribute);
             glVertexAttrib3f(normalAttribute, 0, 0, 1);
         }
         else
         {
+            std::cout << "normals buffer" << std::endl;
             normalBuffer.bind(GL_ARRAY_BUFFER);
             glBufferData(GL_ARRAY_BUFFER, m_normals.size() * sizeof(float), &m_normals[0], GL_STATIC_DRAW);
             glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, sizeof(float) * (3), (const GLvoid *) 0);
