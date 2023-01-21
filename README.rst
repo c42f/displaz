@@ -119,7 +119,7 @@ Studio generator ``"Visual Studio 14 Win64"`` is used::
     rem Build LASlib and ilmbase
     mkdir build_external
     cd build_external
-    cmake -G "Visual Studio 14 Win64" -D CMAKE_BUILD_TYPE=Release ..\thirdparty\external
+    cmake -G "Visual Studio 16 2019" -D CMAKE_BUILD_TYPE=Release ..\thirdparty\external
     cmake --build . --config Release
     cd ..
 
@@ -127,7 +127,7 @@ Studio generator ``"Visual Studio 14 Win64"`` is used::
     rem Assumes that Qt has been installed into C:\Qt\Qt5.5.1\5.5\msvc2015_64
     mkdir build
     cd build
-    cmake -G "Visual Studio 14 Win64" ^
+    cmake -G "Visual Studio 16 2019" ^
         -D CMAKE_PREFIX_PATH=C:\Qt\Qt5.5.1\5.5\msvc2015_64 ^
         -D CMAKE_INSTALL_PREFIX:PATH=dist ^
         ..

@@ -11,7 +11,7 @@ endif()
 
 project(external_libs)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 set(DOWNLOAD_DIR "${PROJECT_SOURCE_DIR}/downloads"
     CACHE PATH "Location for downloaded source archives")
@@ -24,8 +24,8 @@ include(ExternalProject)
 
 ExternalProject_Add(
     Imath
-    URL https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.0.1.tar.gz
-    URL_MD5 29d4f51913eba76b55552218a17473a6
+    URL https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tags/v3.1.6.tar.gz
+    URL_MD5 dccea95a752b7a772706e5cc8b0043dc
     CMAKE_ARGS
         -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
         -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
@@ -42,6 +42,7 @@ ExternalProject_Add(
     CMAKE_ARGS
         -D CMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}
         -D CMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+        -D CMAKE_CONFIGURATION_TYPES:STRING=${CMAKE_BUILD_TYPE}
         -D CMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
     INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
     DOWNLOAD_DIR "${DOWNLOAD_DIR}"
