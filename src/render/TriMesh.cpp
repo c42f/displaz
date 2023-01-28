@@ -56,6 +56,7 @@ struct PlyLoadInfo
     double offset[3]; /// Global offset for verts array
     bool gotZ;
     std::vector<float> colors;
+    std::vector<float> normals;
     std::vector<float> texcoords;
     QString textureFileName;
 
@@ -81,6 +82,8 @@ struct PlyLoadInfo
             deferredPolys[i].triangulate(verts, triangles);
         if (colors.size() != size_t(3*nvertices))
             colors.clear();
+        if (normals.size() != size_t(3*nvertices))
+            normals.clear();
         if (texcoords.size() != size_t(2*nvertices))
             texcoords.clear();
     }
@@ -121,6 +124,17 @@ static int color_cb(p_ply_argument argument)
     PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
     double v = ply_get_argument_value(argument);
     info.colors.push_back((float)v);
+    return 1;
+}
+
+
+static int normal_cb(p_ply_argument argument)
+{
+    void* pinfo = 0;
+    ply_get_argument_user_data(argument, &pinfo, NULL);
+    PlyLoadInfo& info = *((PlyLoadInfo*)pinfo);
+    double v = ply_get_argument_value(argument);
+    info.normals.push_back((float)v);
     return 1;
 }
 
@@ -230,6 +244,13 @@ bool loadPlyFile(const QString& fileName,
             info.colors.reserve(3*nvertices);
         }
     }
+    long nnormals = ply_set_read_cb(ply.get(), "vertex", "nx", normal_cb, &info, 0);
+    if (nnormals != 0)
+    {
+        ply_set_read_cb(ply.get(), "vertex", "ny", normal_cb, &info, 1);
+        ply_set_read_cb(ply.get(), "vertex", "nz", normal_cb, &info, 2);
+        info.normals.reserve(3*nvertices);
+    }
     long ntexcoords = ply_set_read_cb(ply.get(), "vertex", "u", texcoord_cb, &info, 0);
     if (ntexcoords != 0)
     {
@@ -330,6 +351,7 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     setBoundingBox(getBoundingBox(offset, info.verts));
     m_verts.swap(info.verts);
     m_colors.swap(info.colors);
+    m_normals.swap(info.normals);
     m_texcoords.swap(info.texcoords);
     m_triangles.swap(info.triangles);
     m_edges.swap(info.edges);
