@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
     double viewRadius = -DBL_MAX;
 
     std::string shaderName;
+    std::string shadersDir;
+    std::string docsDir;
     std::string unloadRegex;
     std::string viewLabelName;
     bool noServer = false;
@@ -117,6 +119,8 @@ int main(int argc, char *argv[])
         "-noserver",     &noServer,      "Don't attempt to open files in existing window",
         "-server %s",    &serverName,    "Name of displaz instance to message on startup",
         "-shader %s",    &shaderName,    "Name of shader file to load on startup",
+        "-shadersDir %s", &shadersDir,   "Path to the shaders folder",
+        "-docsDir %s",    &docsDir,        "Path to the docs folder",
         "-viewposition %F %F %F", &posX, &posY, &posZ, "Set absolute view position [X, Y, Z]",
         "-viewradius %F", &viewRadius,   "Set distance to view focus point",
         "-viewlabel %s", &viewLabelName, "Set view on the first index to geometry that matches the given label",
@@ -214,6 +218,14 @@ int main(int argc, char *argv[])
              << "-instancelock" << QString::fromStdString(lockName)
                                 << QString::fromStdString(instanceLock.makeLockId())
              << "-socketname"   << QString::fromStdString(socketName);
+        if(!shadersDir.empty())
+        {
+            args << "-shadersDir" << QString::fromStdString(shadersDir);
+        }
+        if (!docsDir.empty())
+        {
+            args << "-shadersDir" << QString::fromStdString(docsDir);
+        }
         if (!QProcess::startDetached(exeName, args,
                                      QDir::currentPath(), &guiPid))
         {

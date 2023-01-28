@@ -20,23 +20,56 @@ class GeometryMutator;
 /// Set up search paths to our application directory for Qt's file search
 /// mechanism.
 ///
-/// This allows us to use "shaders:las_points.glsl" as a path to a shader
-/// in the rest of the code, regardless of the system-specific details of how
+/// This allows us to use "shaders:las_points.glsl" or "doc:userguide.html"
+/// as a path to a shader/documentation in the rest of the code, regardless
+/// of the system-specific details of how
 /// the install directories are laid out.
-static void setupQFileSearchPaths()
+static void addSearchPath(const QString &prefix, const QString& searchPath, const QString& defaultPath)
 {
-    QString installBinDir = QCoreApplication::applicationDirPath();
-    if (!installBinDir.endsWith("/bin"))
+    QString localSearchPath(searchPath);
+    // If path argument is not provided via command line then
+    // old behaviour - use DISPLAZ_SHADER_DIR or DISPLAZ_DOC_DIR
+    if (localSearchPath.isEmpty())
     {
-        std::cerr << "WARNING: strange install location detected "
-                     "- shaders will not be found\n";
+        QString installBinDir = QCoreApplication::applicationDirPath();
+
+        // It will fail everytime when the program is started via VC++ Ide
+        if (!installBinDir.endsWith("/bin"))
+        {
+            std::cerr << "WARNING: strange install location detected - "
+                      << prefix.toStdString()
+                      << " will not be found\n";
+            return;
+        }
+        QString installBaseDir = installBinDir;
+        installBaseDir.chop(4);
+        localSearchPath = QDir(installBaseDir).absoluteFilePath(defaultPath);
+    }
+    else // if path is provided via command line then
+    {
+        localSearchPath = QDir::fromNativeSeparators(localSearchPath);
+        // If path is relative, then it will be relative of application exe file,
+        // not its base path as in the old behaviour
+        if (QDir(localSearchPath).isRelative())
+        {
+            QDir sDir(QCoreApplication::applicationDirPath());
+            localSearchPath = sDir.absoluteFilePath(localSearchPath);
+        }
+        //If path is absolute then it will be used without changes
+    }
+    if (!QDir(localSearchPath).exists())
+    {
+        std::cerr << "WARNING: Path \""
+                  << localSearchPath.toStdString()
+                  << "\" does not exist - "
+                  << prefix.toStdString()
+                  << " will not be found\n";
         return;
     }
-    QString installBaseDir = installBinDir;
-    installBaseDir.chop(4);
-    QDir::addSearchPath("shaders", installBaseDir + "/" + DISPLAZ_SHADER_DIR);
-    QDir::addSearchPath("doc", installBaseDir + "/" + DISPLAZ_DOC_DIR);
+    QDir::addSearchPath(prefix, localSearchPath);
 }
+
+
 
 
 /// Run the main GUI window
@@ -46,6 +79,8 @@ int guimain(int argc, char* argv[])
     std::string lockId;
     std::string socketName;
     std::string serverName;
+    std::string shadersDir;
+    std::string docsDir;
 
     ArgParse::ArgParse ap;
     ap.options(
@@ -54,6 +89,8 @@ int guimain(int argc, char* argv[])
         "-instancelock %s %s", &lockName, &lockId, "Single instance lock name and ID to reacquire",
         "-socketname %s",      &socketName,        "Local socket name for IPC",
         "-server %s",          &serverName,        "DEBUG: Compute lock file and socket name; do not inherit lock",
+        "-shadersDir %s",       &shadersDir,         "Path to the shaders folder",
+        "-docsDir %s",          &docsDir,            "Path to the docs folder",
         NULL
     );
 
@@ -68,8 +105,8 @@ int guimain(int argc, char* argv[])
     // Qt5: no longer required
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
 #endif
-
-    setupQFileSearchPaths();
+    addSearchPath("shaders", QString::fromStdString(shadersDir), DISPLAZ_SHADER_DIR);
+    addSearchPath("doc", QString::fromStdString(docsDir), DISPLAZ_DOC_DIR);
 
     Q_INIT_RESOURCE(resource);
 
