@@ -7,7 +7,7 @@
 #   - IMATH_VERSION: the version string for Imath
 
 find_path(IMATH_INCLUDE_DIRS Imath/ImathConfig.h)
-find_library(IMATH_IMATH_LIBRARY Imath-3_0)
+find_library(IMATH_IMATH_LIBRARY Imath-3_1)
 
 set(IMATH_LIBRARIES ${IMATH_IMATH_LIBRARY})
 

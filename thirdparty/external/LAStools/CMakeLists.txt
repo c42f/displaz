@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+
+# Force multi-configuration generator (Visual Studio) into single-configuration
+set(CMAKE_CONFIGURATION_TYPES ${CMAKE_BUILD_TYPE})
+
 set(CMAKE_SUPPRESS_REGENERATION true)
 project("LAStools")
 

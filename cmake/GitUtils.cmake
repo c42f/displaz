@@ -18,7 +18,7 @@ function(git_describe outputVar)
     # HEAD revision - we force cmake to add a file dependency on the internal
     # git log file for HEAD.  Note that this can't detect changes to git
     # describe output due to added tags, but it detects most other things.
-    configure_file("${gitTopLevelDir}/.git/logs/HEAD" git_HEAD_change_check COPYONLY)
+ #  configure_file("${gitTopLevelDir}/.git/logs/HEAD" git_HEAD_change_check COPYONLY)
     # Call git describe
     execute_process(COMMAND ${GIT_EXECUTABLE} describe ${ARGN}
                     OUTPUT_VARIABLE gitOutput

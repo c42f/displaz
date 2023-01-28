@@ -14,7 +14,7 @@ endif()
 
 project(displaz)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 if (WIN32)
     # cmake >= 2.8.10 needs this for Qt5 on Windows
