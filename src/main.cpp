@@ -173,10 +173,6 @@ int main(int argc, char *argv[])
     // require GUI resources which can get exhaused if a lot of instances are
     // started at once.
     QCoreApplication application(argc, argv);
-#ifdef DISPLAZ_USE_QT4
-    // Qt5: no longer required
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
-#endif
 
     if (noServer)
     {

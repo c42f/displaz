@@ -52,9 +52,6 @@ dependencies for several distributions::
     # Mint
     sudo apt-get install git g++ cmake qt5-default libqt5opengl5-dev python-docutils
 
-    # Older ubuntu (qt4 based - add cmake flag -DDISPLAZ_USE_QT4=TRUE)
-    sudo apt-get install git g++ cmake libqt4-dev libqt4-opengl-dev python-docutils
-
     # Fedora 28
     sudo yum install git gcc-c++ make patch cmake qt5-qtbase-devel mesa-libGLU-devel python-docutils
 
@@ -162,7 +159,7 @@ automated download/build system for some of the larger ones (LASlib and
 ilmbase) available at ``thirdparty/external/CMakeLists.txt``.  However, you
 will need to install the following manually:
 
-* Qt >= 5.0  (qt-4.8 is still semi-supported on linux)
+* Qt >= 5.0
 * OpenGL >= 3.2
 * ilmbase >= 1.0.1 (You don't need to install this if you're using the
   automated thirdparty build)

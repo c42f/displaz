@@ -64,10 +64,6 @@ int guimain(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
-#ifdef DISPLAZ_USE_QT4
-    // Qt5: no longer required
-    QTextCodec::setCodecForCStrings(QTextCodec::codecForName("utf8"));
-#endif
 
     setupQFileSearchPaths();
 
