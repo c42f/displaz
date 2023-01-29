@@ -11,8 +11,10 @@
 #include <QTime>
 
 #include <functional>
+#include <algorithm>
 #include <unordered_map>
 #include <fstream>
+#include <random>
 #include <queue>
 
 #include <cfloat>
@@ -20,7 +22,6 @@
 #include "ply_io.h"
 
 #include "ClipBox.h"
-
 
 //------------------------------------------------------------------------------
 /// Functor to compute octree child node index with respect to some given split
@@ -146,8 +147,11 @@ static OctreeNode* makeTree(int depth, size_t* inds,
     size_t* endPtr = inds + endIndex;
     if (endIndex - beginIndex <= pointsPerNode || depth >= maxDepth)
     {
-        // Leaf node: set up indices into point list
-        std::random_shuffle(beginPtr, endPtr);
+        static std::random_device rd;
+        static std::mt19937 g(rd());
+        std::shuffle(beginPtr, endPtr, g);
+
+        // Leaf node: set up indices into point list 
         for (size_t i = beginIndex; i < endIndex; ++i)
             node->bbox.extendBy(P[inds[i]]);
         node->beginIndex = beginIndex;
