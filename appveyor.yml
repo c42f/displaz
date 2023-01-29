@@ -12,7 +12,7 @@ init:
   - git config --global core.autocrlf input
 
 image:
-  Visual Studio 2017
+# Visual Studio 2017
   Visual Studio 2019
 
 environment:
@@ -23,8 +23,8 @@ environment:
     # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
     #   COMPILER: "Visual Studio 14 2015 Win64"
 
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      COMPILER: "Visual Studio 15 2017 Win64"
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      COMPILER: "Visual Studio 15 2017 Win64"
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
       COMPILER: "Visual Studio 16 2019"
 
@@ -33,7 +33,7 @@ platform:
   - x64
 
 configuration:
-  - Debug
+# - Debug
   - Release
 
 before_build:
