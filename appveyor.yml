@@ -10,28 +10,31 @@ branches:
 # scripts that are called at very beginning, before repo cloning
 init:
   - git config --global core.autocrlf input
-  - set QTDIR=C:\Qt\5.6\msvc2015_64
-  - set PATH=%QTDIR%\bin;%PATH%
-# scripts that run after cloning repository
-#install:
-#  - Install rst2html for docs?
 
-# Build matrix variables -
-#   * environment
-#   * platform
-#   * configuration
+image:
+# Visual Studio 2017
+  Visual Studio 2019
+
 environment:
   matrix:
-    # TODO: Enable both compilers?  How does this interact with the deploy?
-    #- COMPILER: "Visual Studio 12 Win64"
-    - COMPILER: "Visual Studio 14 Win64"
+
+    # constexpr not allowed for constructors that don't initialise
+    # See: https://github.com/AcademySoftwareFoundation/Imath/pull/95
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+    #   COMPILER: "Visual Studio 14 2015 Win64"
+
+#    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+#      COMPILER: "Visual Studio 15 2017 Win64"
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      COMPILER: "Visual Studio 16 2019"
 
 # build platform, i.e. x86, x64, Any CPU.
 platform:
   - x64
 
-# build Configuration, i.e. Debug, Release, etc.
-configuration: Release
+configuration:
+# - Debug
+  - Release
 
 before_build:
   - echo --------------------------------------------------------------------------------
@@ -53,7 +56,7 @@ build_script:
   - echo Build displaz:
   - mkdir build
   - cd build
-  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.6\msvc2015_64 -D DISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
+  - cmake -G "%COMPILER%" -D CMAKE_PREFIX_PATH=C:\Qt\5.15.2\msvc2019_64 -D DISPLAZ_BUILD_NUMBER=%APPVEYOR_BUILD_NUMBER% ..
   - cmake --build . --config %CONFIGURATION%
 
 after_build:
