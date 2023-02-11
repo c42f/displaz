@@ -10,28 +10,13 @@ include_directories(BEFORE
     ${THIRDPARTY_INSTALL_DIR}/include
 )
 
-if(DISPLAZ_USE_QT4)
-    set(QT_INCLUDE_DIR_EXTENDED)
-    foreach(l ${QT_INCLUDE_DIR})
-        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtCore )
-        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtGui )
-        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtNetwork )
-        list(APPEND QT_INCLUDE_DIR_EXTENDED ${l}/QtOpenGL )
-    endforeach()
-    include_directories(
-        ${QT_INCLUDES}
-        ${QT_INCLUDE_DIR}
-        ${QT_INCLUDE_DIR_EXTENDED}
-    )
-else()
-    include_directories(
-        ${Qt5Core_INCLUDE_DIRS}
-        ${Qt5GUI_INCLUDE_DIRS}
-        ${Qt5Network_INCLUDE_DIRS}
-        ${Qt5OpenGL_INCLUDE_DIRS}
-        ${Qt5Widgets_INCLUDE_DIRS}
-    )
-endif()
+include_directories(
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5GUI_INCLUDE_DIRS}
+    ${Qt5Network_INCLUDE_DIRS}
+    ${Qt5OpenGL_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
+)
 
 #------------------------------------------------------------------------------
 # Sources
@@ -47,11 +32,7 @@ set(util_srcs
 )
 
 macro(displaz_qt_wrap_cpp moc_out_srcs)
-    if(DISPLAZ_USE_QT4)
-        qt4_wrap_cpp(${moc_out_srcs} ${ARGN})
-    else()
-        qt5_wrap_cpp(${moc_out_srcs} ${ARGN})
-    endif()
+    qt5_wrap_cpp(${moc_out_srcs} ${ARGN})
 endmacro()
 
 # Interprocess communication
@@ -121,11 +102,7 @@ set(gui_srcs
     ../thirdparty/polypartition/polypartition.cpp
 )
 
-if(DISPLAZ_USE_QT4)
-    qt4_add_resources(RCC_GENERATED resource.qrc)
-else()
-    qt5_add_resources(RCC_GENERATED resource.qrc)
-endif()
+qt5_add_resources(RCC_GENERATED resource.qrc)
 
 if(WIN32)
     list(APPEND gui_srcs ../package/windows_resources.rc)
@@ -164,35 +141,26 @@ endif()
 
 #-------------------------------------------------------------------------------
 # Library dependencies
-if (DISPLAZ_USE_QT4)
-    target_link_libraries(displaz
-        ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY}
-        ${QT_QTNETWORK_LIBRARY} ${QT_QTWIDGETS_LIBRARY}
-        ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES}
-        ${ILMBASE_LIBRARIES}
+target_link_libraries(displaz
+    Qt5::Core Qt5::Gui Qt5::OpenGL
+    Qt5::Network Qt5::Widgets
+    OpenGL::GL ${GLEW_LIBRARIES}
+    ${ILMBASE_LIBRARIES}
+)
+if (TARGET displaz_com)
+    target_link_libraries(displaz_com
+        Qt5::Core Qt5::Network
     )
-else()
-    target_link_libraries(displaz
-        Qt5::Core Qt5::Gui Qt5::OpenGL
-        Qt5::Network Qt5::Widgets
-        OpenGL::GL ${GLEW_LIBRARIES}
-        ${ILMBASE_LIBRARIES}
-    )
+endif()
+if (Qt5_POSITION_INDEPENDENT_CODE)
+    set_target_properties(displaz PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     if (TARGET displaz_com)
-        target_link_libraries(displaz_com
-            Qt5::Core Qt5::Network
-        )
+        set_target_properties(displaz_com PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
     endif()
-    if (Qt5_POSITION_INDEPENDENT_CODE)
-        set_target_properties(displaz PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-        if (TARGET displaz_com)
-            set_target_properties(displaz_com PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-        endif()
-    endif()
-    # TODO this is a workaround for Ubuntu 16.04 x86-64
-    if (UNIX)
-        add_definitions(-fPIC)
-    endif()
+endif()
+# TODO this is a workaround for Ubuntu 16.04 x86-64
+if (UNIX)
+    add_definitions(-fPIC)
 endif()
 
 if(APPLE)
@@ -255,21 +223,13 @@ if (DISPLAZ_USE_TESTS)
     )
     add_test(NAME unit_tests COMMAND unit_tests)
 
-    if (DISPLAZ_USE_QT4)
-    else ()
-        if (Qt5_POSITION_INDEPENDENT_CODE)
-            set_target_properties(unit_tests PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-        endif()
-    endif ()
+    if (Qt5_POSITION_INDEPENDENT_CODE)
+        set_target_properties(unit_tests PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+    endif()
 
     # Interprocess tests require special purpose executables
     add_executable(InterProcessLock_test InterProcessLock_test.cpp util.cpp InterProcessLock.cpp)
-    if (DISPLAZ_USE_QT4)
-        target_link_libraries(InterProcessLock_test ${QT_QTCORE_LIBRARY})
-        target_link_libraries(unit_tests ${QT_QTCORE_LIBRARY})
-    else ()
-        target_link_libraries(InterProcessLock_test Qt5::Core)
-        target_link_libraries(unit_tests Qt5::Core)
-    endif ()
+    target_link_libraries(InterProcessLock_test Qt5::Core)
+    target_link_libraries(unit_tests Qt5::Core)
     add_test(NAME InterProcessLock_test COMMAND InterProcessLock_test master)
 endif()

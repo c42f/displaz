@@ -267,11 +267,7 @@ void View3D::setExplicitCursorPos(const Imath::V3d& pos)
 
 double View3D::getDevicePixelRatio()
 {
-#ifdef DISPLAZ_USE_QT4
-    return 1.0;
-#else
     return devicePixelRatio();
-#endif
 }
 
 void View3D::initializeGL()
