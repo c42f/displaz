@@ -9,8 +9,12 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING
 )
 
 if(NOT WIN32)
-    set(CMAKE_CXX_FLAGS "-Wall -std=c++0x" CACHE STRING "Flags used by the compiler during all build types.")
+    set(CMAKE_CXX_FLAGS "-Wall" CACHE STRING "Flags used by the compiler during all build types.")
 endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(displaz)
 
