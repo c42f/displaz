@@ -33,9 +33,13 @@ ENV SCRATCH /scratch
 RUN mkdir ${SCRATCH}
 WORKDIR ${SCRATCH}
 
+ARG BRANCH
+ENV BRANCH ${BRANCH:-master}
+
 ARG REPO
 ENV REPO ${REPO:-https://github.com/c42f/displaz.git}
-RUN git clone ${REPO} repo
+
+RUN git clone --branch ${BRANCH} ${REPO} repo
 
 #
 # Build
