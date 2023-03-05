@@ -201,13 +201,17 @@ struct TilePosLess
 class File
 {
 public:
-    inline File(FILE* f = NULL) : file(f) {}
-    inline ~File()                        { if (file) fclose(file); file = NULL; }
-    inline File & operator=(FILE* f)      { if (file) fclose(file); file = f; return *this; }
+    inline File() = default;
+    inline File(FILE* f) : file(f)        {}
+    inline ~File()                        { close(); }
+
+    inline void close() { if (file) { fclose(file); file = nullptr; } }
+
+    inline File & operator=(FILE* f)      { close(); file = f; return *this; }
     inline operator FILE* ()              { return file; }
 
 private:
-    FILE* file;
+    FILE* file = nullptr;
 };
 
 
