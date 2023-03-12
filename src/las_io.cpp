@@ -1,6 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+#include "util.h"
 #include "QtLogger.h"
 #include "PointArray.h"
 
@@ -180,7 +181,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         emit loadProgress(100*readCount/totalPoints);
     }
 #else
-    FILE* file = 0;
+    File file;
     std::unique_ptr<LASreaderLAS> lasReader(new LASreaderLAS());
 #ifdef _WIN32
     file = _wfopen(fileName.toStdWString().data(), L"rb");

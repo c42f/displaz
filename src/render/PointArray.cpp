@@ -5,6 +5,7 @@
 
 #include "QtLogger.h"
 
+#include "util.h"
 #include "glutil.h"
 
 #include <QGLShaderProgram>
@@ -203,7 +204,7 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
     V3d Psum(0);
     // Use C file IO here, since it's about 40% faster than C++ streams for
     // large text files (tested on linux x86_64, gcc 4.6.3).
-    FILE* inFile = fopen(fileName.toUtf8(), "r");
+    File inFile = fopen(fileName.toUtf8(), "r");
     if (!inFile)
         return false;
     fseek(inFile, 0, SEEK_END);
@@ -220,7 +221,6 @@ bool PointArray::loadText(QString fileName, size_t maxPointCount,
         if (readCount % 10000 == 0)
             emit loadProgress(int(100*ftell(inFile)/numBytes));
     }
-    fclose(inFile);
     totalPoints = points.size();
     npoints = points.size();
     // Zero points + nonzero bytes => bad text file
