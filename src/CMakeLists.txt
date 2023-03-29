@@ -4,6 +4,7 @@ include_directories(BEFORE
     .
     gui
     render
+    shader
     ../thirdparty
     ${GLEW_INCLUDE_DIR}
     ${OPENGL_INCLUDE_DIR}
@@ -64,8 +65,9 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     render/HCloudView.h
     render/View3D.h
     render/PointArray.h
-    render/Shader.h
     render/GeometryMutator.h
+
+    shader/ShaderProgram.h
 )
 
 set(gui_srcs
@@ -94,9 +96,11 @@ set(gui_srcs
     render/TriMesh.cpp
     render/PointArray.cpp
     render/View3D.cpp
-    render/Shader.cpp
     render/GeometryMutator.cpp
     render/Annotation.cpp
+
+    shader/Shader.cpp
+    shader/ShaderProgram.cpp
 
     ../thirdparty/rply/rply.c
     ../thirdparty/polypartition/polypartition.cpp

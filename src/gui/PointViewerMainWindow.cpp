@@ -13,6 +13,7 @@
 #include "TriMesh.h"
 #include "ShaderEditor.h"
 #include "Shader.h"
+#include "ShaderProgram.h"
 #include "View3D.h"
 #include "HookFormatter.h"
 #include "HookManager.h"
