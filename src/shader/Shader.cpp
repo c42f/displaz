@@ -76,26 +76,22 @@ bool Shader::compileSourceCode(const QByteArray& src)
         if (!re.exactMatch(lines[lineIdx]))
             continue;
         QByteArray typeStr = re.cap(1).toUtf8().constData();
-        QVariant defaultValue;
-        ShaderParam::Type type;
+        ShaderParam::Variant defaultValue;
         if (typeStr == "float")
         {
-            type = ShaderParam::Float;
             defaultValue = re.cap(3).trimmed().toDouble();
         }
         else if (typeStr == "int")
         {
-            type = ShaderParam::Int;
             defaultValue = re.cap(3).trimmed().toInt();
         }
         else if (typeStr == "vec3")
         {
-            type = ShaderParam::Vec3;
             //defaultValue = re.cap(3).toDouble(); // FIXME
         }
         else
             continue;
-        ShaderParam param(type, re.cap(2).toUtf8().constData(), defaultValue);
+        ShaderParam param(re.cap(2).toUtf8().constData(), defaultValue);
         QMap<QString, QString>& kvPairs = param.kvPairs;
         QStringList pairList = re.cap(4).split(';');
         for (int i = 0; i < pairList.size(); ++i)

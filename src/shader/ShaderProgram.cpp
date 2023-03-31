@@ -20,8 +20,8 @@ ShaderProgram::ShaderProgram(QObject* parent)
 }
 
 
-bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
-                       const QPair<ShaderParam,QVariant>& p2)
+bool paramOrderingLess(const QPair<ShaderParam,ShaderParam::Variant>& p1,
+                       const QPair<ShaderParam,ShaderParam::Variant>& p2)
 {
     return p1.first.ordering < p2.first.ordering;
 }
@@ -30,7 +30,7 @@ bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
 void ShaderProgram::setupParameterUI(QWidget* parentWidget)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
-    QList<QPair<ShaderParam,QVariant> > paramsOrdered;
+    QList<QPair<ShaderParam,ShaderParam::Variant> > paramsOrdered;
     for (auto p = m_params.begin(); p != m_params.end(); ++p)
     {
         paramsOrdered.push_back(qMakePair(p.key(), p.value()));
@@ -40,10 +40,10 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
     {
         QWidget* edit = 0;
         const ShaderParam& parDesc = paramsOrdered[i].first;
-        const QVariant& parValue = paramsOrdered[i].second;
-        switch (parDesc.type)
+        const ShaderParam::Variant& parValue = paramsOrdered[i].second;
+        switch (parDesc.defaultValue.index())
         {
-            case ShaderParam::Float:
+            case 0:
                 {
                     bool expScaling = parDesc.kvPairs.value("scaling", "exponential").
                                       startsWith("exp");
@@ -67,20 +67,20 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     }
                     spin->setMinimum(min);
                     spin->setMaximum(max);
-                    spin->setValue(parValue.toDouble());
+                    spin->setValue(std::get<double>(parValue));
                     connect(spin, SIGNAL(valueChanged(double)),
                             this, SLOT(setUniformValue(double)));
                     edit = spin;
                 }
                 break;
-            case ShaderParam::Int:
+            case 1:
                 if (parDesc.kvPairs.contains("enum"))
                 {
                     // Parameter is an enumeration variable
                     QComboBox* box = new QComboBox(parentWidget);
                     QStringList names = parDesc.kvPairs.value("enum").split('|');
                     box->insertItems(0, names);
-                    box->setCurrentIndex(parValue.toInt());
+                    box->setCurrentIndex(std::get<int>(parValue));
                     connect(box, SIGNAL(currentIndexChanged(int)),
                             this, SLOT(setUniformValue(int)));
                     edit = box;
@@ -91,7 +91,7 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     QSpinBox* spin = new QSpinBox(parentWidget);
                     spin->setMinimum(parDesc.getInt("min", 0));
                     spin->setMaximum(parDesc.getInt("max", 100));
-                    spin->setValue(parValue.toInt());
+                    spin->setValue(std::get<int>(parValue));
                     connect(spin, SIGNAL(valueChanged(int)),
                             this, SLOT(setUniformValue(int)));
                     edit = spin;
@@ -167,7 +167,7 @@ void ShaderProgram::setUniformValue(double value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toUtf8().constData());
+        ShaderParam key(sender()->objectName().toUtf8().constData(), 0.0);
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -186,7 +186,7 @@ void ShaderProgram::setUniformValue(int value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toUtf8().constData());
+        ShaderParam key(sender()->objectName().toUtf8().constData(), 0);
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -216,10 +216,9 @@ void ShaderProgram::setupParameters()
         ParamMap::const_iterator p = m_params.find(paramList[i]);
         if (p == m_params.end() || !(p.key() == paramList[i]))
             changed = true;
-        QVariant value;
-        value = paramList[i].defaultValue;
+        ShaderParam::Variant value = paramList[i].defaultValue;
         // Keep the previous value for convenience
-        if (p != m_params.end() && p.key().type == paramList[i].type)
+        if (p != m_params.end() && p.key().defaultValue.index() == paramList[i].defaultValue.index())
             value = p.value();
         if (!newParams.contains(paramList[i]))
             newParams.insert(paramList[i], value);
@@ -238,18 +237,18 @@ void ShaderProgram::setUniforms()
          i != m_params.end(); ++i)
     {
         const ShaderParam& param = i.key();
-        QVariant value = i.value();
-        switch (param.type)
+        const ShaderParam::Variant& value = i.value();
+        switch (value.index())
         {
-            case ShaderParam::Float:
+            case 0:
                 m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLfloat)value.toDouble());
+                                                 (GLfloat) std::get<double>(value));
                 break;
-            case ShaderParam::Int:
+            case 1:
                 m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLint)value.toInt());
+                                                 (GLint) std::get<int>(value));
                 break;
-            case ShaderParam::Vec3:
+            case 2:
                 // FIXME
                 break;
         }

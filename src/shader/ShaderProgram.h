@@ -82,7 +82,7 @@ class ShaderProgram : public QObject
         double m_exposure;
         double m_contrast;
         int m_selector;
-        typedef QMap<ShaderParam,QVariant> ParamMap;
+        typedef QMap<ShaderParam,ShaderParam::Variant> ParamMap;
         ParamMap m_params;
         std::unique_ptr<Shader> m_vertexShader;
         std::unique_ptr<Shader> m_fragmentShader;
