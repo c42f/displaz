@@ -233,27 +233,43 @@ void ShaderProgram::setupParameters()
 
 void ShaderProgram::setUniforms()
 {
-    for (ParamMap::const_iterator i = m_params.begin();
-         i != m_params.end(); ++i)
+    for (ParamMap::const_iterator i = m_params.begin(); i != m_params.end(); ++i)
     {
-        const ShaderParam& param = i.key();
-        const ShaderParam::Variant& value = i.value();
-        switch (value.index())
-        {
-            case 0:
-                m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLfloat) std::get<double>(value));
-                break;
-            case 1:
-                m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLint) std::get<int>(value));
-                break;
-            case 2:
-                // FIXME
-                break;
-        }
+        setUniform(i.key().name.data(), i.value());
     }
 }
+
+
+void ShaderProgram::setUniform(const char *name, const ShaderParam::Variant& value)
+{
+    switch (value.index())
+    {
+        case 0:
+            m_shaderProgram->setUniformValue(name, (GLfloat) std::get<double>(value));
+            break;
+        case 1:
+            m_shaderProgram->setUniformValue(name, (GLint) std::get<int>(value));
+            break;
+        case 2:
+            // TODO
+            break;
+    }
+}
+
+
+bool ShaderProgram::getUniform(const char *name, ShaderParam::Variant& value)
+{
+    for (ParamMap::const_iterator i = m_params.begin(); i != m_params.end(); ++i)
+    {
+        if (i.key().name == QString(name))
+        {
+            value = i.value();
+            return true;
+        }
+    }
+    return false;
+}
+
 
 QByteArray ShaderProgram::shaderSource() const
 {

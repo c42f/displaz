@@ -32,8 +32,13 @@ class ShaderProgram : public QObject
 
         /// Set up UI for the shader
         void setupParameterUI(QWidget* parentWidget);
+
         /// Send current uniform values to the underlying OpenGL shader
         void setUniforms();
+        /// Send uniform value to the underlying OpenGL shader
+        void setUniform(const char *name, const ShaderParam::Variant& value);
+        /// Get uniform value
+        bool getUniform(const char *name, ShaderParam::Variant& value);
 
         /// Read shader source from given file and call setShader()
         bool setShaderFromSourceFile(QString fileName);
