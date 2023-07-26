@@ -1,7 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "Shader.h"
+#include "ShaderProgram.h"
 
 #include "tinyformat.h"
 #include "DragSpinBox.h"
@@ -10,129 +10,6 @@
 #include <QFormLayout>
 #include <QComboBox>
 
-
-/// Make shader #define flags for hardware or driver-dependent blacklisted
-/// features.  Current list:
-///
-/// BROKEN_GL_FRAG_COORD
-///
-static QByteArray makeBlacklistDefines()
-{
-    QByteArray defines;
-#   ifdef _WIN32
-    bool isIntel = false;
-    // Extremely useful list of GL_VENDOR strings seen in the wild:
-    // http://feedback.wildfiregames.com/report/opengl/feature/GL_VENDOR
-    QString vendorStr = (const char*)glGetString(GL_VENDOR);
-    if (vendorStr.contains("intel", Qt::CaseInsensitive))
-        isIntel = true;
-    // Blacklist use of gl_FragCoord/gl_FragDepth with Intel drivers on
-    // windows.  For some reason, this interacts badly with any use of
-    // gl_PointCoord, leading to gross rendering artifacts.
-    if (isIntel)
-        defines += "#define BROKEN_GL_FRAG_COORD\n";
-#endif
-    return defines;
-}
-
-
-//------------------------------------------------------------------------------
-// Shader implementation
-bool Shader::compileSourceCode(const QByteArray& src)
-{
-    // src may contain parts which are shared for various shader types - set up
-    // defines so we can tell which one we're compiling.
-    QByteArray defines;
-    switch (m_shader.shaderType())
-    {
-        case QGLShader::Vertex:   defines += "#define VERTEX_SHADER\n";   break;
-        case QGLShader::Fragment: defines += "#define FRAGMENT_SHADER\n"; break;
-    }
-    defines += makeBlacklistDefines();
-    QByteArray modifiedSrc = src;
-    // Add defines.  Some shader compilers require #version to come first (even
-    // before any #defines) so detect #version if it's present and put the
-    // defines after that.
-    int versionPos = src.indexOf("#version");
-    if (versionPos != -1)
-    {
-        int insertPos = src.indexOf('\n', versionPos);
-        if (insertPos == -1)
-            insertPos = src.length();
-        modifiedSrc.insert(insertPos+1, defines);
-    }
-    else
-    {
-        modifiedSrc = defines + src;
-    }
-    if (!m_shader.compileSourceCode(modifiedSrc))
-        return false;
-    m_source = src;
-    // Search source code looking for uniform variables
-    QStringList lines = QString(src).split('\n');
-    QRegExp re("uniform +([a-zA-Z_][a-zA-Z_0-9]*) +([a-zA-Z_][a-zA-Z_0-9]*) +=(.+); *//# *(.*)",
-               Qt::CaseSensitive, QRegExp::RegExp2);
-    for (int lineIdx = 0; lineIdx < lines.size(); ++lineIdx)
-    {
-        if (!re.exactMatch(lines[lineIdx]))
-            continue;
-        QByteArray typeStr = re.cap(1).toUtf8().constData();
-        QVariant defaultValue;
-        ShaderParam::Type type;
-        if (typeStr == "float")
-        {
-            type = ShaderParam::Float;
-            defaultValue = re.cap(3).trimmed().toDouble();
-        }
-        else if (typeStr == "int")
-        {
-            type = ShaderParam::Int;
-            defaultValue = re.cap(3).trimmed().toInt();
-        }
-        else if (typeStr == "vec3")
-        {
-            type = ShaderParam::Vec3;
-            //defaultValue = re.cap(3).toDouble(); // FIXME
-        }
-        else
-            continue;
-        ShaderParam param(type, re.cap(2).toUtf8().constData(), defaultValue);
-        QMap<QString, QString>& kvPairs = param.kvPairs;
-        QStringList pairList = re.cap(4).split(';');
-        for (int i = 0; i < pairList.size(); ++i)
-        {
-            QStringList keyAndVal = pairList[i].split('=');
-            if (keyAndVal.size() != 2)
-            {
-                g_logger.warning("Could not parse metadata \"%s\" for shader variable %s",
-                                 pairList[i].toStdString(), param.name.data());
-                continue;
-            }
-            kvPairs[keyAndVal[0].trimmed()] = keyAndVal[1].trimmed();
-        }
-        m_uniforms.push_back(param);
-    }
-    /*
-    // Debug: print out what we found
-    for (int i = 0; i < m_uniforms.size(); ++i)
-    {
-        tfm::printf("Found shader uniform \"%s\" with metadata\n",
-                    m_uniforms[i].name.data());
-        const QMap<QString, QString>& kvPairs = m_uniforms[i].kvPairs;
-        for (QMap<QString,QString>::const_iterator i = kvPairs.begin();
-             i != kvPairs.end(); ++i)
-        {
-            tfm::printf("  %s = \"%s\"\n", i.key().toStdString(),
-                        i.value().toStdString());
-        }
-    }
-    */
-    return true;
-}
-
-
-//------------------------------------------------------------------------------
-// ShaderProgram implementation
 ShaderProgram::ShaderProgram(QObject* parent)
     : QObject(parent),
     m_pointSize(5),
@@ -143,16 +20,17 @@ ShaderProgram::ShaderProgram(QObject* parent)
 }
 
 
-bool paramOrderingLess(const QPair<ShaderParam,QVariant>& p1,
-                       const QPair<ShaderParam,QVariant>& p2)
+bool paramOrderingLess(const QPair<ShaderParam,ShaderParam::Variant>& p1,
+                       const QPair<ShaderParam,ShaderParam::Variant>& p2)
 {
     return p1.first.ordering < p2.first.ordering;
 }
 
+
 void ShaderProgram::setupParameterUI(QWidget* parentWidget)
 {
     QFormLayout* layout = new QFormLayout(parentWidget);
-    QList<QPair<ShaderParam,QVariant> > paramsOrdered;
+    QList<QPair<ShaderParam,ShaderParam::Variant> > paramsOrdered;
     for (auto p = m_params.begin(); p != m_params.end(); ++p)
     {
         paramsOrdered.push_back(qMakePair(p.key(), p.value()));
@@ -162,10 +40,10 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
     {
         QWidget* edit = 0;
         const ShaderParam& parDesc = paramsOrdered[i].first;
-        const QVariant& parValue = paramsOrdered[i].second;
-        switch (parDesc.type)
+        const ShaderParam::Variant& parValue = paramsOrdered[i].second;
+        switch (parDesc.defaultValue.index())
         {
-            case ShaderParam::Float:
+            case 0:
                 {
                     bool expScaling = parDesc.kvPairs.value("scaling", "exponential").
                                       startsWith("exp");
@@ -189,20 +67,20 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     }
                     spin->setMinimum(min);
                     spin->setMaximum(max);
-                    spin->setValue(parValue.toDouble());
+                    spin->setValue(std::get<double>(parValue));
                     connect(spin, SIGNAL(valueChanged(double)),
                             this, SLOT(setUniformValue(double)));
                     edit = spin;
                 }
                 break;
-            case ShaderParam::Int:
+            case 1:
                 if (parDesc.kvPairs.contains("enum"))
                 {
                     // Parameter is an enumeration variable
                     QComboBox* box = new QComboBox(parentWidget);
                     QStringList names = parDesc.kvPairs.value("enum").split('|');
                     box->insertItems(0, names);
-                    box->setCurrentIndex(parValue.toInt());
+                    box->setCurrentIndex(std::get<int>(parValue));
                     connect(box, SIGNAL(currentIndexChanged(int)),
                             this, SLOT(setUniformValue(int)));
                     edit = box;
@@ -213,7 +91,7 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     QSpinBox* spin = new QSpinBox(parentWidget);
                     spin->setMinimum(parDesc.getInt("min", 0));
                     spin->setMaximum(parDesc.getInt("max", 100));
-                    spin->setValue(parValue.toInt());
+                    spin->setValue(std::get<int>(parValue));
                     connect(spin, SIGNAL(valueChanged(int)),
                             this, SLOT(setUniformValue(int)));
                     edit = spin;
@@ -289,7 +167,7 @@ void ShaderProgram::setUniformValue(double value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Float, sender()->objectName().toUtf8().constData());
+        ShaderParam key(sender()->objectName().toUtf8().constData(), 0.0);
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -308,7 +186,7 @@ void ShaderProgram::setUniformValue(int value)
     {
         // Detect which uniform we're setting based on the sender's
         // name... ick!
-        ShaderParam key(ShaderParam::Int, sender()->objectName().toUtf8().constData());
+        ShaderParam key(sender()->objectName().toUtf8().constData(), 0);
         ParamMap::iterator i = m_params.find(key);
         if (i == m_params.end())
         {
@@ -338,10 +216,9 @@ void ShaderProgram::setupParameters()
         ParamMap::const_iterator p = m_params.find(paramList[i]);
         if (p == m_params.end() || !(p.key() == paramList[i]))
             changed = true;
-        QVariant value;
-        value = paramList[i].defaultValue;
+        ShaderParam::Variant value = paramList[i].defaultValue;
         // Keep the previous value for convenience
-        if (p != m_params.end() && p.key().type == paramList[i].type)
+        if (p != m_params.end() && p.key().defaultValue.index() == paramList[i].defaultValue.index())
             value = p.value();
         if (!newParams.contains(paramList[i]))
             newParams.insert(paramList[i], value);
@@ -356,27 +233,43 @@ void ShaderProgram::setupParameters()
 
 void ShaderProgram::setUniforms()
 {
-    for (ParamMap::const_iterator i = m_params.begin();
-         i != m_params.end(); ++i)
+    for (ParamMap::const_iterator i = m_params.begin(); i != m_params.end(); ++i)
     {
-        const ShaderParam& param = i.key();
-        QVariant value = i.value();
-        switch (param.type)
-        {
-            case ShaderParam::Float:
-                m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLfloat)value.toDouble());
-                break;
-            case ShaderParam::Int:
-                m_shaderProgram->setUniformValue(param.name.data(),
-                                                 (GLint)value.toInt());
-                break;
-            case ShaderParam::Vec3:
-                // FIXME
-                break;
-        }
+        setUniform(i.key().name.data(), i.value());
     }
 }
+
+
+void ShaderProgram::setUniform(const char *name, const ShaderParam::Variant& value)
+{
+    switch (value.index())
+    {
+        case 0:
+            m_shaderProgram->setUniformValue(name, (GLfloat) std::get<double>(value));
+            break;
+        case 1:
+            m_shaderProgram->setUniformValue(name, (GLint) std::get<int>(value));
+            break;
+        case 2:
+            // TODO
+            break;
+    }
+}
+
+
+bool ShaderProgram::getUniform(const char *name, ShaderParam::Variant& value)
+{
+    for (ParamMap::const_iterator i = m_params.begin(); i != m_params.end(); ++i)
+    {
+        if (i.key().name == QString(name))
+        {
+            value = i.value();
+            return true;
+        }
+    }
+    return false;
+}
+
 
 QByteArray ShaderProgram::shaderSource() const
 {
@@ -384,5 +277,4 @@ QByteArray ShaderProgram::shaderSource() const
         return QByteArray("");
     return m_vertexShader->sourceCode();
 }
-
 
