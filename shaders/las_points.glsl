@@ -14,7 +14,7 @@ uniform float trimRadius = 1000000; //# uiname=Trim Radius; min=1; max=1000000
 uniform float reference = 400.0;    //# uiname=Reference Intensity; min=0.001; max=100000
 uniform float exposure = 1.0;       //# uiname=Exposure; min=0.001; max=10000
 uniform float contrast = 1.0;       //# uiname=Contrast; min=0.001; max=10000
-uniform int colorMode = 0;          //# uiname=Colour Mode; enum=Intensity|Colour|Return Index|Point Source|Las Classification|File Number
+uniform int colorMode = 0;          //# uiname=Colour Mode; enum=Intensity|Colour|Return Index|Point Source|Las Classification|File Number|Distance
 uniform int selectionMode = 0;      //# uiname=Selection; enum=All|Classified|First Return|Last Return|First Of Several
 uniform float minPointSize = 0;
 uniform float maxPointSize = 400.0;
@@ -26,6 +26,7 @@ uniform int fileNumber = 0;
 in float intensity;
 in vec3 position;
 in vec3 color;
+in float distance;
 in int returnNumber;
 in int numberOfReturns;
 in int pointSourceId;
@@ -98,6 +99,31 @@ void main()
         pointColor = vec3((1.0/2.0) * (0.5 + (fileNumber % 2)),
                           (1.0/3.0) * (0.5 + (fileNumber % 3)),
                           (1.0/5.0) * (0.5 + (fileNumber % 5)));
+    }
+    else if (colorMode == 6)
+    {
+        if (distance > 0)
+        {
+            float v = tonemap(distance, reference, contrast) * 3.0;
+            if (v < 1)
+                pointColor = mix(vec3(0.6,  0.6,  0.6), vec3(1.0,  1.0,  0.0), v);
+            else
+                if (v < 2)
+                    pointColor = mix(vec3(1.0,  1.0,  0.0), vec3(1.0,  0.5,  0.0), v - 1.0);
+                else
+                    pointColor = mix(vec3(1.0,  0.5,  0.0), vec3(1.0,  0.0,  0.0), v - 2.0);
+        }
+        else
+        {
+            float v = tonemap(-distance, reference, contrast) * 3.0;
+            if (v < 1)
+                pointColor = mix(vec3(0.6,  0.6,  0.6), vec3(0.0,  1.0,  1.0), v);
+            else
+                if (v < 2)
+                    pointColor = mix(vec3(0.0,  1.0,  1.0), vec3(0.5,  0.0,  1.0), v - 1.0);
+                else
+                    pointColor = mix(vec3(0.5,  0.0,  1.0), vec3(0.0,  0.0,  1.0), v - 2.0);
+        }
     }
     /*
     else if (colorMode == 8)
