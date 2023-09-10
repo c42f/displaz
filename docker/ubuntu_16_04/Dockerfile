@@ -40,6 +40,11 @@ ENV CMAKE_PREFIX /opt/cmake-3.25.2
 RUN mkdir -p ${CMAKE_PREFIX}
 RUN ./cmake-3.25.2-linux-x86_64.sh --skip-license --prefix=${CMAKE_PREFIX}
 
+# Needs g++-8 toolchains
+
+RUN apt install -y software-properties-common
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && apt-get update && apt install -y gcc-8 g++-8
+
 #
 # Clone repo
 #
@@ -62,12 +67,12 @@ RUN git clone --branch ${BRANCH} ${REPO} repo
 
 RUN mkdir -p ${SCRATCH}/repo/build_external
 WORKDIR ${SCRATCH}/repo/build_external
-RUN ${CMAKE_PREFIX}/bin/cmake ../thirdparty/external
+RUN CC=gcc-8 CXX=g++-8 ${CMAKE_PREFIX}/bin/cmake ../thirdparty/external
 RUN make
 
 RUN mkdir -p ${SCRATCH}/repo/build
 WORKDIR ${SCRATCH}/repo/build
-RUN ${CMAKE_PREFIX}/bin/cmake ..
+RUN CC=gcc-8 CXX=g++-8 ${CMAKE_PREFIX}/bin/cmake ..
 RUN make
 
 #
