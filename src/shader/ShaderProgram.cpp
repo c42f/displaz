@@ -9,6 +9,7 @@
 
 #include <QFormLayout>
 #include <QComboBox>
+#include <QSlider>
 
 ShaderProgram::ShaderProgram(QObject* parent)
     : QObject(parent),
@@ -84,6 +85,16 @@ void ShaderProgram::setupParameterUI(QWidget* parentWidget)
                     connect(box, SIGNAL(currentIndexChanged(int)),
                             this, SLOT(setUniformValue(int)));
                     edit = box;
+                }
+                else if (parDesc.kvPairs.contains("slider"))
+                {
+                    QSlider* slider = new QSlider(Qt::Horizontal, parentWidget);
+                    slider->setMinimum(parDesc.getInt("min", 0));
+                    slider->setMaximum(parDesc.getInt("max", 100));
+                    slider->setValue(std::get<int>(parValue));
+                    connect(slider, SIGNAL(valueChanged(int)),
+                            this, SLOT(setUniformValue(int)));
+                    edit = slider;
                 }
                 else
                 {
