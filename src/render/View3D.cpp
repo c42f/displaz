@@ -10,7 +10,7 @@
 #include <cfloat>
 
 #include <QTimer>
-#include <QTime>
+#include <QElapsedTimer>
 #include <QKeyEvent>
 #include <QLayout>
 #include <QItemSelectionModel>
@@ -357,7 +357,7 @@ void View3D::paintGL()
 {
     if (m_badOpenGL)
         return;
-    QTime frameTimer;
+    QElapsedTimer frameTimer;
     frameTimer.start();
 
     // Get window size
@@ -529,7 +529,7 @@ void View3D::mousePressEvent(QMouseEvent* event)
     m_mouseButton = event->button();
     m_prevMousePos = event->pos();
 
-    if (event->button() == Qt::MidButton ||
+    if (event->button() == Qt::MiddleButton ||
         (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)))
     {
         snapToPoint(guessClickPosition(event->pos()));
@@ -561,7 +561,7 @@ void View3D::snapToPoint(const Imath::V3d & pos)
 
 void View3D::mouseMoveEvent(QMouseEvent* event)
 {
-    if (m_mouseButton == Qt::MidButton)
+    if (m_mouseButton == Qt::MiddleButton)
         return;
     bool zooming = m_mouseButton == Qt::RightButton;
     if(event->modifiers() & Qt::ControlModifier)
@@ -581,7 +581,7 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
 void View3D::wheelEvent(QWheelEvent* event)
 {
     // Translate mouse wheel events into vertical dragging for simplicity.
-    m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->delta()/2), true);
+    m_camera.mouseDrag(QPoint(0,0), QPoint(0, -event->angleDelta().y()/2), true);
 }
 
 

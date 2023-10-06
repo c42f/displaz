@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QLabel>
 
+#include <algorithm>
 
 static void reduceMinSize(QPushButton* button)
 {
@@ -98,7 +99,7 @@ void DataSetListView::keyPressEvent(QKeyEvent* event)
     if(event->key() == Qt::Key_Delete)
     {
         QModelIndexList sel = selectionModel()->selectedRows();
-        qSort(sel);
+        std::sort(sel.begin(), sel.end());
         for (int i = sel.size()-1; i >= 0; --i)
             model()->removeRows(sel[i].row(), 1);
     }
@@ -116,7 +117,7 @@ void DataSetListView::wheelEvent(QWheelEvent* event)
         int row = 0;
         if (selectionModel()->currentIndex().isValid())
             row = selectionModel()->currentIndex().row();
-        row += (event->delta() < 0) ? 1 : -1;
+        row += (event->angleDelta().y() < 0) ? 1 : -1;
         if (row < 0)
             row = 0;
         if (row >= model()->rowCount())
