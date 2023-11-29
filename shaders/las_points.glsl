@@ -29,7 +29,7 @@ in vec3 color;
 in float distance;
 in int returnNumber;
 in int numberOfReturns;
-in mediump int pointSourceId;
+in int pointSourceId;
 in int classification;
 //in float heightAboveGround;
 
