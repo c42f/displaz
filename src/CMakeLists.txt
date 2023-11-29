@@ -203,6 +203,13 @@ if(WIN32)
 endif()
 
 #------------------------------------------------------------------------------
+# Create a shader target to copy shaders at build-time
+add_custom_target(copy_shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/shaders ${CMAKE_BINARY_DIR}/${DISPLAZ_SHADER_DIR}
+) 
+add_dependencies(displaz copy_shaders)
+
+#------------------------------------------------------------------------------
 # Experimental dvox utility
 if (DISPLAZ_BUILD_DVOX)
     add_executable(dvox
