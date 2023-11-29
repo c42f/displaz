@@ -29,7 +29,7 @@ in vec3 color;
 in float distance;
 in int returnNumber;
 in int numberOfReturns;
-in int pointSourceId;
+in mediump int pointSourceId;
 in int classification;
 //in float heightAboveGround;
 
@@ -76,10 +76,30 @@ void main()
         pointColor = vec3(0.2*returnNumber*exposure, 0.2*numberOfReturns*exposure, 0);
     else if (colorMode == 3)
     {
-        markerShape = (pointSourceId+1) % 5;
-        vec3 cols[] = vec3[](vec3(1,1,1), vec3(1,0,0), vec3(0,1,0), vec3(0,0,1),
-                             vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
-        pointColor = cols[(pointSourceId+3) % 7];
+        markerShape = int(mod(pointSourceId+1, 5));
+        vec3 cols[] = vec3[](
+            vec3(1, 1, 1),   // White
+            vec3(1, 0, 0),   // Red
+            vec3(0, 1, 0),   // Green
+            vec3(0, 0, 1),   // Blue
+            vec3(1, 1, 0),   // Yellow
+            vec3(1, 0, 1),   // Magenta
+            vec3(0, 1, 1),   // Cyan
+            vec3(0.5, 0.5, 0.5),   // Gray
+            vec3(0.3, 0.6, 0.9),   // Light Blue
+            vec3(0.8, 0.2, 0.5),   // Dark Pink
+            vec3(0.2, 0.8, 0.5),   // Light Green
+            vec3(0.7, 0.4, 0.1),   // Brown
+            vec3(0.9, 0.6, 0.2),   // Orange
+            vec3(0.5, 0.2, 0.7),   // Purple
+            vec3(0.2, 0.7, 0.4),   // Teal
+            vec3(0.8, 0.8, 0.2),   // Olive
+            vec3(0.4, 0.2, 0.8),   // Indigo
+            vec3(0.6, 0.9, 0.3),   // Lime
+            vec3(0.7, 0.2, 0.5),   // Raspberry
+            vec3(0.2, 0.5, 0.7)    // Sky Blue
+        );
+        pointColor = cols[int(mod(pointSourceId + 3, cols.length()))];
     }
     else if (colorMode == 4)
     {

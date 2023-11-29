@@ -218,7 +218,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     fields.push_back(GeomField(TypeSpec::uint16_i(), "intensity", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "returnNumber", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "numberOfReturns", npoints));
-    fields.push_back(GeomField(TypeSpec::uint8_i(), "pointSourceId", npoints));
+    fields.push_back(GeomField(TypeSpec::uint16_i(), "pointSourceId", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "classification", npoints));
     if (totalPoints == 0)
     {
@@ -230,7 +230,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint16_t* intensity     = fields[1].as<uint16_t>();
     uint8_t* returnNumber   = fields[2].as<uint8_t>();
     uint8_t* numReturns     = fields[3].as<uint8_t>();
-    uint8_t* pointSourceId  = fields[4].as<uint8_t>();
+    uint16_t* pointSourceId  = fields[4].as<uint16_t>();
     uint8_t* classification = fields[5].as<uint8_t>();
     uint64_t readCount = 0;
     uint64_t nextDecimateBlock = 1;
