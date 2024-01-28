@@ -18,12 +18,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(displaz)
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 if (WIN32)
     # cmake >= 2.8.10 needs this for Qt5 on Windows
     cmake_policy(SET CMP0020 NEW)
 endif()
+
+# cmake >= 3.11 prefer GLVND libraries for OpenGL
+cmake_policy(SET CMP0072 NEW)
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
