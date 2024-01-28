@@ -7,6 +7,7 @@
 
 #include <QDir>
 #include <QMainWindow>
+#include <QSettings>
 
 #include <memory>
 
@@ -57,6 +58,7 @@ class PointViewerMainWindow : public QMainWindow
     protected:
         void dragEnterEvent(QDragEnterEvent *event);
         void dropEvent(QDropEvent *event);
+        void closeEvent(QCloseEvent *event) override;
 
     private slots:
         void openFiles();
@@ -76,6 +78,10 @@ class PointViewerMainWindow : public QMainWindow
         void handleIpcConnection();
 
     private:
+        void readSettings();
+        void writeSettings();
+
+    private:
         // Gui objects
         QProgressBar* m_progressBar;
         View3D* m_pointView;
@@ -84,8 +90,8 @@ class PointViewerMainWindow : public QMainWindow
         LogViewer* m_logTextView;
 
         // Gui state
-        QDir m_currFileDir;
         QString m_currShaderFileName;
+        QSettings m_settings;
 
         // File loader (slots run on separate thread)
         FileLoader* m_fileLoader;
