@@ -81,7 +81,7 @@ if (DISPLAZ_USE_LAS)
 endif()
 
 if (DISPLAZ_EMBED_GLEW)
-    add_definitions(-DGLEW_STATIC)
+    add_definitions(-DGLEW_STATIC -DGLEW_NO_GLU)
     set(GLEW_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/thirdparty/glew)
     include_directories(BEFORE ${GLEW_INCLUDE_DIR})
     add_library(embeddedGLEW STATIC thirdparty/glew/glew.c)
