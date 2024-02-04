@@ -20,6 +20,7 @@
 
 #include <QSignalMapper>
 #include <QThread>
+#include <QScreen>
 #include <QUrl>
 #include <QApplication>
 #include <QColorDialog>
@@ -47,6 +48,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     m_shaderEditor(0),
     m_helpDialog(0),
     m_logTextView(0),
+    m_settings(QSettings::IniFormat, QSettings::UserScope, QCoreApplication::organizationName(), QCoreApplication::applicationName()),
     m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
     m_ipcServer(0),
@@ -213,6 +215,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     // Docked widgets
     // Shader parameters UI
     QDockWidget* shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
+    shaderParamsDock->setObjectName("ShaderParameters");
     shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable);
     QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
@@ -221,6 +224,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     // Shader editor UI
     QDockWidget* shaderEditorDock = new QDockWidget(tr("Shader Editor"), this);
+    shaderEditorDock->setObjectName("ShaderEditor");
     shaderEditorDock->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable |
                                   QDockWidget::DockWidgetFloatable);
@@ -242,6 +246,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     // Log viewer UI
     QDockWidget* logDock = new QDockWidget(tr("Log"), this);
+    logDock->setObjectName("Log");
     logDock->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
     QWidget* logUI = new QWidget(logDock);
@@ -268,6 +273,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     // Data set list UI
     QDockWidget* dataSetDock = new QDockWidget(tr("Data Sets"), this);
+    dataSetDock->setObjectName("DataSets");
     dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
@@ -296,8 +302,9 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
 
     // Create custom hook events from CLI at runtime
     m_hookManager = new HookManager(this);
-}
 
+    readSettings();
+}
 
 void PointViewerMainWindow::startIpcServer(const QString& socketName)
 {
@@ -359,8 +366,20 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
     for (int i = 0; i < urls.size(); ++i)
     {
          if (urls[i].isLocalFile())
-             m_fileLoader->loadFile(FileLoadInfo(urls[i].toLocalFile()));
+         {
+             const QString filename = urls[i].toLocalFile();
+             const QDir dir = QFileInfo(filename).absoluteDir();
+             m_settings.setValue("lastDirectory", dir.path());
+             m_fileLoader->loadFile(FileLoadInfo(filename));
+         }
     }
+}
+
+
+void PointViewerMainWindow::closeEvent(QCloseEvent *event)
+{
+    writeSettings();
+    event->accept();
 }
 
 
@@ -616,6 +635,8 @@ QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
 
 void PointViewerMainWindow::openFiles()
 {
+    const QString lastDirectory = m_settings.value("lastDirectory").toString();
+
     // Note - using the static getOpenFileNames seems to be the only way to get
     // a native dialog.  This is annoying since the last selected directory
     // can't be deduced directly from the native dialog, but only when it
@@ -624,40 +645,44 @@ void PointViewerMainWindow::openFiles()
     QStringList files = QFileDialog::getOpenFileNames(
         this,
         tr("Open point clouds or meshes"),
-        m_currFileDir.path(),
-        tr("Data sets (*.las *.laz *.txt *.xyz *.ply);;All files (*)"),
+        lastDirectory,
+        tr("Data sets (*.las *.laz *.txt *.xyz *.ply);;LAZ Point Cloud (*.las *.laz *.slaz);;All files (*)"),
         0,
         QFileDialog::ReadOnly
     );
-    if (files.empty())
-        return;
     for (int i = 0; i < files.size(); ++i)
-        m_fileLoader->loadFile(FileLoadInfo(files[i]));
-    m_currFileDir = QFileInfo(files[0]).dir();
-    m_currFileDir.makeAbsolute();
+    {
+        const QString filename = files[i];
+        QDir dir = QFileInfo(filename).dir();
+        dir.makeAbsolute();
+        m_settings.setValue("lastDirectory", dir.path());
+        m_fileLoader->loadFile(FileLoadInfo(filename));
+    }
 }
 
 
 void PointViewerMainWindow::addFiles()
 {
+    const QString lastDirectory = m_settings.value("lastDirectory").toString();
+
     QStringList files = QFileDialog::getOpenFileNames(
         this,
         tr("Add point clouds or meshes"),
-        m_currFileDir.path(),
-        tr("Data sets (*.las *.laz *.txt *.xyz *.ply);;All files (*)"),
+        lastDirectory,
+        tr("Data sets (*.las *.laz *.txt *.xyz *.ply);;LAZ Point Cloud (*.las *.laz *.slaz);;All files (*)"),
         0,
         QFileDialog::ReadOnly
     );
-    if (files.empty())
-        return;
     for (int i = 0; i < files.size(); ++i)
     {
-        FileLoadInfo loadInfo(files[i]);
+        const QString filename = files[i];
+        QDir dir = QFileInfo(filename).dir();
+        dir.makeAbsolute();
+        m_settings.setValue("lastDirectory", dir.path());
+        FileLoadInfo loadInfo(filename);
         loadInfo.replaceLabel = false;
         m_fileLoader->loadFile(loadInfo);
     }
-    m_currFileDir = QFileInfo(files[0]).dir();
-    m_currFileDir.makeAbsolute();
 }
 
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
@@ -743,6 +768,8 @@ void PointViewerMainWindow::helpDialog()
 
 void PointViewerMainWindow::screenShot()
 {
+    const QString screenShotDirectory = m_settings.value("screenShotDirectory").toString();
+
     // Hack: do the grab first, before the widget is covered by the save
     // dialog.
     //
@@ -756,12 +783,16 @@ void PointViewerMainWindow::screenShot()
     QString fileName = QFileDialog::getSaveFileName(
         this,
         tr("Save screen shot"),
-        QDir::currentPath(),
+        screenShotDirectory,
         tr("Image files (*.tif *.png *.jpg);;All files(*)")
     );
-    if (fileName.isNull())
-        return;
-    sshot.save(fileName);
+    if (!fileName.isNull())
+    {
+        QDir dir = QFileInfo(fileName).dir();
+        dir.makeAbsolute();
+        m_settings.setValue("screenShotDirectory", dir.path());
+        sshot.save(fileName);
+    }
 }
 
 
@@ -810,4 +841,22 @@ void PointViewerMainWindow::updateTitle()
         }
     }
     setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
+}
+
+void PointViewerMainWindow::readSettings()
+{
+    restoreGeometry(m_settings.value("geometry").toByteArray());
+    restoreState(m_settings.value("windowState").toByteArray());
+
+    if (m_settings.value("minimised").toString() == "true")
+    {
+        showMinimized();
+    }
+}
+
+void PointViewerMainWindow::writeSettings()
+{
+    m_settings.setValue("geometry", saveGeometry());
+    m_settings.setValue("windowState", saveState());
+    m_settings.setValue("minimised", isMinimized());
 }

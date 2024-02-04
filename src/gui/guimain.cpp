@@ -63,6 +63,11 @@ int guimain(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    QCoreApplication::setApplicationName("Displaz");
+    QCoreApplication::setApplicationVersion(DISPLAZ_VERSION_STRING);
+    QCoreApplication::setOrganizationName("io.github.c42f");
+    QCoreApplication::setOrganizationDomain("github.com/c42f/displaz");
+
     QApplication app(argc, argv);
 
     setupQFileSearchPaths();
