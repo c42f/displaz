@@ -57,7 +57,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     gui/GLSLHighlighter.h
     gui/HelpDialog.h
     gui/InteractiveCamera.h
-    gui/PointViewerMainWindow.h
+    gui/MainWindow.h
     gui/QtLogger.h
     gui/ShaderEditor.h
 
@@ -86,7 +86,7 @@ set(gui_srcs
     gui/DataSetUI.cpp
     gui/GLSLHighlighter.cpp
     gui/guimain.cpp
-    gui/PointViewerMainWindow.cpp
+    gui/MainWindow.cpp
     gui/QtLogger.cpp
     gui/ShaderEditor.cpp
 

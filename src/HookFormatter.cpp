@@ -4,10 +4,10 @@
 #include "HookFormatter.h"
 
 #include "IpcChannel.h"
-#include "PointViewerMainWindow.h"
+#include "MainWindow.h"
 
 
-HookFormatter::HookFormatter(PointViewerMainWindow* getPayload, QByteArray hookSpec,
+HookFormatter::HookFormatter(MainWindow* getPayload, QByteArray hookSpec,
                                        QByteArray hookPayload, QObject* parent)
     : QObject(parent),
     m_hookSpec(hookSpec),

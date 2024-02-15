@@ -1,7 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "PointViewerMainWindow.h"
+#include "MainWindow.h"
 
 #include "config.h"
 #include "DataSetUI.h"
@@ -40,9 +40,9 @@
 #include <QGLFormat>
 
 //------------------------------------------------------------------------------
-// PointViewerMainWindow implementation
+// MainWindow implementation
 
-PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
+MainWindow::MainWindow(const QGLFormat& format)
     : m_progressBar(0),
     m_pointView(0),
     m_shaderEditor(0),
@@ -306,7 +306,7 @@ PointViewerMainWindow::PointViewerMainWindow(const QGLFormat& format)
     readSettings();
 }
 
-void PointViewerMainWindow::startIpcServer(const QString& socketName)
+void MainWindow::startIpcServer(const QString& socketName)
 {
     delete m_ipcServer;
     m_ipcServer = new QLocalServer(this);
@@ -319,7 +319,7 @@ void PointViewerMainWindow::startIpcServer(const QString& socketName)
 }
 
 
-void PointViewerMainWindow::handleIpcConnection()
+void MainWindow::handleIpcConnection()
 {
     IpcChannel* channel = new IpcChannel(m_ipcServer->nextPendingConnection(), this);
     connect(channel, SIGNAL(disconnected()), channel, SLOT(deleteLater()));
@@ -327,21 +327,21 @@ void PointViewerMainWindow::handleIpcConnection()
 }
 
 
-void PointViewerMainWindow::setProgressBarText(QString text)
+void MainWindow::setProgressBarText(QString text)
 {
     m_progressBar->show();
     m_progressBar->setFormat(text + " (%p%)");
 }
 
 
-void PointViewerMainWindow::geometryRowsInserted(const QModelIndex& parent, int first, int last)
+void MainWindow::geometryRowsInserted(const QModelIndex& parent, int first, int last)
 {
     QItemSelection range(m_geometries->index(first), m_geometries->index(last));
     m_pointView->selectionModel()->select(range, QItemSelectionModel::Select);
 }
 
 
-void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasUrls())
     {
@@ -358,7 +358,7 @@ void PointViewerMainWindow::dragEnterEvent(QDragEnterEvent *event)
 }
 
 
-void PointViewerMainWindow::dropEvent(QDropEvent *event)
+void MainWindow::dropEvent(QDropEvent *event)
 {
     QList<QUrl> urls = event->mimeData()->urls();
     if (urls.isEmpty())
@@ -376,20 +376,20 @@ void PointViewerMainWindow::dropEvent(QDropEvent *event)
 }
 
 
-void PointViewerMainWindow::closeEvent(QCloseEvent *event)
+void MainWindow::closeEvent(QCloseEvent *event)
 {
     writeSettings();
     event->accept();
 }
 
 
-QSize PointViewerMainWindow::sizeHint() const
+QSize MainWindow::sizeHint() const
 {
     return QSize(800,600);
 }
 
 
-void PointViewerMainWindow::handleMessage(QByteArray message)
+void MainWindow::handleMessage(QByteArray message)
 {
     QList<QByteArray> commandTokens = message.split('\n');
     if (commandTokens.empty())
@@ -618,7 +618,7 @@ void PointViewerMainWindow::handleMessage(QByteArray message)
 }
 
 
-QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
+QByteArray MainWindow::hookPayload(QByteArray payload)
 {
     if(payload == QByteArray("cursor"))
     {
@@ -633,7 +633,7 @@ QByteArray PointViewerMainWindow::hookPayload(QByteArray payload)
 }
 
 
-void PointViewerMainWindow::openFiles()
+void MainWindow::openFiles()
 {
     const QString lastDirectory = m_settings.value("lastDirectory").toString();
 
@@ -661,7 +661,7 @@ void PointViewerMainWindow::openFiles()
 }
 
 
-void PointViewerMainWindow::addFiles()
+void MainWindow::addFiles()
 {
     const QString lastDirectory = m_settings.value("lastDirectory").toString();
 
@@ -685,7 +685,7 @@ void PointViewerMainWindow::addFiles()
     }
 }
 
-void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
+void MainWindow::openShaderFile(const QString& shaderFileName)
 {
     QString filename(shaderFileName);
 
@@ -717,7 +717,7 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     m_settings.setValue("lastShader", m_currShaderFileName);
 }
 
-void PointViewerMainWindow::openShaderFile()
+void MainWindow::openShaderFile()
 {
     const QString lastDirectory = m_settings.value("lastShaderDirectory").toString();
 
@@ -736,7 +736,7 @@ void PointViewerMainWindow::openShaderFile()
 }
 
 
-void PointViewerMainWindow::saveShaderFile()
+void MainWindow::saveShaderFile()
 {
     QString shaderFileName = QFileDialog::getSaveFileName(
         this,
@@ -761,13 +761,13 @@ void PointViewerMainWindow::saveShaderFile()
 }
 
 
-void PointViewerMainWindow::compileShaderFile()
+void MainWindow::compileShaderFile()
 {
     m_pointView->shaderProgram().setShader(m_shaderEditor->toPlainText());
 }
 
 
-void PointViewerMainWindow::reloadFiles()
+void MainWindow::reloadFiles()
 {
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
     for (auto g = geoms.begin(); g != geoms.end(); ++g)
@@ -778,13 +778,13 @@ void PointViewerMainWindow::reloadFiles()
 }
 
 
-void PointViewerMainWindow::helpDialog()
+void MainWindow::helpDialog()
 {
     m_helpDialog->show();
 }
 
 
-void PointViewerMainWindow::screenShot()
+void MainWindow::screenShot()
 {
     const QString screenShotDirectory = m_settings.value("screenShotDirectory").toString();
 
@@ -814,7 +814,7 @@ void PointViewerMainWindow::screenShot()
 }
 
 
-void PointViewerMainWindow::aboutDialog()
+void MainWindow::aboutDialog()
 {
     QString message = tr(
         "<p><a href=\"http://c42f.github.io/displaz\"><b>Displaz</b></a> &mdash; a viewer for lidar point clouds</p>"
@@ -826,13 +826,13 @@ void PointViewerMainWindow::aboutDialog()
 }
 
 
-void PointViewerMainWindow::setBackground(const QString& name)
+void MainWindow::setBackground(const QString& name)
 {
     m_pointView->setBackground(QColor(name));
 }
 
 
-void PointViewerMainWindow::chooseBackground()
+void MainWindow::chooseBackground()
 {
     QColor originalColor = m_pointView->background();
     QColorDialog chooser(originalColor, this);
@@ -843,7 +843,7 @@ void PointViewerMainWindow::chooseBackground()
 }
 
 
-void PointViewerMainWindow::updateTitle()
+void MainWindow::updateTitle()
 {
     QStringList labels;
     const GeometryCollection::GeometryVec& geoms = m_geometries->get();
@@ -861,7 +861,7 @@ void PointViewerMainWindow::updateTitle()
     setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
 }
 
-void PointViewerMainWindow::readSettings()
+void MainWindow::readSettings()
 {
     restoreGeometry(m_settings.value("geometry").toByteArray());
     restoreState(m_settings.value("windowState").toByteArray());
@@ -872,7 +872,7 @@ void PointViewerMainWindow::readSettings()
     }
 }
 
-void PointViewerMainWindow::writeSettings()
+void MainWindow::writeSettings()
 {
     m_settings.setValue("geometry", saveGeometry());
     m_settings.setValue("windowState", saveState());

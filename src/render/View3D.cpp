@@ -20,7 +20,7 @@
 #include "config.h"
 #include "fileloader.h"
 #include "QtLogger.h"
-#include "PointViewerMainWindow.h"
+#include "MainWindow.h"
 #include "TriMesh.h"
 #include "Shader.h"
 #include "ShaderProgram.h"
@@ -328,7 +328,7 @@ void View3D::initializeGL()
     // FIXME: Do something about this mess.  The shader editor widget needs to
     // be initialized with the default shader, but View3D can only compile
     // shaders after it has a valid OpenGL context.
-    PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
+    MainWindow * pv_parent = dynamic_cast<MainWindow *>(parentWidget());
     if (pv_parent)
         pv_parent->openShaderFile(QString());
 
