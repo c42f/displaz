@@ -687,14 +687,26 @@ void PointViewerMainWindow::addFiles()
 
 void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
 {
-    QFile shaderFile(shaderFileName);
+    QString filename(shaderFileName);
+
+    if (filename.isNull())
+    {
+        filename = m_settings.value("lastShader").toString();
+        if (filename.isNull())
+        {
+            filename = "shaders:las_points.glsl";
+        }
+    }
+
+    QFile shaderFile(filename);
+
     if (!shaderFile.open(QIODevice::ReadOnly))
     {
-        shaderFile.setFileName("shaders:" + shaderFileName);
+        shaderFile.setFileName("shaders:" + filename);
         if (!shaderFile.open(QIODevice::ReadOnly))
         {
             g_logger.error("Couldn't open shader file \"%s\": %s",
-                        shaderFileName, shaderFile.errorString());
+                        filename, shaderFile.errorString());
             return;
         }
     }
@@ -702,18 +714,24 @@ void PointViewerMainWindow::openShaderFile(const QString& shaderFileName)
     QByteArray src = shaderFile.readAll();
     m_shaderEditor->setPlainText(src);
     m_pointView->shaderProgram().setShader(src);
+    m_settings.setValue("lastShader", m_currShaderFileName);
 }
 
 void PointViewerMainWindow::openShaderFile()
 {
+    const QString lastDirectory = m_settings.value("lastShaderDirectory").toString();
+
     QString shaderFileName = QFileDialog::getOpenFileName(
         this,
         tr("Open OpenGL shader in displaz format"),
-        m_currShaderFileName,
+        lastDirectory,
         tr("OpenGL shader files (*.glsl);;All files(*)")
     );
     if (shaderFileName.isNull())
         return;
+
+    QDir dir = QFileInfo(shaderFileName).dir();
+    m_settings.setValue("lastShaderDirectory", dir.path());
     openShaderFile(shaderFileName);
 }
 

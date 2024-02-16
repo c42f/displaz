@@ -330,7 +330,7 @@ void View3D::initializeGL()
     // shaders after it has a valid OpenGL context.
     PointViewerMainWindow * pv_parent = dynamic_cast<PointViewerMainWindow *>(parentWidget());
     if (pv_parent)
-        pv_parent->openShaderFile("shaders:las_points.glsl");
+        pv_parent->openShaderFile(QString());
 
     setFocus();
 }
