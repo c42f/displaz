@@ -31,12 +31,12 @@ class HookManager;
 
 //------------------------------------------------------------------------------
 /// Main window for point cloud viewer application
-class PointViewerMainWindow : public QMainWindow
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
     public:
-        PointViewerMainWindow(const QGLFormat& format);
+        MainWindow(const QGLFormat& format);
 
         /// Hint at an appropriate size
         QSize sizeHint() const;

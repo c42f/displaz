@@ -7,7 +7,7 @@
 #include <QObject>
 #include <QByteArray>
 
-class PointViewerMainWindow;
+class MainWindow;
 
 /// Class for formatting hook event messages
 
@@ -15,7 +15,7 @@ class HookFormatter : public QObject
 {
     Q_OBJECT
     public:
-        HookFormatter(PointViewerMainWindow* getPayload, QByteArray hookSpec,
+        HookFormatter(MainWindow* getPayload, QByteArray hookSpec,
                           QByteArray hookPayload, QObject* parent = NULL);
 
         void setEventId(int eventId) { m_eventId = eventId; }
@@ -36,7 +36,7 @@ class HookFormatter : public QObject
     private:
         QByteArray m_hookSpec;
         QByteArray m_hookPayload;
-        PointViewerMainWindow* m_getPayload;
+        MainWindow* m_getPayload;
         int m_eventId;
 };
 

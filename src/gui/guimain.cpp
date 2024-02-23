@@ -1,7 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#include "PointViewerMainWindow.h"
+#include "MainWindow.h"
 
 //#include <QDataStream>
 #include <QTextCodec>
@@ -86,7 +86,7 @@ int guimain(int argc, char* argv[])
     //f.setSampleBuffers(true);
     QGLFormat::setDefaultFormat(f);
 
-    PointViewerMainWindow window(f);
+    MainWindow window(f);
 
     // Inherit instance lock (or debug: acquire it)
     if (!serverName.empty())
