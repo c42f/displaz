@@ -1,5 +1,5 @@
 # Minimal displaz Qt5 build, test and install
-# using Docker Ubuntu 20.04 (Jammy)
+# using Docker Ubuntu 22.04 (Jammy)
 
 FROM ubuntu:jammy
 MAINTAINER Nigel Stewart (nigels@nigels.com)
