@@ -102,7 +102,7 @@ if(MSVC)
     )
 endif()
 
-install(FILES ${LAS_INCLUDES} DESTINATION include/LASlib)
+install(FILES ${LAS_INCLUDES} DESTINATION include)
 
 if (MSVC)
 	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
@@ -110,9 +110,9 @@ if (MSVC)
 	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 else()
 	install(TARGETS LASlib EXPORT laslib-targets
-		ARCHIVE DESTINATION lib/LASlib
-		LIBRARY DESTINATION lib/LASlib
-		RUNTIME DESTINATION lib/LASlib)
+		ARCHIVE DESTINATION lib
+		LIBRARY DESTINATION lib
+		RUNTIME DESTINATION lib)
 	install(EXPORT laslib-targets DESTINATION lib/cmake/LASlib)
 	install(FILES ${CMAKE_SOURCE_DIR}/LASlib/src/laslib-config.cmake DESTINATION lib/cmake/LASlib)
 endif(MSVC)
