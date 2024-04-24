@@ -30,7 +30,6 @@ cmake_policy(SET CMP0072 NEW)
 
 option(DISPLAZ_STATIC "Build against static libraries" FALSE)
 option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
-option(DISPLAZ_USE_PDAL "Use PDAL for reading las files" FALSE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" TRUE)
@@ -67,17 +66,8 @@ find_package(Imath 1.0.1 REQUIRED)
 
 if (DISPLAZ_USE_LAS)
     add_definitions(-DDISPLAZ_USE_LAS)
-    # Find a library to read .las or .laz
-    if (DISPLAZ_USE_PDAL)
-        find_package(PDAL REQUIRED)
-        find_package(Boost 1.48 REQUIRED)
-        add_definitions(-DDISPLAZ_USE_PDAL)
-        include_directories(${PDAL_INCLUDE_DIRS})
-    else()
-        # laslib support
-        find_package(LASlib REQUIRED)
-        include_directories(${LASLIB_INCLUDE_DIRS})
-    endif()
+    find_package(LASlib REQUIRED)
+    include_directories(${LASLIB_INCLUDE_DIRS})
 endif()
 
 if (DISPLAZ_EMBED_GLEW)

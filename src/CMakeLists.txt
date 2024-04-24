@@ -174,11 +174,7 @@ if(APPLE)
 endif()
 
 if (DISPLAZ_USE_LAS)
-    if (DISPLAZ_USE_PDAL)
-        target_link_libraries(displaz ${PDAL_LIBRARIES})
-    else()
-        target_link_libraries(displaz ${LASLIB_LIBRARIES})
-    endif()
+    target_link_libraries(displaz ${LASLIB_LIBRARIES})
 endif()
 
 if(WIN32)
