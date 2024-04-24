@@ -9,14 +9,14 @@
   
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2022, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
-    terms of the GNU Lesser General Licence as published by the Free Software
+    terms of the Apache Public License 2.0 published by the Apache Software
     Foundation. See the COPYING file for more information.
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
@@ -30,8 +30,9 @@
 */
 
 #include "lasreaditemcompressed_v3.hpp"
+#include "lasmessage.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <string.h>
 
 typedef struct LASpoint14
@@ -207,6 +208,7 @@ LASreadItemCompressed_POINT14_v3::~LASreadItemCompressed_POINT14_v3()
     delete dec_intensity;
     delete dec_scan_angle;
     delete dec_user_data;
+    delete dec_point_source;
     delete dec_gps_time;
 
     delete instream_channel_returns_XY;
@@ -216,6 +218,7 @@ LASreadItemCompressed_POINT14_v3::~LASreadItemCompressed_POINT14_v3()
     delete instream_intensity;
     delete instream_scan_angle;
     delete instream_user_data;
+    delete instream_point_source;
     delete instream_gps_time;
   }
 
@@ -321,7 +324,7 @@ inline BOOL LASreadItemCompressed_POINT14_v3::createAndInitModelsAndDecompressor
   contexts[context].ic_Z->initDecompressor();
   for (i = 0; i < 8; i++)
   {
-    contexts[context].last_Z[i] = ((LASpoint14*)item)->Z;
+    contexts[context].last_Z[i] = ((const LASpoint14*)item)->Z;
   }
 
   /* for the classification layer */
@@ -340,7 +343,7 @@ inline BOOL LASreadItemCompressed_POINT14_v3::createAndInitModelsAndDecompressor
   contexts[context].ic_intensity->initDecompressor();
   for (i = 0; i < 8; i++)
   {
-    contexts[context].last_intensity[i] = ((LASpoint14*)item)->intensity;
+    contexts[context].last_intensity[i] = ((const LASpoint14*)item)->intensity;
   }
 
   /* for the scan_angle layer */
@@ -365,7 +368,7 @@ inline BOOL LASreadItemCompressed_POINT14_v3::createAndInitModelsAndDecompressor
   contexts[context].multi_extreme_counter[1] = 0;
   contexts[context].multi_extreme_counter[2] = 0;
   contexts[context].multi_extreme_counter[3] = 0;
-  contexts[context].last_gpstime[0].f64 = ((LASpoint14*)item)->gps_time;
+  contexts[context].last_gpstime[0].f64 = ((const LASpoint14*)item)->gps_time;
   contexts[context].last_gpstime[1].u64 = 0;
   contexts[context].last_gpstime[2].u64 = 0;
   contexts[context].last_gpstime[3].u64 = 0;
@@ -375,7 +378,7 @@ inline BOOL LASreadItemCompressed_POINT14_v3::createAndInitModelsAndDecompressor
   memcpy(contexts[context].last_item, item, sizeof(LASpoint14));
   ((LASpoint14*)contexts[context].last_item)->gps_time_change = FALSE;
 
-//  fprintf(stderr, "INIT: current_context %d last item %.14g %d %d %d %d %d %d\n", current_context, ((LASpoint14*)item)->gps_time, ((LASpoint14*)item)->X, ((LASpoint14*)item)->Y, ((LASpoint14*)item)->Z, ((LASpoint14*)item)->intensity, ((LASpoint14*)item)->return_number, ((LASpoint14*)item)->number_of_returns);
+//  LASMessage(LAS_VERBOSE, "INIT: current_context %d last item %.14g %d %d %d %d %d %d", current_context, ((LASpoint14*)item)->gps_time, ((LASpoint14*)item)->X, ((LASpoint14*)item)->Y, ((LASpoint14*)item)->Z, ((LASpoint14*)item)->intensity, ((LASpoint14*)item)->return_number, ((LASpoint14*)item)->number_of_returns);
 
   contexts[context].unused = FALSE;
 
@@ -693,7 +696,7 @@ BOOL LASreadItemCompressed_POINT14_v3::init(const U8* item, U32& context)
 
   /* set scanner channel as current context */
 
-  current_context = ((LASpoint14*)item)->scanner_channel;
+  current_context = ((const LASpoint14*)item)->scanner_channel;
   context = current_context; // the POINT14 reader sets context for all other items
 
   /* create and init models and decompressors */

@@ -9,14 +9,14 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2022, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
-    terms of the GNU Lesser General Licence as published by the Free Software
+    terms of the Apache Public License 2.0 published by the Apache Software
     Foundation. See the COPYING file for more information.
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
@@ -31,8 +31,9 @@
 #include "laszip.hpp"
 
 #include "mydefs.hpp"
+#include "lasmessage.hpp"
 
-#include <assert.h>
+#include <cassert>
 
 #include <string.h>
 #include <stdlib.h>
@@ -94,33 +95,33 @@ bool LASzip::unpack(const U8* bytes, const I32 num)
   // do the unpacking
   U16 i;
   const U8* b = bytes;
-  compressor = *((U16*)b);
+  compressor = *((const U16*)b);
   b += 2;
-  coder = *((U16*)b);
+  coder = *((const U16*)b);
   b += 2;
-  version_major = *((U8*)b);
+  version_major = *((const U8*)b);
   b += 1;
-  version_minor = *((U8*)b);
+  version_minor = *((const U8*)b);
   b += 1;
-  version_revision = *((U16*)b);
+  version_revision = *((const U16*)b);
   b += 2;
-  options = *((U32*)b);
+  options = *((const U32*)b);
   b += 4;
-  chunk_size = *((U32*)b);
+  chunk_size = *((const U32*)b);
   b += 4;
-  number_of_special_evlrs = *((I64*)b);
+  number_of_special_evlrs = *((const I64*)b);
   b += 8;
-  offset_to_special_evlrs = *((I64*)b);
+  offset_to_special_evlrs = *((const I64*)b);
   b += 8;
-  num_items = *((U16*)b);
+  num_items = *((const U16*)b);
   b += 2;
   for (i = 0; i < num_items; i++)
   {
-    items[i].type = (LASitem::Type)*((U16*)b);
+    items[i].type = (LASitem::Type)*((const U16*)b);
     b += 2;
-    items[i].size = *((U16*)b);
+    items[i].size = *((const U16*)b);
     b += 2;
-    items[i].version = *((U16*)b);
+    items[i].version = *((const U16*)b);
     b += 2;
   }
   assert((bytes + num) == b);
@@ -496,7 +497,7 @@ bool LASzip::setup(U16* num_items, LASitem** items, const U8 point_type, const U
 
   if (extra_bytes_number < 0)
   {
-    fprintf(stderr, "WARNING: point size %d too small by %d bytes for point type %d. assuming point_size of %d\n", point_size, -extra_bytes_number, point_type, point_size-extra_bytes_number);
+    LASMessage(LAS_WARNING, "point size %d too small by %d bytes for point type %d. assuming point_size of %d", point_size, -extra_bytes_number, point_type, point_size-extra_bytes_number);
     extra_bytes_number = 0;
   }
 

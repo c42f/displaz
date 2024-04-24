@@ -9,11 +9,11 @@
   
   PROGRAMMERS:
   
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
   
   COPYRIGHT:
   
-    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2019, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -29,22 +29,24 @@
 ===============================================================================
 */
 #include "lasignore.hpp"
+#include "lasmessage.hpp"
 
 #include "laszip_decompress_selective_v3.hpp"
 
 void LASignore::usage() const
 {
-  fprintf(stderr,"Ignore points based on classifications.\n");
-  fprintf(stderr,"  -ignore_class 7\n");
-  fprintf(stderr,"  -ignore_class 0 1 7 33\n");
-  fprintf(stderr,"Ignore points based on return type.\n");
-  fprintf(stderr,"  -ignore_first -ignore_first_of_many\n");
-  fprintf(stderr,"  -ignore_last -ignore_last_of_many\n");
-  fprintf(stderr,"  -ignore_intermediate\n");
-  fprintf(stderr,"  -ignore_single\n");
-  fprintf(stderr,"Ignore points based on flags.\n");
-  fprintf(stderr,"  -ignore_synthetic -ignore_keypoint\n");
-  fprintf(stderr,"  -ignore_withheld -ignore_overlap\n");
+  //pre-formated multiline message
+  LASMessage(LAS_INFO, "Ignore points based on classifications.\n" \
+                       "  -ignore_class 7\n" \
+                       "  -ignore_class 0 1 7 33\n" \
+                       "Ignore points based on return type.\n" \
+                       "  -ignore_first -ignore_first_of_many\n" \
+                       "  -ignore_last -ignore_last_of_many\n" \
+                       "  -ignore_intermediate\n" \
+                       "  -ignore_single\n" \
+                       "Ignore points based on flags.\n" \
+                       "  -ignore_synthetic -ignore_keypoint\n" \
+                       "  -ignore_withheld -ignore_overlap");
 }
 
 void LASignore::ignore_class(U8 classification)
@@ -72,7 +74,7 @@ BOOL LASignore::parse(int& i, int argc, char *argv[])
   {
     if ((i+1) >= argc)
     {
-      fprintf(stderr,"ERROR: '%s' needs 1 at least argument: classification\n", argv[i]);
+      LASMessage(LAS_ERROR, "'%s' needs 1 at least argument: classification", argv[i]);
       return FALSE;
     }
     int i_in = i;
@@ -83,12 +85,12 @@ BOOL LASignore::parse(int& i, int argc, char *argv[])
       U32 classification;
       if (sscanf(argv[i], "%u", &classification) != 1)
       {
-        fprintf(stderr,"ERROR: '%s' needs arguments between 0 and 255 but '%s' is no valid code\n", argv[i_in], argv[i]);
+        LASMessage(LAS_ERROR, "'%s' needs arguments between 0 and 255 but '%s' is no valid code", argv[i_in], argv[i]);
         return FALSE;
       }
       if (classification > 255)
       {
-        fprintf(stderr,"ERROR: '%s' needs arguments between 0 and 255 but '%u' is out of range\n", argv[i_in], classification);
+        LASMessage(LAS_ERROR, "'%s' needs arguments between 0 and 255 but '%u' is out of range", argv[i_in], classification);
         return FALSE;
       }
       ignore_mask |= (1u << (classification >> 5));
@@ -102,23 +104,23 @@ BOOL LASignore::parse(int& i, int argc, char *argv[])
   {
     if ((i+1) >= argc)
     {
-      fprintf(stderr,"ERROR: '%s' needs 1 argument: mask\n", argv[i]);
+      LASMessage(LAS_ERROR, "'%s' needs 1 argument: mask", argv[i]);
       return FALSE;
     }
     U32 classification_mask;
     if (sscanf(argv[i+1], "%u", &classification_mask) != 1)
     {
-      fprintf(stderr,"ERROR: '%s' needs argument between 0x00000000 and 0xFFFFFFFF but '%s' is no valid mask\n", argv[i], argv[i+1]);
+      LASMessage(LAS_ERROR, "'%s' needs argument between 0x00000000 and 0xFFFFFFFF but '%s' is no valid mask", argv[i], argv[i+1]);
       return FALSE;
     }
     if (classification_mask == 0x00000000)
     {
-      fprintf(stderr,"ERROR: '%s' needs argument between 0x00000000 and 0xFFFFFFFF but %u makes no sense\n", argv[i], classification_mask);
+      LASMessage(LAS_ERROR, "'%s' needs argument between 0x00000000 and 0xFFFFFFFF but %u makes no sense", argv[i], classification_mask);
       return FALSE;
     }
     if (classification_mask == 0xFFFFFFFF)
     {
-      fprintf(stderr,"ERROR: '%s' needs argument between 0x00000000 and 0xFFFFFFFF but %u makes no sense\n", argv[i], classification_mask);
+      LASMessage(LAS_ERROR, "'%s' needs argument between 0x00000000 and 0xFFFFFFFF but %u makes no sense", argv[i], classification_mask);
       return FALSE;
     }
     ignore_mask |= 1;
@@ -179,7 +181,7 @@ BOOL LASignore::parse(int& i, int argc, char *argv[])
   }
   else
   {
-    fprintf(stderr, "ERROR: cannot understand argument '%s'\n", argv[i]);
+    LASMessage(LAS_ERROR, "cannot understand argument '%s'", argv[i]);
     return FALSE;
   }
   return TRUE;
@@ -341,7 +343,7 @@ BOOL LASignore::ignore(const LASpoint* point) const
   {
     if (ignore_mask & LASIGNORE_CLASSIFICATIONS)
     {
-      U32 classification = point->get_classification();
+      U32 classification = (point->is_extended_point_type() ? point->get_extended_classification() : point->get_classification());
       U32 byte = classification >> 5;
       U32 rest = classification & 31;
       if (ignore_classification_mask[byte] & (1u << rest))

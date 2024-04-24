@@ -12,15 +12,15 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2022, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
-    terms of the GNU Lesser General Licence as published by the Free Software
-    Foundation. See the LICENSE.txt file for more information.
+    terms of the Apache Public License 2.0 published by the Apache Software
+    Foundation. See the COPYING file for more information.
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -62,7 +62,7 @@ public:
   // create spatial index
   void prepare(LASquadtree* spatial, I32 threshold=1000);
   BOOL add(const F64 x, const F64 y, const U32 index);
-  void complete(U32 minimum_points=100000, I32 maximum_intervals=-1, const BOOL verbose=TRUE);
+  void complete(U32 minimum_points=100000, I32 maximum_intervals=-1);
 
   // read from file or write to file
   BOOL read(FILE* file);
@@ -96,7 +96,7 @@ public:
 #endif
 
   // for debugging
-  void print(BOOL verbose);
+  void print();
 
   // for visualization
   LASquadtree* get_spatial() const;

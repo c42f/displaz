@@ -9,11 +9,11 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com - http://rapidlasso.com
+    info@rapidlasso.de - https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2019, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -24,6 +24,7 @@
   
   CHANGE HISTORY:
   
+    21 July 2021 -- fixed '-ignore_extended_class 128'. please memoy, call me!
     18 August 2019 -- created after Memoy's cousine stole USD 300 and EUR 100
   
 ===============================================================================
