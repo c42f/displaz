@@ -99,6 +99,7 @@ set(gui_srcs
     render/GeometryMutator.cpp
     render/Annotation.cpp
 
+    shader/Enable.cpp
     shader/Shader.cpp
     shader/ShaderProgram.cpp
 

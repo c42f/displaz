@@ -11,6 +11,7 @@
 #include "IpcChannel.h"
 #include "QtLogger.h"
 #include "TriMesh.h"
+#include "Enable.h"
 #include "ShaderEditor.h"
 #include "Shader.h"
 #include "ShaderProgram.h"
@@ -714,6 +715,7 @@ void MainWindow::openShaderFile(const QString& shaderFileName)
     QByteArray src = shaderFile.readAll();
     m_shaderEditor->setPlainText(src);
     m_pointView->shaderProgram().setShader(src);
+    m_pointView->enable().set(src);
     m_settings.setValue("lastShader", m_currShaderFileName);
 }
 
@@ -764,6 +766,7 @@ void MainWindow::saveShaderFile()
 void MainWindow::compileShaderFile()
 {
     m_pointView->shaderProgram().setShader(m_shaderEditor->toPlainText());
+    m_pointView->enable().set(m_shaderEditor->toPlainText());
 }
 
 

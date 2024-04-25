@@ -26,6 +26,7 @@ class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
 
+class Enable;
 class ShaderProgram;
 struct TransformState;
 
@@ -37,6 +38,8 @@ class View3D : public QGLWidget
     public:
         View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
         ~View3D();
+
+        Enable& enable() const { return *m_enable; }
 
         /// Return shader used for displaying points
         ShaderProgram& shaderProgram() const { return *m_shaderProgram; }
@@ -150,6 +153,7 @@ class View3D : public QGLWidget
         bool m_badOpenGL;
         /// Shader for point clouds
         std::unique_ptr<ShaderProgram> m_shaderProgram;
+        std::unique_ptr<Enable>        m_enable;
         /// Shaders for polygonal geometry
         std::unique_ptr<ShaderProgram> m_meshFaceShader;
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
