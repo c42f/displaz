@@ -65,7 +65,7 @@ class ClipBox
             // but is far simpler than the alternatives.
             for (int j = 0; j < 6; ++j)
             {
-                if (std::all_of(std::begin(points), std::end(points), [&](auto& p)
+                if (std::all_of(std::begin(points), std::end(points), [&](const auto& p)
                     { return normal[j].dot(p) + distance[j] < 0.0; }))
                 {
                     return true;
