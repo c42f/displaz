@@ -90,6 +90,7 @@ set(gui_srcs
     gui/QtLogger.cpp
     gui/ShaderEditor.cpp
 
+    render/FrameRate.cpp
     render/Geometry.cpp
     render/glutil.cpp
     render/HCloudView.cpp
