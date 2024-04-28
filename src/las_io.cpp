@@ -5,7 +5,7 @@
 #include "QtLogger.h"
 #include "PointArray.h"
 
-#include <QRandomGenerator>
+#include <random>
 
 // FIXME! The point loader code is really a horrible mess.  It should be
 // cleaned up to conform to a proper interface, and moved out of the PointArray
@@ -139,7 +139,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     size_t storeCount = 0;
     size_t nextDecimateBlock = 1;
     size_t nextStore = 1;
-    QRandomGenerator rand;
+    std::mt19937 rand;
     for (auto st = pbSet.begin(); st != pbSet.end(); ++st)
 //     while (size_t numRead = chunkIter->read(buf))
     {
@@ -176,7 +176,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
             if(decimate > 1)
             {
                 // Randomize selected point within block to avoid repeated patterns
-                nextStore += (rand.generate64() % decimate);
+                nextStore += (rand() % decimate);
                 if(nextDecimateBlock <= totalPoints && nextStore > totalPoints)
                     nextStore = totalPoints;
             }
@@ -237,7 +237,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     uint64_t nextDecimateBlock = 1;
     uint64_t nextStore = 1;
     size_t storeCount = 0;
-    QRandomGenerator rand;
+    std::mt19937 rand;
     if (!lasReader->read_point())
         return false;
     const LASpoint& point = lasReader->point;
@@ -291,7 +291,7 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
         if(decimate > 1)
         {
             // Randomize selected point within block to avoid repeated patterns
-            nextStore += (rand.generate64() % decimate);
+            nextStore += (rand() % decimate);
             if(nextDecimateBlock <= totalPoints && nextStore > totalPoints)
                 nextStore = totalPoints;
         }
