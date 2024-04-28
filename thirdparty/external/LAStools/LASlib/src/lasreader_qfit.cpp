@@ -9,11 +9,11 @@
   
   PROGRAMMERS:
   
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2012, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2012, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -30,6 +30,7 @@
 */
 #include "lasreader_qfit.hpp"
 
+#include "lasmessage.hpp"
 #include "bytestreamin.hpp"
 #include "bytestreamin_file.hpp"
 
@@ -44,7 +45,7 @@ BOOL LASreaderQFIT::open(const char* file_name)
 {
   if (file_name == 0)
   {
-    fprintf(stderr,"ERROR: file name pointer is zero\n");
+    LASMessage(LAS_ERROR, "file name pointer is zero");
     return FALSE;
   }
 
@@ -53,7 +54,7 @@ BOOL LASreaderQFIT::open(const char* file_name)
   file = fopen(file_name, "rb");
   if (file == 0)
   {
-    fprintf(stderr, "ERROR: cannot open file '%s'\n", file_name);
+    LASMessage(LAS_ERROR, "cannot open file '%s'", file_name);
     return FALSE;
   }
 
@@ -125,7 +126,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
 
   if (stream == 0)
   {
-    fprintf(stderr,"ERROR: ByteStreamIn* pointer is zero\n");
+    LASMessage(LAS_ERROR, "ByteStreamIn* pointer is zero");
     return FALSE;
   }
 
@@ -135,7 +136,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
 
   try { stream->get32bitsLE((U8*)&version); } catch(...)
   {
-    fprintf(stderr,"ERROR: reading QFIT header\n");
+    LASMessage(LAS_ERROR, "reading QFIT header");
     return FALSE;
   }
 
@@ -148,7 +149,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
   }
   else
   {
-    ENDIAN_SWAP_32((U8*)&version);
+    ENDIAN_SWAP_32_((U8*)&version);
     if (version == 40 || version == 48 || version == 56)
     {
       little_endian = FALSE;
@@ -156,7 +157,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
     }
     else
     {
-      fprintf(stderr,"ERROR: corrupt QFIT header.\n");
+      LASMessage(LAS_ERROR, "corrupt QFIT header.");
       return FALSE;
     }
   }
@@ -165,7 +166,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
 
   try { stream->getBytes((U8*)buffer, version); } catch(...)
   {
-    fprintf(stderr,"ERROR: reading %d bytes until point start offset from QFIT header\n", version);
+    LASMessage(LAS_ERROR, "reading %d bytes until point start offset from QFIT header", version);
     return FALSE;
   }
 
@@ -173,7 +174,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
 
   try { if (little_endian) stream->get32bitsLE((U8*)&offset); else stream->get32bitsBE((U8*)&offset); } catch(...)
   {
-    fprintf(stderr,"ERROR: reading point start offset from QFIT header\n");
+    LASMessage(LAS_ERROR, "reading point start offset from QFIT header");
     return FALSE;
   }
 
@@ -212,7 +213,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
     header.add_attribute(scan_azimuth);
   }
   catch(...) {
-    fprintf(stderr,"ERROR: initializing attribute scan_azimuth\n");
+    LASMessage(LAS_ERROR, "initializing attribute scan_azimuth");
     return FALSE;
   }
 
@@ -225,7 +226,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
     header.add_attribute(pitch);
   }
   catch(...) {
-    fprintf(stderr,"ERROR: initializing attribute pitch\n");
+    LASMessage(LAS_ERROR, "initializing attribute pitch");
     return FALSE;
   }
 
@@ -238,7 +239,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
     header.add_attribute(roll);
   }
   catch(...) {
-    fprintf(stderr,"ERROR: initializing attribute roll\n");
+    LASMessage(LAS_ERROR, "initializing attribute roll");
     return FALSE;
   }
 
@@ -249,7 +250,7 @@ BOOL LASreaderQFIT::open(ByteStreamIn* stream)
       header.add_attribute(pulse_width);
     }
     catch(...) {
-      fprintf(stderr,"ERROR: initializing attribute pulse width\n");
+      LASMessage(LAS_ERROR, "initializing attribute pulse width");
       return FALSE;
     }
   }
@@ -314,30 +315,30 @@ BOOL LASreaderQFIT::read_point_default()
   {
     try { stream->getBytes((U8*)buffer, version); } catch(...)
     {
-      fprintf(stderr,"ERROR: reading QFIT point after %u of %u\n", (U32)p_count, (U32)npoints);
+      LASMessage(LAS_ERROR, "reading QFIT point after %u of %u", (U32)p_count, (U32)npoints);
       return FALSE;
     }
 
     if (endian_swap)
     {
-      ENDIAN_SWAP_32((U8*)&buffer[0]);
-      ENDIAN_SWAP_32((U8*)&buffer[1]);
-      ENDIAN_SWAP_32((U8*)&buffer[2]);
-      ENDIAN_SWAP_32((U8*)&buffer[3]);
-      ENDIAN_SWAP_32((U8*)&buffer[5]);
-      ENDIAN_SWAP_32((U8*)&buffer[6]);
-      ENDIAN_SWAP_32((U8*)&buffer[7]);
-      ENDIAN_SWAP_32((U8*)&buffer[8]);
-      ENDIAN_SWAP_32((U8*)&buffer[9]);
+      ENDIAN_SWAP_32_((U8*)&buffer[0]);
+      ENDIAN_SWAP_32_((U8*)&buffer[1]);
+      ENDIAN_SWAP_32_((U8*)&buffer[2]);
+      ENDIAN_SWAP_32_((U8*)&buffer[3]);
+      ENDIAN_SWAP_32_((U8*)&buffer[5]);
+      ENDIAN_SWAP_32_((U8*)&buffer[6]);
+      ENDIAN_SWAP_32_((U8*)&buffer[7]);
+      ENDIAN_SWAP_32_((U8*)&buffer[8]);
+      ENDIAN_SWAP_32_((U8*)&buffer[9]);
       if (version >= 48)
       {
-        ENDIAN_SWAP_32((U8*)&buffer[10]);
-        ENDIAN_SWAP_32((U8*)&buffer[11]);
+        ENDIAN_SWAP_32_((U8*)&buffer[10]);
+        ENDIAN_SWAP_32_((U8*)&buffer[11]);
       }
       if (version >= 56)
       {
-        ENDIAN_SWAP_32((U8*)&buffer[12]);
-        ENDIAN_SWAP_32((U8*)&buffer[13]);
+        ENDIAN_SWAP_32_((U8*)&buffer[12]);
+        ENDIAN_SWAP_32_((U8*)&buffer[13]);
       }
     }
 
@@ -402,7 +403,7 @@ BOOL LASreaderQFIT::reopen(const char* file_name)
 {
   if (file_name == 0)
   {
-    fprintf(stderr,"ERROR: file name pointer is zero\n");
+    LASMessage(LAS_ERROR, "file name pointer is zero");
     return FALSE;
   }
 
@@ -411,7 +412,7 @@ BOOL LASreaderQFIT::reopen(const char* file_name)
   file = fopen(file_name, "rb");
   if (file == 0)
   {
-    fprintf(stderr, "ERROR: cannot open file '%s'\n", file_name);
+    LASMessage(LAS_ERROR, "cannot open file '%s'", file_name);
     return FALSE;
   }
 
@@ -427,7 +428,7 @@ BOOL LASreaderQFIT::reopen(const char* file_name)
   return stream->seek(offset);
 }
 
-LASreaderQFIT::LASreaderQFIT()
+LASreaderQFIT::LASreaderQFIT(LASreadOpener* opener) :LASreader(opener)
 {
   file = 0;
   stream = 0;
@@ -447,7 +448,7 @@ LASreaderQFIT::~LASreaderQFIT()
   if (stream) close();
 }
 
-LASreaderQFITrescale::LASreaderQFITrescale(F64 x_scale_factor, F64 y_scale_factor, F64 z_scale_factor) : LASreaderQFIT()
+LASreaderQFITrescale::LASreaderQFITrescale(LASreadOpener* opener, F64 x_scale_factor, F64 y_scale_factor, F64 z_scale_factor) : LASreaderQFIT(opener)
 {
   scale_factor[0] = x_scale_factor;
   scale_factor[1] = y_scale_factor;
@@ -473,7 +474,7 @@ BOOL LASreaderQFITrescale::open(ByteStreamIn* stream)
   return TRUE;
 }
 
-LASreaderQFITreoffset::LASreaderQFITreoffset(F64 x_offset, F64 y_offset, F64 z_offset) : LASreaderQFIT()
+LASreaderQFITreoffset::LASreaderQFITreoffset(LASreadOpener* opener, F64 x_offset, F64 y_offset, F64 z_offset) : LASreaderQFIT(opener)
 {
   this->offset[0] = x_offset;
   this->offset[1] = y_offset;
@@ -499,7 +500,10 @@ BOOL LASreaderQFITreoffset::open(ByteStreamIn* stream)
   return TRUE;
 }
 
-LASreaderQFITrescalereoffset::LASreaderQFITrescalereoffset(F64 x_scale_factor, F64 y_scale_factor, F64 z_scale_factor, F64 x_offset, F64 y_offset, F64 z_offset) : LASreaderQFITrescale(x_scale_factor, y_scale_factor, z_scale_factor), LASreaderQFITreoffset(x_offset, y_offset, z_offset)
+LASreaderQFITrescalereoffset::LASreaderQFITrescalereoffset(LASreadOpener* opener, F64 x_scale_factor, F64 y_scale_factor, F64 z_scale_factor, F64 x_offset, F64 y_offset, F64 z_offset) : 
+  LASreaderQFIT(opener),
+  LASreaderQFITrescale(opener, x_scale_factor, y_scale_factor, z_scale_factor),
+  LASreaderQFITreoffset(opener, x_offset, y_offset, z_offset) 
 {
 }
 

@@ -185,7 +185,8 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
     }
 #else
     File file;
-    std::unique_ptr<LASreaderLAS> lasReader(new LASreaderLAS());
+    auto lasReadOpener = std::make_unique<LASreadOpener>();
+    auto lasReader = std::make_unique<LASreaderLAS>(lasReadOpener.get());
 #ifdef _WIN32
     file = _wfopen(fileName.toStdWString().data(), L"rb");
 #else

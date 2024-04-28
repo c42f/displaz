@@ -10,15 +10,15 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2017, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2022, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
-    terms of the GNU Lesser General Licence as published by the Free Software
-    Foundation. See the LICENSE.txt file for more information.
+    terms of the Apache Public License 2.0 published by the Apache Software
+    Foundation. See the COPYING file for more information.
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -38,19 +38,21 @@
 
 #include "lasquantizer.hpp"
 #include "lasattributer.hpp"
+#include "lasmessage.hpp"
+#include "mydefs.hpp"
 
-class LASwavepacket
+class LASLIB_DLL LASwavepacket
 {
 public:
   LASwavepacket() {zero();};
   void zero() {memset(data, 0, 29);};
   inline U8 getIndex() const {return data[0];};
-  inline U64 getOffset() const {return ((U64*)&(data[1]))[0];};
-  inline U32 getSize() const {return ((U32*)&(data[9]))[0];};
-  inline F32 getLocation() const {return ((F32*)&(data[13]))[0];};
-  inline F32 getXt() const {return ((F32*)&(data[17]))[0];};
-  inline F32 getYt() const {return ((F32*)&(data[21]))[0];};
-  inline F32 getZt() const {return ((F32*)&(data[25]))[0];};
+  inline U64 getOffset() const {return ((const U64*)&(data[1]))[0];};
+  inline U32 getSize() const {return ((const U32*)&(data[9]))[0];};
+  inline F32 getLocation() const {return ((const F32*)&(data[13]))[0];};
+  inline F32 getXt() const {return ((const F32*)&(data[17]))[0];};
+  inline F32 getYt() const {return ((const F32*)&(data[21]))[0];};
+  inline F32 getZt() const {return ((const F32*)&(data[25]))[0];};
   inline void setIndex(U8 index) {data[0] = index;};
   inline void setOffset(U64 offset) {((U64*)&(data[1]))[0] = offset;};
   inline void setSize(U32 size) {((U32*)&(data[9]))[0] = size;};
@@ -63,7 +65,7 @@ private:
   U8 data[29];
 };
 
-class LASpoint
+class LASLIB_DLL LASpoint
 {
 public:
 
@@ -130,6 +132,7 @@ public:
   BOOL have_wavepacket;
   I32 extra_bytes_number;
   U32 total_point_size;
+  U8 rgb_bits_depth;
 
 // these fields describe the point format terms of generic items
 
@@ -171,6 +174,7 @@ public:
       rgb[0] = other.rgb[0];
       rgb[1] = other.rgb[1];
       rgb[2] = other.rgb[2];
+      rgb_bits_depth = other.rgb_bits_depth;
       if (other.have_nir)
       {
         rgb[3] = other.rgb[3];
@@ -218,12 +222,12 @@ public:
     if (extended_point_type)
     {
       memcpy(buffer, &X, 14);
-      buffer[14] = ((U8*)&X)[24]; // extended return number and number of returns
-      buffer[15] = (((U8*)&X)[14] & 0xC0) | (extended_scanner_channel << 4) | (extended_classification_flags & 0x08) | ((((U8*)&X)[15]) >> 5);
-      buffer[16] = ((U8*)&X)[23]; // extended classification
-      buffer[17] = ((U8*)&X)[17]; // user data
-      ((I16*)buffer)[9] = ((I16*)&X)[10]; // extended scan angle
-      ((U16*)buffer)[10] = ((U16*)&X)[9]; // point source ID
+      buffer[14] = ((const U8*)&X)[24]; // extended return number and number of returns
+      buffer[15] = (((const U8*)&X)[14] & 0xC0) | (extended_scanner_channel << 4) | (extended_classification_flags & 0x08) | ((((const U8*)&X)[15]) >> 5);
+      buffer[16] = ((const U8*)&X)[23]; // extended classification
+      buffer[17] = ((const U8*)&X)[17]; // user data
+      ((I16*)buffer)[9] = ((const I16*)&X)[10]; // extended scan angle
+      ((U16*)buffer)[10] = ((const U16*)&X)[9]; // point source ID
       memcpy(buffer+22, &gps_time, 8);
     }
     else
@@ -253,8 +257,8 @@ public:
       ((U8*)&X)[23] = buffer[16]; // extended classification
       if (extended_classification < 32) classification = extended_classification;
       ((U8*)&X)[17] = buffer[17]; // user data
-      ((I16*)&X)[10] = ((I16*)buffer)[9]; // extended scan angle
-      ((U16*)&X)[9] = ((U16*)buffer)[10]; // point source ID
+      ((I16*)&X)[10] = ((const I16*)buffer)[9]; // extended scan angle
+      ((U16*)&X)[9] = ((const U16*)buffer)[10]; // point source ID
       memcpy(&gps_time, buffer+22, 8);
     }
     else
@@ -275,19 +279,16 @@ public:
   BOOL init(const LASquantizer* quantizer, const U8 point_type, const U16 point_size, const LASattributer* attributer=0)
   {
     // clean the point
-
     clean();
 
     // switch over the point types we know
-
     if (!LASzip().setup(&num_items, &items, point_type, point_size, LASZIP_COMPRESSOR_NONE))
     {
-      fprintf(stderr,"ERROR: unknown point type %d with point size %d\n", (I32)point_type, (I32)point_size);
+      LASMessage(LAS_ERROR, "unknown point type %d with point size %d", (I32)point_type, (I32)point_size);
       return FALSE;
     }
 
     // create point's item pointers
-
     point = new U8*[num_items];
 
     U16 i;
@@ -311,6 +312,7 @@ public:
       case LASitem::RGB12:
       case LASitem::RGB14:
         have_rgb = TRUE;
+        rgb_bits_depth = 16;
         this->point[i] = (U8*)(this->rgb);
         break;
       case LASitem::WAVEPACKET13:
@@ -337,13 +339,9 @@ public:
   BOOL init(const LASquantizer* quantizer, const U32 num_items, const LASitem* items, const LASattributer* attributer=0)
   {
     U32 i;
-
     // clean the point
-
     clean();
-
     // create item description
-
     this->num_items = num_items;
     if (this->items) delete [] this->items;
     this->items = new LASitem[num_items];
@@ -371,6 +369,7 @@ public:
       case LASitem::RGB12:
       case LASitem::RGB14:
         have_rgb = TRUE;
+        rgb_bits_depth = 16;
         this->point[i] = (U8*)(this->rgb);
         break;
       case LASitem::WAVEPACKET13:
@@ -498,6 +497,7 @@ public:
     have_nir = FALSE;
     extra_bytes_number = 0;
     total_point_size = 0;
+    rgb_bits_depth = 0;
     
     num_items = 0;
     if (items) delete [] items;
@@ -525,7 +525,17 @@ public:
 
   inline I32 get_X() const { return X; };
   inline I32 get_Y() const { return Y; };
-  inline I32 get_Z() const { return Z; };
+  I32 get_Z() const {
+    if ((quantizer == nullptr) || (quantizer->z_from_attrib < 0)) {
+      return Z;
+    }
+    else
+    {
+      // get Z from extrabyte - reverse scaled to I32
+      F64 aaf = get_attribute_as_float(quantizer->z_from_attrib);
+      return I32_CLAMP(quantizer->get_Z(aaf));
+    }
+  }
   inline const I32* get_XYZ() const { return &X; };
   inline U16 get_intensity() const { return intensity; };
   inline U8 get_return_number() const { return return_number; };
@@ -578,7 +588,7 @@ public:
 
   inline F64 get_x() const { return quantizer->get_x(X); };
   inline F64 get_y() const { return quantizer->get_y(Y); };
-  inline F64 get_z() const { return quantizer->get_z(Z); };
+  inline F64 get_z() const { return quantizer->get_z(get_Z()); };
 
   inline BOOL set_x(const F64 x) { I64 X = quantizer->get_X(x); this->X = (I32)(X); return I32_FITS_IN_RANGE(X); };
   inline BOOL set_y(const F64 y) { I64 Y = quantizer->get_Y(y); this->Y = (I32)(Y); return I32_FITS_IN_RANGE(Y); };
@@ -604,6 +614,152 @@ public:
   inline F32 get_abs_scan_angle() const { if (extended_point_type) return (extended_scan_angle < 0 ? -0.006f*extended_scan_angle : 0.006f*extended_scan_angle) ; else return (scan_angle_rank < 0 ? (F32)-scan_angle_rank : (F32)scan_angle_rank); };
 
   inline void set_scan_angle(F32 scan_angle) { if (extended_point_type) set_extended_scan_angle(I16_QUANTIZE(scan_angle/0.006f)); else set_scan_angle_rank(I8_QUANTIZE(scan_angle)); };
+
+  // Adapted from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
+  void get_hsl(F32* hsl) const
+  {
+    if (!have_rgb)
+    {
+      hsl[0] = hsl[1] = hsl[2] = 0.0f;
+      return;
+    }
+  
+    F32 max_color = (F32)(1 << rgb_bits_depth);
+    F32 r = (F32)(rgb[0])/max_color;
+    F32 g = (F32)(rgb[1])/max_color;
+    F32 b = (F32)(rgb[2])/max_color;
+
+    F32 max = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
+    F32 min = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
+    F32 h = (max + min) / 2.0f;
+    F32 s = h;
+    F32 l = h;
+
+    if (max == min)
+    {    
+      h = s = 0.0f;
+    }
+    else
+    {
+      F32 delta = max - min;
+      s = (l > 0.5f) ? delta / (2.0f - max - min) : delta / (max + min);
+      if (max == r) h = (g - b) / delta + (g < b ? 6.0f : 0.0f);
+      else if (max == g) h = (b - r) / delta + 2.0f;
+      else h = (r - g) / delta + 4.0f;
+      h /= 6;
+    }
+
+    hsl[0] = h;
+    hsl[1] = s;
+    hsl[2] = l;
+  };
+
+  // Adapted from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
+  void get_hsv(F32* hsv) const
+  {
+    if (!have_rgb)
+    {
+      hsv[0] = hsv[1] = hsv[2] = 0.0f;
+      return;
+    }
+
+    F32 max_color = (F32)(1 << rgb_bits_depth);
+    F32 r = (F32)(rgb[0])/max_color;
+    F32 g = (F32)(rgb[1])/max_color;
+    F32 b = (F32)(rgb[2])/max_color;
+
+    F32 max = (r > g ? (r > b ? r : b) : (g > b ? g : b));
+    F32 min = (r < g ? (r < b ? r : b) : (g < b ? g : b));
+    F32 delta = max - min;
+    F32 h = max; 
+    F32 s = max;
+    F32 v = max;
+
+    s = (max == 0) ? 0 : delta / max;
+
+    if(max == min)
+    {
+      h = 0.0f;
+    }
+    else
+    {
+      if (max == r) h = (g - b) / delta + (g < b ? 6.0f : 0.0f);
+      else if (max == g) h = (b - r) / delta + 2.0f;
+      else h = (r - g) / delta + 4.0f;
+      h /= 6.0f;
+    }
+
+    hsv[0] = h;
+    hsv[1] = s;
+    hsv[2] = v;
+  };
+
+  // Adapted from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
+  void set_RGB_from_HSL(const F32* hsl)
+  {
+    if (!have_rgb) return;
+
+    F32 h = hsl[0];
+    F32 s = hsl[1];
+    F32 l = hsl[2];
+
+    if (s == 0)
+    {
+      rgb[0] = (U16)(l * 65535);
+      rgb[1] = rgb[0];
+      rgb[2] = rgb[0];
+    }
+    else
+    {
+      auto hue2rgb = [](F32 p, F32 q, F32 t)
+      {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1.0f / 6.0f) return p + (q - p) * 6.0f * t;
+        if (t < 1.0f / 2.0f) return q;
+        if (t < 2.0f / 3.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
+        return p;
+      };
+
+      F32 q = (l < 0.5) ? l * (1 + s) : l + s - l * s;
+      F32 p = 2 * l - q;
+      rgb[0] = (U16)(hue2rgb(p, q, h + 1.0f / 3.0f) * 65535);
+      rgb[1] = (U16)(hue2rgb(p, q, h) * 65535);
+      rgb[2] = (U16)(hue2rgb(p, q, h - 1.0f / 3.0f) * 65535);
+    }
+  };
+
+  // Adapted from https://axonflux.com/handy-rgb-to-hsl-and-rgb-to-hsv-color-model-c
+  void set_RGB_from_HSV(const F32* hsv)
+  {
+    if (!have_rgb) return;
+
+    F32 h = hsv[0];
+    F32 s = hsv[1];
+    F32 v = hsv[2];
+
+    F32 r, g, b;
+
+    I32 i = (I32)(h * 6);
+	  F32 f = h * 6 - i;
+	  F32 p = v * (1 - s);
+	  F32 q = v * (1 - f * s);
+	  F32 t = v * (1 - (1 - f) * s);
+	
+    switch (i % 6) 
+    {
+      case 0: r = v, g = t, b = p; break;
+      case 1: r = q, g = v, b = p; break;
+      case 2: r = p, g = v, b = t; break;
+      case 3: r = p, g = q, b = v; break;
+      case 4: r = t, g = p, b = v; break;
+      case 5: r = v, g = p, b = q; break;
+    }
+    
+    rgb[0] = (U16)(r * 65535);
+    rgb[1] = (U16)(g * 65535);
+    rgb[2] = (U16)(b * 65535);
+  };
 
   inline void compute_coordinates()
   {

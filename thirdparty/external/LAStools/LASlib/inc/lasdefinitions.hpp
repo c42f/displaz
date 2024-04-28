@@ -16,11 +16,11 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2005-2018, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2005-2018, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -31,6 +31,7 @@
   
   CHANGE HISTORY:
   
+    9 November 2022 -- support of COPC VLR and EVLR
     19 April 2017 -- support for selective decompression for new LAS 1.4 points 
     1 February 2017 -- better support for OGC WKT strings in VLRs or EVLRs
     22 June 2016 -- set default of VLR header "reserved" to 0 instead of 0xAABB
@@ -49,7 +50,7 @@
 #ifndef LAS_DEFINITIONS_HPP
 #define LAS_DEFINITIONS_HPP
 
-#define LAS_TOOLS_VERSION 210330
+#define LAS_TOOLS_VERSION 240415
 
 #include <stdio.h>
 #include <string.h>
@@ -60,6 +61,7 @@
 #include "lasvlr.hpp"
 #include "laszip.hpp"
 #include "laspoint.hpp"
+#include "lasmessage.hpp"
 
 #define LAS_TOOLS_FORMAT_DEFAULT 0
 #define LAS_TOOLS_FORMAT_LAS     1
@@ -84,7 +86,11 @@
 #define LAS_TOOLS_IO_IBUFFER_SIZE   262144
 #define LAS_TOOLS_IO_OBUFFER_SIZE   262144
 
-class LASvlr
+#ifndef MAX_PATH // linux
+#define MAX_PATH 256
+#endif
+
+class LASLIB_DLL LASvlr
 {
 public:
   U16 reserved;
@@ -96,7 +102,7 @@ public:
   LASvlr() { memset(this, 0, sizeof(LASvlr)); };
 };
 
-class LASevlr
+class LASLIB_DLL LASevlr
 {
 public:
   U16 reserved;
@@ -108,7 +114,7 @@ public:
   LASevlr() { memset(this, 0, sizeof(LASevlr)); };
 };
 
-class LASvlr_geo_keys
+class LASLIB_DLL LASvlr_geo_keys
 {
 public:
   U16 key_directory_version;
@@ -117,7 +123,7 @@ public:
   U16 number_of_keys;
 };
 
-class LASvlr_key_entry
+class LASLIB_DLL LASvlr_key_entry
 {
 public:
   U16 key_id;
@@ -126,24 +132,24 @@ public:
   U16 value_offset;
 };
 
-class LASvlr_classification
+class LASLIB_DLL LASvlr_classification
 {
 public:
   U8 class_number;
   CHAR description[15];
 };
 
-class LASvlr_wave_packet_descr
+class LASLIB_DLL LASvlr_wave_packet_descr
 {
 public:
   LASvlr_wave_packet_descr() {clean();};
   void clean() {memset(data, 0, 26);};
   inline U8 getBitsPerSample() const {return data[0];};
   inline U8 getCompressionType() const {return data[1];};
-  inline U32 getNumberOfSamples() const {return ((U32*)&(data[2]))[0];};
-  inline U32 getTemporalSpacing() const {return ((U32*)&(data[6]))[0];};
-  inline F64 getDigitizerGain() const {return ((F64*)&(data[10]))[0];};
-  inline F64 getDigitizerOffset() const {return ((F64*)&(data[18]))[0];};
+  inline U32 getNumberOfSamples() const {return ((const U32*)&(data[2]))[0];};
+  inline U32 getTemporalSpacing() const {return ((const U32*)&(data[6]))[0];};
+  inline F64 getDigitizerGain() const {return ((const F64*)&(data[10]))[0];};
+  inline F64 getDigitizerOffset() const {return ((const F64*)&(data[18]))[0];};
   inline void setBitsPerSample(U8 bps) {data[0] = bps;};
   inline void setCompressionType(U8 compression) {data[1] = compression;};
   inline void setNumberOfSamples(U32 samples) {((U32*)&(data[2]))[0] = samples;};
@@ -154,7 +160,40 @@ private:
   U8 data[26];
 };
 
-class LASheader : public LASquantizer, public LASattributer
+class LASLIB_DLL LASvlr_copc_info
+{
+public:
+  F64 center_x;  // Actual (unscaled) X coordinate of center of octree
+  F64 center_y;  // Actual (unscaled) Y coordinate of center of octree
+  F64 center_z;  // Actual (unscaled) Z coordinate of center of octree
+  F64 halfsize;  // Perpendicular distance from the center to any side of the root node.
+  F64 spacing;   // Space between points at the root node. This value is halved at each octree level
+  U64 root_hier_offset; // File offset to the first hierarchy page
+  U64 root_hier_size;   // Size of the first hierarchy page in bytes
+  F64 gpstime_minimum;    // Minimum of GPSTime
+  F64 gpstime_maximum;   // Maximum of GPSTime
+  U64 reserved[11];    // Must be 0
+};
+
+class LASLIB_DLL LAScopc_voxelkey
+{
+public:
+  I32 depth;
+  I32 x;
+  I32 y;
+  I32 z;
+};
+
+class LASLIB_DLL LASvlr_copc_entry
+{
+public:
+  LAScopc_voxelkey key;
+  U64 offset;
+  I32 byte_size;
+  I32 point_count;
+};
+
+class LASLIB_DLL LASheader : public LASquantizer, public LASattributer
 {
 public:
   CHAR file_signature[4];                  // starts at byte   0
@@ -206,6 +245,11 @@ public:
   CHAR* vlr_geo_ogc_wkt;
   LASvlr_classification* vlr_classification;
   LASvlr_wave_packet_descr** vlr_wave_packet_descr;
+
+  // LAZ 1.4 format 6 7 8 with COPC only
+  U32 number_of_copc_entries;
+  LASvlr_copc_info* vlr_copc_info;
+  LASvlr_copc_entry* vlr_copc_entries;
 
   LASzip* laszip;
   LASvlr_lastiling* vlr_lastiling;
@@ -289,6 +333,10 @@ public:
     x_scale_factor = 0.01;
     y_scale_factor = 0.01;
     z_scale_factor = 0.01;
+    x_offset = 0.0;
+    y_offset = 0.0;
+    z_offset = 0.0;
+    z_from_attrib = -1;
   };
 
   void clean_user_data_in_header()
@@ -327,6 +375,10 @@ public:
       vlr_classification = 0;
       if (vlr_wave_packet_descr) delete [] vlr_wave_packet_descr;
       vlr_wave_packet_descr = 0;
+      if (vlr_copc_info) delete vlr_copc_info;
+      vlr_copc_info = 0;
+      if (vlr_copc_entries) delete [] vlr_copc_entries;
+      vlr_copc_entries = 0;
       number_of_variable_length_records = 0;
     }
   };
@@ -434,40 +486,40 @@ public:
   {
     if (strncmp(file_signature, "LASF", 4) != 0)
     {
-      fprintf(stderr,"ERROR: wrong file signature '%4s'\n", file_signature);
+      LASMessage(LAS_ERROR, "wrong file signature '%4s'", file_signature);
       return FALSE;
     }
     if ((version_major != 1) || (version_minor > 4))
     {
-      fprintf(stderr,"WARNING: unknown version %d.%d (should be 1.0 or 1.1 or 1.2 or 1.3 or 1.4)\n", version_major, version_minor);
+      LASMessage(LAS_WARNING, "unknown version %d.%d (should be 1.0 or 1.1 or 1.2 or 1.3 or 1.4)", version_major, version_minor);
     }
     if (header_size < 227)
     {
-      fprintf(stderr,"ERROR: header size is %d but should be at least 227\n", header_size);
+      LASMessage(LAS_ERROR, "header size is %d but should be at least 227", header_size);
       return FALSE;
     }
     if (offset_to_point_data < header_size)
     {
-      fprintf(stderr,"ERROR: offset to point data %d is smaller than header size %d\n", offset_to_point_data, header_size);
+      LASMessage(LAS_ERROR, "offset to point data %d is smaller than header size %d", offset_to_point_data, header_size);
       return FALSE;
     }
     if (x_scale_factor == 0)
     {
-      fprintf(stderr,"WARNING: x scale factor is zero.\n");
+      LASMessage(LAS_WARNING, "x scale factor is zero.");
     }
     if (y_scale_factor == 0)
     {
-      fprintf(stderr,"WARNING: y scale factor is zero.\n");
+      LASMessage(LAS_WARNING, "y scale factor is zero.");
     }
     if (z_scale_factor == 0)
     {
-      fprintf(stderr,"WARNING: z scale factor is zero.\n");
+      LASMessage(LAS_WARNING, "z scale factor is zero.");
     }
     if (max_x < min_x || max_y < min_y || max_z < min_z)
     {
       if (number_of_point_records || extended_number_of_point_records)
       {
-        fprintf(stderr,"WARNING: invalid bounding box [ %g %g %g / %g %g %g ]\n", min_x, min_y, min_z, max_x, max_y, max_z);
+        LASMessage(LAS_WARNING, "invalid bounding box [ %g %g %g / %g %g %g ]", min_x, min_y, min_z, max_x, max_y, max_z);
       }
     }
     return TRUE;
@@ -541,7 +593,7 @@ public:
       offset_to_point_data += 54;
       vlrs = (LASvlr*)malloc(sizeof(LASvlr));
     }
-    memset(&(vlrs[i]), 0, sizeof(LASvlr));
+    memset((void*)&(vlrs[i]), 0, sizeof(LASvlr));
     vlrs[i].reserved = 0; // used to be 0xAABB
     strncpy(vlrs[i].user_id, user_id, 16);
     vlrs[i].record_id = record_id;
@@ -638,11 +690,11 @@ public:
     {
       if (keep_existing)
       {
-        i = number_of_variable_length_records;
+        i = number_of_extended_variable_length_records;
       }
       else
       {
-        for (i = 0; i < number_of_variable_length_records; i++)
+        for (i = 0; i < number_of_extended_variable_length_records; i++)
         {
           if ((strcmp(evlrs[i].user_id, user_id) == 0) && (evlrs[i].record_id == record_id))
           {
@@ -710,7 +762,7 @@ public:
         if (number_of_extended_variable_length_records)
         {
           evlrs[i] = evlrs[number_of_extended_variable_length_records];
-          evlrs = (LASevlr*)realloc(evlrs, sizeof(LASvlr)*number_of_extended_variable_length_records);
+          evlrs = (LASevlr*)realloc(evlrs, sizeof(LASevlr)*number_of_extended_variable_length_records);
         }
         else
         {
@@ -917,6 +969,23 @@ public:
     {
       remove_vlr("LASF_Projection", 2111);
       vlr_geo_ogc_wkt_math = 0;
+    }
+  }
+
+  void del_copc()
+  {
+    if (vlr_copc_info)
+    {
+      remove_vlr("copc", 1);
+	  delete vlr_copc_info;
+      vlr_copc_info = 0;
+    }
+
+    if (vlr_copc_entries)
+    {
+      remove_evlr("copc", 1000);
+      delete[] vlr_copc_entries;
+      vlr_copc_entries = 0;
     }
   }
 

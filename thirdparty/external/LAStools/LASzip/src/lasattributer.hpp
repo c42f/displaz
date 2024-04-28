@@ -10,21 +10,22 @@
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2015, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2022, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
-    terms of the GNU Lesser General Licence as published by the Free Software
-    Foundation. See the LICENSE.txt file for more information.
+    terms of the Apache Public License 2.0 published by the Apache Software
+    Foundation. See the COPYING file for more information.
 
     This software is distributed WITHOUT ANY WARRANTY and without even the
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   
   CHANGE HISTORY:
   
+    24 March 2021 -- bug fix for signed long (I32) in set_value_as_float()
     13 September 2018 -- removed tuples and triple support from attributes
     19 July 2015 -- created after FOSS4GE in the train back from Lake Como
   
@@ -46,7 +47,7 @@
 #define LAS_ATTRIBUTE_F32 8
 #define LAS_ATTRIBUTE_F64 9
 
-class LASattribute
+class LASLIB_DLL LASattribute
 {
 public:
   U8 reserved[2];           // 2 bytes
@@ -254,7 +255,7 @@ public:
     else if (type == 4)
       *((U32*)pointer) = U32_QUANTIZE(unoffset_and_unscaled_value);
     else if (type == 5)
-      *((I32*)pointer) = U32_QUANTIZE(unoffset_and_unscaled_value);
+      *((I32*)pointer) = I32_QUANTIZE(unoffset_and_unscaled_value);
     else if (type == 6)
       *((U64*)pointer) = U64_QUANTIZE(unoffset_and_unscaled_value);
     else if (type == 7)
@@ -265,7 +266,6 @@ public:
       *((F64*)pointer) = unoffset_and_unscaled_value;
   };
 
-private:
   inline I32 get_type() const
   {
     return ((I32)data_type - 1)%10;
@@ -274,6 +274,8 @@ private:
   {
     return ((I32)data_type - 1)/10 + 1;
   };
+
+private:
   inline U64I64F64 cast(U8* pointer) const
   {
     I32 type = get_type();
@@ -334,7 +336,7 @@ private:
   };
 };
 
-class LASattributer
+class LASLIB_DLL LASattributer
 {
 public:
   BOOL attributes_linked;

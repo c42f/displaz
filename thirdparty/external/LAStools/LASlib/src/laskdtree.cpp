@@ -9,11 +9,11 @@
   
   PROGRAMMERS:
   
-    martin.isenburg@rapidlasso.com  -  http://rapidlasso.com
+    info@rapidlasso.de  -  https://rapidlasso.de
   
   COPYRIGHT:
   
-    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2019, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -30,6 +30,7 @@
 */
 
 #include "laskdtree.hpp"
+#include "lasmessage.hpp"
 
 #include <stdio.h>
 
@@ -69,6 +70,27 @@ LASkdtreeRectangle::LASkdtreeRectangle()
   idx = 0;
 }
 
+BOOL LASkdtreePoint::overlap(const LASkdtreeRectangle &rectangle) const
+{
+  if (pos[0] < rectangle.min[0]) return FALSE;
+  if (pos[1] < rectangle.min[1]) return FALSE;
+  if (rectangle.max[0] < pos[0]) return FALSE;
+  if (rectangle.max[1] < pos[1]) return FALSE;
+  return TRUE;
+}
+
+LASkdtreePoint::LASkdtreePoint(F64 x, F64 y)
+{
+  pos[0] = x;
+  pos[1] = y;
+}
+
+LASkdtreePoint::LASkdtreePoint()
+{
+  pos[0] = 0;
+  pos[1] = 0;
+}
+
 LASkdtreeRectanglesNode::LASkdtreeRectanglesNode()
 {
   left = 0;
@@ -89,6 +111,7 @@ BOOL LASkdtreeRectangles::init()
   bb.min[1] = F64_MAX;
   bb.max[0] = F64_MIN;
   bb.max[1] = F64_MIN;
+  num_rectangles = 0;
   if (rectangle_list) delete rectangle_list;
   rectangle_list = new my_rectangle_list;
   if (rectangle_list == 0)
@@ -118,6 +141,10 @@ void LASkdtreeRectangles::add(F64 min_x, F64 min_y, F64 max_x, F64 max_y)
   // add rectangle to list
 
   rectangle_list->push_back(rectangle);
+
+  // increate size meaning number of elements
+
+  num_rectangles++;
 }
 
 BOOL LASkdtreeRectangles::build()
@@ -161,6 +188,18 @@ BOOL LASkdtreeRectangles::overlap(F64 min_x, F64 min_y, F64 max_x, F64 max_y)
   overlap_set->clear();
   LASkdtreeRectangle rectangle(min_x, min_y, max_x, max_y);
   overlap_rectangles(root, 0, rectangle, overlap_set);
+  return TRUE;
+}
+
+BOOL LASkdtreeRectangles::overlap(F64 x, F64 y)
+{
+  if (overlap_set == 0)
+  {
+    return FALSE;
+  }
+  overlap_set->clear();
+  LASkdtreePoint point(x, y);
+  overlap_rectangles(root, 0, point, overlap_set);
   return TRUE;
 }
 
@@ -324,9 +363,48 @@ void LASkdtreeRectangles::overlap_rectangles(LASkdtreeRectanglesNode* node, I32 
   }
 }
 
+void LASkdtreeRectangles::overlap_rectangles(LASkdtreeRectanglesNode* node, I32 plane, LASkdtreePoint point, my_index_set* overlap_set)
+{
+  if (node->list)
+  {
+    my_rectangle_list::iterator list_element = node->list->begin();
+    while (TRUE)
+    {
+      if (list_element == node->list->end())
+      {
+        break;
+      }
+
+      LASkdtreeRectangle overlap_candidate = (*list_element);
+
+      if (point.overlap(overlap_candidate))
+      {
+        overlap_set->insert(overlap_candidate.idx);
+      }
+      list_element++;
+    }
+  }
+  else
+  {
+    // maybe recurse left
+
+    if (point.pos[plane] < node->split)
+    {
+      overlap_rectangles(node->left, (plane + 1) % 2, point, overlap_set);
+    }
+
+    // maybe recurse right
+    
+    if (node->split <= point.pos[plane])
+    {
+      overlap_rectangles(node->right, (plane + 1) % 2, point, overlap_set);
+    }
+  }
+}
+
 void LASkdtreeRectangles::print_overlap()
 {
-  fprintf(stderr, "overlap elements: %u\n", (U32)overlap_set->size());
+  LASMessage(LAS_INFO, "overlap elements: %u", (U32)overlap_set->size());
   my_index_set::iterator set_element = overlap_set->begin();
   while (TRUE)
   {
@@ -337,7 +415,7 @@ void LASkdtreeRectangles::print_overlap()
 
     U32 idx = (*set_element);
 
-    fprintf(stderr, "overlap %u\n", idx);
+    LASMessage(LAS_INFO, "overlap %u", idx);
 
     set_element++;
   }
@@ -354,4 +432,5 @@ LASkdtreeRectangles::~LASkdtreeRectangles()
 {
   if (rectangle_list) delete rectangle_list;
   if (root) delete root;
+  if (overlap_set) delete overlap_set;
 }

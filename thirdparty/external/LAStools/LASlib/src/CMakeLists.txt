@@ -32,6 +32,7 @@ set(LAS_SRC
 	lasfilter.cpp
 	lastransform.cpp
 	laskdtree.cpp
+	lascopc.cpp
 	fopen_compressed.cpp
 )
 
@@ -55,6 +56,7 @@ set(LAZ_SRC
 	lasinterval.cpp
 	laszip.cpp
 	mydefs.cpp
+	lasmessage.cpp
 )
 
 foreach(file ${LAZ_SRC})
@@ -68,6 +70,7 @@ file(GLOB_RECURSE LAS_INCLUDES
 
 add_library(LASlib ${LAS_SRC} ${LAZ_SRC_FULL})
 set_property(TARGET LASlib PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET LASlib PROPERTY CXX_STANDARD 11)
 
 if (BUILD_SHARED_LIBS)
 	target_compile_definitions(LASlib PRIVATE "COMPILE_AS_DLL")
@@ -103,7 +106,7 @@ install(FILES ${LAS_INCLUDES} DESTINATION include)
 
 if (MSVC)
 	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
-		install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib/${OUTPUTCONFIG}/ DESTINATION lib)
+		install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib/${OUTPUTCONFIG} DESTINATION lib/LASlib)
 	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 else()
 	install(TARGETS LASlib EXPORT laslib-targets
@@ -111,4 +114,5 @@ else()
 		LIBRARY DESTINATION lib
 		RUNTIME DESTINATION lib)
 	install(EXPORT laslib-targets DESTINATION lib/cmake/LASlib)
+	install(FILES ${CMAKE_SOURCE_DIR}/LASlib/src/laslib-config.cmake DESTINATION lib/cmake/LASlib)
 endif(MSVC)

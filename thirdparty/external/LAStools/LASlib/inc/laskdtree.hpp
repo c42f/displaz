@@ -5,15 +5,16 @@
   
   CONTENTS:
   
-    Tree structure for fast overlap checks of rectangles with list of rectangles 
+    Tree structure for fast overlap checks of points or rectangles with list
+    of rectangles 
 
   PROGRAMMERS:
 
-    martin.isenburg@rapidlasso.com - http://rapidlasso.com
+    info@rapidlasso.de - https://rapidlasso.de
 
   COPYRIGHT:
 
-    (c) 2007-2019, martin isenburg, rapidlasso - fast tools to catch reality
+    (c) 2007-2021, rapidlasso GmbH - fast tools to catch reality
 
     This is free software; you can redistribute and/or modify it under the
     terms of the GNU Lesser General Licence as published by the Free Software
@@ -23,7 +24,9 @@
     implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   
   CHANGE HISTORY:
-  
+
+     8 December 2023 -- Fix memory leak
+    26 June 2021 -- new LASkdtreePoint after four weeks of memoy pain in Samara
     26 October 2019 -- created at LoCoworking after three days of rain in Samara
   
 ===============================================================================
@@ -38,9 +41,8 @@
 
 #include <list>
 #include <set>
-using namespace std;
 
-typedef set<U32> my_index_set;
+typedef std::set<U32> my_index_set;
 
 class LASkdtreeRectangle
 {
@@ -56,7 +58,18 @@ public:
   LASkdtreeRectangle(F64 min_x, F64 min_y, F64 max_x, F64 max_y, U32 index);
 };
 
-typedef list<LASkdtreeRectangle> my_rectangle_list;
+class LASkdtreePoint
+{
+public:
+  F64 pos[2];
+
+  BOOL overlap(const LASkdtreeRectangle &rectangle) const;
+
+  LASkdtreePoint();
+  LASkdtreePoint(F64 x, F64 y);
+};
+
+typedef std::list<LASkdtreeRectangle> my_rectangle_list;
 
 class LASkdtreeRectanglesNode
 {
@@ -76,8 +89,10 @@ public:
   BOOL init();
   void add(F64 min_x, F64 min_y, F64 max_x, F64 max_y);
   BOOL build();
+  inline U32 size() const { return num_rectangles; };
   BOOL was_built() const;
-  BOOL overlap(F64 min_x, F64 min_y, F64 max_x, F64 max_y);
+  BOOL overlap(F64 min_x, F64 min_y, F64 max_x, F64 max_y); // rectangle
+  BOOL overlap(F64 x, F64 y);                               // point
   void print_overlap();
   BOOL has_overlaps();
   BOOL get_overlap(U32& index);
@@ -85,6 +100,7 @@ public:
   LASkdtreeRectangles();
   ~LASkdtreeRectangles();
 private:
+  U32 num_rectangles;
   LASkdtreeRectangle bb;
   my_rectangle_list* rectangle_list;
   LASkdtreeRectanglesNode* root;
@@ -93,6 +109,7 @@ private:
 
   void build_recursive(LASkdtreeRectanglesNode* node, I32 plane, LASkdtreeRectangle bb, my_rectangle_list* insertion_list, I32 unchanged);
   void overlap_rectangles(LASkdtreeRectanglesNode* node, I32 plane, LASkdtreeRectangle rectangle, my_index_set* overlap_set);
+  void overlap_rectangles(LASkdtreeRectanglesNode* node, I32 plane, LASkdtreePoint point, my_index_set* overlap_set);
 };
 
 #endif
