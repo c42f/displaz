@@ -1,7 +1,7 @@
 # Minimal displaz Qt5 build, test and install
-# using Docker Ubuntu 22.04 (Jammy)
+# using Docker Ubuntu 24.04 (Noble)
 
-FROM ubuntu:jammy
+FROM ubuntu:noble
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 
 #
@@ -13,11 +13,11 @@ MAINTAINER Nigel Stewart (nigels@nigels.com)
 ARG MIRROR
 ENV MIRROR ${MIRROR:-http://archive.ubuntu.com/ubuntu}
 
-RUN sed -i -r "/#.*/d"                                           /etc/apt/sources.list
-RUN sed -i -r "/^$/d"                                            /etc/apt/sources.list
-RUN cat /etc/apt/sources.list
-RUN sed -i -r "s#deb .* jammy(-.*)? #deb ${MIRROR} jammy\\1 #"   /etc/apt/sources.list
-RUN cat /etc/apt/sources.list
+#RUN sed -i -r "/#.*/d"                                           /etc/apt/sources.list
+#RUN sed -i -r "/^$/d"                                            /etc/apt/sources.list
+#RUN cat /etc/apt/sources.list
+#RUN sed -i -r "s#deb .* noble(-.*)? #deb ${MIRROR} noble\\1 #"   /etc/apt/sources.list
+#RUN cat /etc/apt/sources.list
 
 #
 # Update and install build tools, dependencies
