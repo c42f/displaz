@@ -185,9 +185,8 @@ Behind the scenes displaz uses code written by many people.  The following
 third party projects are gratefully acknowledged:
 
 * Qt - http://qt-project.org
-* LASLib - http://www.cs.unc.edu/~isenburg/lastools
-* PDAL - http://www.pdal.io
-* ilmbase - http://www.openexr.com
+* LASLib - https://github.com/LAStools/LAStools
+* Imath - https://github.com/AcademySoftwareFoundation/Imath
 * rply - http://www.impa.br/~diego/software/rply
 * GLEW - http://glew.sourceforge.net/
 * Small pieces from OpenImageIO - http://openimageio.org
