@@ -22,6 +22,7 @@
 #include "QtLogger.h"
 #include "MainWindow.h"
 #include "TriMesh.h"
+#include "Enable.h"
 #include "Shader.h"
 #include "ShaderProgram.h"
 #include "tinyformat.h"
@@ -42,7 +43,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawGrid(false),
     m_drawAnnotations(true),
     m_badOpenGL(false),
-    m_shaderProgram(),
     m_geometries(geometries),
     m_selectionModel(0),
     m_shaderParamsUI(0),
@@ -77,13 +77,14 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     connect(&m_camera, SIGNAL(viewChanged()), this, SLOT(restartRender()));
 
     makeCurrent();
-    m_shaderProgram.reset(new ShaderProgram());
+    m_shaderProgram = std::make_unique<ShaderProgram>();
     connect(m_shaderProgram.get(), SIGNAL(uniformValuesChanged()),
             this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(shaderChanged()),
             this, SLOT(restartRender()));
     connect(m_shaderProgram.get(), SIGNAL(paramsChanged()),
             this, SLOT(setupShaderParamUI()));
+    m_enable = std::make_unique<Enable>();
 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
@@ -386,7 +387,7 @@ void View3D::paintGL()
                               m_camera.viewMatrix());
 
     glClearDepth(1.0f);
-    glEnable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthFunc(GL_LEQUAL);
     glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
                  m_backgroundColor.blueF(), 1.0f);
@@ -423,7 +424,6 @@ void View3D::paintGL()
     if (!geoms.empty())
         m_drawCostModel.addSample(drawCount, frameTime);
 
-
     // Debug: print bar showing how well we're sticking to the frame time
 //    int barSize = 40;
 //    std::string s = std::string(barSize*frameTime/targetMillisecs, '=');
@@ -442,7 +442,7 @@ void View3D::paintGL()
         drawGrid();
 
     // Draw bounding boxes
-    if(m_drawBoundingBoxes)
+    if (m_drawBoundingBoxes)
     {
         if (m_boundingBoxShader->isValid())
         {
@@ -508,7 +508,7 @@ void View3D::drawMeshes(const TransformState& transState,
         QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1.0f);
         meshEdgeShader.bind();
-        for(size_t i = 0; i < geoms.size(); ++i)
+        for (size_t i = 0; i < geoms.size(); ++i)
             geoms[i]->drawEdges(meshEdgeShader, transState);
     }
 }
@@ -568,7 +568,7 @@ void View3D::mouseMoveEvent(QMouseEvent* event)
     if (m_mouseButton == Qt::MiddleButton)
         return;
     bool zooming = m_mouseButton == Qt::RightButton;
-    if(event->modifiers() & Qt::ControlModifier)
+    if (event->modifiers() & Qt::ControlModifier)
     {
         m_cursorPos = m_camera.mouseMovePoint(m_cursorPos,
                                               event->pos() - m_prevMousePos,
@@ -592,7 +592,7 @@ void View3D::wheelEvent(QWheelEvent* event)
 void View3D::keyPressEvent(QKeyEvent *event)
 {
     // Centre camera on current cursor location
-    if(event->key() == Qt::Key_C)
+    if (event->key() == Qt::Key_C)
         m_camera.setCenter(m_cursorPos);
     else
         event->ignore();
@@ -644,7 +644,7 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     V3d relCursor = cursorPos - offset;
 
     // Cull if behind camera
-    if((relCursor * transState.modelViewMatrix).z > 0)
+    if ((relCursor * transState.modelViewMatrix).z > 0)
         return;
 
     // Find position of cursor in screen space
@@ -1036,16 +1036,17 @@ DrawCount View3D::drawPoints(const TransformState& transState,
 
     double dPR = getDevicePixelRatio();
 
-    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    m_enable->enableOrDisable();
+
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
     QModelIndexList selection = m_selectionModel->selectedRows();
-    for(size_t i = 0; i < geoms.size(); ++i)
+    for (size_t i = 0; i < geoms.size(); ++i)
     {
         const Geometry& geom = *geoms[i];
-        if(geom.pointCount() == 0)
+        if (geom.pointCount() == 0)
             continue;
         V3f relCursor = m_cursorPos - geom.offset();
         prog.setUniformValue("cursorPos", relCursor.x, relCursor.y, relCursor.z);
@@ -1053,6 +1054,9 @@ DrawCount View3D::drawPoints(const TransformState& transState,
         prog.setUniformValue("pointPixelScale", (GLfloat)(0.5*width()*dPR*m_camera.projectionMatrix()[0][0]));
         totDrawCount += geom.drawPoints(prog, transState, quality, incrementalDraw);
     }
+
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     return totDrawCount;
 }
@@ -1104,7 +1108,7 @@ bool View3D::snapToGeometry(const Imath::V3d& pos, double normalScaling,
         V3d pickedVertex;
         double dist = 0;
         std::string info;
-        if(m_geometries->get()[geomIdx]->pickVertex(cameraPos, distFunc,
+        if (m_geometries->get()[geomIdx]->pickVertex(cameraPos, distFunc,
                                                     pickedVertex, &dist,
                                                     (pointInfo != 0) ? &info : 0))
         {
@@ -1128,7 +1132,7 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
     QModelIndexList sel = m_selectionModel->selectedRows();
     std::vector<const Geometry*> geoms;
     geoms.reserve(sel.size());
-    for(int i = 0; i < sel.size(); ++i)
+    for (int i = 0; i < sel.size(); ++i)
         geoms.push_back(geomAll[sel[i].row()].get());
     return geoms;
 }
