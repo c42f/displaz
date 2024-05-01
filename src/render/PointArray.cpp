@@ -13,10 +13,12 @@
 
 #include <functional>
 #include <algorithm>
+#include <numeric>
 #include <unordered_map>
 #include <fstream>
 #include <random>
 #include <queue>
+#include <array>
 
 #include <cfloat>
 
@@ -382,7 +384,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     // The index we want to store is the reverse permutation of the index above
     // This is necessary if we want to mutate the data later
     m_inds = std::unique_ptr<uint32_t[]>(new uint32_t[m_npoints]);
-    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = i; // Works for m_npoints < UINT32_MAX
+    for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = static_cast<uint32_t>(i); // Works for m_npoints < UINT32_MAX
     emit loadProgress(int(100));
 
     return true;
