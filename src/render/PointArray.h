@@ -11,7 +11,7 @@
 
 #include "Geometry.h"
 #include "typespec.h"
-#include "geomfield.h"
+#include "GeomField.h"
 #include "GeometryMutator.h"
 
 class QGLShaderProgram;
