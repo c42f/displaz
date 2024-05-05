@@ -11,7 +11,7 @@
 #include <QRegExp>
 
 #include "typespec.h"
-#include "geomfield.h"
+#include "GeomField.h"
 #include "util.h"
 
 

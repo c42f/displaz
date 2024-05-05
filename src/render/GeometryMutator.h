@@ -14,7 +14,7 @@
 #include <QMetaType>
 #include "util.h"
 #include "typespec.h"
-#include "geomfield.h"
+#include "GeomField.h"
 
 
 //------------------------------------------------------------------------------

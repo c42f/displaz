@@ -9,7 +9,7 @@
 #include "argparse.h"
 
 #include "config.h"
-#include "geomfield.h"
+#include "GeomField.h"
 #include "hcloud.h"
 #include "logger.h"
 #include "util.h"

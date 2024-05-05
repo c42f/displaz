@@ -25,7 +25,6 @@ include_directories(
 # Generic utility stuff
 set(util_srcs
     logger.cpp
-    geomfield.cpp
     typespec.cpp
     hcloud.cpp
     util.cpp
@@ -62,6 +61,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     gui/ShaderEditor.h
 
     render/Geometry.h
+    render/GeomField.h
     render/HCloudView.h
     render/View3D.h
     render/PointArray.h
@@ -92,6 +92,7 @@ set(gui_srcs
 
     render/FrameRate.cpp
     render/Geometry.cpp
+    render/GeomField.cpp
     render/glutil.cpp
     render/HCloudView.cpp
     render/TriMesh.cpp
