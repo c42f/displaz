@@ -26,6 +26,7 @@ static void glEnableDisable(const std::optional<GLboolean>& enable, GLenum f)
 void Enable::enableOrDisable() const
 {
     glEnableDisable(DEPTH_TEST,                GL_DEPTH_TEST);
+    glEnableDisable(STENCIL_TEST,              GL_STENCIL_TEST);
     glEnableDisable(BLEND,                     GL_BLEND);
     glEnableDisable(VERTEX_PROGRAM_POINT_SIZE, GL_VERTEX_PROGRAM_POINT_SIZE);
 }
@@ -33,6 +34,7 @@ void Enable::enableOrDisable() const
 bool Enable::set(const QString& src)
 {
     DEPTH_TEST                = true;
+    STENCIL_TEST              = false;
     BLEND                     = false;
     VERTEX_PROGRAM_POINT_SIZE = true;
 
@@ -54,6 +56,11 @@ bool Enable::set(const QString& src)
         if (name == "GL_DEPTH_TEST")
         {
             DEPTH_TEST = (e ? GL_TRUE : GL_FALSE);
+        }
+
+        if (name == "GL_STENCIL_TEST")
+        {
+            STENCIL_TEST = (e ? GL_TRUE : GL_FALSE);
         }
 
         if (name == "GL_BLEND")

@@ -14,6 +14,7 @@ class Enable
 {
 public:
     std::optional<GLboolean> DEPTH_TEST                { GL_TRUE };
+    std::optional<GLboolean> STENCIL_TEST              { GL_FALSE };
     std::optional<GLboolean> BLEND                     { GL_FALSE };
     std::optional<GLboolean> VERTEX_PROGRAM_POINT_SIZE { GL_TRUE };
 
