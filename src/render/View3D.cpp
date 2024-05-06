@@ -297,6 +297,13 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
                   (const char*)glewGetString(GLEW_VERSION));
 
+    g_logger.info("OpenGL format: %s%s%s",
+                  format().doubleBuffer() ? "double " : "",
+                  format().stencil() ? "stencil " : "",
+                  format().alpha() ? "alpha " : "",
+                  format().accum() ? "accum " : "",
+                  format().stereo() ? "stereo " : "");
+
     // GL_CHECK has to be defined for this to actually do something
     glCheckError();
 
@@ -391,8 +398,9 @@ void View3D::paintGL()
     glDepthFunc(GL_LEQUAL);
     glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
                  m_backgroundColor.blueF(), 1.0f);
+    glClearStencil(0);
     if (!m_incrementalDraw)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT| GL_STENCIL_BUFFER_BIT);
 
     std::vector<const Geometry*> geoms = selectedGeometry();
 
@@ -1037,6 +1045,8 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     double dPR = getDevicePixelRatio();
 
     m_enable->enableOrDisable();
+    glStencilFunc(GL_EQUAL, 0, 255);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 
     // Draw points
     QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
@@ -1056,6 +1066,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     }
 
     glEnable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
     return totDrawCount;

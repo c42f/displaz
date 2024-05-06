@@ -59,14 +59,12 @@ struct OctreeNode
         : beginIndex(0), endIndex(0), nextBeginIndex(0),
         center(center), halfWidth(halfWidth)
     {
-        for (int i = 0; i < 8; ++i)
-            children[i] = 0;
+        std::fill(children, children + 8, nullptr);
     }
 
     ~OctreeNode()
     {
-        for (int i = 0; i < 8; ++i)
-            delete children[i];
+        std::for_each(children, children + 8, [](auto v) { delete v; });
     }
 
     size_t findNearest(const EllipticalDist& distFunc,
@@ -187,16 +185,14 @@ static OctreeNode* makeTree(int depth, size_t* inds,
 
 //------------------------------------------------------------------------------
 // PointArray implementation
-PointArray::PointArray()
-    : m_npoints(0),
-    m_positionFieldIdx(-1),
-    m_P(0)
-{ }
 
+PointArray::PointArray()
+{
+}
 
 PointArray::~PointArray()
-{ }
-
+{
+}
 
 /// Load point cloud in text format, assuming fields XYZ
 bool PointArray::loadText(QString fileName, size_t maxPointCount,
@@ -613,12 +609,7 @@ static void drawTree(QGLShaderProgram& prog, const TransformState& transState, c
     drawBox(transState, bbox, Imath::C3f(1), prog.programId());
     drawBox(transState, node->bbox, Imath::C3f(1,0,0), prog.programId());
 
-    for (int i = 0; i < 8; ++i)
-    {
-        OctreeNode* n = node->children[i];
-        if (n)
-            drawTree(prog, transState, n);
-    }
+    std::for_each(node->children, node->children + 8, [&](auto n) { if (n) drawTree(prog, transState, n); });
 }
 
 void PointArray::drawTree(QGLShaderProgram& prog, const TransformState& transState) const
@@ -704,6 +695,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
     DrawCount drawCount;
     ClipBox clipBox(relativeTrans);
 
+    std::array<size_t, 8> nodeOrder;
+    std::iota(nodeOrder.begin(), nodeOrder.end(), 0);  // Order does not matter
+
     // Draw points in each bucket, with total number drawn depending on how far
     // away the bucket is.  Since the points are shuffled, this corresponds to
     // a stochastic simplification of the full point cloud.
@@ -718,12 +712,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             continue;
         if (!node->isLeaf())
         {
-            for (int i = 0; i < 8; ++i)
-            {
-                OctreeNode* n = node->children[i];
-                if (n)
-                    nodeStack.push_back(n);
-            }
+            std::for_each(std::begin(nodeOrder), std::end(nodeOrder), [&](const auto& i) { if (node->children[i]) nodeStack.push_back(node->children[i]); });
             continue;
         }
         if (!incrementalDraw)

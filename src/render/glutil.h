@@ -216,10 +216,7 @@ class Framebuffer
 {
     public:
         /// Generate an uninitialized framebuffer.
-        Framebuffer()
-            : m_fbo(0), m_colorBuf(0), m_zBuf(0)
-        { }
-
+        Framebuffer() = default;
         ~Framebuffer()
         {
             destroy();
@@ -240,8 +237,8 @@ class Framebuffer
 
             glGenRenderbuffers(1, &m_zBuf);
             glBindRenderbuffer(GL_RENDERBUFFER, m_zBuf);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
-            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
 
             glCheckFrameBufferStatus();
             glCheckError();
@@ -268,9 +265,9 @@ class Framebuffer
         }
 
     private:
-        GLuint m_fbo;
-        GLuint m_colorBuf;
-        GLuint m_zBuf;
+        GLuint m_fbo = 0;
+        GLuint m_colorBuf = 0;
+        GLuint m_zBuf = 0;
 };
 
 
