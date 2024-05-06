@@ -681,16 +681,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             glEnableVertexAttribArray(attributes[i]->location);
     }
 
-    // Compute number of bytes required to store all attributes of a vertex, in
-    // bytes.
-    size_t perVertexBytes = 0;
-    for (size_t i = 0; i < m_fields.size(); ++i)
-    {
-        const GeomField &field = m_fields[i];
-        unsigned int arraySize = field.spec.arraySize();
-        unsigned int vecSize = field.spec.vectorSize();
-        perVertexBytes += arraySize * vecSize * field.spec.elsize; //sizeof(glBaseType(field.spec));
-    }
+    // Compute number of bytes required to store all attributes of a vertex, in bytes.
+    const size_t perVertexBytes = bytes<size_t>(m_fields.begin(), m_fields.end());
 
     DrawCount drawCount;
     ClipBox clipBox(relativeTrans);
@@ -744,8 +736,8 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
-            int arraySize = field.spec.arraySize();
-            int vecSize = field.spec.vectorSize();
+            const int arraySize = field.spec.arraySize();
+            const int vecSize = field.spec.vectorSize();
 
             // TODO?: Could use a single data-array that isn't split into
             // vertex / normal / color / etc. sections, but has interleaved
