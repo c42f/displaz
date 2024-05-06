@@ -6,6 +6,7 @@
 
 #include "typespec.h"
 
+#include <numeric>
 
 //------------------------------------------------------------------------------
 /// Storage array for scalar and vector fields on a geometry
@@ -51,6 +52,13 @@ struct GeomField
         return reinterpret_cast<const T*>(data.get());
     }
 
+    size_t bytes() const
+    {
+        const size_t arraySize = spec.arraySize();
+        const size_t vecSize = spec.vectorSize();
+        return arraySize * vecSize * spec.elsize;
+    }
+
     /// Print human readable form of `data[index]` to output stream
     void format(std::ostream& out, size_t index) const;
 
@@ -61,6 +69,11 @@ struct GeomField
     { }
 };
 
+template<typename T, typename InputIt>
+T bytes(InputIt first, InputIt last)
+{
+    return std::accumulate<InputIt, T>(first, last, 0, [](const auto acc, const auto& i) { return acc + i.bytes(); });
+}
 
 /// Reorder point field data according to the given indexing array
 void reorder(GeomField& field, const size_t* inds, size_t indsSize);
