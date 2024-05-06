@@ -75,14 +75,14 @@ class PointArray : public Geometry
         friend struct ProgressFunc;
 
         /// Total number of loaded points
-        size_t m_npoints;
+        size_t m_npoints = 0;
         /// Spatial hierarchy
         std::unique_ptr<OctreeNode> m_rootNode;
         /// Point data field storage
         std::vector<GeomField> m_fields;
         /// A position field is required.  Alias for convenience:
-        int m_positionFieldIdx;
-        V3f* m_P;
+        int m_positionFieldIdx = -1;
+        V3f* m_P = nullptr;
         std::unique_ptr<uint32_t[]> m_inds;
 };
 
