@@ -46,6 +46,9 @@ Linux
 Install dependencies using your package manager.  Here's a handy list of
 dependencies for several distributions::
 
+    # Ubuntu >= 22.04 (and probably other debian-based distributions)
+    sudo apt install git g++ cmake qtbase5-dev python3
+
     # Ubuntu >= 14.04 (and probably other debian-based distributions)
     sudo apt-get install git g++ cmake qt5-default python-docutils
 
@@ -166,6 +169,12 @@ will need to install the following manually:
 
 Both the LASlib and IlmBase libraries may be built using the separate third
 party build system in ``thirdparty/external/CMakeLists.txt``.
+
+
+Docker
+~~~~~~
+Dockerfiles based on a variety of Linux flavours are provided, see
+`the docker README <docker/README.md>`_ for instructions on building docker images.
 
 
 Supported Systems
