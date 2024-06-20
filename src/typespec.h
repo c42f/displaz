@@ -51,15 +51,15 @@ struct TypeSpec
     bool fixedPoint; /// For Int,Uint: indicates fixed point scaling by
                      /// max value of the underlying integer type
 
-    TypeSpec() : type(Unknown), elsize(0), count(0), semantics(Array), fixedPoint(true) {}
+    TypeSpec() : type(Unknown), elsize(0), count(0), semantics(Array), fixedPoint(false) {}
 
     TypeSpec(Type type, int elsize, int count = 1,
-             Semantics semantics = Array, bool fixedPoint = true)
+             Semantics semantics = Array, bool fixedPoint = false)
         : type(type),
         elsize(elsize),
         count(count),
         semantics(semantics),
-        fixedPoint(fixedPoint)
+        fixedPoint(type == Float ? false : fixedPoint)
     {}
 
     /// Named constructors for common types
@@ -70,9 +70,9 @@ struct TypeSpec
     static TypeSpec uint16_i()  { return TypeSpec(Uint, 2, 1, Array, false); }
     static TypeSpec uint8_i()   { return TypeSpec(Uint, 1, 1, Array, false); }
     // Scaled fixed point integers
-    static TypeSpec uint32()  { return TypeSpec(Uint, 4, 1); }
-    static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1); }
-    static TypeSpec uint8()   { return TypeSpec(Uint, 1, 1); }
+    static TypeSpec uint32()  { return TypeSpec(Uint, 4, 1, Array, true); }
+    static TypeSpec uint16()  { return TypeSpec(Uint, 2, 1, Array, true); }
+    static TypeSpec uint8()   { return TypeSpec(Uint, 1, 1, Array, true); }
 
     /// Return number of vector elements in the aggregate
     int vectorSize() const { return (semantics == Array) ? 1 : count; }
