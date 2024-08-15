@@ -20,6 +20,8 @@
 #include "InteractiveCamera.h"
 #include "geometrycollection.h"
 #include "Annotation.h"
+#include "Enable.h"
+#include "ShaderProgram.h"
 
 class QGLShaderProgram;
 class QItemSelectionModel;
@@ -37,7 +39,7 @@ class View3D : public QGLWidget
     Q_OBJECT
     public:
         View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
-        ~View3D();
+        ~View3D() = default;
 
         Enable& enable() const { return *m_enable; }
 
@@ -80,9 +82,9 @@ class View3D : public QGLWidget
 
     protected:
         // Qt OpenGL callbacks
-        void initializeGL();
-        void resizeGL(int w, int h);
-        void paintGL();
+        void initializeGL() override;
+        void resizeGL(int w, int h) override;
+        void paintGL() override;
 
         // Qt event callbacks
         void mousePressEvent(QMouseEvent* event);
@@ -184,11 +186,11 @@ class View3D : public QGLWidget
         std::unique_ptr<ShaderProgram> m_boundingBoxShader;
         std::unique_ptr<ShaderProgram> m_annotationShader;
 
-        unsigned int m_cursorVertexArray;
-        unsigned int m_axesVertexArray;
-        unsigned int m_gridVertexArray;
-        unsigned int m_quadVertexArray;
-        unsigned int m_quadLabelVertexArray;
+        GLuint m_cursorVertexArray = 0;
+        GLuint m_axesVertexArray = 0;
+        GLuint m_gridVertexArray = 0;
+        GLuint m_quadVertexArray = 0;
+        GLuint m_quadLabelVertexArray = 0;
 
         double m_devicePixelRatio;
 };
