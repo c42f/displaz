@@ -3,8 +3,6 @@
 
 #include "HookManager.h"
 
-#include <QRegExp>
-
 #include "util.h"
 #include "HookFormatter.h"
 #include "IpcChannel.h"

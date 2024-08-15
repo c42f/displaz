@@ -394,7 +394,9 @@ void MainWindow::handleMessage(QByteArray message)
 {
     QList<QByteArray> commandTokens = message.split('\n');
     if (commandTokens.empty())
+    {
         return;
+    }
     if (commandTokens[0] == "OPEN_FILES")
     {
         QList<QByteArray> flags = commandTokens[1].split('\0');
@@ -797,10 +799,7 @@ void MainWindow::screenShot()
     // Grabbing the desktop directly using grabWindow() isn't great, but makes
     // this much simpler to implement.  (Other option: use
     // m_pointView->renderPixmap() and turn off incremental rendering.)
-    QPoint tl = m_pointView->mapToGlobal(QPoint(0,0));
-    QPixmap sshot = QPixmap::grabWindow(QApplication::desktop()->winId(),
-                                        tl.x(), tl.y(),
-                                        m_pointView->width(), m_pointView->height());
+    QPixmap sshot = grab();
     QString fileName = QFileDialog::getSaveFileName(
         this,
         tr("Save screen shot"),

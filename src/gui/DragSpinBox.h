@@ -9,7 +9,7 @@
 #include <QDoubleSpinBox>
 #include <QMouseEvent>
 #include <QApplication>
-#include <QDesktopWidget>
+#include <QScreen>
 
 /// Hacked version of QDoubleSpinBox which allows vertical mouse dragging to
 /// change the current value.
@@ -55,7 +55,7 @@ class DragSpinBox : public QDoubleSpinBox
             event->accept();
             int dy = -(event->pos().y() - m_prevPos.y());
             m_prevPos = event->pos();
-            QRect geom = QApplication::desktop()->screenGeometry(this);
+            QRect geom = QApplication::primaryScreen()->geometry();
             // Calling setPos() creates a further mouse event asynchronously;
             // this is a hack to suppress such unwanted events:
             if (abs(dy) > geom.height()/2)

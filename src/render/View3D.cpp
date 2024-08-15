@@ -53,11 +53,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_drawAxesLabelX(QImage(":/resource/x.png")),
     m_drawAxesLabelY(QImage(":/resource/y.png")),
     m_drawAxesLabelZ(QImage(":/resource/z.png")),
-    m_cursorVertexArray(0),
-    m_axesVertexArray(0),
-    m_gridVertexArray(0),
-    m_quadVertexArray(0),
-    m_quadLabelVertexArray(0),
     m_devicePixelRatio(1.0)
 {
     connect(m_geometries, SIGNAL(layoutChanged()),                      this, SLOT(geometryChanged()));
@@ -90,10 +85,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
 }
-
-
-View3D::~View3D() { }
-
 
 void View3D::restartRender()
 {

@@ -4,7 +4,6 @@
 #include "MainWindow.h"
 
 //#include <QDataStream>
-#include <QTextCodec>
 #include <QApplication>
 #include <QGLFormat>
 

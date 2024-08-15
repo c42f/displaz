@@ -5,7 +5,6 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QProcess>
-#include <QTextCodec>
 #include <QUuid>
 
 #include <cfloat>

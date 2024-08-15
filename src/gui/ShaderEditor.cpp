@@ -19,7 +19,7 @@ ShaderEditor::ShaderEditor(QWidget* parent)
     setFont(font);
     m_highlighter = new GLSLHighlighter(document());
     m_compileShaderAct = new QAction(tr("&Compile"), this);
-    m_compileShaderAct->setShortcut(Qt::Key_Return + Qt::SHIFT);
+    m_compileShaderAct->setShortcut(Qt::Key_Return | Qt::SHIFT);
     m_compileShaderAct->setToolTip(tr("Compile current shader and use in 3D view"));
     addAction(m_compileShaderAct);
 }

@@ -9,7 +9,7 @@
 #include "glutil.h"
 
 #include <QGLShaderProgram>
-#include <QTime>
+#include <QElapsedTimer>
 
 #include <functional>
 #include <algorithm>
@@ -262,7 +262,7 @@ bool PointArray::loadPly(QString fileName, size_t maxPointCount,
 
 bool PointArray::loadFile(QString fileName, size_t maxPointCount)
 {
-    QTime loadTimer;
+    QElapsedTimer loadTimer;
     loadTimer.start();
     setFileName(fileName);
     // Read file into point data fields.  Use very basic file type detection
@@ -733,7 +733,7 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
         glBufferData(GL_ARRAY_BUFFER, nodeBufferSize, NULL, GL_STREAM_DRAW);
 
         GLintptr bufferOffset = 0;
-        for (size_t i = 0, k = 0; i < m_fields.size(); k+=m_fields[i].spec.arraySize(), ++i)
+        for (size_t i = 0, k = 0; i < m_fields.size(); k += m_fields[i].spec.arraySize(), ++i)
         {
             const GeomField& field = m_fields[i];
             const int arraySize = field.spec.arraySize();
@@ -759,7 +759,9 @@ DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& t
             {
                 const ShaderAttribute* attr = attributes[k+j];
                 if (!attr)
+                {
                     continue;
+                }
 
                 GLintptr arrayElementOffset = bufferOffset + j*field.spec.elsize;
 
