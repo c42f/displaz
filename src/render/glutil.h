@@ -26,27 +26,6 @@
 
 
 //-------------------------------------------------------------------------------
-// OpenGL Debug tools
-void _glError(const char *file, int line);
-void _glFrameBufferStatus(GLenum target, const char *file, int line);
-
-
-// #define GL_CHECK
-#ifdef GL_CHECK
-
-    #define glCheckError() _glError(__FILE__,__LINE__)
-    #define glCheckFrameBufferStatus() _glFrameBufferStatus(GL_FRAMEBUFFER, __FILE__,__LINE__)
-
-#else
-
-    #define glCheckError()
-    #define glCheckFrameBufferStatus()
-
-#endif //GL_CHECK
-
-
-
-//-------------------------------------------------------------------------------
 struct TransformState
 {
     Imath::V2i viewSize;
@@ -223,26 +202,7 @@ class Framebuffer
         }
 
         /// Initialize framebuffer with given width and height.
-        void init(int width, int height)
-        {
-            destroy();
-
-            glGenFramebuffers(1, &m_fbo);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
-
-            glGenRenderbuffers(1, &m_colorBuf);
-            glBindRenderbuffer(GL_RENDERBUFFER, m_colorBuf);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
-            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_colorBuf);
-
-            glGenRenderbuffers(1, &m_zBuf);
-            glBindRenderbuffer(GL_RENDERBUFFER, m_zBuf);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
-
-            glCheckFrameBufferStatus();
-            glCheckError();
-        }
+        void init(int width, int height);
 
         void destroy()
         {

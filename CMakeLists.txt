@@ -33,6 +33,7 @@ option(DISPLAZ_USE_LAS "Build with support for reading las files" TRUE)
 option(DISPLAZ_USE_TESTS "Build the test cases" TRUE)
 option(DISPLAZ_BUILD_DVOX "Build experimential dvox utility" FALSE)
 option(DISPLAZ_EMBED_GLEW "Build GLEW as part of the displaz build process" TRUE)
+option(DISPLAZ_GL_CHECK "Enable OpenGL runtime error checking" FALSE)
 
 set(DISPLAZ_EXTERNAL_DIR "${PROJECT_BINARY_DIR}/../build_external/dist"
     CACHE PATH "Directory containing installed third party libraries (laslib, ilmbase, ...)")
@@ -78,6 +79,10 @@ if (DISPLAZ_EMBED_GLEW)
     set(GLEW_LIBRARIES embeddedGLEW)
 else()
     find_package(GLEW)
+endif()
+
+if (DISPLAZ_GL_CHECK)
+    add_definitions(-DGL_CHECK)
 endif()
 
 find_package(OpenGL REQUIRED)

@@ -5,6 +5,8 @@
 // #define GL_CHECK 1
 
 #include "glutil.h"
+#include "gldebug.h"
+
 #include "View3D.h"
 
 #include <cfloat>
@@ -297,7 +299,7 @@ void View3D::initializeGL()
                   (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION),
                   (const char*)glewGetString(GLEW_VERSION));
 
-    g_logger.info("OpenGL format: %s%s%s",
+    g_logger.info("OpenGL format: %s%s%s%s%s",
                   format().doubleBuffer() ? "double " : "",
                   format().stencil() ? "stencil " : "",
                   format().alpha() ? "alpha " : "",
@@ -341,6 +343,8 @@ void View3D::initializeGL()
         pv_parent->openShaderFile(QString());
 
     setFocus();
+
+    glCheckError();
 }
 
 
@@ -384,6 +388,8 @@ void View3D::paintGL()
         m_devicePixelRatio = dPR;
         resizeGL(w, h);
     }
+
+    glCheckError();
 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_incrementalFramebuffer.id());
 
@@ -429,6 +435,8 @@ void View3D::paintGL()
     glFinish();
     int frameTime = frameTimer.elapsed();
 
+    glCheckError();
+
     if (!geoms.empty())
         m_drawCostModel.addSample(drawCount, frameTime);
 
@@ -444,6 +452,8 @@ void View3D::paintGL()
     glBindFramebuffer(GL_READ_FRAMEBUFFER, m_incrementalFramebuffer.id());
     glBlitFramebuffer(0,0,w,h, 0,0,w,h,
                       GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST); // has to be GL_NEAREST to work with DEPTH
+
+    glCheckError();
 
     // Draw a grid for orientation purposes
     if (m_drawGrid)
@@ -647,6 +657,8 @@ void View3D::initCursor(float cursorRadius, float centerPointRadius)
 /// Draw the 3D cursor
 void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos, float centerPointRadius) const
 {
+    glCheckError();
+
     V3d offset = transStateIn.cameraPos();
     TransformState transState = transStateIn.translate(offset);
     V3d relCursor = cursorPos - offset;
@@ -679,7 +691,7 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
             //
             TransformState pointState = transState.translate( V3d(p2.x, p2.y, 0) );
             pointState = pointState.scale( V3d(0.0,0.0,0.0) );
-            glLineWidth(centerPointRadius);
+            glLineWidth(1);
             cursorShader.setUniformValue("color", 1.0f, 1.0f, 1.0f, 1.0f);
             pointState.setUniforms(cursorShader.programId());
             glDrawArrays( GL_POINTS, 0, 1 );
@@ -709,6 +721,8 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
 
         glBindVertexArray(0);
     }
+
+    glCheckError();
 }
 
 void View3D::initAxes()
@@ -833,6 +847,8 @@ void View3D::initAxes()
 
 void View3D::drawAxes() const
 {
+    glCheckError();
+
     glDisable(GL_DEPTH_TEST);
 
     TransformState projState(Imath::V2i(width(), height()),
@@ -946,6 +962,8 @@ void View3D::drawAxes() const
 
         glBindVertexArray(0);
     }
+
+    glCheckError();
 }
 
 
@@ -1004,6 +1022,8 @@ void View3D::initGrid(const float scale)
 
 void View3D::drawGrid() const
 {
+    glCheckError();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1028,6 +1048,8 @@ void View3D::drawGrid() const
         // do NOT release shader, this is no longer supported in OpenGL 3.2
         glBindVertexArray(0);
     }
+
+    glCheckError();
 }
 
 
@@ -1036,6 +1058,8 @@ DrawCount View3D::drawPoints(const TransformState& transState,
                              const std::vector<const Geometry*>& geoms,
                              double quality, bool incrementalDraw)
 {
+    glCheckError();
+
     DrawCount totDrawCount;
     if (geoms.empty())
         return DrawCount();
@@ -1069,6 +1093,9 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
     glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+    glCheckError();
+
     return totDrawCount;
 }
 

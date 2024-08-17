@@ -93,6 +93,7 @@ set(gui_srcs
     render/FrameRate.cpp
     render/Geometry.cpp
     render/GeomField.cpp
+    render/gldebug.cpp
     render/glutil.cpp
     render/HCloudView.cpp
     render/TriMesh.cpp
