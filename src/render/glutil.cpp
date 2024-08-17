@@ -2,6 +2,7 @@
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
 #include "glutil.h"
+#include "gldebug.h"
 #include "tinyformat.h"
 
 //------------------------------------------------------------------------------
@@ -288,50 +289,25 @@ void printActiveShaderAttributes(GLuint prog)
     }
 }
 
-void _glError(const char *file, int line) {
-    GLenum err (glGetError());
-
-    while(err!=GL_NO_ERROR) {
-        std::string error;
-
-        switch(err) {
-            case GL_INVALID_OPERATION:      error="INVALID_OPERATION";      break;
-            case GL_INVALID_ENUM:           error="INVALID_ENUM";           break;
-            case GL_INVALID_VALUE:          error="INVALID_VALUE";          break;
-            case GL_OUT_OF_MEMORY:          error="OUT_OF_MEMORY";          break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION:  error="INVALID_FRAMEBUFFER_OPERATION";  break;
-        }
-
-        tfm::printfln("GL_%s - %s:%i", error, file, line);
-        err=glGetError();
-    }
-}
-
-void _glFrameBufferStatus(GLenum target, const char *file, int line)
+/// Initialize framebuffer with given width and height.
+void Framebuffer::init(int width, int height)
 {
-    GLenum fbStatus = glCheckFramebufferStatus(target);
+    glCheckError();
+    destroy();
 
-    if (fbStatus == GL_FRAMEBUFFER_COMPLETE)
-        return;
+    glGenFramebuffers(1, &m_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
 
-    std::string status;
+    glGenRenderbuffers(1, &m_colorBuf);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_colorBuf);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_colorBuf);
 
-    switch(fbStatus) {
-        case GL_INVALID_ENUM:           status="?? (bad target)"; break;
-        //case GL_FRAMEBUFFER_COMPLETE:   status="COMPLETE";      break;
-        case GL_FRAMEBUFFER_UNDEFINED:  status="UNDEFINED";     break;
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: status="INCOMPLETE_ATTACHMENT";        break;
-        //case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: status="INCOMPLETE_DRAW_BUFFER";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: status="INCOMPLETE_READ_BUFFER";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: status="INCOMPLETE_MULTISAMPLE";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: status="INCOMPLETE_LAYER_TARGETS";  break;
-        //case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS: status="INCOMPLETE_DIMENSIONS";      break;
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: status="INCOMPLETE_MISSING_ATTACHMENT";      break;
-        case GL_FRAMEBUFFER_UNSUPPORTED: status="UNSUPPORTED";      break;
-        default:                        status="???";    break;
-    }
+    glGenRenderbuffers(1, &m_zBuf);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_zBuf);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_zBuf);
 
-    tfm::printfln("GL_FRAMEBUFFER_%s (%d) - %s:%i", status, fbStatus, file, line);
+    glCheckFrameBufferStatus();
+    glCheckError();
 }
-
