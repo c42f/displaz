@@ -5,6 +5,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QRegularExpression>
 
 #include <iostream>
 
@@ -40,14 +41,17 @@ bool Enable::set(const QString& src)
 
     // Search source code looking for glEnable/glDisable
     QStringList lines = src.split('\n');
-    QRegExp re("// gl(Enable|Disable)\\(([A-Z0-9_]+)\\)", Qt::CaseSensitive, QRegExp::RegExp2);
+    QRegularExpression re("//\\s?gl(Enable|Disable)\\(([A-Z0-9_]+)\\)\\s?$");
     for (const auto& line : lines)
     {
-        if (!re.exactMatch(line))
+        const auto match = re.match(line);
+        if (!match.hasMatch())
+        {
             continue;
+        }
 
-        const QByteArray enable = re.cap(1).toUtf8().constData();
-        const QByteArray name   = re.cap(2).toUtf8().constData();
+        const QByteArray enable = match.captured(1).toUtf8().constData();
+        const QByteArray name   = match.captured(2).toUtf8().constData();
 
         const bool e = enable == "Enable";
 

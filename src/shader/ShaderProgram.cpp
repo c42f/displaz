@@ -1,6 +1,8 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
+#include "glutil.h"
+
 #include "ShaderProgram.h"
 
 #include "tinyformat.h"
@@ -12,15 +14,17 @@
 #include <QComboBox>
 #include <QSlider>
 
-ShaderProgram::ShaderProgram(QObject* parent)
-    : QObject(parent),
-    m_pointSize(5),
-    m_exposure(1),
-    m_contrast(1),
-    m_selector(0)
+ShaderProgram::ShaderProgram(const char* label)
+    : QObject(),
+    m_label(label)
 {
 }
 
+ShaderProgram::ShaderProgram(QObject* parent, const char* label)
+    : QObject(parent),
+    m_label(label)
+{
+}
 
 bool paramOrderingLess(const QPair<ShaderParam,ShaderParam::Variant>& p1,
                        const QPair<ShaderParam,ShaderParam::Variant>& p2)
@@ -133,8 +137,8 @@ bool ShaderProgram::setShaderFromSourceFile(QString fileName)
 
 bool ShaderProgram::setShader(QString src)
 {
-    std::unique_ptr<Shader> vertexShader(new Shader(QGLShader::Fragment));
-    std::unique_ptr<Shader> fragmentShader(new Shader(QGLShader::Vertex));
+    std::unique_ptr<Shader> vertexShader(new Shader(QOpenGLShader::Fragment));
+    std::unique_ptr<Shader> fragmentShader(new Shader(QOpenGLShader::Vertex));
     //tfm::printf("Shader source:\n###\n%s\n###\n", src.toStdString());
     QByteArray src_ba = src.toUtf8();
     if(!vertexShader->compileSourceCode(src_ba))
@@ -149,7 +153,7 @@ bool ShaderProgram::setShader(QString src)
                        fragmentShader->shader()->log().toStdString());
         return false;
     }
-    std::unique_ptr<QGLShaderProgram> newProgram(new QGLShaderProgram());
+    std::unique_ptr<QOpenGLShaderProgram> newProgram(new QOpenGLShaderProgram());
     if (!newProgram->addShader(vertexShader->shader()) ||
         !newProgram->addShader(fragmentShader->shader()))
     {
@@ -163,11 +167,20 @@ bool ShaderProgram::setShader(QString src)
                        newProgram->log().toStdString());
         return false;
     }
+
     // New shaders compiled & linked ok; swap out the old program for the new
     m_vertexShader = std::move(vertexShader);
     m_fragmentShader = std::move(fragmentShader);
     m_shaderProgram = std::move(newProgram);
     setupParameters();
+
+    #ifdef GL_CHECK
+    if (glObjectLabel && m_label)
+    {
+        glObjectLabel(GL_PROGRAM, m_shaderProgram->programId(), -1, m_label);
+    }
+    #endif
+
     emit shaderChanged();
     return true;
 }

@@ -8,7 +8,7 @@
 #include "util.h"
 #include "glutil.h"
 
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 #include <QElapsedTimer>
 
 #include <functional>
@@ -601,7 +601,7 @@ void PointArray::estimateCost(const TransformState& transState,
 }
 
 
-static void drawTree(QGLShaderProgram& prog, const TransformState& transState, const OctreeNode* node)
+static void drawTree(QOpenGLShaderProgram& prog, const TransformState& transState, const OctreeNode* node)
 {
     Imath::Box3f bbox(node->center - Imath::V3f(node->halfWidth),
                       node->center + Imath::V3f(node->halfWidth));
@@ -612,7 +612,7 @@ static void drawTree(QGLShaderProgram& prog, const TransformState& transState, c
     std::for_each(node->children, node->children + 8, [&](auto n) { if (n) drawTree(prog, transState, n); });
 }
 
-void PointArray::drawTree(QGLShaderProgram& prog, const TransformState& transState) const
+void PointArray::drawTree(QOpenGLShaderProgram& prog, const TransformState& transState) const
 {
     ::drawTree(prog, transState, m_rootNode.get());
 }
@@ -634,7 +634,7 @@ void PointArray::draw(const TransformState& transState, double quality) const
 {
 }
 
-DrawCount PointArray::drawPoints(QGLShaderProgram& prog, const TransformState& transState,
+DrawCount PointArray::drawPoints(QOpenGLShaderProgram& prog, const TransformState& transState,
                                  double quality, bool incrementalDraw) const
 {
     GLuint vao = getVAO("points");

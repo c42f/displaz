@@ -14,7 +14,7 @@
 #include "GeomField.h"
 #include "GeometryMutator.h"
 
-class QGLShaderProgram;
+class QOpenGLShaderProgram;
 
 struct OctreeNode;
 struct TransformState;
@@ -38,9 +38,9 @@ class PointArray : public Geometry
 
         virtual void initializeGL();
 
-        virtual DrawCount drawPoints(QGLShaderProgram& prog,
+        virtual DrawCount drawPoints(QOpenGLShaderProgram& prog,
                                     const TransformState& transState,
-                                    double quality, bool incrementalDraw) const;
+                                    double quality, bool incrementalDraw) const override;
 
         virtual size_t pointCount() const { return m_npoints; }
 
@@ -57,7 +57,7 @@ class PointArray : public Geometry
         /// Draw a representation of the point hierarchy.
         ///
         /// Probably only useful for debugging.
-        void drawTree(QGLShaderProgram& prog, const TransformState& transState) const;
+        void drawTree(QOpenGLShaderProgram& prog, const TransformState& transState) const;
 
     private:
         bool loadLas(QString fileName, size_t maxPointCount,

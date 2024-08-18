@@ -13,7 +13,7 @@
 #include "Geometry.h"
 #include "glutil.h"
 
-class QGLShaderProgram;
+class QOpenGLShaderProgram;
 
 
 /// Mesh of triangles or line segment edges, in indexed format for OpenGL
@@ -26,10 +26,10 @@ class TriMesh : public Geometry
 
         virtual void initializeGL();
 
-        virtual void drawFaces(QGLShaderProgram& prog,
-                               const TransformState& transState) const;
-        virtual void drawEdges(QGLShaderProgram& prog,
-                               const TransformState& transState) const;
+        virtual void drawFaces(QOpenGLShaderProgram& prog,
+                               const TransformState& transState) const override;
+        virtual void drawEdges(QOpenGLShaderProgram& prog,
+                               const TransformState& transState) const override;
 
         virtual size_t pointCount() const { return 0; }
 

@@ -142,7 +142,7 @@ void HCloudView::initializeGL()
     m_shader->setShaderFromSourceFile("shaders:las_points_lod.glsl");
 }
 
-static void drawBounds(QGLShaderProgram& prog, HCloudNode* node, const TransformState& transState)
+static void drawBounds(QOpenGLShaderProgram& prog, HCloudNode* node, const TransformState& transState)
 {
     drawBox(transState, node->bbox, Imath::C3f(1), prog.programId());
     for (int i = 0; i < 8; ++i)
@@ -182,7 +182,7 @@ void HCloudView::draw(const TransformState& transStateIn, double quality) const
     //drawBounds(m_rootNode.get(), transState);
 
     V3f cameraPos = V3d(0) * transState.modelViewMatrix.inverse();
-    QGLShaderProgram& prog = m_shader->shaderProgram();
+    QOpenGLShaderProgram& prog = m_shader->shaderProgram();
     prog.bind();
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 

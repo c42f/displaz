@@ -455,7 +455,7 @@ void View3D::paintGL()
     {
         if (m_boundingBoxShader->isValid())
         {
-            QGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
+            QOpenGLShaderProgram &boundingBoxShader = m_boundingBoxShader->shaderProgram();
             // shader
             boundingBoxShader.bind();
             // matrix stack
@@ -499,7 +499,7 @@ void View3D::drawMeshes(const TransformState& transState,
     // Draw faces
     if (m_meshFaceShader->isValid())
     {
-        QGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
+        QOpenGLShaderProgram& meshFaceShader = m_meshFaceShader->shaderProgram();
         meshFaceShader.bind();
         M44d worldToEyeVecTransform = m_camera.viewMatrix();
         worldToEyeVecTransform[3][0] = 0;
@@ -514,7 +514,7 @@ void View3D::drawMeshes(const TransformState& transState,
     // Draw edges
     if (m_meshEdgeShader->isValid())
     {
-        QGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
+        QOpenGLShaderProgram& meshEdgeShader = m_meshEdgeShader->shaderProgram();
         glLineWidth(1.0f);
         meshEdgeShader.bind();
         for (size_t i = 0; i < geoms.size(); ++i)
@@ -526,7 +526,7 @@ void View3D::drawAnnotations(const TransformState& transState,
                              int viewportPixelWidth,
                              int viewportPixelHeight) const
 {
-    QGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
+    QOpenGLShaderProgram& annotationShader = m_annotationShader->shaderProgram();
     annotationShader.bind();
     annotationShader.setUniformValue("viewportSize",
                                      viewportPixelWidth,
@@ -666,7 +666,7 @@ void View3D::drawCursor(const TransformState& transStateIn, const V3d& cursorPos
     // Draw cursor
     if (m_cursorShader->isValid())
     {
-        QGLShaderProgram& cursorShader = m_cursorShader->shaderProgram();
+        QOpenGLShaderProgram& cursorShader = m_cursorShader->shaderProgram();
         // shader
         cursorShader.bind();
         // vertex array
@@ -866,7 +866,7 @@ void View3D::drawAxes() const
     // Draw Background texture
     if (m_axesBackgroundShader->isValid())
     {
-        QGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
+        QOpenGLShaderProgram& axesBackgroundShader = m_axesBackgroundShader->shaderProgram();
         GLint textureSampler = glGetUniformLocation(axesBackgroundShader.programId(), "texture0");
         // shader
         axesBackgroundShader.bind();
@@ -887,7 +887,7 @@ void View3D::drawAxes() const
     {
         //tfm::printfln("drawing with m_axesShader");
 
-        QGLShaderProgram& axesShader = m_axesShader->shaderProgram();
+        QOpenGLShaderProgram& axesShader = m_axesShader->shaderProgram();
         // shader
         axesShader.bind();
         // vertex buffer
@@ -923,7 +923,7 @@ void View3D::drawAxes() const
 
     if (m_axesLabelShader->isValid())
     {
-        QGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
+        QOpenGLShaderProgram& axesLabelShader = m_axesLabelShader->shaderProgram();
         // shader
         axesLabelShader.bind();
         GLint texLocation = glGetUniformLocation(axesLabelShader.programId(), "texture0");
@@ -1026,7 +1026,7 @@ void View3D::drawGrid() const
     // Draw grid
     if (m_gridShader->isValid())
     {
-        QGLShaderProgram &gridShader = m_gridShader->shaderProgram();
+        QOpenGLShaderProgram &gridShader = m_gridShader->shaderProgram();
         // shader
         gridShader.bind();
         // vertex buffer
@@ -1064,7 +1064,7 @@ DrawCount View3D::drawPoints(const TransformState& transState,
     glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 
     // Draw points
-    QGLShaderProgram& prog = m_shaderProgram->shaderProgram();
+    QOpenGLShaderProgram& prog = m_shaderProgram->shaderProgram();
     prog.bind();
     m_shaderProgram->setUniforms();
     QModelIndexList selection = m_selectionModel->selectedRows();
