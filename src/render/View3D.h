@@ -23,7 +23,7 @@
 #include "Enable.h"
 #include "ShaderProgram.h"
 
-class QGLShaderProgram;
+class QOpenGLShaderProgram;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;

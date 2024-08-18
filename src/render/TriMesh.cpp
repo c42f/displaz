@@ -9,7 +9,7 @@
 #include <QFileInfo>
 
 #include "glutil.h"
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 
 #include "tinyformat.h"
 #include "rply/rply.h"
@@ -475,7 +475,7 @@ void TriMesh::initializeVertexGL(const char * vertArrayName, const std::vector<u
     glBindVertexArray(0);
 }
 
-void TriMesh::drawFaces(QGLShaderProgram& prog,
+void TriMesh::drawFaces(QOpenGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     // TODO: The hasTexture uniform shader variable would be unnecessary if we
@@ -500,7 +500,7 @@ void TriMesh::drawFaces(QGLShaderProgram& prog,
 }
 
 
-void TriMesh::drawEdges(QGLShaderProgram& prog,
+void TriMesh::drawEdges(QOpenGLShaderProgram& prog,
                         const TransformState& transState) const
 {
     unsigned int vertexShaderId = shaderId("meshedge");

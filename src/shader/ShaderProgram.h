@@ -8,12 +8,12 @@
 
 #include <QObject>
 #include <QByteArray>
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 
 #include "Shader.h"
 #include "ShaderParam.h"
 
-/// Wrapper around QGLShaderProgram providing parameter tweaking UI
+/// Wrapper around QOpenGLShaderProgram providing parameter tweaking UI
 ///
 /// When compiling a new shader, the shader source code is scanned for
 /// annotations in the comments which indicate which uniform values should be
@@ -25,10 +25,11 @@ class ShaderProgram : public QObject
     Q_OBJECT
 
     public:
-        ShaderProgram(QObject* parent = 0);
+        ShaderProgram(const char* label);
+        ShaderProgram(QObject* parent = nullptr, const char* label = nullptr);
 
         /// Access to the underlying shader program
-        QGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
+        QOpenGLShaderProgram& shaderProgram() { return *m_shaderProgram; }
 
         /// Set up UI for the shader
         void setupParameterUI(QWidget* parentWidget);
@@ -83,15 +84,16 @@ class ShaderProgram : public QObject
     private:
         void setupParameters();
 
-        double m_pointSize;
-        double m_exposure;
-        double m_contrast;
-        int m_selector;
+        const char* m_label = nullptr;
+        double m_pointSize = 5;
+        double m_exposure = 1;
+        double m_contrast = 1;
+        int m_selector = 0;
         typedef QMap<ShaderParam,ShaderParam::Variant> ParamMap;
         ParamMap m_params;
         std::unique_ptr<Shader> m_vertexShader;
         std::unique_ptr<Shader> m_fragmentShader;
-        std::unique_ptr<QGLShaderProgram> m_shaderProgram;
+        std::unique_ptr<QOpenGLShaderProgram> m_shaderProgram;
 };
 
 

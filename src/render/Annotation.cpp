@@ -105,7 +105,7 @@ Annotation::~Annotation()
     glDeleteVertexArrays(1, &m_vao);
 }
 
-void Annotation::draw(QGLShaderProgram& annotationShaderProg,
+void Annotation::draw(QOpenGLShaderProgram& annotationShaderProg,
                       const TransformState& transState) const
 {
     glBindVertexArray(m_vao);

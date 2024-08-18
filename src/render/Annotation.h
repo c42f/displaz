@@ -8,7 +8,7 @@
 
 #include "glutil.h"
 #include <QString>
-#include <QGLShaderProgram>
+#include <QOpenGLShaderProgram>
 
 struct TransformState;
 
@@ -33,7 +33,7 @@ class Annotation
         /// the viewportSize uniform variable has been set.
         ///
         /// transState specifies the camera transform.
-        void draw(QGLShaderProgram& annotationShaderProg,
+        void draw(QOpenGLShaderProgram& annotationShaderProg,
                   const TransformState& transState) const;
 
     private:
