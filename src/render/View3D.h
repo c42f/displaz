@@ -108,7 +108,7 @@ class View3D : public QGLWidget
         void drawCursor(const TransformState& transState, const V3d& P, float centerPointRadius) const;
 
         void initAxes();
-        void drawAxes() const;
+        void drawAxes();
 
         void initGrid(const float scale);
         void drawGrid() const;
@@ -172,10 +172,10 @@ class View3D : public QGLWidget
         /// Controller for amount of geometry to draw
         DrawCostModel m_drawCostModel;
         /// GL textures
-        Texture m_drawAxesBackground;
-        Texture m_drawAxesLabelX;
-        Texture m_drawAxesLabelY;
-        Texture m_drawAxesLabelZ;
+        std::unique_ptr<QOpenGLTexture> m_drawAxesBackground;
+        std::unique_ptr<QOpenGLTexture> m_drawAxesLabelX;
+        std::unique_ptr<QOpenGLTexture> m_drawAxesLabelY;
+        std::unique_ptr<QOpenGLTexture> m_drawAxesLabelZ;
 
         /// Shaders for interface geometry
         std::unique_ptr<ShaderProgram> m_cursorShader;

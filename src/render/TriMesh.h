@@ -7,11 +7,13 @@
 #include <vector>
 #include <memory>
 
+#include "glutil.h"
+
 #include <QString>
 #include <QMetaType>
+#include <QOpenGLTexture>
 
 #include "Geometry.h"
-#include "glutil.h"
 
 class QOpenGLShaderProgram;
 
@@ -64,7 +66,7 @@ class TriMesh : public Geometry
         /// Per-vertex texture coordinates
         std::vector<float> m_texcoords;
         /// Optional texture
-        std::unique_ptr<Texture> m_texture;
+        std::unique_ptr<QOpenGLTexture> m_texture;
         /// triples of indices into vertex array
         std::vector<unsigned int> m_triangles;
         std::vector<unsigned int> m_edges;

@@ -359,7 +359,7 @@ bool TriMesh::loadFile(QString fileName, size_t /*maxVertexCount*/)
     {
         QImage image;
         if (image.load(info.textureFileName))
-            m_texture.reset(new Texture(image));
+            m_texture.reset(new QOpenGLTexture(image));
         else
             g_logger.warning("Could not load texture %s for model %s", info.textureFileName, fileName);
     }
