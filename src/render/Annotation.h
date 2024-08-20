@@ -9,6 +9,7 @@
 #include "glutil.h"
 #include <QString>
 #include <QOpenGLShaderProgram>
+#include <QOpenGLTexture>
 
 struct TransformState;
 
@@ -40,7 +41,7 @@ class Annotation
         QString m_label;
         QString m_text;
         Imath::V3d m_position;
-        std::shared_ptr<Texture> m_texture;
+        std::shared_ptr<QOpenGLTexture> m_texture;
         GLuint m_vao;
 };
 
