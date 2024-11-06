@@ -347,6 +347,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     emit loadProgress(100);
     g_logger.info("Loaded %d of %d points from file %s in %.2f seconds",
                   m_npoints, totalPoints, fileName, loadTimer.elapsed()/1000.0);
+    g_logger.info("Offset is %0.3f", offset);
     if (totalPoints == 0)
     {
         m_rootNode.reset(new OctreeNode(V3f(0), 1));

@@ -37,7 +37,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_mouseButton(Qt::NoButton),
     m_explicitCursorPos(false),
     m_cursorPos(0),
-    m_prevCursorSnap(0),
     m_backgroundColor(60, 50, 50),
     m_drawBoundingBoxes(false),
     m_drawCursor(true),
@@ -564,12 +563,21 @@ void View3D::snapToPoint(const Imath::V3d & pos)
     if (snapToGeometry(pos, snapScale,
                 &newPos, &pointInfo))
     {
-        V3d posDiff = newPos - m_prevCursorSnap;
-        g_logger.info("Selected Point Attributes:\n"
-                "%s"
-                "diff with previous = %.3f\n"
-                "vector diff = %.3f",
-                pointInfo, posDiff.length(), posDiff);
+        if (m_prevCursorSnap)
+        {
+            V3d posDiff = newPos - *m_prevCursorSnap;
+            g_logger.info("Selected Point Attributes:\n"
+                    "%s"
+                    "diff with previous = %.3f\n"
+                    "vector diff = %.3f",
+                    pointInfo, posDiff.length(), posDiff);
+        }
+        else
+        {
+            g_logger.info("Selected Point Attributes:\n"
+                    "%s",
+                    pointInfo);        
+        }
         // Snap cursor /and/ camera to new position
         // TODO: Decouple these, but in a sensible way
         m_cursorPos = newPos;

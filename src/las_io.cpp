@@ -74,12 +74,8 @@ bool PointArray::loadLas(QString fileName, size_t maxPointCount,
                         fileName.toStdString(), decimate);
     }
     npoints = (totalPoints + decimate - 1) / decimate;
-    offset = V3d(lasReader->header.min_x, lasReader->header.min_y, 0);
-    // Attempt to place all data on the same vertical scale, but allow other
-    // offsets if the magnitude of z is too large (and we would therefore loose
-    // noticable precision by storing the data as floats)
-    if (fabs(lasReader->header.min_z) > 10000)
-        offset.z = lasReader->header.min_z;
+    offset = V3d(lasReader->header.x_offset, lasReader->header.y_offset, lasReader->header.z_offset);
+
     fields.push_back(GeomField(TypeSpec::vec3float32(), "position", npoints));
     fields.push_back(GeomField(TypeSpec::uint16_i(), "intensity", npoints));
     fields.push_back(GeomField(TypeSpec::uint8_i(), "returnNumber", npoints));

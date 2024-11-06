@@ -142,7 +142,7 @@ class View3D : public QGLWidget
         bool m_explicitCursorPos;
         /// Position of 3D cursor
         V3d m_cursorPos;
-        V3d m_prevCursorSnap;
+        std::optional<V3d> m_prevCursorSnap;
         /// Background color for drawing
         QColor m_backgroundColor;
         /// Option to draw bounding boxes of point clouds
