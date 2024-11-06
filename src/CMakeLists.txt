@@ -112,11 +112,11 @@ set(gui_srcs
 
 qt5_add_resources(RCC_GENERATED resource.qrc)
 
-if(WIN32)
+if (WIN32)
     list(APPEND gui_srcs ../package/windows_resources.rc)
 endif()
 
-if(WIN32)
+if (WIN32)
     add_definitions(-DNOMINMAX -D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 endif()
 
@@ -171,7 +171,7 @@ if (UNIX)
     add_definitions(-fPIC)
 endif()
 
-if(APPLE)
+if (APPLE)
     target_link_libraries(displaz
         ${FOUNDATION_LIBRARY} ${COCOA_LIBRARY}
     )
@@ -181,7 +181,7 @@ if (DISPLAZ_USE_LAS)
     target_link_libraries(displaz ${LASLIB_LIBRARIES})
 endif()
 
-if(WIN32)
+if (WIN32)
     if(DISPLAZ_STATIC)
         # These extra libraries are needed on windows when linking against a
         # static Qt-4.8.? which has been built with the default options.
@@ -197,7 +197,7 @@ if (TARGET displaz_com)
     install(TARGETS displaz_com DESTINATION "${DISPLAZ_BIN_DIR}")
 endif()
 
-if(WIN32)
+if (WIN32)
     include(DeployQt5)
     install_qt5_executable(${DISPLAZ_BIN_DIR}/displaz${CMAKE_EXECUTABLE_SUFFIX})
 endif()
