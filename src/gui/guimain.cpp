@@ -66,6 +66,7 @@ int guimain(int argc, char* argv[])
     QCoreApplication::setApplicationVersion(DISPLAZ_VERSION_STRING);
     QCoreApplication::setOrganizationName("io.github.c42f");
     QCoreApplication::setOrganizationDomain("github.com/c42f/displaz");
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     QApplication app(argc, argv);
 
