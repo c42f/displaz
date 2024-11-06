@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         NULL
     );
 
-    if(ap.parse(argc, const_cast<const char**>(argv)) < 0)
+    if (ap.parse(argc, const_cast<const char**>(argv)) < 0)
     {
         ap.usage();
         std::cerr << "ERROR: " << ap.geterror() << std::endl;
@@ -356,7 +356,7 @@ int main(int argc, char *argv[])
                              notifySpec.c_str() + "\n" +
                              notifyMessage.c_str());
     }
-    if(!hookPayload.empty())
+    if (!hookPayload.empty())
     {
         QByteArray msg;
         QByteArray message = QByteArray("HOOK");
