@@ -61,6 +61,7 @@ class MainWindow : public QMainWindow
         void closeEvent(QCloseEvent *event) override;
 
     private slots:
+        void fullScreen();
         void openFiles();
         void addFiles();
         void openShaderFile();
@@ -92,6 +93,25 @@ class MainWindow : public QMainWindow
         // Gui state
         QString m_currShaderFileName;
         QSettings m_settings;
+
+        // Actions
+        QAction* m_open = nullptr;
+        QAction* m_screenShot = nullptr;
+        QAction* m_quit = nullptr;
+        QAction* m_quitGeneric = nullptr;
+        QAction* m_fullScreen = nullptr;
+
+        // Dock Widgets
+        QDockWidget* m_dockShaderEditor = nullptr;
+        QDockWidget* m_dockShaderParameters = nullptr;
+        QDockWidget* m_dockDataSet = nullptr;
+        QDockWidget* m_dockLog = nullptr;
+
+        // For full-screen toggle
+        bool m_dockShaderEditorVisible = false;
+        bool m_dockShaderParametersVisible = false;
+        bool m_dockDataSetVisible = false;
+        bool m_dockLogVisible = false;
 
         // File loader (slots run on separate thread)
         FileLoader* m_fileLoader;
