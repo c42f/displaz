@@ -33,6 +33,7 @@
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QSplitter>
+#include <QStatusBar>
 #include <QDoubleSpinBox>
 #include <QDesktopWidget>
 #include <QDropEvent>
@@ -91,16 +92,51 @@ MainWindow::MainWindow(const QGLFormat& format)
             m_geometries, SLOT(mutateGeometry(std::shared_ptr<GeometryMutator>)));
     loaderThread->start();
 
-    //--------------------------------------------------
+    // Actions
+    //
+    // These actions work whether or not the toolbar and/or menu is active or shown
+
+    m_open = new QAction(tr("&Open"), this);
+    m_open->setToolTip(tr("Open a data set"));
+    m_open->setShortcuts(QKeySequence::Open);
+    connect(m_open, SIGNAL(triggered()), this, SLOT(openFiles()));
+
+    m_screenShot = new QAction(tr("Scree&nshot"), this);
+    m_screenShot->setStatusTip(tr("Save screen shot of 3D window"));
+    m_screenShot->setShortcut(Qt::Key_F9);
+    connect(m_screenShot, SIGNAL(triggered()), this, SLOT(screenShot()));
+
+    m_quit = new QAction(tr("&Quit"), this);
+    m_quit->setStatusTip(tr("Exit the application"));
+    m_quit->setCheckable(false);
+    m_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
+    m_quit->setShortcutContext(Qt::ApplicationShortcut);
+    connect(m_quit, SIGNAL(triggered()), this, SLOT(close()));
+    addAction(m_quit);
+
+    // For Windows ALT+F4 exit
+    m_quitGeneric = new QAction(tr("&Quit"), this);
+    m_quitGeneric->setStatusTip(tr("Exit the application"));
+    m_quitGeneric->setCheckable(false);
+    m_quitGeneric->setShortcut(QKeySequence::Quit);
+    m_quitGeneric->setShortcutContext(Qt::ApplicationShortcut);
+    connect(m_quitGeneric, SIGNAL(triggered()), this, SLOT(close()));
+    addAction(m_quitGeneric);
+
+    m_fullScreen = new QAction(tr("&Full Screen"), this);
+    m_fullScreen->setStatusTip(tr("Toggle Full Screen Mode"));
+    m_fullScreen->setCheckable(true);
+    m_fullScreen->setShortcut(Qt::Key_F11);
+    m_fullScreen->setShortcutContext(Qt::ApplicationShortcut);
+    connect(m_fullScreen, SIGNAL(triggered()), this, SLOT(fullScreen()));
+    addAction(m_fullScreen);
+
     // Menus
     menuBar()->setNativeMenuBar(false); // OS X doesn't activate the native menu bar under Qt5
 
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
-    QAction* openAct = fileMenu->addAction(tr("&Open"));
-    openAct->setToolTip(tr("Open a data set"));
-    openAct->setShortcuts(QKeySequence::Open);
-    connect(openAct, SIGNAL(triggered()), this, SLOT(openFiles()));
+    fileMenu->addAction(m_open);
     QAction* addAct = fileMenu->addAction(tr("&Add"));
     addAct->setToolTip(tr("Add a data set"));
     connect(addAct, SIGNAL(triggered()), this, SLOT(addFiles()));
@@ -110,19 +146,13 @@ MainWindow::MainWindow(const QGLFormat& format)
     connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
 
     fileMenu->addSeparator();
-    QAction* screenShotAct = fileMenu->addAction(tr("Scree&nshot"));
-    screenShotAct->setStatusTip(tr("Save screen shot of 3D window"));
-    screenShotAct->setShortcut(Qt::Key_F9);
-    connect(screenShotAct, SIGNAL(triggered()), this, SLOT(screenShot()));
-
+    fileMenu->addAction(m_screenShot);
     fileMenu->addSeparator();
-    QAction* quitAct = fileMenu->addAction(tr("&Quit"));
-    quitAct->setStatusTip(tr("Exit the application"));
-    quitAct->setShortcuts(QKeySequence::Quit);
-    connect(quitAct, SIGNAL(triggered()), this, SLOT(close()));
+    fileMenu->addAction(m_quit);
 
     // View menu
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
+    viewMenu->addAction(m_fullScreen);
     QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
     trackballMode->setCheckable(true);
     trackballMode->setChecked(false);
@@ -215,27 +245,27 @@ MainWindow::MainWindow(const QGLFormat& format)
     //--------------------------------------------------
     // Docked widgets
     // Shader parameters UI
-    QDockWidget* shaderParamsDock = new QDockWidget(tr("Shader Parameters"), this);
-    shaderParamsDock->setObjectName("ShaderParameters");
-    shaderParamsDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_dockShaderParameters = new QDockWidget(tr("Shader Parameters"), this);
+    m_dockShaderParameters->setObjectName("ShaderParameters");
+    m_dockShaderParameters->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable);
-    QWidget* shaderParamsUI = new QWidget(shaderParamsDock);
-    shaderParamsDock->setWidget(shaderParamsUI);
+    QWidget* shaderParamsUI = new QWidget(m_dockShaderParameters);
+    m_dockShaderParameters->setWidget(shaderParamsUI);
     m_pointView->setShaderParamsUIWidget(shaderParamsUI);
 
     // Shader editor UI
-    QDockWidget* shaderEditorDock = new QDockWidget(tr("Shader Editor"), this);
-    shaderEditorDock->setObjectName("ShaderEditor");
-    shaderEditorDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_dockShaderEditor = new QDockWidget(tr("Shader Editor"), this);
+    m_dockShaderEditor->setObjectName("ShaderEditor");
+    m_dockShaderEditor->setFeatures(QDockWidget::DockWidgetMovable |
                                   QDockWidget::DockWidgetClosable |
                                   QDockWidget::DockWidgetFloatable);
-    QWidget* shaderEditorUI = new QWidget(shaderEditorDock);
+    QWidget* shaderEditorUI = new QWidget(m_dockShaderEditor);
     m_shaderEditor = new ShaderEditor(shaderEditorUI);
     QGridLayout* shaderEditorLayout = new QGridLayout(shaderEditorUI);
     shaderEditorLayout->setContentsMargins(2,2,2,2);
     shaderEditorLayout->addWidget(m_shaderEditor, 0, 0, 1, 1);
-    connect(editShaderAct, SIGNAL(triggered()), shaderEditorDock, SLOT(show()));
-    shaderEditorDock->setWidget(shaderEditorUI);
+    connect(editShaderAct, SIGNAL(triggered()), m_dockShaderEditor, SLOT(show()));
+    m_dockShaderEditor->setWidget(shaderEditorUI);
 
     shaderMenu->addAction(m_shaderEditor->compileAction());
     connect(m_shaderEditor->compileAction(), SIGNAL(triggered()),
@@ -246,11 +276,11 @@ MainWindow::MainWindow(const QGLFormat& format)
     //        &m_pointView->shaderProgram(), SLOT(setShader(QString)));
 
     // Log viewer UI
-    QDockWidget* logDock = new QDockWidget(tr("Log"), this);
-    logDock->setObjectName("Log");
-    logDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_dockLog = new QDockWidget(tr("Log"), this);
+    m_dockLog->setObjectName("Log");
+    m_dockLog->setFeatures(QDockWidget::DockWidgetMovable |
                          QDockWidget::DockWidgetClosable);
-    QWidget* logUI = new QWidget(logDock);
+    QWidget* logUI = new QWidget(m_dockLog);
     m_logTextView = new LogViewer(logUI);
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
@@ -270,16 +300,17 @@ MainWindow::MainWindow(const QGLFormat& format)
     logUILayout->addWidget(m_logTextView);
     logUILayout->addWidget(m_progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
-    logDock->setWidget(logUI);
+    m_dockLog->setWidget(logUI);
 
     // Data set list UI
-    QDockWidget* dataSetDock = new QDockWidget(tr("Data Sets"), this);
-    dataSetDock->setObjectName("DataSets");
-    dataSetDock->setFeatures(QDockWidget::DockWidgetMovable |
+    m_dockDataSet = new QDockWidget(tr("Data Sets"), this);
+    m_dockDataSet->setObjectName("DataSets");
+    m_dockDataSet->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
     DataSetUI* dataSetUI = new DataSetUI(this);
-    dataSetDock->setWidget(dataSetUI);
+    m_dockDataSet->setWidget(dataSetUI);
+
     QAbstractItemView* dataSetOverview = dataSetUI->view();
     dataSetOverview->setModel(m_geometries);
     connect(dataSetOverview, SIGNAL(doubleClicked(const QModelIndex&)),
@@ -287,19 +318,19 @@ MainWindow::MainWindow(const QGLFormat& format)
     m_pointView->setSelectionModel(dataSetOverview->selectionModel());
 
     // Set up docked widgets
-    addDockWidget(Qt::RightDockWidgetArea, shaderParamsDock);
-    addDockWidget(Qt::LeftDockWidgetArea, shaderEditorDock);
-    addDockWidget(Qt::RightDockWidgetArea, logDock);
-    addDockWidget(Qt::RightDockWidgetArea, dataSetDock);
-    tabifyDockWidget(logDock, dataSetDock);
-    logDock->raise();
-    shaderEditorDock->setVisible(false);
+    addDockWidget(Qt::RightDockWidgetArea, m_dockShaderParameters);
+    addDockWidget(Qt::LeftDockWidgetArea, m_dockShaderEditor);
+    addDockWidget(Qt::RightDockWidgetArea, m_dockLog);
+    addDockWidget(Qt::RightDockWidgetArea, m_dockDataSet);
+    tabifyDockWidget(m_dockLog, m_dockDataSet);
+    m_dockLog->raise();
+    m_dockShaderEditor->setVisible(false);
 
     // Add dock widget toggles to view menu
     viewMenu->addSeparator();
-    viewMenu->addAction(shaderParamsDock->toggleViewAction());
-    viewMenu->addAction(logDock->toggleViewAction());
-    viewMenu->addAction(dataSetDock->toggleViewAction());
+    viewMenu->addAction(m_dockShaderParameters->toggleViewAction());
+    viewMenu->addAction(m_dockLog->toggleViewAction());
+    viewMenu->addAction(m_dockDataSet->toggleViewAction());
 
     // Create custom hook events from CLI at runtime
     m_hookManager = new HookManager(this);
@@ -635,6 +666,31 @@ QByteArray MainWindow::hookPayload(QByteArray payload)
     }
 }
 
+void MainWindow::fullScreen()
+{
+    const bool fullScreen = isFullScreen();
+
+    // Remember which docks are visible, we'll hide them in fullscreen mode
+    if (!fullScreen)
+    {
+        m_dockShaderEditorVisible     = m_dockShaderEditor->isVisible();
+        m_dockShaderParametersVisible = m_dockShaderParameters->isVisible();
+        m_dockDataSetVisible          = m_dockDataSet->isVisible();
+        m_dockLogVisible              = m_dockLog->isVisible();
+    }
+
+    setWindowState(windowState() ^ Qt::WindowFullScreen);
+
+    // Set the visibility of menu bar, status bar and docks
+
+    menuBar()->setVisible(fullScreen);
+    statusBar()->setVisible(fullScreen);
+
+    m_dockShaderEditor    ->setVisible(fullScreen && m_dockShaderEditorVisible);
+    m_dockShaderParameters->setVisible(fullScreen && m_dockShaderParametersVisible);
+    m_dockDataSet         ->setVisible(fullScreen && m_dockDataSetVisible);
+    m_dockLog             ->setVisible(fullScreen && m_dockLogVisible);
+}
 
 void MainWindow::openFiles()
 {
@@ -872,6 +928,16 @@ void MainWindow::readSettings()
     {
         showMinimized();
     }
+
+    // Hide menu bar and status bar in full screen mode
+    const bool fullScreen = isFullScreen();
+    menuBar()->setVisible(!fullScreen);
+    statusBar()->setVisible(!fullScreen);
+
+    m_dockShaderEditorVisible     = m_settings.value("shaderEditor").toString() == "true";
+    m_dockShaderParametersVisible = m_settings.value("shaderParameters").toString() == "true";
+    m_dockDataSetVisible          = m_settings.value("dataSet").toString() == "true";
+    m_dockLogVisible              = m_settings.value("log").toString() == "true";
 }
 
 void MainWindow::writeSettings()
@@ -879,4 +945,9 @@ void MainWindow::writeSettings()
     m_settings.setValue("geometry", saveGeometry());
     m_settings.setValue("windowState", saveState());
     m_settings.setValue("minimised", isMinimized());
+
+    m_settings.setValue("shaderEditor",     m_dockShaderEditorVisible);
+    m_settings.setValue("shaderParameters", m_dockShaderParametersVisible);
+    m_settings.setValue("dataSet",          m_dockDataSetVisible);
+    m_settings.setValue("log",              m_dockLogVisible);
 }
