@@ -45,12 +45,7 @@
 // MainWindow implementation
 
 MainWindow::MainWindow(const QGLFormat& format)
-    : m_progressBar(0),
-    m_pointView(0),
-    m_shaderEditor(0),
-    m_helpDialog(0),
-    m_logTextView(0),
-    m_settings(QSettings::IniFormat, QSettings::UserScope, QCoreApplication::organizationName(), QCoreApplication::applicationName()),
+    : m_settings(QSettings::IniFormat, QSettings::UserScope, QCoreApplication::organizationName(), QCoreApplication::applicationName()),
     m_maxPointCount(200*1000*1000), // 200 million
     m_geometries(0),
     m_ipcServer(0),
@@ -242,6 +237,19 @@ MainWindow::MainWindow(const QGLFormat& format)
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 
+    // Status bar
+    m_progressBar = new QProgressBar(this);
+    m_progressBar->setRange(0,100);
+    m_progressBar->setValue(0);
+    m_progressBar->hide();
+    statusBar()->addPermanentWidget(m_progressBar);
+    connect(m_fileLoader, SIGNAL(loadStepStarted(QString)),
+            this, SLOT(loadStepStarted(QString)));
+    connect(m_fileLoader, SIGNAL(loadProgress(int)),
+            m_progressBar, SLOT(setValue(int)));
+    connect(m_fileLoader, SIGNAL(loadStepComplete()),
+            this, SLOT(loadStepComplete()));
+
     //--------------------------------------------------
     // Docked widgets
     // Shader parameters UI
@@ -285,20 +293,9 @@ MainWindow::MainWindow(const QGLFormat& format)
     m_logTextView->setReadOnly(true);
     m_logTextView->setTextInteractionFlags(Qt::TextSelectableByKeyboard | Qt::TextSelectableByMouse);
     m_logTextView->connectLogger(&g_logger); // connect to global logger
-    m_progressBar = new QProgressBar(logUI);
-    m_progressBar->setRange(0,100);
-    m_progressBar->setValue(0);
-    m_progressBar->hide();
-    connect(m_fileLoader, SIGNAL(loadStepStarted(QString)),
-            this, SLOT(setProgressBarText(QString)));
-    connect(m_fileLoader, SIGNAL(loadProgress(int)),
-            m_progressBar, SLOT(setValue(int)));
-    connect(m_fileLoader, SIGNAL(resetProgress()),
-            m_progressBar, SLOT(hide()));
     QVBoxLayout* logUILayout = new QVBoxLayout(logUI);
     //logUILayout->setContentsMargins(2,2,2,2);
     logUILayout->addWidget(m_logTextView);
-    logUILayout->addWidget(m_progressBar);
     //m_logTextView->setLineWrapMode(QPlainTextEdit::NoWrap);
     m_dockLog->setWidget(logUI);
 
@@ -356,13 +353,6 @@ void MainWindow::handleIpcConnection()
     IpcChannel* channel = new IpcChannel(m_ipcServer->nextPendingConnection(), this);
     connect(channel, SIGNAL(disconnected()), channel, SLOT(deleteLater()));
     connect(channel, SIGNAL(messageReceived(QByteArray)), this, SLOT(handleMessage(QByteArray)));
-}
-
-
-void MainWindow::setProgressBarText(QString text)
-{
-    m_progressBar->show();
-    m_progressBar->setFormat(text + " (%p%)");
 }
 
 
@@ -917,6 +907,19 @@ void MainWindow::updateTitle()
         }
     }
     setWindowTitle(tr("Displaz - %1").arg(labels.join(", ")));
+}
+
+void MainWindow::loadStepStarted(const QString& description)
+{
+    statusBar()->showMessage(description, 5000);
+    m_progressBar->show();
+    m_progressBar->setFormat(description + " (%p%)");
+}
+
+void MainWindow::loadStepComplete()
+{
+    statusBar()->clearMessage();
+    m_progressBar->hide();
 }
 
 void MainWindow::readSettings()
