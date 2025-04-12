@@ -928,7 +928,7 @@ void MainWindow::readSettings()
     restoreGeometry(m_settings.value("geometry").toByteArray());
     restoreState(m_settings.value("windowState").toByteArray());
 
-    if (m_settings.value("minimised").toString() == "true")
+    if (m_settings.value("minimised").toBool())
     {
         showMinimized();
     }
@@ -938,14 +938,14 @@ void MainWindow::readSettings()
     menuBar()->setVisible(!fullScreen);
     statusBar()->setVisible(!fullScreen);
 
-    const bool trackBall = m_settings.value("trackBall").toString() == "true";
+    const bool trackBall = m_settings.value("trackBall").toBool();
     m_trackBall->setChecked(trackBall);
     m_pointView->camera().setTrackballInteraction(trackBall);
 
-    m_dockShaderEditorVisible     = m_settings.value("shaderEditor").toString() == "true";
-    m_dockShaderParametersVisible = m_settings.value("shaderParameters").toString() == "true";
-    m_dockDataSetVisible          = m_settings.value("dataSet").toString() == "true";
-    m_dockLogVisible              = m_settings.value("log").toString() == "true";
+    m_dockShaderEditorVisible     = m_settings.value("shaderEditor").toBool();
+    m_dockShaderParametersVisible = m_settings.value("shaderParameters").toBool();
+    m_dockDataSetVisible          = m_settings.value("dataSet").toBool();
+    m_dockLogVisible              = m_settings.value("log").toBool();
 }
 
 void MainWindow::writeSettings()
