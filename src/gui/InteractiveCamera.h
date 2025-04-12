@@ -54,14 +54,9 @@ class InteractiveCamera : public QObject
         /// transformation will invert the z-axis.  If used with OpenGL (which
         /// is right handed by default) this gives us a left handed coordinate
         /// system.
-        explicit InteractiveCamera(bool reverseHandedness = false,
-                                   bool trackballInteraction = true)
-            : m_reverseHandedness(reverseHandedness),
-            m_trackballInteraction(trackballInteraction),
-            m_rot(),
-            m_center(0,0,0),
-            m_dist(5),
-            m_fieldOfView(60)
+        InteractiveCamera()
+            : m_rot(),
+            m_center(0,0,0)
         { }
 
         /// Get the projection from camera to screen coordinates
@@ -86,8 +81,10 @@ class InteractiveCamera : public QObject
             QMatrix4x4 m;
             m.translate(0, 0, -m_dist);
             m.rotate(m_rot);
-            if(m_reverseHandedness)
+            if (m_reverseHandedness)
+            {
                 m.scale(1,1,-1);
+            }
             return qt2exr(m).translate(-m_center);
         }
 
@@ -110,8 +107,10 @@ class InteractiveCamera : public QObject
             QMatrix4x4 m;
             //m.translate(0, 0, -m_dist);
             m.rotate(m_rot);
-            if(m_reverseHandedness)
+            if (m_reverseHandedness)
+            {
                 m.scale(1,1,-1);
+            }
             return qt2exr(m); //.translate(-m_center);
         }
 
@@ -141,7 +140,7 @@ class InteractiveCamera : public QObject
         {
             qreal dx = 2*qreal(mouseMovement.x())/m_viewport.width();
             qreal dy = 2*qreal(-mouseMovement.y())/m_viewport.height();
-            if(zooming)
+            if (zooming)
             {
                 Imath::M44d view = viewMatrix();
                 return (p*view*std::exp(dy)) * view.inverse();
@@ -213,6 +212,7 @@ class InteractiveCamera : public QObject
             m_rot = QQuaternion(scalar, axis[0], axis[1], axis[2]);
             emit viewChanged();
         }
+
         void setTrackballInteraction(bool trackballInteraction)
         {
             m_trackballInteraction = trackballInteraction;
@@ -226,7 +226,7 @@ class InteractiveCamera : public QObject
         /// zoomed in toward the center instead.
         void mouseDrag(QPoint prevPos, QPoint currPos, bool zoom = false)
         {
-            if(zoom)
+            if (zoom)
             {
                 // exponential zooming gives scale-independent sensitivity
                 qreal dy = qreal(currPos.y() - prevPos.y())/m_viewport.height();
@@ -235,8 +235,10 @@ class InteractiveCamera : public QObject
             }
             else
             {
-                if(m_trackballInteraction)
+                if (m_trackballInteraction)
+                {
                     m_rot = trackballRotation(prevPos, currPos) * m_rot;
+                }
                 else
                 {
                     // TODO: Not sure this is entirely consistent if the user
@@ -352,16 +354,17 @@ class InteractiveCamera : public QObject
             return mOut;
         }
 
-        bool m_reverseHandedness; ///< Reverse the handedness of the coordinate system
-        bool m_trackballInteraction; ///< True for trackball style, false for turntable
+        bool m_reverseHandedness = false; ///< Reverse the handedness of the coordinate system
+        bool m_trackballInteraction = true; ///< True for trackball style, false for turntable
 
         // World coordinates
-        QQuaternion m_rot;    ///< camera rotation about center
-        Imath::V3d m_center;   ///< center of view for camera
-        qreal m_dist;         ///< distance from center of view
+        QQuaternion m_rot;        ///< camera rotation about center
+        Imath::V3d m_center;      ///< center of view for camera
+        qreal m_dist = 5;         ///< distance from center of view
+
         // Projection variables
-        qreal m_fieldOfView;  ///< field of view in degrees
-        QRect m_viewport;     ///< rectangle we'll drag inside
+        qreal m_fieldOfView = 60; ///< field of view in degrees
+        QRect m_viewport;         ///< rectangle we'll drag inside
 };
 
 

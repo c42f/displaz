@@ -74,7 +74,6 @@ class View3D : public QGLWidget
         void toggleDrawAxes();
         void toggleDrawGrid();
         void toggleDrawAnnotations();
-        void toggleCameraMode();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
         void centerOnPoint(const Imath::V3d& pos);

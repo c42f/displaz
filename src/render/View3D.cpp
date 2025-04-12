@@ -33,7 +33,6 @@
 //------------------------------------------------------------------------------
 View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
     : QGLWidget(format, parent),
-    m_camera(false, false),
     m_mouseButton(Qt::NoButton),
     m_explicitCursorPos(false),
     m_cursorPos(0),
@@ -225,12 +224,6 @@ void View3D::toggleDrawAnnotations()
     m_drawAnnotations = !m_drawAnnotations;
     restartRender();
 }
-
-void View3D::toggleCameraMode()
-{
-    m_camera.setTrackballInteraction(!m_camera.trackballInteraction());
-}
-
 
 void View3D::centerOnGeometry(const QModelIndex& index)
 {
