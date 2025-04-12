@@ -74,7 +74,8 @@ class MainWindow : public QMainWindow
         void setBackground(const QString& name);
         void chooseBackground();
         void updateTitle();
-        void setProgressBarText(QString text);
+        void loadStepStarted(const QString& description);
+        void loadStepComplete();
         void geometryRowsInserted(const QModelIndex& parent, int first, int last);
         void handleIpcConnection();
 
@@ -84,11 +85,11 @@ class MainWindow : public QMainWindow
 
     private:
         // Gui objects
-        QProgressBar* m_progressBar;
-        View3D* m_pointView;
-        ShaderEditor* m_shaderEditor;
-        HelpDialog* m_helpDialog;
-        LogViewer* m_logTextView;
+        QProgressBar* m_progressBar = nullptr;
+        View3D* m_pointView = nullptr;
+        ShaderEditor* m_shaderEditor = nullptr;
+        HelpDialog* m_helpDialog = nullptr;
+        LogViewer* m_logTextView = nullptr;
 
         // Gui state
         QString m_currShaderFileName;

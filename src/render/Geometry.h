@@ -172,6 +172,8 @@ class Geometry : public QObject
         void loadStepStarted(QString stepDescription);
         /// Emitted as progress is made loading points
         void loadProgress(int percentLoaded);
+        /// Emitted at the end of point loading
+        void loadStepComplete();
 
     protected:
         void setFileName(const QString& fileName) { m_fileName = fileName; }

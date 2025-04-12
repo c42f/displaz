@@ -81,13 +81,13 @@ class FileLoader : public QObject
 
     signals:
         /// Signal emitted when a load step starts
-        void loadStepStarted(QString description);
+        void loadStepStarted(const QString& description);
 
         /// Emitted to report progress percent for current load step
         void loadProgress(int percent);
 
-        /// No more progress expected, task completed
-        void resetProgress();
+        /// Signal emitted when a load step starts
+        void loadStepComplete();
 
         /// Emitted on successfully loaded geometry
         ///
@@ -173,8 +173,8 @@ class FileLoader : public QObject
 
             geom->disconnect();
 
-            // Reset progress bar
-            emit resetProgress();
+            // Completion
+            emit loadStepComplete();
         }
 
     private:

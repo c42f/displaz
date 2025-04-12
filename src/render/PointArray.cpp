@@ -269,7 +269,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     // based on extension.
     uint64_t totalPoints = 0;
     V3d offset(0);
-    emit loadStepStarted("Reading file");
+    emit loadStepStarted("Reading " + label());
     if (fileName.toLower().endsWith(".las") || fileName.toLower().endsWith(".laz"))
     {
         if (!loadLas(fileName, maxPointCount, m_fields, offset, m_npoints, totalPoints))
@@ -383,6 +383,7 @@ bool PointArray::loadFile(QString fileName, size_t maxPointCount)
     m_inds = std::unique_ptr<uint32_t[]>(new uint32_t[m_npoints]);
     for (size_t i = 0; i < m_npoints; ++i) m_inds[inds[i]] = static_cast<uint32_t>(i); // Works for m_npoints < UINT32_MAX
     emit loadProgress(int(100));
+    emit loadStepComplete();
 
     return true;
 }
