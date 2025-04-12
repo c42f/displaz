@@ -131,6 +131,12 @@ MainWindow::MainWindow(const QGLFormat& format)
     connect(m_fullScreen, SIGNAL(triggered()), this, SLOT(fullScreen()));
     addAction(m_fullScreen);
 
+    m_trackBall = new QAction(tr("Use &Trackball camera"), this);
+    m_trackBall->setStatusTip(tr("Toggle Trackball Mode"));
+    m_trackBall->setCheckable(true);
+    m_trackBall->setChecked(true);
+    addAction(m_trackBall);
+
     // Menus
     menuBar()->setNativeMenuBar(false); // OS X doesn't activate the native menu bar under Qt5
 
@@ -153,9 +159,7 @@ MainWindow::MainWindow(const QGLFormat& format)
     // View menu
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
     viewMenu->addAction(m_fullScreen);
-    QAction* trackballMode = viewMenu->addAction(tr("Use &Trackball camera"));
-    trackballMode->setCheckable(true);
-    trackballMode->setChecked(false);
+    viewMenu->addAction(m_trackBall);
     // Background sub-menu
     QMenu* backMenu = viewMenu->addMenu(tr("Set &Background"));
     QSignalMapper* mapper = new QSignalMapper(this);
@@ -237,8 +241,8 @@ MainWindow::MainWindow(const QGLFormat& format)
             m_pointView, SLOT(toggleDrawGrid()));
     connect(drawAnnotations, SIGNAL(triggered()),
             m_pointView, SLOT(toggleDrawAnnotations()));
-    connect(trackballMode, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleCameraMode()));
+    connect(m_trackBall, SIGNAL(triggered(bool)),
+            &(m_pointView->camera()), SLOT(setTrackballInteraction(bool)));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
             this, SLOT(geometryRowsInserted(QModelIndex,int,int)));
 
@@ -934,6 +938,10 @@ void MainWindow::readSettings()
     menuBar()->setVisible(!fullScreen);
     statusBar()->setVisible(!fullScreen);
 
+    const bool trackBall = m_settings.value("trackBall").toString() == "true";
+    m_trackBall->setChecked(trackBall);
+    m_pointView->camera().setTrackballInteraction(trackBall);
+
     m_dockShaderEditorVisible     = m_settings.value("shaderEditor").toString() == "true";
     m_dockShaderParametersVisible = m_settings.value("shaderParameters").toString() == "true";
     m_dockDataSetVisible          = m_settings.value("dataSet").toString() == "true";
@@ -945,6 +953,7 @@ void MainWindow::writeSettings()
     m_settings.setValue("geometry", saveGeometry());
     m_settings.setValue("windowState", saveState());
     m_settings.setValue("minimised", isMinimized());
+    m_settings.setValue("trackBall", m_trackBall->isChecked());
 
     m_settings.setValue("shaderEditor",     m_dockShaderEditorVisible);
     m_settings.setValue("shaderParameters", m_dockShaderParametersVisible);

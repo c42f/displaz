@@ -100,6 +100,7 @@ class MainWindow : public QMainWindow
         QAction* m_quit = nullptr;
         QAction* m_quitGeneric = nullptr;
         QAction* m_fullScreen = nullptr;
+        QAction* m_trackBall = nullptr;
 
         // Dock Widgets
         QDockWidget* m_dockShaderEditor = nullptr;
