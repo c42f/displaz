@@ -86,7 +86,7 @@ class FileLoader : public QObject
         /// Emitted to report progress percent for current load step
         void loadProgress(int percent);
 
-        /// Signal emitted when a load step starts
+        /// Signal emitted when a load completes
         void loadStepComplete();
 
         /// Emitted on successfully loaded geometry
