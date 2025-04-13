@@ -183,23 +183,7 @@ MainWindow::MainWindow(const QGLFormat& format)
     QAction* backgroundCustom = backMenu->addAction(tr("&Custom"));
     connect(backgroundCustom, SIGNAL(triggered()),
             this, SLOT(chooseBackground()));
-    // Check boxes for drawing various scene elements by category
-    viewMenu->addSeparator();
-    QAction* drawBoundingBoxes = viewMenu->addAction(tr("Draw Bounding bo&xes"));
-    drawBoundingBoxes->setCheckable(true);
-    drawBoundingBoxes->setChecked(false);
-    QAction* drawCursor = viewMenu->addAction(tr("Draw 3D &Cursor"));
-    drawCursor->setCheckable(true);
-    drawCursor->setChecked(true);
-    QAction* drawAxes = viewMenu->addAction(tr("Draw &Axes"));
-    drawAxes->setCheckable(true);
-    drawAxes->setChecked(true);
-    QAction* drawGrid = viewMenu->addAction(tr("Draw &Grid"));
-    drawGrid->setCheckable(true);
-    drawGrid->setChecked(false);
-    QAction* drawAnnotations = viewMenu->addAction(tr("Draw A&nnotations"));
-    drawAnnotations->setCheckable(true);
-    drawAnnotations->setChecked(true);
+
 
     // Shader menu
     QMenu* shaderMenu = menuBar()->addMenu(tr("&Shader"));
@@ -226,16 +210,6 @@ MainWindow::MainWindow(const QGLFormat& format)
     // Point viewer
     m_pointView = new View3D(m_geometries, format, this);
     setCentralWidget(m_pointView);
-    connect(drawBoundingBoxes, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawBoundingBoxes()));
-    connect(drawCursor, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawCursor()));
-    connect(drawAxes, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawAxes()));
-    connect(drawGrid, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawGrid()));
-    connect(drawAnnotations, SIGNAL(triggered()),
-            m_pointView, SLOT(toggleDrawAnnotations()));
     connect(m_trackBall, SIGNAL(triggered(bool)),
             &(m_pointView->camera()), SLOT(setTrackballInteraction(bool)));
     connect(m_geometries, SIGNAL(rowsInserted(QModelIndex,int,int)),
@@ -253,6 +227,14 @@ MainWindow::MainWindow(const QGLFormat& format)
             m_progressBar, SLOT(setValue(int)));
     connect(m_fileLoader, SIGNAL(loadStepComplete()),
             this, SLOT(loadStepComplete()));
+
+    // Check boxes for drawing various scene elements by category
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_pointView->m_boundingBoxAction);
+    viewMenu->addAction(m_pointView->m_cursorAction);
+    viewMenu->addAction(m_pointView->m_axesAction);
+    viewMenu->addAction(m_pointView->m_gridAction);
+    viewMenu->addAction(m_pointView->m_annotationAction);
 
     //--------------------------------------------------
     // Docked widgets
@@ -949,6 +931,10 @@ void MainWindow::readSettings()
     m_dockShaderParametersVisible = m_settings.value("shaderParameters").toBool();
     m_dockDataSetVisible          = m_settings.value("dataSet").toBool();
     m_dockLogVisible              = m_settings.value("log").toBool();
+
+    m_settings.beginGroup("view");
+    m_pointView->readSettings(m_settings);
+    m_settings.endGroup();
 }
 
 void MainWindow::writeSettings()
@@ -962,4 +948,8 @@ void MainWindow::writeSettings()
     m_settings.setValue("shaderParameters", m_dockShaderParametersVisible);
     m_settings.setValue("dataSet",          m_dockDataSetVisible);
     m_settings.setValue("log",              m_dockLogVisible);
+
+    m_settings.beginGroup("view");
+    m_pointView->writeSettings(m_settings);
+    m_settings.endGroup();
 }
