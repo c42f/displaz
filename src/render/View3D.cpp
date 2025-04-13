@@ -12,12 +12,14 @@
 #include <cfloat>
 
 #include <QTimer>
+#include <QAction>
 #include <QElapsedTimer>
 #include <QKeyEvent>
 #include <QLayout>
 #include <QItemSelectionModel>
 #include <QMessageBox>
 #include <QGLFormat>
+#include <QSettings>
 
 #include "config.h"
 #include "fileloader.h"
@@ -37,11 +39,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_explicitCursorPos(false),
     m_cursorPos(0),
     m_backgroundColor(60, 50, 50),
-    m_drawBoundingBoxes(false),
-    m_drawCursor(true),
-    m_drawAxes(true),
-    m_drawGrid(false),
-    m_drawAnnotations(true),
     m_badOpenGL(false),
     m_geometries(geometries),
     m_selectionModel(0),
@@ -79,6 +76,33 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_incrementalFrameTimer = new QTimer(this);
     m_incrementalFrameTimer->setSingleShot(false);
     connect(m_incrementalFrameTimer, SIGNAL(timeout()), this, SLOT(updateGL()));
+
+    // Actions
+
+    m_boundingBoxAction = new QAction(tr("Draw Bounding bo&xes"), this);
+    m_boundingBoxAction->setCheckable(true);
+    m_boundingBoxAction->setChecked(m_drawBoundingBoxes);
+    connect(m_boundingBoxAction, SIGNAL(toggled(bool)), this, SLOT(setBoundingBox(bool)));
+
+    m_cursorAction = new QAction(tr("Draw 3D &Cursor"), this);
+    m_cursorAction->setCheckable(true);
+    m_cursorAction->setChecked(m_drawCursor);
+    connect(m_cursorAction, SIGNAL(toggled(bool)), this, SLOT(setCursor(bool)));
+
+    m_axesAction = new QAction(tr("Draw &Axes"), this);
+    m_axesAction->setCheckable(true);
+    m_axesAction->setChecked(m_drawAxes);
+    connect(m_axesAction, SIGNAL(toggled(bool)), this, SLOT(setAxes(bool)));
+
+    m_gridAction = new QAction(tr("Draw &Grid"), this);
+    m_gridAction->setCheckable(true);
+    m_gridAction->setChecked(m_drawGrid);
+    connect(m_gridAction, SIGNAL(toggled(bool)), this, SLOT(setGrid(bool)));
+
+    m_annotationAction = new QAction(tr("Draw A&nnotations"), this);
+    m_annotationAction->setCheckable(true);
+    m_annotationAction->setChecked(m_drawAnnotations);
+    connect(m_annotationAction, SIGNAL(toggled(bool)), this, SLOT(setAnnotations(bool)));
 }
 
 void View3D::restartRender()
@@ -195,33 +219,33 @@ void View3D::setBackground(QColor col)
 }
 
 
-void View3D::toggleDrawBoundingBoxes()
+void View3D::setBoundingBox(bool enable)
 {
-    m_drawBoundingBoxes = !m_drawBoundingBoxes;
+    m_drawBoundingBoxes = enable;
     restartRender();
 }
 
-void View3D::toggleDrawCursor()
+void View3D::setCursor(bool enable)
 {
-    m_drawCursor = !m_drawCursor;
+    m_drawCursor = enable;
     restartRender();
 }
 
-void View3D::toggleDrawAxes()
+void View3D::setAxes(bool enable)
 {
-    m_drawAxes = !m_drawAxes;
+    m_drawAxes = enable;
     restartRender();
 }
 
-void View3D::toggleDrawGrid()
+void View3D::setGrid(bool enable)
 {
-    m_drawGrid = !m_drawGrid;
+    m_drawGrid = enable;
     restartRender();
 }
 
-void View3D::toggleDrawAnnotations()
+void View3D::setAnnotations(bool enable)
 {
-    m_drawAnnotations = !m_drawAnnotations;
+    m_drawAnnotations = enable;
     restartRender();
 }
 
@@ -569,7 +593,7 @@ void View3D::snapToPoint(const Imath::V3d & pos)
         {
             g_logger.info("Selected Point Attributes:\n"
                     "%s",
-                    pointInfo);        
+                    pointInfo);
         }
         // Snap cursor /and/ camera to new position
         // TODO: Decouple these, but in a sensible way
@@ -1179,5 +1203,30 @@ std::vector<const Geometry*> View3D::selectedGeometry() const
     return geoms;
 }
 
+void View3D::readSettings(const QSettings& settings)
+{
+    m_drawBoundingBoxes = settings.value("boundingBoxes", m_drawBoundingBoxes).toBool();
+    m_drawCursor        = settings.value("cursor", m_drawCursor).toBool();
+    m_drawAxes          = settings.value("axes", m_drawAxes).toBool();
+    m_drawGrid          = settings.value("grid", m_drawGrid).toBool();
+    m_drawAnnotations   = settings.value("annotations", m_drawAnnotations).toBool();
+    m_backgroundColor   = settings.value("background", m_backgroundColor).value<QColor>();
+
+    m_boundingBoxAction->setChecked(m_drawBoundingBoxes);
+    m_cursorAction->setChecked(m_drawCursor);
+    m_axesAction->setChecked(m_drawAxes);
+    m_gridAction->setChecked(m_drawGrid);
+    m_annotationAction->setChecked(m_drawAnnotations);
+}
+
+void View3D::writeSettings(QSettings& settings) const
+{
+    settings.setValue("boundingBoxes", m_drawBoundingBoxes);
+    settings.setValue("cursor", m_drawCursor);
+    settings.setValue("axes", m_drawAxes);
+    settings.setValue("grid", m_drawGrid);
+    settings.setValue("annotations", m_drawAnnotations);
+    settings.setValue("background", QVariant(m_backgroundColor));
+}
 
 // vi: set et:

@@ -27,6 +27,7 @@ class QOpenGLShaderProgram;
 class QItemSelectionModel;
 class QTimer;
 class QGLFormat;
+class QSettings;
 
 class Enable;
 class ShaderProgram;
@@ -65,15 +66,20 @@ class View3D : public QGLWidget
         /// Remove all anontations who's label matches the given QRegExp
         void removeAnnotations(const QRegExp& labelRegex);
 
+        // Actions
+        QAction* m_boundingBoxAction = nullptr;
+        QAction* m_cursorAction = nullptr;
+        QAction* m_axesAction = nullptr;
+        QAction* m_gridAction = nullptr;
+        QAction* m_annotationAction = nullptr;
+
+        /// Settings
+        void readSettings(const QSettings& settings);
+        void writeSettings(QSettings& settings) const;
 
     public slots:
         /// Set the backgroud color
         void setBackground(QColor col);
-        void toggleDrawBoundingBoxes();
-        void toggleDrawCursor();
-        void toggleDrawAxes();
-        void toggleDrawGrid();
-        void toggleDrawAnnotations();
         /// Centre on loaded geometry file at the given index
         void centerOnGeometry(const QModelIndex& index);
         void centerOnPoint(const Imath::V3d& pos);
@@ -98,6 +104,12 @@ class View3D : public QGLWidget
         void geometryChanged();
         void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
         void geometryInserted(const QModelIndex&, int firstRow, int lastRow);
+
+        void setBoundingBox(bool);
+        void setCursor(bool);
+        void setAxes(bool);
+        void setGrid(bool);
+        void setAnnotations(bool);
 
     private:
         double getDevicePixelRatio();
@@ -145,11 +157,11 @@ class View3D : public QGLWidget
         /// Background color for drawing
         QColor m_backgroundColor;
         /// Option to draw bounding boxes of point clouds
-        bool m_drawBoundingBoxes;
-        bool m_drawCursor;
-        bool m_drawAxes;
-        bool m_drawGrid;
-        bool m_drawAnnotations;
+        bool m_drawBoundingBoxes = false;
+        bool m_drawCursor = true;
+        bool m_drawAxes = true;
+        bool m_drawGrid = false;
+        bool m_drawAnnotations = true;
         /// If true, OpenGL initialization didn't work properly
         bool m_badOpenGL;
         /// Shader for point clouds
