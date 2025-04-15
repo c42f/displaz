@@ -63,7 +63,7 @@ class View3D : public QGLWidget
         void addAnnotation(const QString& label, const QString& text,
                            const Imath::V3d& pos);
 
-        /// Remove all anontations who's label matches the given QRegExp
+        /// Remove all annotations who's label matches the given QRegExp
         void removeAnnotations(const QRegExp& labelRegex);
 
         // Actions
