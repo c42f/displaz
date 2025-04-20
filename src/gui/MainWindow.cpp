@@ -19,8 +19,6 @@
 #include "HookFormatter.h"
 #include "HookManager.h"
 
-#include <set>
-
 #include <QSignalMapper>
 #include <QThread>
 #include <QScreen>
@@ -701,6 +699,7 @@ void MainWindow::openFiles()
         QDir dir = QFileInfo(filename).dir();
         dir.makeAbsolute();
         m_settings.setValue("lastDirectory", dir.path());
+        m_recent.removeAll(filename);
         m_recent.append(filename);
         m_fileLoader->loadFile(FileLoadInfo(filename));
     }
@@ -715,6 +714,7 @@ void MainWindow::openRecent()
         QDir dir = QFileInfo(filename).dir();
         dir.makeAbsolute();
         m_settings.setValue("lastDirectory", dir.path());
+        m_recent.removeAll(filename);
         m_recent.append(filename);
         m_fileLoader->loadFile(FileLoadInfo(filename));
     }
@@ -990,28 +990,12 @@ void MainWindow::readSettings()
 
 void MainWindow::writeSettings()
 {
-    // De-duplicate and limit recents
-    QStringList recent;
-    std::set<QString> set;
-    for (auto i = m_recent.rbegin(); i != m_recent.rend(); ++i)
+    // Limit recents
+    while (m_recent.size() > m_recentLimit)
     {
-        if (i->isEmpty())
-        {
-            continue;
-        }
-
-        if (!set.count(*i))
-        {
-            set.insert(*i);
-            recent.prepend(*i);
-            if (recent.size() == m_recentLimit)
-            {
-                break;
-            }
-        }
+        m_recent.removeFirst();
     }
-
-    m_settings.setValue("recent", recent);
+    m_settings.setValue("recent", m_recent);
 
     m_settings.setValue("geometry", saveGeometry());
     m_settings.setValue("windowState", saveState());
