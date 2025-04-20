@@ -1,6 +1,9 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Ubuntu 18.04 (Bionic)
 
+# Status: Not working April 20th 2025
+#         error: 'class QFontMetrics' has no member named 'horizontalAdvance'
+
 FROM ubuntu:bionic
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

@@ -1,6 +1,8 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Debian 12 (bookworm)
 
+# Status: Confirmed working April 20th 2025
+
 FROM debian:bookworm
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

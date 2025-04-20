@@ -1,6 +1,8 @@
 # Minimal displaz Qt5 build, test and install
 # using Fedora 39
 
+# Fedora 39 EOL: 2024-11-26
+
 FROM fedora:39
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 
