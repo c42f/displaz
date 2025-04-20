@@ -19,6 +19,8 @@
 #include "HookFormatter.h"
 #include "HookManager.h"
 
+#include <set>
+
 #include <QSignalMapper>
 #include <QThread>
 #include <QScreen>
@@ -104,7 +106,9 @@ MainWindow::MainWindow(const QGLFormat& format)
     m_quit = new QAction(tr("&Quit"), this);
     m_quit->setStatusTip(tr("Exit the application"));
     m_quit->setCheckable(false);
+#ifndef __linux__
     m_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
+#endif
     m_quit->setShortcutContext(Qt::ApplicationShortcut);
     connect(m_quit, SIGNAL(triggered()), this, SLOT(close()));
     addAction(m_quit);
@@ -138,6 +142,9 @@ MainWindow::MainWindow(const QGLFormat& format)
     // File menu
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(m_open);
+    m_recentMenu = fileMenu->addMenu("Recent");
+    connect(m_recentMenu, SIGNAL(aboutToShow()), this, SLOT(updateRecentFiles()));
+
     QAction* addAct = fileMenu->addAction(tr("&Add"));
     addAct->setToolTip(tr("Add a data set"));
     connect(addAct, SIGNAL(triggered()), this, SLOT(addFiles()));
@@ -691,10 +698,24 @@ void MainWindow::openFiles()
         QDir dir = QFileInfo(filename).dir();
         dir.makeAbsolute();
         m_settings.setValue("lastDirectory", dir.path());
+        m_recent.append(filename);
         m_fileLoader->loadFile(FileLoadInfo(filename));
     }
 }
 
+void MainWindow::openRecent()
+{
+    QAction *action = qobject_cast<QAction *>(sender());
+    if (action)
+    {
+        const QString filename = action->data().toString();
+        QDir dir = QFileInfo(filename).dir();
+        dir.makeAbsolute();
+        m_settings.setValue("lastDirectory", dir.path());
+        m_recent.append(filename);
+        m_fileLoader->loadFile(FileLoadInfo(filename));
+    }
+}
 
 void MainWindow::addFiles()
 {
@@ -717,6 +738,22 @@ void MainWindow::addFiles()
         FileLoadInfo loadInfo(filename);
         loadInfo.replaceLabel = false;
         m_fileLoader->loadFile(loadInfo);
+    }
+}
+
+void MainWindow::updateRecentFiles()
+{
+    if (m_recentMenu)
+    {
+        m_recentMenu->clear();
+
+        for (auto i = m_recent.rbegin(); i != m_recent.rend(); ++i)
+        {
+            auto action = new QAction(*i, this);
+            action->setData(*i);
+            connect(action, SIGNAL(triggered()), this, SLOT(openRecent()));
+            m_recentMenu->addAction(action);
+        }
     }
 }
 
@@ -910,6 +947,7 @@ void MainWindow::loadStepComplete()
 
 void MainWindow::readSettings()
 {
+    m_recent = m_settings.value("recent").toStringList();
     restoreGeometry(m_settings.value("geometry").toByteArray());
     restoreState(m_settings.value("windowState").toByteArray());
 
@@ -939,6 +977,29 @@ void MainWindow::readSettings()
 
 void MainWindow::writeSettings()
 {
+    // De-duplicate and limit recents
+    QStringList recent;
+    std::set<QString> set;
+    for (auto i = m_recent.rbegin(); i != m_recent.rend(); ++i)
+    {
+        if (i->isEmpty())
+        {
+            continue;
+        }
+
+        if (!set.count(*i))
+        {
+            set.insert(*i);
+            recent.prepend(*i);
+            if (recent.size() == m_recentLimit)
+            {
+                break;
+            }
+        }
+    }
+
+    m_settings.setValue("recent", recent);
+
     m_settings.setValue("geometry", saveGeometry());
     m_settings.setValue("windowState", saveState());
     m_settings.setValue("minimised", isMinimized());

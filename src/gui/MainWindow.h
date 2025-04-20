@@ -63,7 +63,9 @@ class MainWindow : public QMainWindow
     private slots:
         void fullScreen();
         void openFiles();
+        void openRecent();
         void addFiles();
+        void updateRecentFiles();
         void openShaderFile();
         void saveShaderFile();
         void compileShaderFile();
@@ -94,6 +96,10 @@ class MainWindow : public QMainWindow
         // Gui state
         QString m_currShaderFileName;
         QSettings m_settings;
+
+        QStringList m_recent;
+        const qsizetype m_recentLimit = 15;
+        QMenu* m_recentMenu = nullptr;
 
         // Actions
         QAction* m_open = nullptr;
