@@ -1,6 +1,8 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Debian 11 (bullseye)
 
+# Status: Confirmed working April 20th 2025
+
 FROM debian:bullseye
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

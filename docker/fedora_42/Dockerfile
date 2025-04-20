@@ -1,25 +1,10 @@
 # Minimal displaz Qt5 build, test and install
-# using Docker Ubuntu 24.04 (Noble)
+# using Fedora 42
 
 # Status: Confirmed working April 20th 2025
 
-FROM ubuntu:noble
+FROM fedora:42
 MAINTAINER Nigel Stewart (nigels@nigels.com)
-
-#
-# Optional custom package mirror
-#
-# --build-arg MIRROR=http://au.archive.ubuntu.com/ubuntu/
-#
-
-ARG MIRROR
-ENV MIRROR ${MIRROR:-http://archive.ubuntu.com/ubuntu}
-
-#RUN sed -i -r "/#.*/d"                                           /etc/apt/sources.list
-#RUN sed -i -r "/^$/d"                                            /etc/apt/sources.list
-#RUN cat /etc/apt/sources.list
-#RUN sed -i -r "s#deb .* noble(-.*)? #deb ${MIRROR} noble\\1 #"   /etc/apt/sources.list
-#RUN cat /etc/apt/sources.list
 
 #
 # Update and install build tools, dependencies
@@ -27,11 +12,9 @@ ENV MIRROR ${MIRROR:-http://archive.ubuntu.com/ubuntu}
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt update
-RUN apt dist-upgrade -y
+RUN dnf -y upgrade
 
-RUN apt install -y build-essential git cmake doxygen graphviz cppcheck
-RUN apt install -y g++ cmake qtbase5-dev python3
+RUN dnf -y install git gcc-c++ make patch cmake qt5-qtbase-devel mesa-libGLU-devel python-docutils
 
 #
 # Clone repo
