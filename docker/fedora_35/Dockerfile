@@ -1,6 +1,10 @@
 # Minimal displaz Qt5 build, test and install
 # using Fedora 35
 
+# Fedora 35 EOL: 2022-12-13
+
+# Status: Confirmed working April 20th 2025
+
 FROM fedora:35
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 
@@ -12,7 +16,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN dnf -y upgrade
 
-RUN dnf -y install git gcc-c++ make patch cmake qt5-qtbase-devel mesa-libGLU-devel python-docutils
+RUN dnf -y install git gcc-c++ make patch cmake qt5-qtbase-devel mesa-libGLU-devel python-docutils findutils
 
 #
 # Clone repo

@@ -1,6 +1,9 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Ubuntu 16.04 (Xenial)
 
+# Status: Not working April 20th 2025
+#         QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
 FROM ubuntu:xenial
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

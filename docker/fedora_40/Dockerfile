@@ -1,6 +1,8 @@
 # Minimal displaz Qt5 build, test and install
 # using Fedora 40
 
+# Status: Confirmed working April 20th 2025
+
 FROM fedora:40
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

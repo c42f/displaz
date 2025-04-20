@@ -1,6 +1,10 @@
 # Minimal displaz Qt5 build, test and install
 # using Fedora 33
 
+# Fedora 33 EOL: 2021-11-30
+
+# Status: Confirmed working April 20th 2025
+
 FROM fedora:33
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 

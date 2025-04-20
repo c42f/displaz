@@ -1,6 +1,8 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Ubuntu 22.04 (Jammy)
 
+# Status: Confirmed working April 20th 2025
+
 FROM ubuntu:jammy
 MAINTAINER Nigel Stewart (nigels@nigels.com)
 
