@@ -6,7 +6,7 @@ Check the displaz builds and tests for a variety of Linux flavours.
 
 ## User Guide
 
-1. `docker build --pull docker/ubuntu_20_04`
+1. `docker build --pull docker/ubuntu_24_04`
 2. `docker image prune -af`
 
 ## Options
