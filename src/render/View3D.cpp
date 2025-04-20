@@ -41,7 +41,6 @@ View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget 
     m_backgroundColor(60, 50, 50),
     m_badOpenGL(false),
     m_geometries(geometries),
-    m_selectionModel(0),
     m_shaderParamsUI(0),
     m_incrementalFrameTimer(0),
     m_incrementalDraw(false),

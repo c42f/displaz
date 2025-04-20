@@ -52,6 +52,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     HookManager.h
 
     gui/DataSetUI.h
+    gui/DataSetListView.h
     gui/DragSpinBox.h
     gui/GLSLHighlighter.h
     gui/HelpDialog.h
@@ -84,6 +85,7 @@ set(gui_srcs
     HookManager.cpp
 
     gui/DataSetUI.cpp
+    gui/DataSetListView.cpp
     gui/GLSLHighlighter.cpp
     gui/guimain.cpp
     gui/MainWindow.cpp

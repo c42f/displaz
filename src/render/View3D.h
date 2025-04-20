@@ -1,8 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#ifndef DISPLAZ_VIEW3D_H_INCLUDED
-#define DISPLAZ_VIEW3D_H_INCLUDED
+#pragma once
 
 #include <cmath>
 #include <vector>
@@ -172,7 +171,7 @@ class View3D : public QGLWidget
         std::unique_ptr<ShaderProgram> m_meshEdgeShader;
         /// Collection of geometries
         GeometryCollection* m_geometries;
-        QItemSelectionModel* m_selectionModel;
+        QItemSelectionModel* m_selectionModel = nullptr;
         QVector<std::shared_ptr<Annotation>> m_annotations;
         /// UI widget for shader
         QWidget* m_shaderParamsUI;
@@ -205,9 +204,3 @@ class View3D : public QGLWidget
 
         double m_devicePixelRatio;
 };
-
-
-
-#endif // DISPLAZ_VIEW3D_H_INCLUDED
-
-// vi: set et:
