@@ -141,10 +141,11 @@ MainWindow::MainWindow(const QGLFormat& format)
     QAction* addAct = fileMenu->addAction(tr("&Add"));
     addAct->setToolTip(tr("Add a data set"));
     connect(addAct, SIGNAL(triggered()), this, SLOT(addFiles()));
-    QAction* reloadAct = fileMenu->addAction(tr("&Reload"));
-    reloadAct->setStatusTip(tr("Reload point files from disk"));
-    reloadAct->setShortcut(Qt::Key_F5);
-    connect(reloadAct, SIGNAL(triggered()), this, SLOT(reloadFiles()));
+
+    QAction* reloadAction = fileMenu->addAction(tr("&Reload"));
+    reloadAction->setStatusTip(tr("Reload point files from disk"));
+    reloadAction->setShortcut(Qt::Key_F5);
+    connect(reloadAction, SIGNAL(triggered()), this, SLOT(reloadFiles()));
 
     fileMenu->addSeparator();
     fileMenu->addAction(m_screenShot);
@@ -293,6 +294,8 @@ MainWindow::MainWindow(const QGLFormat& format)
                               QDockWidget::DockWidgetFloatable);
     DataSetUI* dataSetUI = new DataSetUI(this);
     m_dockDataSet->setWidget(dataSetUI);
+    connect(dataSetUI->view(), SIGNAL(reloadFile(const QModelIndex&)),
+            this, SLOT(reloadFile(const QModelIndex&)));
 
     QAbstractItemView* dataSetOverview = dataSetUI->view();
     dataSetOverview->setModel(m_geometries);
@@ -814,6 +817,16 @@ void MainWindow::reloadFiles()
     }
 }
 
+void MainWindow::reloadFile(const QModelIndex& index)
+{
+    const int row = index.row();
+    const GeometryCollection::GeometryVec& geoms = m_geometries->get();
+    if (row < static_cast<int>(geoms.size()))
+    {
+        FileLoadInfo loadInfo(geoms[row]->fileName(), geoms[row]->label(), false);
+        m_fileLoader->reloadFile(loadInfo);
+    }
+}
 
 void MainWindow::helpDialog()
 {

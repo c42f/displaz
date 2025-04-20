@@ -1,8 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-#ifndef DISPLAZ_GEOMETRYCOLLECTION_H_INCLUDED
-#define DISPLAZ_GEOMETRYCOLLECTION_H_INCLUDED
+#pragma once
 
 #include <vector>
 
@@ -24,7 +23,7 @@ class GeometryCollection : public QAbstractListModel
     public:
         typedef std::vector<std::shared_ptr<Geometry>> GeometryVec;
 
-        GeometryCollection(QObject * parent = 0);
+        GeometryCollection(QObject * parent = nullptr);
 
         /// Get current list of geometries
         const GeometryVec& get() const { return m_geometries; }
@@ -37,7 +36,7 @@ class GeometryCollection : public QAbstractListModel
         /// Find the first index to a geometry with label matching the given pattern
         QModelIndex findLabel(const QRegExp & labelPattern);
 
-        // Following implemented from QAbstractListModel:
+        // Specialisation of QAbstractListModel
         virtual int rowCount(const QModelIndex & parent = QModelIndex()) const;
         virtual QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const;
         virtual Qt::ItemFlags flags(const QModelIndex& index) const;
@@ -64,6 +63,3 @@ class GeometryCollection : public QAbstractListModel
 
         GeometryVec m_geometries;
 };
-
-
-#endif // DISPLAZ_GEOMETRYCOLLECTION_H_INCLUDED

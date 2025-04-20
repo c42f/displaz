@@ -10,19 +10,21 @@
 
 #include <algorithm>
 
-static void reduceMinSize(QPushButton* button)
+#include "DataSetListView.h"
+
+namespace {
+
+void reduceMinSize(QPushButton* button)
 {
     QSize size = button->minimumSize();
     size.setWidth(10);
     button->setMinimumSize(size);
 }
 
-//------------------------------------------------------------------------------
-// DataSetUI implementation
+}
 
 DataSetUI::DataSetUI(QWidget* parent)
-    : QWidget(parent),
-    m_listView(0)
+    : QWidget(parent)
 {
     // Main view is a list of data sets by name
     m_listView = new DataSetListView(this);
@@ -62,7 +64,6 @@ QAbstractItemView* DataSetUI::view()
     return m_listView;
 }
 
-
 void DataSetUI::selectAll()
 {
     const QAbstractItemModel* model = m_listView->model();
@@ -89,45 +90,4 @@ void DataSetUI::selectionInvert()
         QItemSelectionModel::Toggle
     );
 }
-
-
-//------------------------------------------------------------------------------
-// DataSetListView implementation
-
-void DataSetListView::keyPressEvent(QKeyEvent* event)
-{
-    if(event->key() == Qt::Key_Delete)
-    {
-        QModelIndexList sel = selectionModel()->selectedRows();
-        std::sort(sel.begin(), sel.end());
-        for (int i = sel.size()-1; i >= 0; --i)
-            model()->removeRows(sel[i].row(), 1);
-    }
-    else
-    {
-        QListView::keyPressEvent(event);
-    }
-}
-
-
-void DataSetListView::wheelEvent(QWheelEvent* event)
-{
-    if (event->modifiers() & Qt::ControlModifier)
-    {
-        int row = 0;
-        if (selectionModel()->currentIndex().isValid())
-            row = selectionModel()->currentIndex().row();
-        row += (event->angleDelta().y() < 0) ? 1 : -1;
-        if (row < 0)
-            row = 0;
-        if (row >= model()->rowCount())
-            row = model()->rowCount() - 1;
-        QModelIndex newIndex = model()->index(row, 0);
-        selectionModel()->select(newIndex, QItemSelectionModel::ClearAndSelect);
-        selectionModel()->setCurrentIndex(newIndex, QItemSelectionModel::Current);
-    }
-    else
-        QListView::wheelEvent(event);
-}
-
 

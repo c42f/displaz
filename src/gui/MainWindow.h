@@ -1,9 +1,7 @@
 // Copyright 2015, Christopher J. Foster and the other displaz contributors.
 // Use of this code is governed by the BSD-style license found in LICENSE.txt
 
-
-#ifndef DISPLAZ_MAINWINDOW_H_INCLUDED
-#define DISPLAZ_MAINWINDOW_H_INCLUDED
+#pragma once
 
 #include <QDir>
 #include <QMainWindow>
@@ -68,6 +66,7 @@ class MainWindow : public QMainWindow
         void saveShaderFile();
         void compileShaderFile();
         void reloadFiles();
+        void reloadFile(const QModelIndex& index);
         void screenShot();
         void helpDialog();
         void aboutDialog();
@@ -120,7 +119,7 @@ class MainWindow : public QMainWindow
         /// Maximum desired number of points to load
         size_t m_maxPointCount;
         // Currently loaded geometry
-        GeometryCollection* m_geometries;
+        GeometryCollection* m_geometries = nullptr;
 
         // Interprocess communication
         QLocalServer* m_ipcServer;
@@ -128,6 +127,3 @@ class MainWindow : public QMainWindow
         // Custom event registration for dynamic hooks
         HookManager* m_hookManager;
 };
-
-
-#endif // DISPLAZ_MAINWINDOW_H_INCLUDED

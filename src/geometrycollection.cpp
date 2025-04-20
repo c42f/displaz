@@ -12,7 +12,8 @@
 
 GeometryCollection::GeometryCollection(QObject* parent)
     : QAbstractListModel(parent)
-{ }
+{
+}
 
 
 void GeometryCollection::clear()
@@ -58,21 +59,23 @@ int GeometryCollection::rowCount(const QModelIndex & parent) const
 {
     if (parent.isValid())
         return 0;
-    return (int)m_geometries.size();
+    return static_cast<int>(m_geometries.size());
 }
 
 
 QVariant GeometryCollection::data(const QModelIndex & index, int role) const
 {
-    if (!index.isValid())
-        return QVariant();
-    switch (role)
+    if (index.isValid())
     {
-        case Qt::DisplayRole:
-            return m_geometries[index.row()]->label();
-        case Qt::ToolTipRole:
-            return m_geometries[index.row()]->fileName();
+        switch (role)
+        {
+            case Qt::DisplayRole:
+                return m_geometries[index.row()]->label();
+            case Qt::ToolTipRole:
+                return m_geometries[index.row()]->fileName();
+        }
     }
+
     return QVariant();
 }
 
@@ -80,7 +83,9 @@ QVariant GeometryCollection::data(const QModelIndex & index, int role) const
 Qt::ItemFlags GeometryCollection::flags(const QModelIndex& index) const
 {
     if (!index.isValid())
-        return 0;
+    {
+        return Qt::ItemFlags();
+    }
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
@@ -121,7 +126,7 @@ void GeometryCollection::addGeometry(std::shared_ptr<Geometry> geom,
                  (reloaded     && m_geometries[i]->fileName() == geom->fileName()) )
             {
                 m_geometries[i] = geom;
-                QModelIndex idx = createIndex((int)i, 0);
+                QModelIndex idx = createIndex(static_cast<int>(i), 0);
                 emit dataChanged(idx, idx);
                 return;
             }
