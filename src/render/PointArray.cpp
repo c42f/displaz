@@ -610,7 +610,8 @@ DrawCount PointArray::drawPoints(QOpenGLShaderProgram& prog, const TransformStat
 
                 GLintptr arrayElementOffset = bufferOffset + j*field.spec.elsize;
 
-                if (attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint)
+                if ((attr->baseType == TypeSpec::Int || attr->baseType == TypeSpec::Uint) &&
+                    !field.spec.fixedPoint)
                 {
                     glVertexAttribIPointer(attr->location, vecSize, glBaseType(field.spec),
                                            0, (const GLvoid *)arrayElementOffset);

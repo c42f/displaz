@@ -142,6 +142,7 @@ struct PlyPointField
     TypeSpec::Semantics semantics;
     std::string plyName;
     e_ply_type plyType;
+    bool fixedPoint;
 };
 
 
@@ -151,18 +152,18 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
     // List of some fields which might be found in a .ply file and mappings to
     // displaz field groups.  Note that there's no standard!
     PlyPointField standardFields[] = {
-        {"position",  0,  TypeSpec::Vector,  "x",      PLY_FLOAT},
-        {"position",  1,  TypeSpec::Vector,  "y",      PLY_FLOAT},
-        {"position",  2,  TypeSpec::Vector,  "z",      PLY_FLOAT},
-        {"color",     0,  TypeSpec::Color ,  "red",    PLY_UINT8},
-        {"color",     1,  TypeSpec::Color ,  "green",  PLY_UINT8},
-        {"color",     2,  TypeSpec::Color ,  "blue",   PLY_UINT8},
-        {"color",     0,  TypeSpec::Color ,  "r",      PLY_UINT8},
-        {"color",     1,  TypeSpec::Color ,  "g",      PLY_UINT8},
-        {"color",     2,  TypeSpec::Color ,  "b",      PLY_UINT8},
-        {"normal",    0,  TypeSpec::Vector,  "nx",     PLY_FLOAT},
-        {"normal",    1,  TypeSpec::Vector,  "ny",     PLY_FLOAT},
-        {"normal",    2,  TypeSpec::Vector,  "nz",     PLY_FLOAT},
+        {"position",  0,  TypeSpec::Vector,  "x",      PLY_FLOAT, false},
+        {"position",  1,  TypeSpec::Vector,  "y",      PLY_FLOAT, false},
+        {"position",  2,  TypeSpec::Vector,  "z",      PLY_FLOAT, false},
+        {"color",     0,  TypeSpec::Color ,  "red",    PLY_UINT8, true},
+        {"color",     1,  TypeSpec::Color ,  "green",  PLY_UINT8, true},
+        {"color",     2,  TypeSpec::Color ,  "blue",   PLY_UINT8, true},
+        {"color",     0,  TypeSpec::Color ,  "r",      PLY_UINT8, true},
+        {"color",     1,  TypeSpec::Color ,  "g",      PLY_UINT8, true},
+        {"color",     2,  TypeSpec::Color ,  "b",      PLY_UINT8, true},
+        {"normal",    0,  TypeSpec::Vector,  "nx",     PLY_FLOAT, false},
+        {"normal",    1,  TypeSpec::Vector,  "ny",     PLY_FLOAT, false},
+        {"normal",    2,  TypeSpec::Vector,  "nz",     PLY_FLOAT, false},
     };
     QRegExp vec3ComponentPattern("(.*)_?([xyz])");
     QRegExp arrayComponentPattern("(.*)\\[([0-9]+)\\]");
@@ -210,7 +211,7 @@ static std::vector<PlyPointField> parsePlyPointFields(p_ply_element vertexElemen
                 displazName = arrayComponentPattern.cap(1).toStdString();
                 index = arrayComponentPattern.cap(2).toInt();
             }
-            PlyPointField field = {displazName, index, semantics, propName, propType};
+            PlyPointField field = {displazName, index, semantics, propName, propType, false};
             fieldInfo.push_back(field);
         }
     }
@@ -250,6 +251,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
         const std::string& fieldName = fieldInfo[i].displazName;
         TypeSpec::Semantics semantics = fieldInfo[i].semantics;
         TypeSpec::Type baseType = TypeSpec::Unknown;
+        bool fixedPoint = fieldInfo[i].fixedPoint;
         int elsize = 0;
         plyTypeToPointFieldType(fieldInfo[i].plyType, baseType, elsize);
         size_t eltBegin = i;
@@ -270,7 +272,7 @@ bool loadPlyVertexProperties(QString fileName, p_ply ply, p_ply_element vertexEl
         }
         else
         {
-            TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics);
+            TypeSpec type(baseType, elsize, maxComponentIndex+1, semantics, fixedPoint);
             //tfm::printf("%s: type %s\n", fieldName, type);
             fields.push_back(GeomField(type, fieldName, npoints));
             fieldLoaders.push_back(PlyFieldLoader(fields.back()));
@@ -402,7 +404,7 @@ bool loadDisplazNativePly(QString fileName, p_ply ply,
         }
 
         // Create loader callback object
-        TypeSpec type(baseType, elsize, numProps, semantics);
+        TypeSpec type(baseType, elsize, numProps, semantics, false);
         fields.push_back(GeomField(type, fieldName, npoints));
         fieldLoaders.push_back(PlyFieldLoader(fields.back()));
         // Connect callbacks for each property
