@@ -171,7 +171,7 @@ endif()
 
 
 #------------------------------------------------------------------------------
-# Packaging, mostly just for windows at this stage.
+# Packaging
 
 # Ensure we can find NSIS.InstallOptions.ini.in
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/package")
@@ -224,6 +224,11 @@ if (WIN32)
     ")
     # cpack bug workaround: avoid installing into "C:\Program Files (x86)"
     set(CPACK_NSIS_INSTALL_ROOT "C:\\\\Program Files")
+elseif(APPLE)
+    # OSX Bundle generator setup
+    set(CPACK_GENERATOR "Bundle")
+    set(CPACK_BUNDLE_NAME "Displaz")
+    set(CPACK_BUNDLE_ICON "package/displaz.icns")
 else()
     set(CPACK_GENERATOR TGZ)
 endif()

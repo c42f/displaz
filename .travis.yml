@@ -16,6 +16,14 @@ env:
         - DISPLAZ_BUILD_TYPE=Release
         - DISPLAZ_BUILD_TYPE=Debug
 
+matrix:
+    exclude:
+        # Only check gcc on linux and clang on OS X
+        - os: linux
+          compiler: clang
+        - os: osx
+          compiler: gcc
+
 # either whitelist or blacklist branches
 branches:
     only:
@@ -61,12 +69,23 @@ script:
     # Needs investigation by someone with an OSX machine.
     - if [ "$TRAVIS_OS_NAME" == "osx" ] ; then ctest -VV -E InterProcessLock_test ; fi
     - if [ "$TRAVIS_OS_NAME" != "osx" ] ; then ctest -VV ; fi
+    # Packaging
+    - cpack --help
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G DEB -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cpack -V -G RPM -C ${DISPLAZ_BUILD_TYPE}; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cpack -V -G Bundle -C ${DISPLAZ_BUILD_TYPE}; fi
     - cd ..
 
-matrix:
-    exclude:
-        # Only check gcc on linux and clang on OS X
-        - os: linux
-          compiler: clang
-        - os: osx
-          compiler: gcc
+# deploy:
+#     provider: releases
+#     api-key: "$GITHUB_TOKEN"
+#     file_glob: true
+#     file:
+#         - *.deb
+#         - *.rpm
+#         - *.dmg
+#     skip_cleanup: true
+#     on:
+#         tags: true
+#         condition:
+#             - "$DISPLAZ_BUILD_TYPE == Release"
