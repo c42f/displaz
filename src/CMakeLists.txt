@@ -64,6 +64,7 @@ displaz_qt_wrap_cpp(gui_moc_srcs
     render/Geometry.h
     render/GeomField.h
     render/HCloudView.h
+    render/TransformState.h
     render/View3D.h
     render/PointArray.h
     render/GeometryMutator.h
@@ -98,6 +99,7 @@ set(gui_srcs
     render/gldebug.cpp
     render/glutil.cpp
     render/HCloudView.cpp
+    render/TransformState.cpp
     render/TriMesh.cpp
     render/PointArray.cpp
     render/View3D.cpp
