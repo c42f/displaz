@@ -53,6 +53,9 @@ class MainWindow : public QMainWindow
         void openShaderFile(const QString& shaderFileName);
         QByteArray hookPayload(QByteArray payload);
 
+        void showMessage(const QString& message, int timeout = 10000);
+        void clearMessage();
+
     protected:
         void dragEnterEvent(QDragEnterEvent *event);
         void dropEvent(QDropEvent *event);
