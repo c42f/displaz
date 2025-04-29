@@ -958,6 +958,16 @@ void MainWindow::loadStepComplete()
     m_progressBar->hide();
 }
 
+void MainWindow::showMessage(const QString& message, int timeout)
+{
+    statusBar()->showMessage(message, timeout);
+}
+
+void MainWindow::clearMessage()
+{
+    statusBar()->clearMessage();
+}
+
 void MainWindow::readSettings()
 {
     m_recent = m_settings.value("recent").toStringList();
