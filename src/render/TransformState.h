@@ -45,7 +45,6 @@ struct TransformState
     ///
     static void setUniform(GLuint prog, const char* name, const M44d& mat);
     void setUniforms(GLuint prog) const;
-    void setProjUniform(GLuint prog) const;
 
     void setOrthoProjection(double left, double right, double bottom, double top, double nearVal, double farVal);
 };
