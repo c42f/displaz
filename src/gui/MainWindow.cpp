@@ -214,7 +214,9 @@ MainWindow::MainWindow(const QGLFormat& format)
 
     //--------------------------------------------------
     // Point viewer
-    m_pointView = new View3D(m_geometries, format, this);
+    DataSetUI* dataSetUI = new DataSetUI(this);
+
+    m_pointView = new View3D(m_geometries, format, this, dataSetUI);
     setCentralWidget(m_pointView);
     connect(m_trackBall, SIGNAL(triggered(bool)),
             &(m_pointView->camera()), SLOT(setTrackballInteraction(bool)));
@@ -297,7 +299,6 @@ MainWindow::MainWindow(const QGLFormat& format)
     m_dockDataSet->setFeatures(QDockWidget::DockWidgetMovable |
                               QDockWidget::DockWidgetClosable |
                               QDockWidget::DockWidgetFloatable);
-    DataSetUI* dataSetUI = new DataSetUI(this);
     m_dockDataSet->setWidget(dataSetUI);
     connect(dataSetUI->view(), SIGNAL(reloadFile(const QModelIndex&)),
             this, SLOT(reloadFile(const QModelIndex&)));

@@ -28,6 +28,8 @@ class QTimer;
 class QGLFormat;
 class QSettings;
 
+class MainWindow;
+class DataSetUI;
 class Enable;
 class ShaderProgram;
 struct TransformState;
@@ -38,7 +40,7 @@ class View3D : public QGLWidget
 {
     Q_OBJECT
     public:
-        View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent = NULL);
+        View3D(GeometryCollection* geometries, const QGLFormat& format, MainWindow *parent = nullptr, DataSetUI *dataSet = nullptr);
         ~View3D() = default;
 
         Enable& enable() const { return *m_enable; }
@@ -143,6 +145,8 @@ class View3D : public QGLWidget
         void snapToPoint(const Imath::V3d& pos);
         std::vector<const Geometry*> selectedGeometry() const;
 
+        MainWindow* m_mainWindow = nullptr;
+        DataSetUI* m_dataSet = nullptr;
         /// Mouse-based camera positioning
         InteractiveCamera m_camera;
         QPoint m_prevMousePos;
