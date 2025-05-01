@@ -91,3 +91,12 @@ void DataSetUI::selectionInvert()
     );
 }
 
+void DataSetUI::selectIndex(int row)
+{
+    QAbstractItemModel* model = m_listView->model();
+    if (row < model->rowCount())
+    {
+        auto i = model->index(row, 0);
+        m_listView->selectionModel()->select(i, QItemSelectionModel::ClearAndSelect);
+    }
+}
