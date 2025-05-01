@@ -25,6 +25,7 @@
 #include "fileloader.h"
 #include "QtLogger.h"
 #include "MainWindow.h"
+#include "DataSetUI.h"
 #include "TriMesh.h"
 #include "Enable.h"
 #include "Shader.h"
@@ -33,8 +34,10 @@
 #include "util.h"
 
 //------------------------------------------------------------------------------
-View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, QWidget *parent)
+View3D::View3D(GeometryCollection* geometries, const QGLFormat& format, MainWindow *parent, DataSetUI *dataSet)
     : QGLWidget(format, parent),
+    m_mainWindow(parent),
+    m_dataSet(dataSet),
     m_mouseButton(Qt::NoButton),
     m_explicitCursorPos(false),
     m_cursorPos(0),
@@ -632,9 +635,48 @@ void View3D::keyPressEvent(QKeyEvent *event)
 {
     // Centre camera on current cursor location
     if (event->key() == Qt::Key_C)
+    {
         m_camera.setCenter(m_cursorPos);
-    else
-        event->ignore();
+    }
+
+    if (m_dataSet)
+    {
+        switch (event->key())
+        {
+        case Qt::Key_1:
+            m_dataSet->selectIndex(0);
+            break;
+        case Qt::Key_2:
+            m_dataSet->selectIndex(1);
+            break;
+        case Qt::Key_3:
+            m_dataSet->selectIndex(2);
+            break;
+        case Qt::Key_4:
+            m_dataSet->selectIndex(3);
+            break;
+        case Qt::Key_5:
+            m_dataSet->selectIndex(4);
+            break;
+        case Qt::Key_6:
+            m_dataSet->selectIndex(5);
+            break;
+        case Qt::Key_7:
+            m_dataSet->selectIndex(6);
+            break;
+        case Qt::Key_8:
+            m_dataSet->selectIndex(7);
+            break;
+        case Qt::Key_9:
+            m_dataSet->selectIndex(8);
+            break;
+        case Qt::Key_0:
+            m_dataSet->selectIndex(9);
+            break;
+        }
+    }
+
+    event->ignore();
 }
 
 void View3D::initCursor(float cursorRadius, float centerPointRadius)
