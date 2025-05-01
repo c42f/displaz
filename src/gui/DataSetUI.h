@@ -17,6 +17,9 @@ class DataSetUI : public QWidget
         /// Return underlying view which displays loaded data set list
         QAbstractItemView* view();
 
+    public slots:
+        void selectIndex(int);
+
     private slots:
         // Slots to manipulate model selection
         void selectAll();
