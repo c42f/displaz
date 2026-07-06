@@ -153,8 +153,8 @@ find_program(RST2HTML NAMES rst2html rst2html.py)
 if (RST2HTML)
     set (readmeHtml ${PROJECT_BINARY_DIR}/README.html)
     add_custom_command(OUTPUT ${readmeHtml}
-        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/README.rst ${readmeHtml}
-        DEPENDS README.rst
+        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/README.md ${readmeHtml}
+        DEPENDS README.md
     )
     set (userguideHtml ${PROJECT_BINARY_DIR}/userguide.html)
     add_custom_command(OUTPUT ${userguideHtml}
@@ -165,7 +165,7 @@ if (RST2HTML)
     install(FILES ${readmeHtml} ${userguideHtml} DESTINATION "${DISPLAZ_DOC_DIR}")
 else()
     message(WARNING "rst2html not found - documentation will be installed as text!")
-    install(FILES README.rst DESTINATION "${DISPLAZ_DOC_DIR}")
+    install(FILES README.md DESTINATION "${DISPLAZ_DOC_DIR}")
     install(FILES doc/userguide.rst DESTINATION "${DISPLAZ_DOC_DIR}")
 endif()
 
@@ -184,8 +184,8 @@ set(CPACK_PACKAGE_VENDOR "Displaz Team")
 set(CPACK_PACKAGE_VERSION "${displazVersion}+${DISPLAZ_BUILD_NUMBER}")
 set(fullVersion "displaz-${displazVersion}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A viewer for geospatial lidar data")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.rst")
-set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.rst")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/README.md")
+set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Displaz")
 if (WIN32)
