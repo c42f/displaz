@@ -158,15 +158,15 @@ if (RST2HTML)
     )
     set (userguideHtml ${PROJECT_BINARY_DIR}/userguide.html)
     add_custom_command(OUTPUT ${userguideHtml}
-        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/doc/userguide.rst ${userguideHtml}
-        DEPENDS doc/userguide.rst
+        COMMAND ${RST2HTML} ${PROJECT_SOURCE_DIR}/doc/userguide.md ${userguideHtml}
+        DEPENDS doc/userguide.md
     )
     add_custom_target(doc ALL DEPENDS ${readmeHtml} ${userguideHtml})
     install(FILES ${readmeHtml} ${userguideHtml} DESTINATION "${DISPLAZ_DOC_DIR}")
 else()
     message(WARNING "rst2html not found - documentation will be installed as text!")
     install(FILES README.md DESTINATION "${DISPLAZ_DOC_DIR}")
-    install(FILES doc/userguide.rst DESTINATION "${DISPLAZ_DOC_DIR}")
+    install(FILES doc/userguide.md DESTINATION "${DISPLAZ_DOC_DIR}")
 endif()
 
 
