@@ -4,6 +4,8 @@
 # Note that defaults for cmake builtin variables must be set before calling
 # project(), otherwise the cmake-provided defaults will get in first!
 
+cmake_minimum_required(VERSION 3.10)
+
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
 )
@@ -17,13 +19,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(displaz)
-
-cmake_minimum_required(VERSION 3.5)
-
-if (WIN32)
-    # cmake >= 2.8.10 needs this for Qt5 on Windows
-    cmake_policy(SET CMP0020 NEW)
-endif()
 
 # cmake >= 3.11 prefer GLVND libraries for OpenGL
 cmake_policy(SET CMP0072 NEW)
