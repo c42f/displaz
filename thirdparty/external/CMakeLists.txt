@@ -9,9 +9,13 @@ if(NOT WIN32)
         CACHE STRING "Flags used by the compiler during all build types.")
 endif()
 
-project(external_libs)
+cmake_minimum_required(VERSION 3.10)
 
-cmake_minimum_required(VERSION 2.8.12)
+if(POLICY CMP0135)
+  cmake_policy(SET CMP0135 OLD)  # cmake 3.24 onwards
+endif()
+
+project(external_libs)
 
 set(DOWNLOAD_DIR "${PROJECT_SOURCE_DIR}/downloads"
     CACHE PATH "Location for downloaded source archives")
