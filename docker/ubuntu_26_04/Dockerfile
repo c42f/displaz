@@ -1,5 +1,7 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Ubuntu 26.04 (Resolute)
+#
+# $ docker build .
 
 # Status: Confirmed working July 7th 2026
 
