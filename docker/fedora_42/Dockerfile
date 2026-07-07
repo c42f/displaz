@@ -1,7 +1,9 @@
 # Minimal displaz Qt5 build, test and install
 # using Fedora 42
+#
+# $ docker build .
 
-# Status: Confirmed working April 20th 2025
+# Status: Confirmed working July 7th 2026
 
 FROM fedora:42
 MAINTAINER Nigel Stewart (nigels@nigels.com)

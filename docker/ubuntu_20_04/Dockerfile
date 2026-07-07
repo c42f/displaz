@@ -1,7 +1,9 @@
 # Minimal displaz Qt5 build, test and install
 # using Docker Ubuntu 20.04 (Focal)
+#
+# $ docker build .
 
-# Status: Confirmed working April 20th 2025
+# Status: Confirmed working July 7th 2026
 
 FROM ubuntu:focal
 MAINTAINER Nigel Stewart (nigels@nigels.com)
