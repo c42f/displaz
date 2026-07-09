@@ -1,18 +1,24 @@
 #!/bin/bash
 
-files=""
-for width in 16 32 48 256 ; do
-    name=tmp_icon_$(printf "%.3d" $width).png
+make_icon () {
+    width=$1
+    name="tmp_icon_$(printf "%.3d" $width).png"
+    echo "Saving icon to $name" 1>&2
     inkscape \
         --export-png=$name \
         --export-area-page \
         --export-width=$width \
-        icon.svg
-    files="$files $name"
-done
+        icon.svg 1>&2
+    echo $name
+}
 
-convert $files displaz.ico
+echo "Making windows .ico" 1>&2
+convert $(make_icon 16) $(make_icon 32) $(make_icon 48) $(make_icon 256) displaz.ico
 
-cp tmp_icon_256.png ../src/resource/displaz_icon_256.png
+echo "Making OSX .icns" 1>&2
+png2icns displaz.icns $(make_icon 16) $(make_icon 32) $(make_icon 128) $(make_icon 256)
 
-rm $files
+echo "Making linux icon .png" 1>&2
+cp $(make_icon 256) ../src/resource/displaz_icon_256.png
+
+rm -f tmp_icon_*.png
